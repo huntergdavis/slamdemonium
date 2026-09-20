@@ -18,6 +18,9 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] O1 | devops | GitHub Actions CI on PRs and main: lint, test, build, e2e (Playwright with browsers cached). Owns .github/. | devops/ci
 - [ ] O2 | devops | GitHub Pages deploy of `dist/` from main to hunterdavis.com/slamdemonium/ (Vite base path via VITE_BASE_PATH), enable Pages via gh api, branch protection on main requiring CI. | devops/pages
 
+- [ ] T3 | techwriter | `docs/GLOSSARY.md`: plain-language glossary of the tuning and physics terms a human tuner meets (slip angle, beta, yaw rate, grip usage, friction ellipse, relaxation length, ride frequency, CCD, fixed timestep, A/B slot, etc), each with one sentence and a pointer to the design section. | docs/glossary
+- [ ] T4 | techwriter | `docs/TEAM.md` edited into a real contributor guide: roles, branch/PR rules, peer-message rule, where decisions and research live, and how to fill in README Run-it after WP0. | docs/team-guide
+
 ## Next (phase 2, after G0/G1)
 
 - [ ] WP3 | developer 2 | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator.
