@@ -87,7 +87,6 @@ A gamepad is the reference experience because analog triggers matter for feel. K
 | Technical writer | Claude | `slamdemonium-for-techwriter/` |
 | Research / SME | Codex | `slamdemonium-for-research/` |
 | DevOps | Codex | `slamdemonium-for-devops/` |
-| DevOps | Codex | `slamdemonium-for-devops/` |
 
 Developers own core systems (physics, vehicle model, tuning, UI). The designer owns graphics and visual direction. Research owns theme, vibe and subject-matter notes. The technical writer owns this README and `docs/`. DevOps owns `.github/`, CI and the GitHub Pages deploy.
 
