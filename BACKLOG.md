@@ -37,7 +37,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 ## Later (phase 3)
 
-- [ ] WP8 | designer | HUD, telemetry graphs, CSV recorder (12). Gate G4.
 - [ ] WP9 | all | QA, perf harness, soak/determinism, manual QA, Gate G5. Techwriter: screenshots in README.
 
 ## Done
@@ -76,4 +75,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP9a | research | Performance harness from design 13.4 (`npm run perf`): frame/step p99, JS+WASM heap, configurable thresholds, swappable scenario. Not wired into CI (devops owns that). | research/perf-harness (PR #41)
 - [x] WP11 | developer 2 | **Scripted input (CTO request).** Record/author/replay input sequences as deterministic test scenarios. Format: versioned JSON, physics-step indexed, recordable from live play and hand-authorable. Must capture the tuning parameter set in the header (replay under different params is a different drive). Playback drives the real `sampleForStep` path, never wall-clock. Ship: recorder, player, assertion helpers (final pose, lap time, max |beta|, no NaN), a checkpoint/lap timer for the ring, and 2-3 example scripts. Consumed by WP9a perf harness, e2e, and T9 screenshots. | dev2/wp11-scripted-input (PR #42)
 - [x] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10). (PR #40, G4 partial)
-
+- [x] WP8 | designer | HUD, telemetry graphs, CSV recorder (12). Gate G4. (PR #44, G4)
