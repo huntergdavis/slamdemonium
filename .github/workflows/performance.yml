@@ -1,0 +1,76 @@
+name: Performance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+# Finish a full measurement. GitHub keeps only the newest pending run per ref.
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  performance:
+    name: Performance gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: true
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read Playwright version
+        id: playwright
+        run: node -e "console.log('version=' + require('@playwright/test/package.json').version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-ubuntu-24.04-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium and system dependencies
+        run: npx --no-install playwright install --with-deps chromium
+
+      # npm run perf builds its own production assets. No shortened acceptance run.
+      - name: Measure performance and enforce design 13.4 gates
+        id: perf
+        shell: bash
+        run: |
+          mkdir -p test-results
+          npm run perf -- --physics-p99-ms 2 --heap-growth-percent 10 --output test-results/perf.json 2>&1 | tee test-results/perf-console.log
+
+      - name: Publish metrics and recent main history
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/performance.py
+
+      - name: Retain raw measurements and summary
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: performance-results
+          path: test-results/perf*
+          if-no-files-found: warn
+          retention-days: 90
+          overwrite: true
