@@ -10,15 +10,12 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] WP1 | developer 1 | Day-1 Jolt spike (design 4.2 a-f) with go/no-go in DECISIONS.md, then `IPhysicsWorld` adapter + Jolt impl, fixed-step loop with interpolation and timeScale, loop unit tests. Gate G0. | dev1/wp1-physics-loop
 - [ ] WP2 | developer 2 | Tuning schema (all 69 rows of 7.2), typed store with change events, presets (7.3), JSON import/export, URL-hash share, validation, schema tests. | dev2/wp2-tuning
 - [ ] WP4 | developer 2 | Input: keyboard, gamepad, mapper, per-step sampling, latency probe (11). | dev2/wp4-input
-- [ ] R1 | research | Jolt integration notes for WP1: exact `jolt-physics` npm version + single-thread flavor, CCD (LinearCast), force-at-point, raycast, memory management, determinism build. `docs/research/jolt-integration.md` | research/jolt
 - [ ] R2 | research | Drift assist research (design 6.8 C): how arcade racers make drifts holdable; recommend a control law keeping the parameter names. `docs/research/drift-assist.md` | research/drift-assist
 - [ ] R3 | research | "Feels fast" and crash-happy arcade vibe references (10.2, section 1). `docs/research/speed-and-vibe.md` | research/vibe
 - [ ] D2 | designer | Procedural asphalt generator prototype (9.3): standalone canvas/TS that produces the tiled 1024 noise texture; ready to drop into `src/world/materials.ts`. | design/asphalt
 - [ ] O1 | devops | GitHub Actions CI on PRs and main: lint, test, build, e2e (Playwright with browsers cached). Owns .github/. | devops/ci
 - [ ] O2 | devops | GitHub Pages deploy of `dist/` from main to hunterdavis.com/slamdemonium/ (Vite base path via VITE_BASE_PATH), enable Pages via gh api, branch protection on main requiring CI. | devops/pages
 
-- [ ] T3 | techwriter | `docs/GLOSSARY.md`: plain-language glossary of the tuning and physics terms a human tuner meets (slip angle, beta, yaw rate, grip usage, friction ellipse, relaxation length, ride frequency, CCD, fixed timestep, A/B slot, etc), each with one sentence and a pointer to the design section. | docs/glossary
-- [ ] T4 | techwriter | `docs/TEAM.md` edited into a real contributor guide: roles, branch/PR rules, peer-message rule, where decisions and research live, and how to fill in README Run-it after WP0. | docs/team-guide
 
 ## Next (phase 2, after G0/G1)
 
@@ -37,3 +34,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] T1 | techwriter | README rewrite for Slamdemonium Racing: what it is (driving-feel lab), run instructions (fill in after WP0), controls table (11.1), team + workflow. Leave `docs/DECISIONS.md` to developer 1. | docs/readme (PR #1)
 - [x] T2 | techwriter | `docs/TUNING_PLAYBOOK.md` from design 7.4, kept in sync. | docs/playbook (PR #2)
 - [x] D1 | designer | Visual direction doc: palette, car box look (chevron nose, rear light strip), track markings, curbs, posts, fog; HUD and Options panel layout mockups. `docs/design/` | design/direction (PR #4)
+- [x] R1 | research | Jolt integration notes for WP1: exact `jolt-physics` npm version + single-thread flavor, CCD (LinearCast), force-at-point, raycast, memory management, determinism build. `docs/research/jolt-integration.md` | research/jolt (PR #8)
+- [x] T3 | techwriter | `docs/GLOSSARY.md`: plain-language glossary of the tuning and physics terms a human tuner meets (slip angle, beta, yaw rate, grip usage, friction ellipse, relaxation length, ride frequency, CCD, fixed timestep, A/B slot, etc), each with one sentence and a pointer to the design section. | docs/glossary (PR #6)
+- [x] T4 | techwriter | `docs/TEAM.md` edited into a real contributor guide: roles, branch/PR rules, peer-message rule, where decisions and research live, and how to fill in README Run-it after WP0. | docs/team-guide (PR #7)
