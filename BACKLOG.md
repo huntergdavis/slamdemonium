@@ -28,6 +28,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] WP11 | developer 2 | **Scripted input (CTO request).** Record/author/replay input sequences as deterministic test scenarios. Format: versioned JSON, physics-step indexed, recordable from live play and hand-authorable. Must capture the tuning parameter set in the header (replay under different params is a different drive). Playback drives the real `sampleForStep` path, never wall-clock. Ship: recorder, player, assertion helpers (final pose, lap time, max |beta|, no NaN), a checkpoint/lap timer for the ring, and 2-3 example scripts. Consumed by WP9a perf harness, e2e, and T9 screenshots. | dev2/wp11-scripted-input
 
+- [ ] WP12 | developer 1 + developer 2 | Fix duplicate mass-rebuild: single debounced applier in boot (dev1, with flush/cancel); Options panel displays reported rebuild state only (dev2). See QUESTIONS #9. | dev1/wp12-rebuild-owner
+
 ## Later (phase 3)
 
 - [ ] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10).
