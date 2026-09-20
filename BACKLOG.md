@@ -16,7 +16,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] O3 | devops | PR preview deployments so the CTO can playtest a branch before merge; sticky PR comment with the link; cleanup on close. Plus CI badge and live link in README (2 lines max). | devops/pr-previews
 
-- [ ] T7 | techwriter | `docs/QA_CHECKLIST.md`: the design 13.5 manual QA pass as a runnable checklist a human follows on real hardware, with what to look for and how to report a failure. | docs/qa-checklist
 
 ## Next (phase 2, after G0/G1)
 
@@ -48,3 +47,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] R3 | research | "Feels fast" and crash-happy arcade vibe references (10.2, section 1). `docs/research/speed-and-vibe.md` | research/vibe (PR #17)
 - [x] T6 | techwriter | Editorial consistency pass: update playbook and glossary for the approved drift-law replacement and FOV bound; verify all cross-links. | docs/consistency-pass (PR #18)
 - [x] WP4 | developer 2 | Input: keyboard, gamepad, mapper, per-step sampling, latency probe (11). | dev2/wp4-input (PR #19)
+- [x] T7 | techwriter | `docs/QA_CHECKLIST.md`: the design 13.5 manual QA pass as a runnable checklist a human follows on real hardware, with what to look for and how to report a failure. | docs/qa-checklist (PR #20)
