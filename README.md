@@ -1,4 +1,6 @@
 # Slamdemonium Racing
+[![CI](https://github.com/huntergdavis/slamdemonium/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/huntergdavis/slamdemonium/actions/workflows/ci.yml)
+[Play Slamdemonium Racing](https://hunterdavis.com/slamdemonium/)
 
 A fast, loud, crash-happy arcade racer that runs in a browser tab.
 
