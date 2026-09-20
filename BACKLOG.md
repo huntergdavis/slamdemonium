@@ -21,7 +21,7 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 ## Next (phase 2, after G0/G1)
 
-- [ ] WP3 | developer 2 | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator.
+- [ ] WP3 | designer | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator.
 - [ ] WP5 | developer 1 | Vehicle model 5a/5b/5c (6) + unit and integration tests (13.1, 13.2). Gates G1, G3.
 - [ ] WP7 | developer 2 | Options UI (8). Gate G2.
 
