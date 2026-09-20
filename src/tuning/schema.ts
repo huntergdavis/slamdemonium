@@ -1,0 +1,848 @@
+/** Single source of truth: docs/vertical-slice-design.md, table 7.2.
+ * Values retain the documented UI units; use getRadians() for simulation angles.
+ * For discrete controls, step is 1 and the discrete list is authoritative.
+ */
+export interface ParamDef {
+  key: string;
+  group: 'World' | 'Chassis' | 'Engine' | 'Brakes' | 'Tires' | 'Steering'
+    | 'Suspension' | 'Boost & Drift' | 'Collision' | 'Camera';
+  label: string;
+  unit: string;
+  default: number;
+  min: number;
+  max: number;
+  step: number;
+  quick?: boolean;
+  needsRebuild?: boolean;
+  advanced?: boolean;
+  discrete?: number[];
+  help: string;
+}
+
+const definitions = [
+  {
+    "key": "gravity",
+    "group": "World",
+    "label": "Gravity",
+    "unit": "m/s^2",
+    "default": 14.7,
+    "min": 4.0,
+    "max": 40.0,
+    "step": 0.1,
+    "quick": true,
+    "help": "Weight of everything: tire limits, suspension load, air time. Higher feels heavier and grippier."
+  },
+  {
+    "key": "timeScale",
+    "group": "World",
+    "label": "Time scale",
+    "unit": "x",
+    "default": 1.0,
+    "min": 0.05,
+    "max": 2.0,
+    "step": 0.01,
+    "help": "Simulation speed. Slow motion for testing crashes and drift catches."
+  },
+  {
+    "key": "surfaceGrip",
+    "group": "World",
+    "label": "Surface grip",
+    "unit": "x",
+    "default": 1.0,
+    "min": 0.2,
+    "max": 1.5,
+    "step": 0.01,
+    "help": "Global multiplier on tire friction (wet/dirt test)."
+  },
+  {
+    "key": "physicsHz",
+    "group": "World",
+    "label": "Physics hz",
+    "unit": "Hz",
+    "default": 120.0,
+    "min": 60.0,
+    "max": 240.0,
+    "step": 1,
+    "advanced": true,
+    "discrete": [
+      60,
+      90,
+      120,
+      180,
+      240
+    ],
+    "help": "Physics step rate. Feel should not change; used to test stability."
+  },
+  {
+    "key": "mass",
+    "group": "Chassis",
+    "label": "Mass",
+    "unit": "kg",
+    "default": 1300.0,
+    "min": 500.0,
+    "max": 4000.0,
+    "step": 10.0,
+    "needsRebuild": true,
+    "help": "Inertia. Scales forces, so acceleration stays as set; mass mostly changes crash behavior and feel of turning."
+  },
+  {
+    "key": "comHeightOffset",
+    "group": "Chassis",
+    "label": "Com height offset",
+    "unit": "m",
+    "default": -0.2,
+    "min": -0.6,
+    "max": 0.4,
+    "step": 0.01,
+    "needsRebuild": true,
+    "help": "Centre of mass height relative to box centre. Lower is more stable and rolls less."
+  },
+  {
+    "key": "comLongOffset",
+    "group": "Chassis",
+    "label": "Com long offset",
+    "unit": "m",
+    "default": 0.0,
+    "min": -0.8,
+    "max": 0.8,
+    "step": 0.01,
+    "needsRebuild": true,
+    "help": "Positive moves weight forward (more understeer), negative rearward (more oversteer)."
+  },
+  {
+    "key": "yawInertiaScale",
+    "group": "Chassis",
+    "label": "Yaw inertia scale",
+    "unit": "x",
+    "default": 1.0,
+    "min": 0.3,
+    "max": 3.0,
+    "step": 0.05,
+    "needsRebuild": true,
+    "help": "How easily the car rotates. Low is darty, high is heavy and stable."
+  },
+  {
+    "key": "pitchRollInertiaScale",
+    "group": "Chassis",
+    "label": "Pitch roll inertia scale",
+    "unit": "x",
+    "default": 1.0,
+    "min": 0.3,
+    "max": 3.0,
+    "step": 0.05,
+    "needsRebuild": true,
+    "help": "How easily the body pitches and rolls."
+  },
+  {
+    "key": "angularDamping",
+    "group": "Chassis",
+    "label": "Angular damping",
+    "unit": "1/s",
+    "default": 0.4,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.05,
+    "help": "Engine-side damping of all rotation. Calms wobble, dulls spins."
+  },
+  {
+    "key": "accel0",
+    "group": "Engine",
+    "label": "Accel0",
+    "unit": "m/s^2",
+    "default": 14.0,
+    "min": 4.0,
+    "max": 40.0,
+    "step": 0.1,
+    "quick": true,
+    "help": "Full-throttle acceleration from a standstill."
+  },
+  {
+    "key": "topSpeed",
+    "group": "Engine",
+    "label": "Top speed",
+    "unit": "m/s",
+    "default": 60.0,
+    "min": 20.0,
+    "max": 120.0,
+    "step": 1.0,
+    "quick": true,
+    "help": "Speed where unboosted acceleration reaches zero."
+  },
+  {
+    "key": "powerCurveExp",
+    "group": "Engine",
+    "label": "Power curve exp",
+    "unit": "",
+    "default": 2.0,
+    "min": 0.5,
+    "max": 6.0,
+    "step": 0.1,
+    "help": "How long acceleration stays strong. High keeps punching near top speed; low tapers early."
+  },
+  {
+    "key": "throttleRiseTime",
+    "group": "Engine",
+    "label": "Throttle rise time",
+    "unit": "s",
+    "default": 0.12,
+    "min": 0.01,
+    "max": 1.0,
+    "step": 0.01,
+    "help": "Time for pedal to reach full throttle."
+  },
+  {
+    "key": "throttleFallTime",
+    "group": "Engine",
+    "label": "Throttle fall time",
+    "unit": "s",
+    "default": 0.08,
+    "min": 0.01,
+    "max": 1.0,
+    "step": 0.01,
+    "help": "Time for throttle to release."
+  },
+  {
+    "key": "driveBias",
+    "group": "Engine",
+    "label": "Drive bias",
+    "unit": "0 FWD to 1 RWD",
+    "default": 0.65,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.05,
+    "help": "Share of drive force on the rear axle. Higher makes the tail step out under power."
+  },
+  {
+    "key": "coastDecel",
+    "group": "Engine",
+    "label": "Coast decel",
+    "unit": "m/s^2 at 30 m/s",
+    "default": 1.5,
+    "min": 0.0,
+    "max": 10.0,
+    "step": 0.1,
+    "help": "Deceleration when off the throttle (engine braking and drag)."
+  },
+  {
+    "key": "reverseSpeed",
+    "group": "Engine",
+    "label": "Reverse speed",
+    "unit": "m/s",
+    "default": 15.0,
+    "min": 0.0,
+    "max": 40.0,
+    "step": 1.0,
+    "help": "Top reverse speed."
+  },
+  {
+    "key": "brakeDecel",
+    "group": "Brakes",
+    "label": "Brake decel",
+    "unit": "m/s^2",
+    "default": 24.0,
+    "min": 5.0,
+    "max": 60.0,
+    "step": 0.5,
+    "quick": true,
+    "help": "Peak commanded braking deceleration (tire grip may limit it)."
+  },
+  {
+    "key": "brakeCurveExp",
+    "group": "Brakes",
+    "label": "Brake curve exp",
+    "unit": "",
+    "default": 1.5,
+    "min": 0.5,
+    "max": 4.0,
+    "step": 0.05,
+    "help": "Pedal shape. 1 is linear; higher gives a softer first half of the pedal."
+  },
+  {
+    "key": "brakeRiseTime",
+    "group": "Brakes",
+    "label": "Brake rise time",
+    "unit": "s",
+    "default": 0.08,
+    "min": 0.01,
+    "max": 0.5,
+    "step": 0.01,
+    "help": "Time for brake force to build."
+  },
+  {
+    "key": "brakeBiasFront",
+    "group": "Brakes",
+    "label": "Brake bias front",
+    "unit": "fraction",
+    "default": 0.62,
+    "min": 0.2,
+    "max": 0.9,
+    "step": 0.01,
+    "help": "Front share of braking. More front is stable; more rear rotates the car under braking."
+  },
+  {
+    "key": "absStrength",
+    "group": "Brakes",
+    "label": "Abs strength",
+    "unit": "0 to 1",
+    "default": 0.7,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.05,
+    "help": "How well wheels are kept from locking. 0 allows lock-up."
+  },
+  {
+    "key": "handbrakeRearGrip",
+    "group": "Brakes",
+    "label": "Handbrake rear grip",
+    "unit": "x",
+    "default": 0.35,
+    "min": 0.05,
+    "max": 1.0,
+    "step": 0.01,
+    "quick": true,
+    "help": "Rear friction multiplier while the handbrake is held. Lower slides more."
+  },
+  {
+    "key": "handbrakeDecel",
+    "group": "Brakes",
+    "label": "Handbrake decel",
+    "unit": "m/s^2",
+    "default": 6.0,
+    "min": 0.0,
+    "max": 30.0,
+    "step": 0.5,
+    "help": "Rear-axle braking added by the handbrake."
+  },
+  {
+    "key": "handbrakeRecoveryTime",
+    "group": "Brakes",
+    "label": "Handbrake recovery time",
+    "unit": "s",
+    "default": 0.35,
+    "min": 0.05,
+    "max": 2.0,
+    "step": 0.05,
+    "help": "How long rear grip takes to return after release."
+  },
+  {
+    "key": "gripFront",
+    "group": "Tires",
+    "label": "Grip front",
+    "unit": "mu",
+    "default": 1.5,
+    "min": 0.4,
+    "max": 3.5,
+    "step": 0.01,
+    "quick": true,
+    "help": "Front tire peak friction (stickiness)."
+  },
+  {
+    "key": "gripRear",
+    "group": "Tires",
+    "label": "Grip rear",
+    "unit": "mu",
+    "default": 1.5,
+    "min": 0.4,
+    "max": 3.5,
+    "step": 0.01,
+    "quick": true,
+    "help": "Rear tire peak friction. Lower than front gives oversteer."
+  },
+  {
+    "key": "slideGripRatio",
+    "group": "Tires",
+    "label": "Slide grip ratio",
+    "unit": "x",
+    "default": 0.78,
+    "min": 0.3,
+    "max": 1.0,
+    "step": 0.01,
+    "quick": true,
+    "help": "Grip left once sliding, as a fraction of peak. Low makes drifts loose; near 1 makes slides sticky."
+  },
+  {
+    "key": "peakSlipAngle",
+    "group": "Tires",
+    "label": "Peak slip angle",
+    "unit": "deg",
+    "default": 11.0,
+    "min": 3.0,
+    "max": 25.0,
+    "step": 0.5,
+    "help": "Slip angle where grip peaks. Higher is more forgiving and lazier."
+  },
+  {
+    "key": "slipFalloffRate",
+    "group": "Tires",
+    "label": "Slip falloff rate",
+    "unit": "",
+    "default": 1.5,
+    "min": 0.1,
+    "max": 6.0,
+    "step": 0.05,
+    "quick": true,
+    "help": "How abruptly grip drops after the peak. High is a cliff; low is progressive."
+  },
+  {
+    "key": "combinedSlipCoupling",
+    "group": "Tires",
+    "label": "Combined slip coupling",
+    "unit": "0 to 1",
+    "default": 0.85,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "help": "How much braking or acceleration steals cornering grip."
+  },
+  {
+    "key": "tireRelaxationLength",
+    "group": "Tires",
+    "label": "Tire relaxation length",
+    "unit": "m",
+    "default": 0.6,
+    "min": 0.05,
+    "max": 3.0,
+    "step": 0.05,
+    "help": "Tire response lag. Low is twitchy; high is lazy."
+  },
+  {
+    "key": "loadSensitivity",
+    "group": "Tires",
+    "label": "Load sensitivity",
+    "unit": "",
+    "default": 0.15,
+    "min": 0.0,
+    "max": 0.5,
+    "step": 0.01,
+    "help": "How much grip per unit load falls as load rises (weight transfer consequence)."
+  },
+  {
+    "key": "downforceAtTopSpeed",
+    "group": "Tires",
+    "label": "Downforce at top speed",
+    "unit": "x weight",
+    "default": 0.6,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 0.05,
+    "quick": true,
+    "help": "Extra downward force at top speed as a multiple of weight (scales with speed squared)."
+  },
+  {
+    "key": "lowSpeedBlend",
+    "group": "Tires",
+    "label": "Low speed blend",
+    "unit": "m/s",
+    "default": 3.0,
+    "min": 0.5,
+    "max": 10.0,
+    "step": 0.1,
+    "advanced": true,
+    "help": "Speed below which the tire model blends to the stable low-speed model."
+  },
+  {
+    "key": "steerMaxLowSpeed",
+    "group": "Steering",
+    "label": "Steer max low speed",
+    "unit": "deg",
+    "default": 32.0,
+    "min": 5.0,
+    "max": 60.0,
+    "step": 0.5,
+    "help": "Maximum steering angle at standstill."
+  },
+  {
+    "key": "steerMaxTopSpeed",
+    "group": "Steering",
+    "label": "Steer max top speed",
+    "unit": "deg",
+    "default": 5.0,
+    "min": 1.0,
+    "max": 30.0,
+    "step": 0.5,
+    "quick": true,
+    "help": "Maximum steering angle at top speed. Lower is calmer at speed."
+  },
+  {
+    "key": "steerSpeedExp",
+    "group": "Steering",
+    "label": "Steer speed exp",
+    "unit": "",
+    "default": 0.5,
+    "min": 0.2,
+    "max": 3.0,
+    "step": 0.05,
+    "help": "How quickly steering lock shrinks with speed. Low shrinks early."
+  },
+  {
+    "key": "steerRiseTime",
+    "group": "Steering",
+    "label": "Steer rise time",
+    "unit": "s",
+    "default": 0.18,
+    "min": 0.02,
+    "max": 1.5,
+    "step": 0.01,
+    "help": "Keyboard: time from centre to full lock."
+  },
+  {
+    "key": "steerReturnTime",
+    "group": "Steering",
+    "label": "Steer return time",
+    "unit": "s",
+    "default": 0.1,
+    "min": 0.02,
+    "max": 1.5,
+    "step": 0.01,
+    "help": "Keyboard: time to return to centre."
+  },
+  {
+    "key": "steerExpo",
+    "group": "Steering",
+    "label": "Steer expo",
+    "unit": "0 to 1",
+    "default": 0.25,
+    "min": 0.0,
+    "max": 0.9,
+    "step": 0.01,
+    "help": "Gamepad stick curve. Higher softens small inputs."
+  },
+  {
+    "key": "steerDeadzone",
+    "group": "Steering",
+    "label": "Steer deadzone",
+    "unit": "",
+    "default": 0.08,
+    "min": 0.0,
+    "max": 0.3,
+    "step": 0.01,
+    "help": "Gamepad stick dead zone."
+  },
+  {
+    "key": "countersteerAssist",
+    "group": "Steering",
+    "label": "Countersteer assist",
+    "unit": "0 to 1",
+    "default": 0.6,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.05,
+    "quick": true,
+    "help": "Automatic steering toward the direction of travel in a slide."
+  },
+  {
+    "key": "yawAssist",
+    "group": "Steering",
+    "label": "Yaw assist",
+    "unit": "0 to 1",
+    "default": 0.4,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.05,
+    "quick": true,
+    "help": "Strength of yaw-rate assist (grip phase) and drift angle control (slide phase)."
+  },
+  {
+    "key": "maxDriftAngle",
+    "group": "Steering",
+    "label": "Max drift angle",
+    "unit": "deg",
+    "default": 55.0,
+    "min": 20.0,
+    "max": 90.0,
+    "step": 1.0,
+    "help": "Target slide angle at full steering into the slide, and the soft limit."
+  },
+  {
+    "key": "suspFrequency",
+    "group": "Suspension",
+    "label": "Susp frequency",
+    "unit": "Hz",
+    "default": 2.2,
+    "min": 0.8,
+    "max": 6.0,
+    "step": 0.1,
+    "help": "Suspension stiffness (ride frequency). Higher is stiffer, less body motion."
+  },
+  {
+    "key": "suspDampingRatio",
+    "group": "Suspension",
+    "label": "Susp damping ratio",
+    "unit": "",
+    "default": 0.55,
+    "min": 0.1,
+    "max": 1.5,
+    "step": 0.05,
+    "help": "Bounce damping. Low bounces; high feels dead."
+  },
+  {
+    "key": "suspRestLength",
+    "group": "Suspension",
+    "label": "Susp rest length",
+    "unit": "m",
+    "default": 0.4,
+    "min": 0.15,
+    "max": 0.9,
+    "step": 0.01,
+    "help": "Ride height."
+  },
+  {
+    "key": "suspMaxTravel",
+    "group": "Suspension",
+    "label": "Susp max travel",
+    "unit": "m",
+    "default": 0.25,
+    "min": 0.05,
+    "max": 0.6,
+    "step": 0.01,
+    "help": "Compression before the bump stop."
+  },
+  {
+    "key": "suspAntiRoll",
+    "group": "Suspension",
+    "label": "Susp anti roll",
+    "unit": "x spring",
+    "default": 0.6,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.05,
+    "help": "Roll stiffness. Higher reduces body roll."
+  },
+  {
+    "key": "tireForceHeight",
+    "group": "Suspension",
+    "label": "Tire force height",
+    "unit": "0 to 1",
+    "default": 0.6,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.05,
+    "help": "Raises where tire forces act toward the centre of mass; reduces squat, dive and roll."
+  },
+  {
+    "key": "boostAccelMult",
+    "group": "Boost & Drift",
+    "label": "Boost accel mult",
+    "unit": "x",
+    "default": 1.6,
+    "min": 1.0,
+    "max": 3.0,
+    "step": 0.05,
+    "help": "Acceleration multiplier while boosting."
+  },
+  {
+    "key": "boostTopSpeedAdd",
+    "group": "Boost & Drift",
+    "label": "Boost top speed add",
+    "unit": "m/s",
+    "default": 25.0,
+    "min": 0.0,
+    "max": 60.0,
+    "step": 1.0,
+    "help": "Extra top speed while boosting."
+  },
+  {
+    "key": "boostDrainRate",
+    "group": "Boost & Drift",
+    "label": "Boost drain rate",
+    "unit": "1/s",
+    "default": 0.25,
+    "min": 0.05,
+    "max": 2.0,
+    "step": 0.05,
+    "help": "Meter used per second of boost."
+  },
+  {
+    "key": "driftChargeRate",
+    "group": "Boost & Drift",
+    "label": "Drift charge rate",
+    "unit": "1/s at reference",
+    "default": 0.35,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.05,
+    "help": "Meter earned per second of a reference drift (30 deg at 40 m/s)."
+  },
+  {
+    "key": "driftMinAngle",
+    "group": "Boost & Drift",
+    "label": "Drift min angle",
+    "unit": "deg",
+    "default": 12.0,
+    "min": 3.0,
+    "max": 40.0,
+    "step": 0.5,
+    "help": "Slide angle needed to count as a drift."
+  },
+  {
+    "key": "restitution",
+    "group": "Collision",
+    "label": "Restitution",
+    "unit": "",
+    "default": 0.25,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "help": "Bounciness of impacts."
+  },
+  {
+    "key": "wallFriction",
+    "group": "Collision",
+    "label": "Wall friction",
+    "unit": "",
+    "default": 0.05,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "help": "Friction against barriers. Low lets you scrape along walls without stopping."
+  },
+  {
+    "key": "maxAngularVelocity",
+    "group": "Collision",
+    "label": "Max angular velocity",
+    "unit": "rad/s",
+    "default": 12.0,
+    "min": 3.0,
+    "max": 40.0,
+    "step": 0.5,
+    "advanced": true,
+    "help": "Hard cap on rotation speed."
+  },
+  {
+    "key": "fovBase",
+    "group": "Camera",
+    "label": "Fov base",
+    "unit": "deg",
+    "default": 70.0,
+    "min": 40.0,
+    "max": 110.0,
+    "step": 1.0,
+    "help": "Field of view at rest."
+  },
+  {
+    "key": "fovSpeedGain",
+    "group": "Camera",
+    "label": "Fov speed gain",
+    "unit": "deg",
+    "default": 15.0,
+    "min": 0.0,
+    "max": 50.0,
+    "step": 1.0,
+    "quick": true,
+    "help": "Extra FOV at top speed."
+  },
+  {
+    "key": "fovBoostKick",
+    "group": "Camera",
+    "label": "Fov boost kick",
+    "unit": "deg",
+    "default": 15.0,
+    "min": 0.0,
+    "max": 50.0,
+    "step": 1.0,
+    "help": "Extra FOV while boosting."
+  },
+  {
+    "key": "camDistance",
+    "group": "Camera",
+    "label": "Cam distance",
+    "unit": "m",
+    "default": 7.5,
+    "min": 3.0,
+    "max": 20.0,
+    "step": 0.1,
+    "help": "Chase camera distance behind the car."
+  },
+  {
+    "key": "camHeight",
+    "group": "Camera",
+    "label": "Cam height",
+    "unit": "m",
+    "default": 2.6,
+    "min": 0.5,
+    "max": 8.0,
+    "step": 0.1,
+    "help": "Chase camera height."
+  },
+  {
+    "key": "camFollowTime",
+    "group": "Camera",
+    "label": "Cam follow time",
+    "unit": "s",
+    "default": 0.25,
+    "min": 0.02,
+    "max": 1.5,
+    "step": 0.01,
+    "help": "Camera lag. Low is rigid; high is loose and cinematic."
+  },
+  {
+    "key": "camVelocityBlend",
+    "group": "Camera",
+    "label": "Cam velocity blend",
+    "unit": "0 to 1",
+    "default": 0.5,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.05,
+    "help": "0 frames along the car's heading; 1 along its direction of travel, which shows the slide."
+  },
+  {
+    "key": "camShake",
+    "group": "Camera",
+    "label": "Cam shake",
+    "unit": "x",
+    "default": 0.3,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.05,
+    "help": "Speed and impact shake."
+  },
+  {
+    "key": "camRollGain",
+    "group": "Camera",
+    "label": "Cam roll gain",
+    "unit": "deg per g",
+    "default": 3.0,
+    "min": 0.0,
+    "max": 15.0,
+    "step": 0.5,
+    "help": "Camera lean into corners."
+  }
+] as const satisfies readonly ParamDef[];
+
+export type ParamKey = (typeof definitions)[number]['key'];
+export type AngleParamKey = Extract<(typeof definitions)[number], { unit: 'deg' }>['key'];
+export type ParamGroup = ParamDef['group'];
+export type ParamSet = Record<ParamKey, number>;
+export type ParamPatch = Partial<ParamSet>;
+
+export const PARAM_DEFS: readonly Readonly<ParamDef & { key: ParamKey }>[] = definitions;
+export const PARAM_BY_KEY = Object.freeze(Object.fromEntries(
+  PARAM_DEFS.map((definition) => [definition.key, definition]),
+)) as Readonly<Record<ParamKey, Readonly<ParamDef>>>;
+export const DEFAULT_VALUES = Object.freeze(Object.fromEntries(
+  PARAM_DEFS.map((definition) => [definition.key, definition.default]),
+)) as Readonly<ParamSet>;
+
+export function isParamKey(key: string): key is ParamKey {
+  return Object.prototype.hasOwnProperty.call(PARAM_BY_KEY, key);
+}
+
+/** Clamp without rounding typed numeric input to the slider step. */
+export function normalizeValue(key: ParamKey, value: number): number {
+  if (!isParamKey(key)) throw new RangeError('Unknown parameter: ' + key);
+  if (!Number.isFinite(value)) throw new RangeError('Parameter must be finite: ' + key);
+  const definition = PARAM_BY_KEY[key];
+  const clamped = Math.max(definition.min, Math.min(definition.max, value));
+  if (!definition.discrete) return clamped;
+  let nearest = definition.default;
+  let distance = Infinity;
+  for (const candidate of definition.discrete) {
+    const candidateDistance = Math.abs(candidate - clamped);
+    if (candidateDistance < distance) {
+      nearest = candidate;
+      distance = candidateDistance;
+    }
+  }
+  return nearest;
+}
