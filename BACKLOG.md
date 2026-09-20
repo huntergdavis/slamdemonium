@@ -23,7 +23,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 
 
-- [ ] O4 | devops | CI job running research's `npm run perf` with design 13.4 gates; decide required vs advisory vs main-only and justify; surface the trend. Blocked on WP9a. | devops/perf-ci
 
 
 
@@ -84,3 +83,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] T12 | techwriter | `docs/SCRIPTED_INPUT.md`: record, replay, hand-author, assertions, lap timing, and why recordings must start from a fresh respawn. | docs/scripted-input (PR #47)
 - [x] R5 | research | Honest end-of-slice assessment against design section 3: every acceptance criterion marked MET / UNVERIFIED / NOT MET with evidence, including the human-judged ones pending CTO playtest. | research/slice-review (PR #45)
 - [x] T13 | techwriter | QA checklist refresh: Firefox is required not bonus, game is drivable, zero-assist placement, plus new mount/persistence/key checks pending WP14. | docs/qa-refresh (PR #49)
+- [x] O4 | devops | CI job running research's `npm run perf` with design 13.4 gates; decide required vs advisory vs main-only and justify; surface the trend. Blocked on WP9a. | devops/perf-ci (PR #33)
