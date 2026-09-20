@@ -23,19 +23,22 @@ When you are tuning and something feels wrong, start with [docs/TUNING_PLAYBOOK.
 
 ## Run it
 
-> Note: the project scaffold is still landing. Commands below are the intended shape.
-
-The stack is Vite, TypeScript (strict), three.js and Jolt Physics compiled to WebAssembly. Nothing needs a server beyond a static file host.
+You need [Node.js](https://nodejs.org) 22 or newer. Then, from the project folder:
 
 ```sh
 npm install
-npm run dev        # dev server with hot reload
-npm test           # unit tests (Vitest)
-npm run e2e        # end-to-end tests (Playwright, headless Chromium)
-npm run build      # production build to dist/
+npm run dev
 ```
 
-Open the URL Vite prints, press **W** and go. Press **O** for the options panel.
+Open <http://127.0.0.1:5173/> in Chrome, Firefox or Safari, click the page, press **W** and go. Press **O** for the options panel. Changes to the code reload in place while the dev server runs.
+
+To build a standalone copy for any static web host:
+
+```sh
+npm run build
+```
+
+The result lands in `dist/`. Nothing on the server side is required.
 
 Screenshots will live in `docs/screenshots/` once there is something to look at.
 
