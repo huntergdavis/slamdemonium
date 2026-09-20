@@ -86,3 +86,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] T13 | techwriter | QA checklist refresh: Firefox is required not bonus, game is drivable, zero-assist placement, plus new mount/persistence/key checks pending WP14. | docs/qa-refresh (PR #49)
 - [x] O4 | devops | CI job running research's `npm run perf` with design 13.4 gates; decide required vs advisory vs main-only and justify; surface the trend. Blocked on WP9a. | devops/perf-ci (PR #33)
 - [x] WP14 | developer 1 | **URGENT: mount the UI.** `main.ts` mounts only carVisual and speedCues. OptionsPanel, HUD and ScriptController are merged but NOT wired, so the live site is a driving demo, not a tuning lab: O does nothing, no HUD, no F9, no replay. Found by research in R5 audit. Verify in a built browser run. | dev1/wp14-mounts (PR #50)
+
