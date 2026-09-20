@@ -17,6 +17,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] O2 | devops | GitHub Pages deploy of `dist/` from main to hunterdavis.com/slamdemonium/ (Vite base path via VITE_BASE_PATH), enable Pages via gh api, branch protection on main requiring CI. | devops/pages
 
 
+- [ ] T5 | techwriter | `docs/FAQ.md`, player-facing: what this is, why a box, why no track yet, controls, presets, sharing settings, browser support. | docs/faq
+
 ## Next (phase 2, after G0/G1)
 
 - [ ] WP3 | developer 2 | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator.
