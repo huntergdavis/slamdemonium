@@ -5,6 +5,7 @@ import type {
   BodyProperties,
   IPhysicsWorld,
   MassDesc,
+  Quat,
   V3,
 } from '../physics/adapter';
 import { TuningStore } from '../tuning/store';
@@ -103,6 +104,9 @@ export class Vehicle {
     this.properties.maxAngularVelocity = this.tuning.get('maxAngularVelocity');
     this.properties.friction = this.tuning.get('wallFriction');
     this.properties.restitution = this.tuning.get('restitution');
+  }
+  get currentMass(): number {
+    return this.mass.mass;
   }
   rebuildMassProperties(): void {
     this.readMassSettings();
@@ -572,7 +576,10 @@ export class Vehicle {
     this.meter = clamp(value, 0, 1);
     this.telemetry.boostMeter = this.telemetry.driftMeter = this.meter;
   }
-  respawn(position: V3 = this.spawn, rotation = this.spawnRotation): void {
+  respawn(
+    position: V3 = this.spawn,
+    rotation: Quat = this.spawnRotation,
+  ): void {
     this.world.setTransform(this.body, position, rotation, true);
     this.controls.reset();
     this.drift.reset();
@@ -583,10 +590,23 @@ export class Vehicle {
         0;
     this.telemetry.driftLatched = this.telemetry.charging = false;
     this.telemetry.driftTarget = this.telemetry.yawAssistTorque = 0;
-    for (const wheel of this.telemetry.wheels) {
-      wheel.grounded = false;
-      wheel.spinDelta = 0;
+    this.telemetry.throttle =
+      this.telemetry.brake =
+      this.telemetry.brake01 =
+      this.telemetry.handbrake01 =
+        0;
+    this.telemetry.handbrake = false;
+    this.telemetry.groundedWheels = this.telemetry.steerAngle = 0;
+    for (let i = 0; i < 4; i++) {
+      const wheel = this.telemetry.wheels[i]!;
+      wheel.grounded = wheel.spinning = wheel.locked = false;
+      wheel.spinDelta = wheel.compression = wheel.springForce = wheel.Fz = 0;
+      wheel.Fx = wheel.Fy = wheel.mu = wheel.gripUsage = wheel.steerAngle = 0;
       wheel.alpha = wheel.rawAlpha = wheel.vx = wheel.vy = wheel.spinAngle = 0;
+      wheel.tireForceWorld.set(0, 0, 0);
+      wheel.suspensionLength = this.tuning.get('suspRestLength');
+      wheel.centerLocal.copy(G.mounts[i]!);
+      wheel.centerLocal.y -= wheel.suspensionLength;
     }
     this.telemetry.longitudinalAcceleration =
       this.telemetry.lateralAcceleration = 0;

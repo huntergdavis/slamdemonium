@@ -64,12 +64,20 @@ test('the tuning-lab API refills boost without requiring a drift first', async (
     game.respawn();
     game.stepMany(240);
     const empty = game.getTelemetry().boostMeter;
+    game.tuning.set('mass', 1500);
+    const pendingMass = game.getTelemetry().massRebuildStatus;
+    game.stepMany(0); // Flush synchronously; there is no Options panel in this test.
+    const appliedMass = game.getTelemetry();
+
     game.setDriftMeter(1);
     game.setInput({ throttle: 1, boost: true });
     game.stepMany(120);
-    return { empty, after: game.getTelemetry() };
+    return { empty, pendingMass, appliedMass, after: game.getTelemetry() };
   });
   expect(result.empty).toBe(0);
+  expect(result.pendingMass).toBe('pending');
+  expect(result.appliedMass.massRebuildStatus).toBe('idle');
+  expect(result.appliedMass.mass).toBe(1500);
   expect(Number(result.after.boostMeter)).toBeCloseTo(0.75, 1);
   expect(Number(result.after.boostEnvelope)).toBeGreaterThan(0.9);
 });

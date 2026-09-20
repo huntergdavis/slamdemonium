@@ -2,6 +2,7 @@ import { BoxGeometry, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { GAME_NAME } from './core/constants';
 import { createGameStub } from './core/gameApi';
 import type { GameInput } from './core/gameApi';
+import { DebouncedMassRebuild } from './core/massRebuild';
 import { FixedStepLoop } from './core/loop';
 import { TransformHistory } from './core/transforms';
 import type { IPhysicsWorld } from './physics/adapter';
@@ -99,7 +100,6 @@ async function boot(): Promise<void> {
   let injected = false;
   let stepStart = 0;
   let frameTime = 0;
-  let rebuildTimer: ReturnType<typeof setTimeout> | undefined;
   const cameraOffset = new Vector3(0, 4, 9);
   const cameraTarget = new Vector3();
   const loop = new FixedStepLoop(
@@ -133,6 +133,11 @@ async function boot(): Promise<void> {
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
       },
       render(alpha) {
+        vehicle.telemetry.totalSteps = loop.totalSteps;
+        vehicle.telemetry.stepsPerFrame = loop.stepsThisFrame;
+        vehicle.telemetry.alpha = alpha;
+        vehicle.telemetry.physicsHz = tuning.get('physicsHz');
+        vehicle.telemetry.timeScale = tuning.get('timeScale');
         const pose = history.interpolate(alpha);
         chassis.position.copy(pose.position);
         chassis.quaternion.copy(pose.rotation);
@@ -155,18 +160,17 @@ async function boot(): Promise<void> {
     },
   );
   function respawn(): void {
+    massRebuild.flush();
     vehicle.respawn();
     history.reset();
     loop.resetClock();
   }
+  const massRebuild = new DebouncedMassRebuild(tuning, () => {
+    vehicle.rebuildMassProperties();
+    history.reset();
+  });
+  resources.push(massRebuild);
   unsubscribe = tuning.onChange((change) => {
-    if (change.needsRebuild) {
-      clearTimeout(rebuildTimer);
-      rebuildTimer = setTimeout(() => {
-        vehicle.rebuildMassProperties();
-        history.reset();
-      }, 100);
-    }
     if (change.key === 'wallFriction' || change.key === 'restitution') {
       for (const barrier of trackBodies.barriers) {
         physics.setContactProperties(
@@ -183,11 +187,6 @@ async function boot(): Promise<void> {
       change.key === 'restitution'
     )
       vehicle.updateBodyProperties();
-  });
-  resources.push({
-    dispose() {
-      clearTimeout(rebuildTimer);
-    },
   });
   game.tuning = {
     get(key) {
@@ -219,12 +218,15 @@ async function boot(): Promise<void> {
     vehicle.setDriftMeter(value);
   };
   game.stepMany = (count) => {
+    massRebuild.flush();
     loop.stepMany(count);
   };
   game.getTelemetry = () => {
     const s = vehicle.telemetry;
     return {
       ...s,
+      mass: vehicle.currentMass,
+      massRebuildStatus: massRebuild.state.status,
       position: { x: s.position.x, y: s.position.y, z: s.position.z },
       rotation: {
         x: s.rotation.x,
@@ -232,12 +234,25 @@ async function boot(): Promise<void> {
         z: s.rotation.z,
         w: s.rotation.w,
       },
+      velocity: { x: s.velocity.x, y: s.velocity.y, z: s.velocity.z },
+      angularVelocity: {
+        x: s.angularVelocity.x,
+        y: s.angularVelocity.y,
+        z: s.angularVelocity.z,
+      },
       cameraPosition: {
         x: view.camera.position.x,
         y: view.camera.position.y,
         z: view.camera.position.z,
       },
       wheels: s.wheels.map((wheel) => ({
+        Fx: wheel.Fx,
+        Fy: wheel.Fy,
+        mu: wheel.mu,
+        compression: wheel.compression,
+        suspensionLength: wheel.suspensionLength,
+        steerAngle: wheel.steerAngle,
+        spinAngle: wheel.spinAngle,
         Fz: wheel.Fz,
         alpha: wheel.alpha,
         gripUsage: wheel.gripUsage,
