@@ -129,3 +129,14 @@ large-chunk advisories. The served browser build works without Node polyfills.
   timeScale 0.05/0.5/1/2, large gaps, live rate changes, and pause/resume.
 - The box/plane/thin-wall scene and direct test force/torque are the WP1 proof.
   WP5 supplies the vehicle force layers; WP3/WP6 supply the track and full visuals.
+
+- Production E2E also bundles the independent input fixture from
+  src/input/testFixture.ts, installed before ready only when VITE_TEST_API=1.
+  Playwright sets that build flag and runs all three original input behaviours
+  (focus/Tab, editing-does-not-steer, latency probe) against the same production
+  preview as boot/physics. The fixture owns its mapper so simulation steps cannot
+  consume the tests' action edges. Two browser workers bound software-WebGL load.
+  No separate dev server or deferred built-input coverage gap remains.
+- Verified a normal production build with VITE_TEST_API unset: emitted assets
+  contain no testFixture chunk, __inputFixture reference, or test-number panel
+  marker. This supersedes the proposed later bundled-fixture follow-up.

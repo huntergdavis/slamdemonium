@@ -7,6 +7,8 @@ const baseURL = origin + (process.env.VITE_BASE_PATH || '/');
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Bound CPU contention between software WebGL and the physics benchmark.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
@@ -24,6 +26,8 @@ export default defineConfig({
     },
   ],
   webServer: {
+    // Every spec exercises built assets; only E2E builds include the input fixture.
+    env: { VITE_TEST_API: '1' },
     command:
       'npm run build && npm run preview -- --port ' + port + ' --strictPort',
     url: baseURL,

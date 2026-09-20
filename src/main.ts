@@ -223,6 +223,12 @@ async function boot(): Promise<void> {
     loop.frame(nowMs);
     frameId = requestAnimationFrame(frame);
   }
+  // Build-time gate: default production emits no fixture module or panel.
+  if (import.meta.env.VITE_TEST_API === '1') {
+    const { installInputTestFixture } = await import('./input/testFixture');
+    if (disposed) return;
+    resources.push(installInputTestFixture());
+  }
   frameId = requestAnimationFrame(frame);
 }
 
