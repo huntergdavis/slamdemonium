@@ -1,5 +1,28 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { GAME_NAME } from '../src/core/constants';
+
+async function expectCanvasSize(page: Page, width: number, height: number) {
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const canvas = document.querySelector<HTMLCanvasElement>(
+          'canvas[aria-label="Driving view"]',
+        )!;
+        const bounds = canvas.getBoundingClientRect();
+        const scale = Number(window.__game.getTelemetry().renderScale);
+        const pixelRatio = Math.min(window.devicePixelRatio, 2) * scale;
+        return {
+          width: bounds.width,
+          height: bounds.height,
+          validScale: scale >= 0.6 && scale <= 1,
+          correctBacking:
+            canvas.width === Math.floor(bounds.width * pixelRatio) &&
+            canvas.height === Math.floor(bounds.height * pixelRatio),
+        };
+      }),
+    )
+    .toEqual({ width, height, validScale: true, correctBacking: true });
+}
 
 test('renders the physics scene and exposes the ready automation surface', async ({
   page,
@@ -24,9 +47,8 @@ test('renders the physics scene and exposes the ready automation surface', async
   await expect(page).toHaveTitle(GAME_NAME);
   const canvas = page.getByLabel('Driving view');
   await expect(canvas).toBeVisible();
-  await expect(canvas).toHaveJSProperty('width', 1280);
+  await expectCanvasSize(page, 1280, 720);
   await page.setViewportSize({ width: 800, height: 600 });
-  await expect(canvas).toHaveJSProperty('width', 800);
-  await expect(canvas).toHaveJSProperty('height', 600);
+  await expectCanvasSize(page, 800, 600);
   expect(errors).toEqual([]);
 });
