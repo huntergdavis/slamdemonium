@@ -1,23 +1,22 @@
-import {
-  BoxGeometry,
-  DirectionalLight,
-  HemisphereLight,
-  Mesh,
-  MeshStandardMaterial,
-  Vector3,
-} from 'three';
+import { BoxGeometry, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { GAME_NAME } from './core/constants';
 import { createGameStub } from './core/gameApi';
 import type { GameInput } from './core/gameApi';
+import { DebouncedMassRebuild } from './core/massRebuild';
 import { FixedStepLoop } from './core/loop';
 import { TransformHistory } from './core/transforms';
-import type { IPhysicsWorld, MassDesc } from './physics/adapter';
+import type { IPhysicsWorld } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
 import { createRenderer } from './render/renderer';
 import { BUILTIN_PRESETS } from './tuning/presets';
 import type { BuiltinPresetName } from './tuning/presets';
 import { isParamKey } from './tuning/schema';
 import { TuningStore } from './tuning/store';
+import { KeyboardInput } from './input/keyboard';
+import { InputMapper } from './input/mapper';
+import { LatencyProbeView } from './input/latencyProbe';
+import { Vehicle } from './vehicle/vehicle';
+import { createTestTrack, installTrackColliders } from './world/track';
 import './style.css';
 
 document.title = GAME_NAME;
@@ -54,44 +53,40 @@ async function boot(): Promise<void> {
     return;
   }
   world = physics;
-  const spawn = new Vector3(0, 3, 0);
-  const mass: MassDesc = {
-    mass: tuning.get('mass'),
-    comOffset: {
-      x: 0,
-      y: tuning.get('comHeightOffset'),
-      z: -tuning.get('comLongOffset'),
+  const track = createTestTrack(view.scene, {
+    maxAnisotropy: view.renderer.capabilities.getMaxAnisotropy(),
+    config: {
+      wallFriction: tuning.get('wallFriction'),
+      restitution: tuning.get('restitution'),
     },
-    inertiaScale: {
-      x: tuning.get('pitchRollInertiaScale'),
-      y: tuning.get('yawInertiaScale'),
-      z: tuning.get('pitchRollInertiaScale'),
-    },
-  };
-  physics.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 40, y: 0.5, z: 40 });
-  physics.createStaticBox({ x: 0, y: 1, z: -12 }, { x: 8, y: 1, z: 0.02 });
-  const body = physics.createDynamicBox({
-    center: spawn,
-    halfExtents: { x: 0.9, y: 0.5, z: 2 },
-    ...mass,
-    friction: 0.3,
-    restitution: tuning.get('restitution'),
-    ccd: true,
-    maxAngularVelocity: tuning.get('maxAngularVelocity'),
-    angularDamping: tuning.get('angularDamping'),
   });
-  const history = new TransformHistory(physics, body);
-  const ground = addBox(80, 1, 80, 0x303844);
-  ground.position.y = -0.5;
-  const wall = addBox(16, 2, 0.04, 0x8b5555);
-  wall.position.set(0, 1, -12);
+  resources.push(track);
+  view.renderer.shadowMap.enabled = true;
+  const trackBodies = installTrackColliders(
+    physics,
+    track.config,
+    track.barrierBoxes,
+  );
+  const vehicle = new Vehicle(physics, tuning, track.spawn.position);
+  const history = new TransformHistory(physics, vehicle.body);
   const chassis = addBox(1.8, 1, 4, 0xf09f42);
-  view.scene.add(new HemisphereLight(0xd9edff, 0x39434d, 2));
-  const sunlight = new DirectionalLight(0xffffff, 2);
-  sunlight.position.set(8, 12, 5);
-  view.scene.add(sunlight);
-  view.camera.position.set(8, 6, 10);
-  view.camera.lookAt(0, 1, 0);
+  chassis.castShadow = true;
+  chassis.receiveShadow = true;
+  const nose = addBox(1.1, 0.02, 0.4, 0x21dce8);
+  chassis.add(nose);
+  nose.position.set(0, 0.51, -1.55);
+
+  const keyboard = new KeyboardInput(window);
+  resources.push(keyboard);
+  const input = new InputMapper(keyboard);
+  // The input fixture owns its own probe overlay when enabled.
+  const latencyView =
+    import.meta.env.VITE_TEST_API === '1'
+      ? undefined
+      : new LatencyProbeView(input.latency, document.body);
+  if (latencyView) resources.push(latencyView);
+  view.renderer.domElement.tabIndex = 0;
+  view.renderer.domElement.focus();
 
   const requested: GameInput = {
     throttle: 0,
@@ -100,12 +95,13 @@ async function boot(): Promise<void> {
     handbrake: false,
     boost: false,
   };
-  const sampled: GameInput = { ...requested };
-  const force = new Vector3();
-  const torque = new Vector3();
-  const velocity = new Vector3();
-  const cameraOffset = new Vector3(8, 6, 10);
-  let physicsStepMs = 0;
+  let sampled: Readonly<GameInput> = requested;
+  let source: 'keyboard' | 'gamepad' = 'keyboard';
+  let injected = false;
+  let stepStart = 0;
+  let frameTime = 0;
+  const cameraOffset = new Vector3(0, 4, 9);
+  const cameraTarget = new Vector3();
   const loop = new FixedStepLoop(
     {
       get physicsHz() {
@@ -117,54 +113,80 @@ async function boot(): Promise<void> {
     },
     {
       sampleForStep() {
-        sampled.throttle = requested.throttle;
-        sampled.brake = requested.brake;
-        sampled.steer = requested.steer;
-        sampled.handbrake = requested.handbrake;
-        sampled.boost = requested.boost;
+        const live = input.sampleForStep();
+        sampled = injected ? requested : live;
+        source = injected ? 'keyboard' : live.source;
+        if (live.actions.respawn > 0) respawn();
       },
-      preStep() {
+      preStep(dt) {
         history.beforeStep();
-        physics.setGravity(tuning.get('gravity'));
-        // WP1 force/torque proof only. WP5 replaces this with the layered vehicle model.
-        force
-          .set(0, 0, -mass.mass * 4 * (sampled.throttle - sampled.brake))
-          .applyQuaternion(history.current.rotation);
-        torque.set(0, sampled.steer * mass.mass, 0);
-        if (force.lengthSq() > 0)
-          physics.applyForceAtPoint(body, force, history.current.position);
-        if (torque.lengthSq() > 0) physics.applyTorque(body, torque);
+        stepStart = performance.now();
+        vehicle.preStep(dt, sampled, source);
       },
       stepPhysics(dt) {
-        const start = performance.now();
         physics.step(dt);
-        physicsStepMs = performance.now() - start;
       },
-      postStep() {
+      postStep(dt) {
+        vehicle.postStep(dt);
         history.afterStep();
-        physics.getLinearVelocity(body, velocity);
+        track.checkKillPlane(vehicle.telemetry.position, respawn);
+        vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
       },
       render(alpha) {
+        vehicle.telemetry.totalSteps = loop.totalSteps;
+        vehicle.telemetry.stepsPerFrame = loop.stepsThisFrame;
+        vehicle.telemetry.alpha = alpha;
+        vehicle.telemetry.physicsHz = tuning.get('physicsHz');
+        vehicle.telemetry.timeScale = tuning.get('timeScale');
         const pose = history.interpolate(alpha);
         chassis.position.copy(pose.position);
         chassis.quaternion.copy(pose.rotation);
-        view.camera.position.copy(pose.position).add(cameraOffset);
-        view.camera.lookAt(pose.position);
+        cameraTarget
+          .copy(cameraOffset)
+          .applyQuaternion(pose.rotation)
+          .add(pose.position);
+        view.camera.position.copy(cameraTarget);
+        cameraTarget
+          .set(0, 0.6, -4)
+          .applyQuaternion(pose.rotation)
+          .add(pose.position);
+        view.camera.lookAt(cameraTarget);
+        track.updateLighting(pose.position);
         view.render();
+        input.framePresented(frameTime);
+        latencyView?.render(frameTime);
         game.ready = true;
       },
     },
   );
-
+  function respawn(): void {
+    massRebuild.flush();
+    vehicle.respawn();
+    history.reset();
+    loop.resetClock();
+  }
+  const massRebuild = new DebouncedMassRebuild(tuning, () => {
+    vehicle.rebuildMassProperties();
+    history.reset();
+  });
+  resources.push(massRebuild);
   unsubscribe = tuning.onChange((change) => {
-    if (!change.needsRebuild) return;
-    mass.mass = tuning.get('mass');
-    mass.comOffset.y = tuning.get('comHeightOffset');
-    mass.comOffset.z = -tuning.get('comLongOffset');
-    mass.inertiaScale.x = tuning.get('pitchRollInertiaScale');
-    mass.inertiaScale.y = tuning.get('yawInertiaScale');
-    mass.inertiaScale.z = tuning.get('pitchRollInertiaScale');
-    physics.updateMassProperties(body, mass);
+    if (change.key === 'wallFriction' || change.key === 'restitution') {
+      for (const barrier of trackBodies.barriers) {
+        physics.setContactProperties(
+          barrier,
+          tuning.get('wallFriction'),
+          tuning.get('restitution'),
+        );
+      }
+    }
+    if (
+      change.key === 'angularDamping' ||
+      change.key === 'maxAngularVelocity' ||
+      change.key === 'wallFriction' ||
+      change.key === 'restitution'
+    )
+      vehicle.updateBodyProperties();
   });
   game.tuning = {
     get(key) {
@@ -181,38 +203,71 @@ async function boot(): Promise<void> {
       tuning.applyPreset(name as BuiltinPresetName);
     },
   };
-  game.setInput = (input) => {
-    Object.assign(requested, input);
+  game.setInput = (override) => {
+    for (const key of ['throttle', 'brake', 'steer'] as const) {
+      if (override[key] !== undefined && !Number.isFinite(override[key]))
+        throw new RangeError('Input must be finite.');
+    }
+    Object.assign(requested, override);
+    injected = true;
+  };
+  game.releaseInput = () => {
+    injected = false;
+  };
+  game.setDriftMeter = (value) => {
+    vehicle.setDriftMeter(value);
   };
   game.stepMany = (count) => {
+    massRebuild.flush();
     loop.stepMany(count);
   };
-  game.getTelemetry = () => ({
-    position: {
-      x: history.current.position.x,
-      y: history.current.position.y,
-      z: history.current.position.z,
-    },
-    rotation: {
-      x: history.current.rotation.x,
-      y: history.current.rotation.y,
-      z: history.current.rotation.z,
-      w: history.current.rotation.w,
-    },
-    speed: velocity.length(),
-    physicsStepMs,
-    totalSteps: loop.totalSteps,
-    stepsPerFrame: loop.stepsThisFrame,
-    alpha: loop.alpha,
-    physicsHz: tuning.get('physicsHz'),
-    timeScale: tuning.get('timeScale'),
-  });
-  game.respawn = () => {
-    physics.setTransform(body, spawn, { x: 0, y: 0, z: 0, w: 1 }, true);
-    history.reset();
-    velocity.set(0, 0, 0);
-    loop.resetClock();
+  game.getTelemetry = () => {
+    const s = vehicle.telemetry;
+    return {
+      ...s,
+      mass: vehicle.currentMass,
+      massRebuildStatus: massRebuild.state.status,
+      position: { x: s.position.x, y: s.position.y, z: s.position.z },
+      rotation: {
+        x: s.rotation.x,
+        y: s.rotation.y,
+        z: s.rotation.z,
+        w: s.rotation.w,
+      },
+      velocity: { x: s.velocity.x, y: s.velocity.y, z: s.velocity.z },
+      angularVelocity: {
+        x: s.angularVelocity.x,
+        y: s.angularVelocity.y,
+        z: s.angularVelocity.z,
+      },
+      cameraPosition: {
+        x: view.camera.position.x,
+        y: view.camera.position.y,
+        z: view.camera.position.z,
+      },
+      wheels: s.wheels.map((wheel) => ({
+        Fx: wheel.Fx,
+        Fy: wheel.Fy,
+        mu: wheel.mu,
+        compression: wheel.compression,
+        suspensionLength: wheel.suspensionLength,
+        steerAngle: wheel.steerAngle,
+        spinAngle: wheel.spinAngle,
+        Fz: wheel.Fz,
+        alpha: wheel.alpha,
+        gripUsage: wheel.gripUsage,
+        spinning: wheel.spinning,
+        locked: wheel.locked,
+        grounded: wheel.grounded,
+      })),
+      totalSteps: loop.totalSteps,
+      stepsPerFrame: loop.stepsThisFrame,
+      alpha: loop.alpha,
+      physicsHz: tuning.get('physicsHz'),
+      timeScale: tuning.get('timeScale'),
+    };
   };
+  game.respawn = respawn;
   game.runPhysicsSpike = () => runPhysicsSpike(createPhysicsWorld);
   visibilityChanged = () => {
     loop.setPaused(document.hidden);
@@ -220,6 +275,7 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', visibilityChanged);
   visibilityChanged();
   function frame(nowMs: number): void {
+    frameTime = nowMs;
     loop.frame(nowMs);
     frameId = requestAnimationFrame(frame);
   }

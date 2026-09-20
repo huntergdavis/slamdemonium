@@ -27,6 +27,11 @@ export interface DynamicBoxDesc extends MassDesc {
   angularDamping: number;
 }
 
+export type BodyProperties = Pick<
+  DynamicBoxDesc,
+  'angularDamping' | 'maxAngularVelocity' | 'friction' | 'restitution'
+>;
+
 export interface RayHit {
   distance: number;
   point: V3;
@@ -62,6 +67,10 @@ export interface IPhysicsWorld {
   ): BodyId;
   createDynamicBox(desc: DynamicBoxDesc): BodyId;
   updateMassProperties(id: BodyId, desc: MassDesc): void;
+  setContactProperties(id: BodyId, friction: number, restitution: number): void;
+  setBodyProperties(id: BodyId, properties: BodyProperties): void;
+  /** Diagonal of the local inertia tensor, including the COM shift and scale. */
+  getLocalInertia(id: BodyId, out: V3): void;
   getTransform(id: BodyId, outPos: V3, outQuat: Quat): void;
   getLinearVelocity(id: BodyId, out: V3): void;
   getAngularVelocity(id: BodyId, out: V3): void;

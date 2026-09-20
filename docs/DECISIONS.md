@@ -8,6 +8,7 @@ Running log of technical decisions, spike results and changed defaults. New entr
 |---|---|---|
 | 2026-09-20 | [WP0: minimal browser scaffold and reproducible tooling](#2026-09-20--wp0-minimal-browser-scaffold-and-reproducible-tooling) | Strict TypeScript, Vite, three.js, Vitest and Playwright, every dependency pinned exactly; TypeScript held at 6.0.3 for typescript-eslint; no physics dependency until WP1 confirms the Jolt flavor. |
 | 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number | null` because stock Jolt cannot supply a solved value. |
+| 2026-09-20 | [WP5: vehicle force model and approved design corrections](#2026-09-20--wp5-vehicle-force-model-and-approved-design-corrections) | Preserve the configurable ellipse, correct COM load direction, cap dissipative impulses only, use the research drift latch, and keep recovery safeguards independent of handling sliders. |
 
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
@@ -151,3 +152,98 @@ large-chunk advisories. The served browser build works without Node polyfills.
 - Verified a normal production build with VITE_TEST_API unset: emitted assets
   contain no testFixture chunk, __inputFixture reference, or test-number panel
   marker. This supersedes the proposed later bundled-fixture follow-up.
+
+## 2026-09-20 — WP5: vehicle force model and approved design corrections
+
+The vehicle is one Jolt box and four suspension rays. Pure tire, engine, steering,
+and suspension arithmetic lives under `src/vehicle/`; engine types remain confined
+to `src/physics/joltWorld.ts`. All wheel state, vectors, queries and force scratch
+are allocated once. The model uses the adapter's actual local inertia diagonal
+after mass/COM/inertia updates. The boot path installs WP3's ground and barriers
+once and removes both WP1 proof colliders.
+
+PM rulings on 2026-09-20 resolve four inconsistencies without changing any schema
+names, ranges, or defaults:
+
+- **Friction ellipse:** keep design 6.5.4. `combinedSlipCoupling` intentionally
+  controls forgiveness; at zero both axes independently reach mu × Fz, so the
+  resultant can reach sqrt(2) × mu × Fz. Section 13.1's unconditional circle test
+  was wrong. Tests enforce Fx² + coupling × Fy² <= (mu × Fz)² for every coupling,
+  the strict circle only at one, and independent axes at zero.
+- **COM direction:** front static share is 0.5 + comLongOffset / wheelbase.
+  Positive means forward in both 6.2 and 7.2; the printed minus silently inverted
+  the slider's documented understeer/oversteer meaning. Adapter-local forward is
+  -Z. A unit test pins increasing front load with positive offset.
+- **Impulse cap:** limit forces dissipating existing slip: lateral friction,
+  brakes, handbrake, and passive resistance. Do not cap engine launch force by
+  current slip: zero initial slip would then forbid launching. A lagged lateral
+  force is suppressed when it points along current slip, preventing energy gain.
+- **Assist-off:** `countersteerAssist` and `yawAssist` govern tunable handling
+  assists only. The drift tracking and limiter both go exactly to zero with
+  `yawAssist`. Air damping (fewer than two grounded wheels) and anti-flip
+  (past 35 degrees of roll) remain independent internal stability safeguards.
+  Coupling them to yawAssist would silently make a drift-feel control alter flip
+  recovery. Neither can mask the raw tire model in ordinary grounded flat driving.
+
+Implement the approved [research drift controller](research/drift-assist.md),
+not the printed 6.8 C target law: latch the drift side, capture its neutral angle,
+slew the target at 90 degrees/s, permit a true zero-angle counter-steer/lift exit,
+exit with hysteresis, and share one bounded yawAssist-gated tracking/limiter
+budget. Parameter names `yawAssist` and `maxDriftAngle` are unchanged. Arithmetic
+checks do not certify the human five-second drift acceptance test.
+
+Boost starts empty and is earned by drifting. For repeatable tuning,
+`window.__game.setDriftMeter(value)` fills/clamps the meter to [0,1] without
+requiring a drift; `setInput({ throttle: 1, boost: true })` can exercise boost
+and `releaseInput()` restores keyboard/gamepad control. This is the existing
+automation surface, not a new player control.
+
+Recall before implementation: `deja "Slamdemonium WP5 vehicle suspension drivetrain drift assist"`
+found no prior implementation. `deja "vehicle zero assist"` found research session
+`01a0c04e-e95`, restating the zero-assist/sign checks also documented in R2.
+
+### Numeric acceptance and replay evidence
+
+At Default, 120 Hz, from a settled spawn, the **real suspended Jolt vehicle**
+reaches **100 km/h in 2.208333 s** and **55 m/s in 6.750000 s**. These include the
+throttle rise filter, suspension, tire limits and force application, and pass the
+2.0–2.3 s / 6.3–7.1 s acceptance ranges. The independent engine-formula unit test
+also passes those ranges. The integration test writes
+`scratch/vehicle-acceleration.json`. Measure simulated steps, not browser wall
+time: headless rAF throttling and the fixed loop's eight-step cap deliberately
+drop excess wall-time debt. A PM headless wall-time probe (about 0.29 m/s after
+2.5 seconds) therefore does not represent a 2.5-second acceleration run.
+
+Two seeded 300-s / 36,000-step real-vehicle runs produce the identical
+**exact float-bit state hash `1e4445c7`** (pose, linear/angular velocity, boost,
+and drift controller state). Maximum angular speed was 2.715300 rad/s, below the
+default 12 rad/s cap; every sampled state stayed finite without recovery.
+This is same-binary, same-machine evidence, not cross-platform determinism.
+
+Measured model-plus-Jolt mean step cost on this shared development machine was
+0.273 ms for the first run and **0.218 ms for the warmed second run**, below the
+1.0 ms model budget. This measures controls, four suspension queries, tires,
+assists, the engine step and telemetry on a flat plane; it excludes rendering
+and is not a target-laptop FPS claim. Compare against WP1's 0.092 ms one-box
+physics-only baseline. The soak writes `scratch/vehicle-soak.json`.
+Vitest files run sequentially so the 300-s vehicle soak does not compete with
+the G0 microbenchmark. No timing threshold is relaxed.
+
+The production-browser G1 test passed in CI in 19.5 s: actual keyboard throttle,
+left turn, following camera, and R respawn on WP3. The boost API test also passed.
+The full track's software shadows make input-heavy browser tests slower than
+the proof scene; their test budget is 90 s while preserving every input assertion.
+The human five-second drift hold/exit evaluation remains a separate playtest.
+
+### One owner for mass rebuilds
+
+PM ruling: boot owns `DebouncedMassRebuild`, the only subscriber that applies
+`needsRebuild` changes. It coalesces them for 100 ms and exposes synchronous
+`flush()`, `cancel()` and a reused read-only `{ status, error }` state
+(idle/pending/error/unavailable). Options only observes that state through
+`readRebuildState`; it must not run a second timer or physics update. This avoids
+double rebuilds and interleaved callbacks, and works without a panel mounted.
+Manual `stepMany` and respawn flush before step zero. Replay integration must
+flush or cancel before reset so no pending timer fires during the script.
+Mass updates preserve pose and linear/angular velocity; respawn separately
+clears controls, wheel histories, drift controller, boost meter and visual state.

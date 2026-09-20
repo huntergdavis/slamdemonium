@@ -7,6 +7,8 @@ const baseURL = origin + (process.env.VITE_BASE_PATH || '/');
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Full track shadows run in software WebGL on CI; preserve real input assertions.
+  timeout: 90_000,
   // Bound CPU contention between software WebGL and the physics benchmark.
   workers: 2,
   forbidOnly: !!process.env.CI,

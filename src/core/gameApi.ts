@@ -17,6 +17,9 @@ export interface GameTestApi {
     applyPreset(name: string): void;
   };
   setInput(input: Partial<GameInput>): void;
+  releaseInput(): void;
+  /** [0,1] earned boost meter; lets a tuner exercise boost without first drifting. */
+  setDriftMeter(value: number): void;
   stepMany(steps: number): void;
   getTelemetry(): Readonly<Record<string, unknown>>;
   respawn(): void;
@@ -32,6 +35,8 @@ export function createGameStub(): GameTestApi {
     ready: false,
     tuning: { get: unavailable, set: unavailable, applyPreset: unavailable },
     setInput: unavailable,
+    releaseInput: unavailable,
+    setDriftMeter: unavailable,
     stepMany: unavailable,
     getTelemetry: unavailable,
     respawn: unavailable,
