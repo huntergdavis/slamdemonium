@@ -28,6 +28,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] T10 | techwriter | README: player-facing 'play in your browser' link above the npm path; docs/TEAM.md: PR-preview paragraph (URL shape, timing, bot comment, SHA check, cleanup). | docs/play-link
 - [ ] O4 | devops | CI job running research's `npm run perf` with design 13.4 gates; decide required vs advisory vs main-only and justify; surface the trend. Blocked on WP9a. | devops/perf-ci
 
+- [ ] WP11 | developer 2 | **Scripted input (CTO request).** Record/author/replay input sequences as deterministic test scenarios. Format: versioned JSON, physics-step indexed, recordable from live play and hand-authorable. Must capture the tuning parameter set in the header (replay under different params is a different drive). Playback drives the real `sampleForStep` path, never wall-clock. Ship: recorder, player, assertion helpers (final pose, lap time, max |beta|, no NaN), a checkpoint/lap timer for the ring, and 2-3 example scripts. Consumed by WP9a perf harness, e2e, and T9 screenshots. | dev2/wp11-scripted-input
+
 ## Later (phase 3)
 
 - [ ] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10).
