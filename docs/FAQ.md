@@ -39,7 +39,11 @@ Those are the three presets that ship with the game, plus Default:
 - **Default** is the starting guess.
 - **Grip** is sticky, stable and forgiving. Slides are short and easy to recover.
 - **Drifty** is tail-happy. Slides start easily and can be held for a long time.
-- **Raw** turns every assist off so you feel the bare tire model. Twitchy, but honest. Try it first, then add assists back one at a time.
+- **Raw** turns every assist off so you feel the bare tire model, with no hidden helper left running. Twitchy, but honest. Try it first, then add assists back one at a time.
+
+## How do I hold a drift, and how do I get out of one?
+
+Get sliding first: flick the handbrake in a corner, or steer in hard on the throttle. Once the car is properly sideways, centering the stick holds the angle you have. Steer further into the slide for more angle. To exit, counter-steer fully or lift off the throttle, and the car straightens. If the tail swings past your maximum drift angle, a soft limiter nudges it back. All of this is the yaw assist; set it to zero and you are on your own.
 
 You should be able to tell them apart within half a minute of driving. If you cannot, that is worth knowing.
 
@@ -54,7 +58,7 @@ Your current settings also save in your browser automatically, so closing the ta
 
 ## How do I compare two setups?
 
-Use the A/B slots. Copy A to B, change one thing in B, then press **Tab** while driving to swap between them instantly. The HUD shows which slot is live. It is the fastest way to answer "was that better?"
+Use the A/B slots. Copy A to B, change one thing in B, then press **Tab** while driving to swap between them instantly (or use the A and B buttons in the Options page). The HUD shows which slot is live. It is the fastest way to answer "was that better?"
 
 ## What is all the stuff on screen?
 
