@@ -76,7 +76,7 @@ Run from the repository root. These commands use temporary npm tooling; they do 
 
 ```sh
 npx --yes --package=typescript@7.0.2 tsc --noEmit --strict --noUncheckedIndexedAccess --target ES2020 --module ESNext --moduleResolution bundler --lib ES2020,DOM assets/procedural/asphalt.ts docs/design/asphalt-demo/demo.ts
-npx --yes --package=esbuild@0.28.2 esbuild docs/design/asphalt-demo/demo.ts --bundle --format=iife --target=es2020 --outfile=docs/design/asphalt-demo/asphalt-demo.js
+npx --yes --package=esbuild@0.28.2 esbuild docs/design/asphalt-demo/demo.ts --bundle --format=iife --target=es2020 --banner:js='/* global document, clearTimeout, performance, setTimeout, URL */' --outfile=docs/design/asphalt-demo/asphalt-demo.js
 npx --yes --package=esbuild@0.28.2 esbuild assets/procedural/asphalt.ts --format=esm --target=es2020 --outfile=/tmp/slamdemonium-asphalt-validation.mjs
 node docs/design/asphalt-demo/validate.mjs /tmp/slamdemonium-asphalt-validation.mjs
 ```

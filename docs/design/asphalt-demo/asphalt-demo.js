@@ -1,3 +1,5 @@
+/* global document, clearTimeout, performance, setTimeout, URL */
+"use strict";
 (() => {
   // assets/procedural/asphalt.ts
   function finiteRange(name, value, min, max) {

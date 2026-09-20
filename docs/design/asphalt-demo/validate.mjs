@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { performance } from 'node:perf_hooks';
 import { createHash } from 'node:crypto';
+import process from 'node:process';
+import console from 'node:console';
 
 if (!process.argv[2]) throw new Error('Pass the compiled asphalt ES module path.');
 const { createAsphaltTexture } = await import(pathToFileURL(process.argv[2]).href);
