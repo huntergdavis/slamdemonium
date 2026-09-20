@@ -62,6 +62,7 @@ Questions for the CTO go through the PM. The PM records them and the answers in 
 | `docs/design/` | Visual direction, palette, mockups. | Designer |
 | `docs/TUNING_PLAYBOOK.md` | Symptom to slider. Mirrors design 7.4 and the in-game help panel; change both together. | Technical writer |
 | `docs/GLOSSARY.md` | Plain-language terms for tuners. | Technical writer |
+| `docs/QA_CHECKLIST.md` | Manual QA on real hardware: steps, pass and fail for each item. | Technical writer |
 | `docs/screenshots/` | Images used by the docs. Naming rules inside. | Technical writer |
 | `docs/TEAM.md` | This page. | Technical writer |
 | `BACKLOG.md` | Work packages, owners, status. Agents do not edit it; ping the PM. | PM |
