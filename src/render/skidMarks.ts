@@ -189,6 +189,9 @@ export function createSkidMarks(scene: Scene) {
     transparent: true,
     depthWrite: false,
     side: DoubleSide,
+    // Ground-hugging strips have no transparent volume to sort back/front.
+    // Two-pass rendering would bump material.version twice per wheel per frame.
+    forceSinglePass: true,
     fog: true,
     polygonOffset: true,
     polygonOffsetFactor: -1,

@@ -14,6 +14,8 @@ Running log of technical decisions, spike results and changed defaults. New entr
 
 | 2026-09-20 | [WP14: mount the tuning laboratory and share command consumption](#2026-09-20--wp14-mount-the-tuning-laboratory-and-share-command-consumption) | Mount persistent Options, HUD and replay on the live store; consume command edges once across stepping and paused UI polling. |
 
+| 2026-09-20 | [WP13: stable material programs and heap regression](#2026-09-20--wp13-stable-material-programs-and-heap-regression) | Prepare material variants once, render planar skids in one pass, and gate retained heap growth without treating function-level allocation attribution as proof of new objects. |
+
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
 ## 2026-09-20 — WP0: minimal browser scaffold and reproducible tooling
@@ -337,3 +339,50 @@ setInput or attaching a perf driver rejects active script capture/playback.
 The recorder observes mapper.state, so allowing a separate vehicle override
 would silently record different commands. Release automation input before a
 fresh-respawn recording. F9 telemetry CSV remains independent.
+
+## 2026-09-20 — WP13: stable material programs and heap regression
+
+Reuse research's [allocation evidence](research/perf-outliers.md) from PR #43,
+including its exact baseline and full selected stacks. That trace established
+allocation traffic, not a leak, and only two slow-step/GC overlaps were decisive.
+This change addresses the memory requirement; it promises no frame-time or p99
+improvement.
+
+Three r186 caches a material's current program variant. Our track shared paint
+between ordinary ring meshes and instanced dashes/ticks, causing repeated
+instancing-state invalidation. Its default shadow depth material similarly
+alternated between the instanced track and ordinary car meshes. Each lookup
+reconstructed parameters and cache-key arrays/strings even if the compiled
+program already existed. After mounting the scene, prepare material variants
+once for each ordinary/instanced/instance-colored use, and give each shadow
+caster its own depth material. Animated single-kind materials retain their
+identity, so brake lights continue updating. The preparation owns only its
+clones and depth materials, restores original references on disposal, and must
+run after any future topology-changing mount. No Three source is patched.
+
+Ground-hugging transparent skid strips use forceSinglePass. Their flat geometry
+does not need front/back transparent-volume sorting; the default double pass
+otherwise increments material.version twice per draw. Existing segment buffers
+and dirty-range records remain reused.
+
+**Vehicle attribution remains unresolved, not proven boxing.** Source inspection
+found that tire/suspension vectors, ray outputs, histories and telemetry already
+reuse storage. A targeted Node/Vite SSR probe also attributed traffic to scalar
+math returns (dot, clamp, hypot); V8 reported fast properties for the vehicle,
+wheel, telemetry and vector objects. Those observations do not identify the
+allocated object types or establish numeric boxing as the cause. Do not rewrite
+the force model or alter borrowed Jolt ownership on that basis. Dependency/VM
+allocation can remain, and a stable retained heap cannot prove zero transient
+allocation.
+
+The automated regression runs through the **production preview build** at
+120 Hz for 36,000 real vehicle steps, with steering, braking and handbrake,
+plus an explicit render per simulated second. It compares post-GC JS heap at
+simulated minute one and minute five (maximum 10% growth), checks WASM allocator
+free bytes as well as heap capacity, requires finite unrecovered state and skid
+activity, and records exact EOF. This accelerated test does not replace
+npm run perf's sustained wall-time run. The VITE_TEST_API-only diagnostic counts
+actual customProgramCacheKey calls, which observe parameter reconstruction
+even on compiled-program cache hits. A fixed warmed view must make zero calls;
+restoring the original shared-material pattern is a negative control that
+must make calls again. A default production build excludes the diagnostic.

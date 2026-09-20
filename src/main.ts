@@ -12,6 +12,7 @@ import { CameraRig } from './render/cameraRig';
 import { createCarVisual } from './render/carVisual';
 import { createSkidMarks } from './render/skidMarks';
 import { createSpeedCues } from './render/speedCues';
+import { prepareScene } from './render/prepareScene';
 import { BUILTIN_PRESETS } from './tuning/presets';
 import type { BuiltinPresetName } from './tuning/presets';
 import { isParamKey } from './tuning/schema';
@@ -81,6 +82,8 @@ async function boot(): Promise<void> {
   };
   speedCues.setOptions(cueOptions);
   resources.push(carVisual, skids, speedCues);
+  const preparedScene = prepareScene(view.scene);
+  resources.push(preparedScene);
   physics.onContact((a, b, impulse) => {
     if (a === vehicle.body || b === vehicle.body)
       cameraRig.addImpact(impulse, vehicle.currentMass);
@@ -537,6 +540,16 @@ async function boot(): Promise<void> {
     const { installInputTestFixture } = await import('./input/testFixture');
     if (disposed) return;
     resources.push(installInputTestFixture());
+    const { installAllocationTestFixture } =
+      await import('./render/allocationTestFixture');
+    if (disposed) return;
+    resources.push(
+      installAllocationTestFixture(
+        view.scene,
+        () => loop.frame(frameTime),
+        preparedScene.dispose,
+      ),
+    );
   }
   frameId = requestAnimationFrame(frame);
 }

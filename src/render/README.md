@@ -44,3 +44,17 @@ For an allocation-free HUD, read `cameraRig.telemetry` and
 `view.resolution` directly; the automation snapshot intentionally allocates.
 See [the WP6 decision](../../docs/DECISIONS.md#2026-09-20--wp6-bounded-camera-and-fixed-rendering-buffers)
 for camera time constants, FOV rationale and skid lifetime.
+
+After mounting the track, car and skid meshes, call prepareScene(scene) once.
+It separates shared materials across instancing variants and assigns stable
+shadow depth materials. Keep its disposable with the scene resources. It
+preserves identity for materials used by only one kind of mesh (including
+animated brake lights); mixed-kind materials are static snapshots. A later
+topology-changing mount needs preparation too. The current scene uses ordinary
+and instanced meshes with directional shadows, not skinned/batched meshes or
+point-light distance shadows.
+
+The built-browser allocation regression is e2e/allocation.spec.ts. Its
+VITE_TEST_API diagnostic counts parameter/cache-key builds, not compiled shader
+count, and is absent from a normal production build. The test's five minutes
+are simulated; npm run perf retains the sustained wall-time acceptance check.
