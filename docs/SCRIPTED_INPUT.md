@@ -4,7 +4,7 @@ Record a drive, replay it exactly, and assert on what happened. For contributors
 
 The authoritative contract is [`src/input/SCRIPTS.md`](../src/input/SCRIPTS.md); this page explains how to use it. Terms like slide angle and physics step are in the [Glossary](GLOSSARY.md).
 
-> **Status.** The recorder, player, assertions and lap timer are merged and exercised by `tests/script-examples.test.ts`. Runtime wiring into the live game (the `window.__game.scripts` facade and any record hotkey) is part of WP14 and not mounted yet; items below that depend on it are marked **pending**.
+> **Status.** The recorder, player, assertions and lap timer are merged and exercised by `tests/script-examples.test.ts`. Runtime exposure as `window.__game.scripts` is part of WP14 and not mounted yet; the two places below that depend on it are marked **pending WP14**.
 
 ## What it is for
 
@@ -25,13 +25,15 @@ A script is one JSON document, version 1.
 | `name` | A non-empty human-readable name. |
 | `seed` | Unsigned 32-bit integer handed to the reset. Reserved for scenario randomness; the vehicle itself uses none. |
 | `spawn` | `position` in metres and a unit quaternion `rotation`, Y up. |
-| `tuning` | **Every** tuning parameter with its exact value, all 69 keys plus any presentation settings. Nothing is filled in from defaults. |
-| `durationSteps` | How many physics steps the script runs. |
-| `frames` | Input changes as `{ "step", "input" }`, strictly increasing, starting at step 0. |
+| `tuning` | **Every** key currently in the tuning schema (`PARAM_DEFS`) with its exact value, presentation settings included; 71 keys at the time of writing. Nothing is filled in from defaults. |
+| `durationSteps` | How many physics steps the script runs. A positive integer. |
+| `frames` | Input changes as `{ "step", "input" }`. Steps are integers, strictly increasing, starting at 0 and all below `durationSteps`. |
 
 Each `input` carries all six fields every time: `throttle` and `brake` from 0 to 1, `steer` from -1 to 1 with positive meaning left, `handbrake` and `boost` as booleans, and `source` as `"keyboard"` or `"gamepad"`. The source matters because the vehicle filters keyboard and controller input differently. An input holds until the next frame; the last frame holds through step `durationSteps - 1`.
 
 A minimal example, the shipped handbrake turn, has four frames: settle for half a second, full throttle, then at step 270 ease to 30 percent throttle, steer left and pull the handbrake, then release the handbrake at step 330. The whole thing is 420 steps, 3.5 seconds at 120 Hz.
+
+**Abbreviated excerpt.** The `tuning` block below is shortened for reading and this snippet will **not** load under the strict validator. The complete, loadable file is [`src/input/examples/handbrake-turn.json`](../src/input/examples/handbrake-turn.json).
 
 ```json
 {
@@ -40,7 +42,7 @@ A minimal example, the shipped handbrake turn, has four frames: settle for half 
   "seed": 20903,
   "spawn": { "position": { "x": 130, "y": 0.86, "z": 0 },
              "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 } },
-  "tuning": { "gravity": 14.7, "timeScale": 1, "...": "all 69 keys" },
+  "tuning": { "gravity": 14.7, "timeScale": 1, "... every schema key ...": 0 },
   "durationSteps": 420,
   "frames": [
     { "step": 0,   "input": { "throttle": 0,   "brake": 0, "steer": 0,    "handbrake": false, "boost": false, "source": "gamepad" } },
@@ -81,7 +83,7 @@ Recording capacity defaults to 72,000 steps, five minutes at 240 Hz. Running pas
 
 ### From live play
 
-**Pending WP14 and a PM decision.** There is no hotkey, button or download for input recording in the running game yet, and none is planned in the scripted-input work itself. **F9 records telemetry to CSV; it does not capture input JSON.** Until the runtime path exists, recording is something a test does through `ScriptController`. When a live path lands it will follow the same rule: respawn first with **R**, then start recording. If you also want a telemetry CSV of the same drive, start it from the same reset and align the two exports by physics step index.
+Recording is a programmatic contributor capability, by decision. There is no hotkey, button or download for input recording in the running game, and none is coming in this slice. **F9 records telemetry to CSV; it does not capture input JSON.** In the browser you record from the console or an automation script through `window.__game.scripts` (see below): press **R** for a fresh respawn, then call `startRecording(name)`, drive, then `stopRecording()` returns the script object to serialise with `JSON.stringify`. If you also want a telemetry CSV of the same drive, start it from the same reset and align the two exports by physics step index.
 
 ## Replaying a drive
 
@@ -100,7 +102,7 @@ While a replay is armed, the script owns the input. Live keyboard and controller
 
 The replay reports end of file only after the final step's `postStep` has completed, so the final telemetry is the real final state. Stepping past the end throws; `canStep()` is false there. `progress()` returns `{ completedSteps, totalSteps, done }` as a reused readonly view, so copy it if you keep history. `cancel()` releases the script's hold on input; it does not respawn and does not restore the tuning that `apply` overwrote.
 
-In the browser the same three operations are the `window.__game.scripts` facade: `load`, `progress`, `cancel`, and nothing else. The shape is fixed in `src/core/gameApi.ts` but the property is optional and the live boot does not assign it yet. **Pending WP14.** The other controller methods (`startRecording`, `stopRecording`, `result`, `lapProgress`) are ordinary library calls and could be exposed later; today they are reachable only where you hold the controller, which in practice means tests.
+In the browser the controller is exposed as `window.__game.scripts` with `load`, `progress`, `cancel`, `result`, `lapProgress`, `startRecording` and `stopRecording`. **Pending WP14:** the property is declared in `src/core/gameApi.ts` but the live boot does not assign it until that PR merges. Until then these calls are reachable only in tests, where you hold the `ScriptController` directly.
 
 ## Writing a scenario by hand
 
