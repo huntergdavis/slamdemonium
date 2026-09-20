@@ -62,6 +62,17 @@ def validate(report):
     first_time = number(memory["first"]["elapsedSeconds"], 0)
     if number(memory["last"]["elapsedSeconds"], 0) <= first_time:
         raise ValueError("Memory checkpoints are out of order")
+    minute_five = memory.get("minuteFive")
+    if report["mode"] == "sustained":
+        if first_time < 60 or minute_five is None:
+            raise ValueError("Sustained report lacks minute-one/minute-five checkpoints")
+        if number(minute_five["elapsedSeconds"], 0) < 300:
+            raise ValueError("Minute-five checkpoint was captured too early")
+    if minute_five is not None:
+        if not first_time <= number(minute_five["elapsedSeconds"], 0) <= memory["last"]["elapsedSeconds"]:
+            raise ValueError("Minute-five checkpoint is outside the measurement")
+        for _, key, _ in HEAPS:
+            number(minute_five[key], 0)
     for _, key, growth_key in HEAPS:
         first = number(memory["first"][key], 0)
         last = number(memory["last"][key], 0)
@@ -185,14 +196,18 @@ def render(report, prior, notes, run_url):
         "## Heap checkpoints",
         "",
         f"Actual checkpoint times: {memory['first']['elapsedSeconds']:.2f}s → "
-        f"{memory['last']['elapsedSeconds']:.2f}s. JS values are retained heap after GC.",
+        f"{memory['last']['elapsedSeconds']:.2f}s (final replay EOF). "
+        "JS values are retained heap after GC. Growth gates compare first to final EOF; "
+        "the minute-five snapshot is shown separately.",
         "",
-        "| Heap | First (MiB) | Last (MiB) | Growth | Limit |",
-        "| --- | ---: | ---: | ---: | ---: |",
+        "| Heap | First (MiB) | Minute five (MiB) | Final EOF (MiB) | Growth | Limit |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
     ]
     for name, key, growth in HEAPS:
+        minute_five = memory.get("minuteFive")
+        five = f"{minute_five[key] / 2**20:.3f}" if minute_five else "unavailable"
         lines.append(f"| {name} | {memory['first'][key] / 2**20:.3f} | "
-                     f"{memory['last'][key] / 2**20:.3f} | "
+                     f"{five} | {memory['last'][key] / 2**20:.3f} | "
                      f"{memory[growth]:+.3f}% | ≤ 10% |")
     lines += ["", "## Recent main measurements", "",
               "Up to five retained earlier main reports, including failures. "
