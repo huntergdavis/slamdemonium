@@ -4,15 +4,17 @@ Running log of technical decisions, spike results and changed defaults. New entr
 
 ## Index
 
-| Date | Decision | Consequence |
-|---|---|---|
-| 2026-09-20 | [WP0: minimal browser scaffold and reproducible tooling](#2026-09-20--wp0-minimal-browser-scaffold-and-reproducible-tooling) | Strict TypeScript, Vite, three.js, Vitest and Playwright, every dependency pinned exactly; TypeScript held at 6.0.3 for typescript-eslint; no physics dependency until WP1 confirms the Jolt flavor. |
-| 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number | null` because stock Jolt cannot supply a solved value. |
-| 2026-09-20 | [WP5: vehicle force model and approved design corrections](#2026-09-20--wp5-vehicle-force-model-and-approved-design-corrections) | Preserve the configurable ellipse, correct COM load direction, cap dissipative impulses only, use the research drift latch, and keep recovery safeguards independent of handling sliders. |
+| Date       | Decision                                                                                                                                | Consequence                                                                                                                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-20 | [WP0: minimal browser scaffold and reproducible tooling](#2026-09-20--wp0-minimal-browser-scaffold-and-reproducible-tooling)            | Strict TypeScript, Vite, three.js, Vitest and Playwright, every dependency pinned exactly; TypeScript held at 6.0.3 for typescript-eslint; no physics dependency until WP1 confirms the Jolt flavor. |
+| 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number                    | null` because stock Jolt cannot supply a solved value. |
+| 2026-09-20 | [WP5: vehicle force model and approved design corrections](#2026-09-20--wp5-vehicle-force-model-and-approved-design-corrections)        | Preserve the configurable ellipse, correct COM load direction, cap dissipative impulses only, use the research drift latch, and keep recovery safeguards independent of handling sliders.            |
 
 | 2026-09-20 | [WP6: bounded camera and fixed rendering buffers](#2026-09-20--wp6-bounded-camera-and-fixed-rendering-buffers) | Cap delivered vertical FOV at 115 degrees with honest telemetry; share scaled render time; reuse four skid geometries and adjust resolution from wall time. |
 
 | 2026-09-20 | [WP14: mount the tuning laboratory and share command consumption](#2026-09-20--wp14-mount-the-tuning-laboratory-and-share-command-consumption) | Mount persistent Options, HUD and replay on the live store; consume command edges once across stepping and paused UI polling. |
+
+| 2026-09-20 | [WP13: stable material programs and heap regression](#2026-09-20--wp13-stable-material-programs-and-heap-regression) | Prepare material variants once, render planar skids in one pass, and gate retained heap growth without treating function-level allocation attribution as proof of new objects. |
 
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
@@ -337,3 +339,69 @@ setInput or attaching a perf driver rejects active script capture/playback.
 The recorder observes mapper.state, so allowing a separate vehicle override
 would silently record different commands. Release automation input before a
 fresh-respawn recording. F9 telemetry CSV remains independent.
+
+## 2026-09-20 — WP13: stable material programs and heap regression
+
+Reuse research's [allocation evidence](research/perf-outliers.md) from PR #43,
+including its exact baseline and full selected stacks. That trace established
+allocation traffic, not a leak, and only two slow-step/GC overlaps were decisive.
+This change addresses the memory requirement; it promises no frame-time or p99
+improvement.
+
+Three r186 caches a material's current program variant. Our track shared paint
+between ordinary ring meshes and instanced dashes/ticks, causing repeated
+instancing-state invalidation. Its default shadow depth material similarly
+alternated between the instanced track and ordinary car meshes. Each lookup
+reconstructed parameters and cache-key arrays/strings even if the compiled
+program already existed. After mounting the scene, prepare material variants
+once for each ordinary/instanced/instance-colored use, and give each shadow
+caster its own depth material. Animated single-kind materials retain their
+identity, so brake lights continue updating. The preparation owns only its
+clones and depth materials, restores original references on disposal, and must
+run after any future topology-changing mount. No Three source is patched.
+
+Ground-hugging transparent skid strips use forceSinglePass. Their flat geometry
+does not need front/back transparent-volume sorting; the default double pass
+otherwise increments material.version twice per draw. Existing segment buffers
+and dirty-range records remain reused.
+
+**Vehicle attribution remains unresolved, not proven boxing.** Source inspection
+found that tire/suspension vectors, ray outputs, histories and telemetry already
+reuse storage. A targeted Node/Vite SSR probe also attributed traffic to scalar
+math returns (dot, clamp, hypot); V8 reported fast properties for the vehicle,
+wheel, telemetry and vector objects. Those observations do not identify the
+allocated object types or establish numeric boxing as the cause. Do not rewrite
+the force model or alter borrowed Jolt ownership on that basis. Dependency/VM
+allocation can remain, and a stable retained heap cannot prove zero transient
+allocation.
+
+The automated regression runs through the **production preview build** at
+120 Hz for 36,000 real vehicle steps, with steering, braking and handbrake,
+plus an explicit render per simulated second. It compares post-GC JS heap at
+simulated minute one and minute five (maximum 10% growth), checks WASM allocator
+free bytes as well as heap capacity, requires zero non-finite-state recoveries and skid
+activity, and records exact EOF. This accelerated test does not replace
+npm run perf's sustained wall-time run. The VITE_TEST_API-only diagnostic counts
+actual customProgramCacheKey calls, which observe parameter reconstruction
+even on compiled-program cache hits. A fixed warmed view must make zero calls;
+restoring the original shared-material pattern is a negative control that
+must make calls again. A default production build excludes the diagnostic.
+
+The first CI run exceeded the suite's 90-second deadline on all three attempts;
+it is not counted as passing. Its traces show 87–90 seconds inside completed
+simulation/render batches. The last attempt reached all 36,000 steps and all
+assertions: retained JS was 9,300,436 → 9,533,468 bytes (+2.51%), WASM capacity
+134,217,728 bytes and allocator free space 121,256,280 bytes were unchanged,
+and warmed parameter builds were zero versus 24 after restoring shared materials.
+Give this regression its own 180-second budget, preserving the full workload
+and every memory/counter assertion. These elapsed times are test-runner evidence,
+not measurements of the physics step budget.
+
+[Hosted CI run 35545284828](https://github.com/huntergdavis/slamdemonium/actions/runs/35545284828)
+then passed all 174 unit tests and 27 browser tests, with no browser retries.
+The full 36,000-step regression completed: retained JS was 9,236,500 → 9,466,408
+bytes (+2.49%); WASM capacity remained 134,217,728 bytes and allocator free space
+remained 121,256,280 bytes. The warmed fixed view made zero parameter builds;
+restoring shared materials produced 24. This demonstrates the repaired render
+call pattern and bounded retained memory, without resolving the separate
+vehicle/suspension allocation attributions discussed above.
