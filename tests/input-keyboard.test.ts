@@ -51,6 +51,7 @@ describe('event-owned keyboard input', () => {
       KeyC: 'camera',
       KeyT: 'slowMotion',
       KeyP: 'pause',
+      Escape: 'pauseMenu',
       KeyL: 'latencyProbe',
       Tab: 'swapAB',
       F9: 'recordTelemetry',
@@ -177,5 +178,111 @@ it('shares command consumption across paused polls and steps without sampling re
   expect(mapper.sampleActions().hud).toBe(0);
   expect(scriptSamples).toBe(2);
   detach();
+  keyboard.dispose();
+});
+
+describe('browser-owned Escape', () => {
+  for (const [property, change] of [
+    ['fullscreenElement', 'fullscreenchange'],
+    ['pointerLockElement', 'pointerlockchange'],
+  ] as const) {
+    it(
+      'preserves native ' +
+        property +
+        ' exit before opening the menu on a new press',
+      () => {
+        const target = new EventTarget();
+        const doc = new EventTarget();
+        let active: object | null = {};
+        Object.defineProperty(doc, property, { get: () => active });
+        const keyboard = new KeyboardInput(target, {
+          visibilityTarget: doc as Document,
+        });
+        const event = keyEvent(target, 'keydown', 'Escape', { timeStamp: 100 });
+        expect(event.defaultPrevented).toBe(false);
+        expect(keyboard.state.presses.pauseMenu).toBe(0);
+        active = null;
+        const changed = new Event(change);
+        Object.defineProperty(changed, 'timeStamp', { value: 105 });
+        doc.dispatchEvent(changed);
+        expect(
+          keyEvent(target, 'keydown', 'Escape', {
+            repeat: true,
+            timeStamp: 110,
+          }).defaultPrevented,
+        ).toBe(false);
+        keyEvent(target, 'keyup', 'Escape', { timeStamp: 120 });
+        expect(
+          keyEvent(target, 'keydown', 'Escape', { timeStamp: 140 })
+            .defaultPrevented,
+        ).toBe(true);
+        expect(keyboard.state.presses.pauseMenu).toBe(1);
+        keyboard.dispose();
+      },
+    );
+
+    it(
+      'does not turn an exit-before-keydown event order into a menu toggle: ' +
+        property,
+      () => {
+        const target = new EventTarget();
+        const doc = new EventTarget();
+        let active: object | null = {};
+        Object.defineProperty(doc, property, { get: () => active });
+        const keyboard = new KeyboardInput(target, {
+          visibilityTarget: doc as Document,
+        });
+        active = null;
+        const changed = new Event(change);
+        Object.defineProperty(changed, 'timeStamp', { value: 100 });
+        doc.dispatchEvent(changed);
+        expect(
+          keyEvent(target, 'keydown', 'Escape', { timeStamp: 105 })
+            .defaultPrevented,
+        ).toBe(false);
+        expect(keyboard.state.presses.pauseMenu).toBe(0);
+        keyEvent(target, 'keyup', 'Escape');
+        keyEvent(target, 'keydown', 'Escape', { timeStamp: 200 });
+        expect(keyboard.state.presses.pauseMenu).toBe(1);
+        keyboard.dispose();
+      },
+    );
+  }
+});
+
+it('preserves independent keyboard readers after browser defaults are canceled', () => {
+  const target = new EventTarget();
+  const live = new KeyboardInput(target, { visibilityTarget: null });
+  const fixture = new KeyboardInput(target, { visibilityTarget: null });
+  const first = new InputMapper(live, new GamepadInput(() => []));
+  const second = new InputMapper(fixture, new GamepadInput(() => []));
+  expect(keyEvent(target, 'keydown', 'KeyW').defaultPrevented).toBe(true);
+  for (const code of ['Tab', 'KeyL', 'KeyO', 'KeyH', 'F9']) {
+    keyEvent(target, 'keydown', code);
+    keyEvent(target, 'keyup', code);
+  }
+  for (const mapper of [first, second]) {
+    expect(mapper.sampleForStep()).toMatchObject({
+      throttle: 1,
+      actions: {
+        swapAB: 1,
+        latencyProbe: 1,
+        options: 1,
+        hud: 1,
+        recordTelemetry: 1,
+      },
+    });
+    expect(mapper.sampleActions().swapAB).toBe(0);
+  }
+  live.dispose();
+  fixture.dispose();
+});
+
+it('leaves locally handled Escape with the Options/help handler', () => {
+  const target = new EventTarget();
+  target.addEventListener('keydown', (event) => event.preventDefault());
+  const keyboard = new KeyboardInput(target, { visibilityTarget: null });
+  keyEvent(target, 'keydown', 'Escape');
+  expect(keyboard.state.presses.pauseMenu).toBe(0);
   keyboard.dispose();
 });

@@ -35,3 +35,10 @@ const controls = mapper.sampleForStep();
 mapper.framePresented(rafTimestamp);
 probeView.render(rafTimestamp);
 ```
+
+WP16 adds `pauseMenu`: Escape and gamepad Start/Menu (standard button 9).
+P still emits `pause`; O still emits `options`. Start reaches Options through
+the pause menu. Gamepad state exposes menu directions and confirm/back edge
+counters for UI reads after the mapper's normal poll. UI never polls separately.
+Escape used to exit fullscreen or pointer lock stays browser-owned and does not
+also toggle the menu; press Escape again after exiting.

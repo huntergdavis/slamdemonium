@@ -28,6 +28,7 @@ export function keyEvent(
 export function makePad(
   options: {
     axis?: number;
+    verticalAxis?: number;
     throttle?: number;
     brake?: number;
     buttons?: number[];
@@ -52,7 +53,7 @@ export function makePad(
     connected: options.connected ?? true,
     mapping: options.mapping ?? 'standard',
     timestamp: 0,
-    axes: [options.axis ?? 0, 0, 0, 0],
+    axes: [options.axis ?? 0, options.verticalAxis ?? 0, 0, 0],
     buttons,
     hapticActuators: [],
     vibrationActuator: {

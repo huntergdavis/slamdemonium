@@ -23,6 +23,7 @@ import { ScriptController } from './input/script';
 import type { ActionCounts } from './input/types';
 import { mountOptionsPanel } from './ui/optionsPanel';
 import { mountHud } from './ui/hud';
+import { mountPauseMenu } from './ui/pauseMenu';
 import { LatencyProbeView } from './input/latencyProbe';
 import { Vehicle } from './vehicle/vehicle';
 import { VehicleVisualHistory } from './vehicle/visualState';
@@ -118,6 +119,7 @@ async function boot(): Promise<void> {
   let perfCompletedSteps = 0;
   let perfTotalSteps = 0;
   let optionsPaused = false;
+  let menuPaused = false;
   let userPaused = false;
   let perfPaused = false;
   let replayStopped = false;
@@ -134,6 +136,7 @@ async function boot(): Promise<void> {
     return (
       document.hidden ||
       optionsPaused ||
+      menuPaused ||
       userPaused ||
       perfPaused ||
       replayStopped
@@ -293,6 +296,18 @@ async function boot(): Promise<void> {
   // Options restores persistence through the same store; apply any mass change
   // before the first step, after the live body/visual subscriptions are installed.
   massRebuild.flush();
+  const pauseMenu = mountPauseMenu({
+    host: host!,
+    drivingSurface: view.renderer.domElement,
+    readPaused: isPaused,
+    onPauseChange(paused) {
+      menuPaused = paused;
+      syncPause();
+    },
+    onRespawn: respawn,
+    options,
+    readGamepad: () => input.gamepad.state,
+  });
   const hud = mountHud({
     host: options.root,
     store: tuning,
@@ -325,10 +340,12 @@ async function boot(): Promise<void> {
     },
   });
   scripts.noteRespawn(track.spawn, 0);
-  resources.push(options, hud, scripts);
+  // Menu disposal restores the shared Options element before Options removes it.
+  resources.push(pauseMenu, options, hud, scripts);
   function dispatchActions(actions: Readonly<ActionCounts>): void {
     if (actions.respawn > 0) respawnRequested = true;
     if (actions.options % 2) options.toggle();
+    if (actions.pauseMenu % 2) pauseMenu.toggle();
     hud.cycleMode(actions.hud);
     if (actions.recordTelemetry % 2) hud.toggleRecording();
     if (actions.swapAB % 2) options.session.swapSlots();
@@ -527,6 +544,7 @@ async function boot(): Promise<void> {
         if (respawnRequested) respawn();
       }
       loop.frame(nowMs);
+      pauseMenu.update(nowMs);
     } catch (error) {
       replayStopped = true;
       syncPause();

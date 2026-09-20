@@ -23,11 +23,11 @@ describe('standard gamepad mapping', () => {
       handbrake: true,
       boost: true,
       respawnPresses: 1,
-      optionsPresses: 1,
+      pauseMenuPresses: 1,
     });
     gamepad.sampleForStep();
     expect(gamepad.state.respawnPresses).toBe(1);
-    expect(gamepad.state.optionsPresses).toBe(1);
+    expect(gamepad.state.pauseMenuPresses).toBe(1);
     expect(poll).toHaveBeenCalledTimes(2);
   });
 
@@ -79,6 +79,7 @@ describe('standard gamepad mapping', () => {
     expect(state.source).toBe('gamepad');
     expect(state.throttle).toBe(0.8);
     expect(state.actions.respawn).toBe(1);
+    expect(state.actions.pauseMenu).toBe(1);
     keyEvent(target, 'keydown', 'KeyA');
     keyEvent(target, 'keydown', 'KeyR');
     expect(mapper.sampleForStep()).toBe(state);
@@ -90,4 +91,34 @@ describe('standard gamepad mapping', () => {
     expect(poll).toHaveBeenCalledTimes(3);
     keyboard.dispose();
   });
+});
+
+it('exposes menu directions and edge counts without a second browser poll', () => {
+  let pad = makePad({ buttons: [0, 1, 9, 12], axis: 0.6 });
+  const poll = vi.fn(() => [pad]);
+  const input = new GamepadInput(poll);
+  const state = input.sampleForStep();
+  expect(state).toMatchObject({
+    menuX: 1,
+    menuY: -1,
+    confirmPresses: 1,
+    backPresses: 1,
+    pauseMenuPresses: 1,
+  });
+  expect(input.sampleForStep()).toBe(state);
+  expect(state.confirmPresses).toBe(1);
+  pad = makePad({ verticalAxis: 0.8, axis: 0.2 });
+  input.sampleForStep();
+  expect(state).toMatchObject({ menuX: 0, menuY: 1 });
+  pad = makePad({ buttons: [0, 1, 9] });
+  input.sampleForStep();
+  expect(state).toMatchObject({
+    confirmPresses: 2,
+    backPresses: 2,
+    pauseMenuPresses: 2,
+  });
+  pad = makePad({ connected: false });
+  input.sampleForStep();
+  expect(state).toMatchObject({ connected: false, menuX: 0, menuY: 0 });
+  expect(poll).toHaveBeenCalledTimes(5);
 });

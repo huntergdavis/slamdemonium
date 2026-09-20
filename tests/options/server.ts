@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { build } from 'vite';
 
 /** Serve actual compiled JS/CSS; no Vite dev source transforms in these tests. */
-export async function serveOptionsBuild(): Promise<{
+export async function serveOptionsBuild(root = 'tests/options'): Promise<{
   url: string;
   close(): Promise<void>;
 }> {
@@ -13,7 +13,7 @@ export async function serveOptionsBuild(): Promise<{
   try {
     await build({
       configFile: false,
-      root: resolve('tests/options'),
+      root: resolve(root),
       logLevel: 'error',
       build: { outDir, emptyOutDir: true },
     });
