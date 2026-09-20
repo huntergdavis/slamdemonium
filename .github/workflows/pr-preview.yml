@@ -39,7 +39,7 @@ jobs:
           VITE_BASE_PATH: /slamdemonium/pr/${{ github.event.number }}/
 
       - name: Write lifecycle smoke marker (temporary)
-        run: echo preview-smoke-one > dist/preview-smoke.txt
+        run: echo preview-smoke-two > dist/preview-smoke.txt
 
       # A separate workflow on main consumes these files as data, never as code.
       - name: Upload preview files
