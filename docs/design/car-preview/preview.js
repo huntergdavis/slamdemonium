@@ -57,6 +57,7 @@ let frameId = 0;
 let previousMs = 0;
 let simulationTime = 0;
 let statusMs = -Infinity;
+let dirty = true;
 const target = new Vector3(130, 0.4, 0);
 const tau = 2 * Math.PI;
 car.setDebugVisible(true);
@@ -67,6 +68,7 @@ function syncGizmoButton() {
 }
 function setCamera(mode) {
   cameraMode = mode;
+  dirty = true;
 }
 for (const button of document.querySelectorAll('[data-camera]'))
   button.addEventListener('click', () => setCamera(button.dataset.camera));
@@ -74,9 +76,17 @@ gizmoButton.addEventListener('click', () => {
   debugVisible = !debugVisible;
   car.toggleDebug();
   syncGizmoButton();
+  dirty = true;
+});
+modeControl.addEventListener('change', () => {
+  dirty = true;
+});
+animateControl.addEventListener('change', () => {
+  dirty = true;
 });
 steerControl.addEventListener('input', () => {
   steerValue.value = steerControl.value + '°';
+  dirty = true;
 });
 
 function frame(nowMs) {
@@ -91,7 +101,13 @@ function frame(nowMs) {
     debugVisible = !debugVisible;
     car.toggleDebug();
     syncGizmoButton();
+    dirty = true;
   }
+  if (!animateControl.checked && !dirty) {
+    frameId = requestAnimationFrame(frame);
+    return;
+  }
+  dirty = false;
   const mode = modeControl.value;
   const speed = mode === 'reverse' ? -8 : mode === 'brake' ? 0 : 12;
   state.velocityWorld.x = mode === 'drift' ? 9 : 0;
@@ -148,13 +164,20 @@ function frame(nowMs) {
             : 'AIR');
   }
   window.__carPreview.ready = true;
+  window.__carPreview.renderedMode = mode;
+  window.__carPreview.renderedCamera = cameraMode;
   frameId = requestAnimationFrame(frame);
 }
 window.__carPreview = { ready: false, car, state, view, track, setCamera };
 frameId = requestAnimationFrame(frame);
+function resize() {
+  dirty = true;
+}
+window.addEventListener('resize', resize);
 import.meta.hot?.dispose(() => {
   cancelAnimationFrame(frameId);
   keyboard.dispose();
+  window.removeEventListener('resize', resize);
   car.dispose();
   track.dispose();
   view.dispose();

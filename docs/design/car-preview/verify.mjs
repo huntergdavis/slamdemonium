@@ -43,6 +43,11 @@ try {
     0xff6570,
   );
   await page.locator('[data-camera="rear"]').click();
+  await page.waitForFunction(
+    () =>
+      window.__carPreview.renderedCamera === 'rear' &&
+      window.__carPreview.renderedMode === 'brake',
+  );
   await page.screenshot({ path: output + '/rear-braking.png' });
   await page.locator('#mode').selectOption('reverse');
   await page.waitForFunction(
@@ -122,6 +127,11 @@ try {
   await page.locator('#mode').selectOption('drift');
   await page.locator('#animate').uncheck();
   await page.locator('[data-camera="top"]').click();
+  await page.waitForFunction(
+    () =>
+      window.__carPreview.renderedCamera === 'top' &&
+      window.__carPreview.renderedMode === 'drift',
+  );
   await page.waitForFunction(() => window.__carPreview.state.handbrake01 > 0);
   await page.screenshot({ path: output + '/top-drift.png' });
   assert.deepEqual(errors, []);
