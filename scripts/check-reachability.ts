@@ -12,7 +12,8 @@ export interface ReachabilityResult {
 }
 const ALLOWLIST = 'scripts/reachability-allowlist.json';
 const codeFile = /\.(?:[cm]?[jt]sx?)$/;
-const assetFile = /\.(?:css|json|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|wasm)$/;
+const assetFile =
+  /\.(?:css|json|md|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|wasm)$/;
 
 function display(root: string, path: string): string {
   return relative(root, path).split(sep).join('/');

@@ -116,7 +116,7 @@ describe('production import reachability', () => {
   it('ignores Vite non-code asset queries without treating raw TS text as runtime wiring', () => {
     const root = fixture({
       'src/main.ts':
-        "import wasmUrl from 'jolt-physics/jolt-physics.wasm.wasm?url'; import './style.css?inline'; import source from './feature.ts?raw';",
+        "import wasmUrl from 'jolt-physics/jolt-physics.wasm.wasm?url'; import './style.css?inline'; import help from '../docs/help.md?raw'; import source from './feature.ts?raw';",
       'src/feature.ts': 'export const start = 1;',
     });
     const result = checkReachability(root);
