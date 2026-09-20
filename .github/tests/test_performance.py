@@ -26,6 +26,7 @@ def report():
     return {
         "schemaVersion": 1, "recordedAt": "2026-09-20T22:00:00.000Z",
         "revision": "a" * 40, "passed": True, "failures": [],
+        "mode": "sustained",
         "scenario": {"name": "physics-demo"},
         "parameters": {"mass": 1200, "gravity": 9.81},
         "parameterFingerprint": "b" * 64,
@@ -164,6 +165,11 @@ class PerformanceTests(unittest.TestCase):
                 source.write_text(json.dumps(failed))
                 self.assertEqual(perf.main(), 1)
                 self.assertIn("Recorder overflow", summary.read_text())
+                smoke = report()
+                smoke["mode"] = "smoke/custom"
+                source.write_text(json.dumps(smoke))
+                self.assertEqual(perf.main(), 1)
+                self.assertIn("**SMOKE/CUSTOM**", summary.read_text())
                 source.write_text(json.dumps(report()))
                 self.assertEqual(perf.main(), 0)
                 self.assertIn("**PASS**", summary.read_text())
