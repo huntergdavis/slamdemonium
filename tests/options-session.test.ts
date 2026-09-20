@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { DEFAULT_VALUES, PARAM_BY_KEY } from '../src/tuning/schema';
 import { TuningStore } from '../src/tuning/store';
-import { TuningSession } from '../src/ui/tuningSession';
+import { TuningSession, type RebuildState } from '../src/ui/tuningSession';
 import {
   sliderToValue,
   usesLogSlider,
@@ -17,20 +17,22 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-it('applies mass values restored by a share link through the same debounced adapter callback', async () => {
+it('restores tuning without owning a rebuild timer or inventing pending state', () => {
   vi.useFakeTimers();
-  const update = vi.fn();
   const session = new TuningSession(new TuningStore(), {
     persistenceOptions: {
       storage: null,
       hash: '#' + btoa('{"mass":1900}').replace(/=+$/, ''),
     },
-    applyMassProperties: update,
   });
   expect(session.store.get('mass')).toBe(1900);
-  expect(session.rebuildState).toBe('pending');
-  await vi.advanceTimersByTimeAsync(100);
-  expect(update).toHaveBeenCalledOnce();
+  expect(session.rebuildState).toBe('unavailable');
+  session.persistence.flush();
+  expect(vi.getTimerCount()).toBe(0);
+  session.store.set('mass', 2000);
+  session.persistence.flush();
+  expect(vi.getTimerCount()).toBe(0);
+  expect(session.rebuildState).toBe('unavailable');
   session.dispose();
 });
 const memoryOnly = { persistenceOptions: { storage: null, hash: '' } };
@@ -95,73 +97,43 @@ it('imports full sets with warnings, preserves export snapshots, and shares rela
   session.dispose();
 });
 
-it('coalesces mass edits for 100 ms and applies the latest state without owning body transforms', async () => {
+it('displays external rebuild transitions without applying or clearing the owner state', () => {
   vi.useFakeTimers();
-  const store = new TuningStore();
-  const applied: number[] = [];
-  const session = new TuningSession(store, {
-    ...memoryOnly,
-    applyMassProperties: () => {
-      applied.push(store.get('mass'));
-    },
-  });
-  store.set('mass', 1500);
-  await vi.advanceTimersByTimeAsync(99);
-  expect(applied).toEqual([]);
-  store.set('mass', 1800);
-  store.set('comHeightOffset', -0.2);
-  await vi.advanceTimersByTimeAsync(99);
-  expect(applied).toEqual([]);
-  await vi.advanceTimersByTimeAsync(1);
-  expect(applied).toEqual([1800]);
-  expect(session.rebuildState).toBe('idle');
-  store.set('mass', 2000);
-  session.dispose();
-  await vi.advanceTimersByTimeAsync(100);
-  expect(applied).toEqual([1800]);
-});
-
-it('does not clear pending edits when an older asynchronous rebuild finishes', async () => {
-  vi.useFakeTimers();
-  let finish: (() => void) | undefined;
+  const feedback: { status: RebuildState; error: string | null } = {
+    status: 'idle',
+    error: null,
+  };
+  const read = vi.fn(() => feedback);
   const session = new TuningSession(new TuningStore(), {
     ...memoryOnly,
-    applyMassProperties: () =>
-      new Promise<void>((resolve) => {
-        finish = resolve;
-      }),
+    readRebuildState: read,
   });
-  session.store.set('mass', 1500);
-  await vi.advanceTimersByTimeAsync(100);
+  const changed = vi.fn();
+  session.onUpdate(changed);
   session.store.set('mass', 1800);
-  finish?.();
-  await Promise.resolve();
-  expect(session.rebuildState).toBe('pending');
-  await vi.advanceTimersByTimeAsync(100);
-  finish?.();
-  await Promise.resolve();
+  session.persistence.flush();
+  expect(vi.getTimerCount()).toBe(0);
   expect(session.rebuildState).toBe('idle');
+  feedback.status = 'pending';
+  session.updateRebuildState();
+  expect(session.rebuildState).toBe('pending');
+  changed.mockClear();
+  session.updateRebuildState();
+  expect(changed).not.toHaveBeenCalled();
+  feedback.status = 'error';
+  feedback.error = 'Mass adapter failed';
+  session.updateRebuildState();
+  expect(session.rebuildError).toBe('Mass adapter failed');
+  expect(session.store.get('mass')).toBe(1800);
+  feedback.status = 'idle';
+  feedback.error = null;
+  session.updateRebuildState();
+  expect(session.rebuildError).toBeNull();
   session.dispose();
-});
-
-it('reports failed or unavailable mass callbacks without rolling back live tuning', async () => {
-  vi.useFakeTimers();
-  const failed = new TuningSession(new TuningStore(), {
-    ...memoryOnly,
-    applyMassProperties: () => {
-      throw new Error('adapter unavailable');
-    },
-  });
-  failed.store.set('mass', 1500);
-  await vi.advanceTimersByTimeAsync(100);
-  expect(failed.rebuildState).toBe('error');
-  expect(failed.store.get('mass')).toBe(1500);
-  failed.dispose();
-  const missing = new TuningSession(new TuningStore(), memoryOnly);
-  missing.store.set('mass', 1600);
-  await vi.advanceTimersByTimeAsync(100);
-  expect(missing.rebuildState).toBe('unavailable');
-  missing.dispose();
+  read.mockClear();
+  session.updateRebuildState();
+  expect(read).not.toHaveBeenCalled();
+  expect(feedback).toEqual({ status: 'idle', error: null });
 });
 
 it('maps logarithmic and discrete slider endpoints without changing typed precision', () => {

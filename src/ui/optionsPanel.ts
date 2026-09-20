@@ -36,6 +36,7 @@ export class OptionsPanel {
   private readonly unsubscribe: () => void;
   private notice = '';
   private open = false;
+  private lastFeedbackMs = -Infinity;
 
   constructor(private readonly options: OptionsPanelOptions) {
     const { host, drivingSurface, store } = options;
@@ -284,6 +285,10 @@ export class OptionsPanel {
   }
 
   update(nowMs: number): void {
+    if (this.open && nowMs - this.lastFeedbackMs >= 1000 / 30) {
+      this.lastFeedbackMs = nowMs;
+      this.session.updateRebuildState();
+    }
     this.groups.plot.update(
       nowMs,
       this.open && this.groups.tires.open && !this.groups.tires.hidden,
@@ -352,7 +357,8 @@ export class OptionsPanel {
       error: 'Save failed · export to keep this tune',
     };
     this.saved.nodeValue = labels[session.persistence.status];
-    this.message.nodeValue = this.notice || session.message;
+    this.message.nodeValue =
+      this.notice || session.message || session.rebuildError || '';
   }
 
   private run(action: () => void): void {
