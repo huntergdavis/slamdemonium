@@ -4,6 +4,7 @@ import { createGameStub } from './core/gameApi';
 import type { GameInput } from './core/gameApi';
 import { DebouncedMassRebuild } from './core/massRebuild';
 import { FixedStepLoop } from './core/loop';
+import { PerformanceRecorder } from './core/performance';
 import { TransformHistory } from './core/transforms';
 import type { IPhysicsWorld } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
@@ -102,6 +103,7 @@ async function boot(): Promise<void> {
   let frameTime = 0;
   const cameraOffset = new Vector3(0, 4, 9);
   const cameraTarget = new Vector3();
+  const measurements = new PerformanceRecorder();
   const loop = new FixedStepLoop(
     {
       get physicsHz() {
@@ -112,6 +114,7 @@ async function boot(): Promise<void> {
       },
     },
     {
+      measurement: measurements,
       sampleForStep() {
         const live = input.sampleForStep();
         sampled = injected ? requested : live;
@@ -124,7 +127,9 @@ async function boot(): Promise<void> {
         vehicle.preStep(dt, sampled, source);
       },
       stepPhysics(dt) {
+        const engineStarted = performance.now();
         physics.step(dt);
+        measurements.recordEngineStep(performance.now() - engineStarted);
       },
       postStep(dt) {
         vehicle.postStep(dt);
@@ -260,6 +265,7 @@ async function boot(): Promise<void> {
         locked: wheel.locked,
         grounded: wheel.grounded,
       })),
+      droppedSeconds: loop.droppedSeconds,
       totalSteps: loop.totalSteps,
       stepsPerFrame: loop.stepsThisFrame,
       alpha: loop.alpha,
@@ -269,6 +275,16 @@ async function boot(): Promise<void> {
   };
   game.respawn = respawn;
   game.runPhysicsSpike = () => runPhysicsSpike(createPhysicsWorld);
+  game.perf = {
+    start: () => measurements.start(),
+    setPaused: (paused) => measurements.setPaused(paused),
+    drain: () => measurements.drain(),
+    getMemory() {
+      const memory = { heapBytes: 0, freeBytes: 0 };
+      physics.getMemoryStats(memory);
+      return memory;
+    },
+  };
   visibilityChanged = () => {
     loop.setPaused(document.hidden);
   };

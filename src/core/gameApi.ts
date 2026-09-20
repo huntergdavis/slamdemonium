@@ -1,4 +1,6 @@
 import type { PhysicsSpikeResult } from '../physics/spike';
+import type { PhysicsMemory } from '../physics/adapter';
+import type { PerformanceBatch } from './performance';
 
 export interface GameInput {
   throttle: number;
@@ -24,6 +26,13 @@ export interface GameTestApi {
   getTelemetry(): Readonly<Record<string, unknown>>;
   respawn(): void;
   runPhysicsSpike?: () => Promise<PhysicsSpikeResult>;
+  /** Optional diagnostics; scenario input continues through the standard API. */
+  perf?: {
+    start(): void;
+    setPaused(paused: boolean): void;
+    drain(): PerformanceBatch;
+    getMemory(): PhysicsMemory;
+  };
 }
 
 function unavailable(): never {
