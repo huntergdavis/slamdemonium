@@ -35,6 +35,8 @@ def validate(report):
     """Reject incomplete reports instead of displaying missing samples as zero."""
     if report["schemaVersion"] != 1 or type(report["passed"]) is not bool:
         raise ValueError("Unsupported performance report")
+    if report["mode"] not in ("sustained", "smoke/custom"):
+        raise ValueError("Unknown measurement mode")
     for name in TIMINGS:
         timing = report["timing"][name]
         if type(timing["count"]) is not int or timing["count"] < 1:
@@ -76,6 +78,12 @@ def validate(report):
 def gates_pass(report):
     return (report["timing"]["physicsStep"]["p99Ms"] <= 2
             and all(report["memory"][key] <= 10 for _, _, key in HEAPS))
+
+
+def verdict(report):
+    if not report["passed"] or not gates_pass(report):
+        return "FAIL"
+    return "PASS" if report["mode"] == "sustained" else "SMOKE/CUSTOM"
 
 
 def cell(value):
@@ -142,14 +150,15 @@ def history(current, repository, run_id):
 def render(report, prior, notes, run_url):
     parameter_id = report["parameterFingerprint"]
     config_id = report["configurationFingerprint"]
-    passed = report["passed"] and gates_pass(report)
     memory = report["memory"]
     lines = [
         "# Performance measurement",
         "",
-        f"**{'PASS' if passed else 'FAIL'}** — design 13.4: full physics-step "
+        f"**{verdict(report)}** — design 13.4: full physics-step "
         "P99 ≤ 2 ms; each measured heap growth ≤ 10%.",
         "This dedicated workflow does not gate ordinary PR merges.",
+        f"Measurement mode: **{cell(report['mode'])}**. "
+        "Short/custom runs do not satisfy sustained CI acceptance.",
         "",
         f"Scenario: **{cell(report['scenario']['name'])}**. "
         f"Revision: {cell(report['revision'])}.",
@@ -197,12 +206,11 @@ def render(report, prior, notes, run_url):
         frame = item["timing"]["frame"]
         growth = " / ".join(f"{item['memory'][key]:+.2f}%"
                             for _, _, key in HEAPS)
-        verdict = "PASS" if item["passed"] and gates_pass(item) else "FAIL"
         lines.append(f"| [{cell(item['recordedAt'])}]({url}) | "
                      f"{item['revision'][:8]} | {item['configurationFingerprint'][:12]} | "
                      f"{item['timing']['physicsStep']['p99Ms']:.3f} | "
                      f"{frame['p50Ms']:.2f} / {frame['p95Ms']:.2f} / "
-                     f"{frame['p99Ms']:.2f} | {growth} | {verdict} |")
+                     f"{frame['p99Ms']:.2f} | {growth} | {verdict(item)} |")
     lines += [""] + [cell(note) for note in notes]
     if not prior:
         lines += ["No retained earlier main measurement is available yet."]
@@ -213,7 +221,8 @@ def render(report, prior, notes, run_url):
         ("Applied tuning parameters", report["parameters"]),
         ("Scenario, run configuration, and host",
          {key: report.get(key) for key in
-          ("scenario", "config", "host", "browser", "viewport", "mode")}),
+          ("scenario", "scenarioFingerprint", "inputIdentity", "replay", "config",
+           "host", "browser", "viewport", "mode", "worktreeDirty")}),
     ):
         # Escape HTML and prevent data from terminating the fenced block.
         data = html.escape(json.dumps(value, sort_keys=True, indent=2)).replace(
@@ -240,7 +249,7 @@ def main():
                    if repository and run_id else "#")
         prior, notes = history(report, repository, run_id)
         write_summary(render(report, prior, notes, run_url))
-        return 0 if report["passed"] and gates_pass(report) else 1
+        return 0 if verdict(report) == "PASS" else 1
     except (OSError, ValueError, KeyError, TypeError) as error:
         write_summary("# Performance measurement unavailable\n\n"
                       "**FAIL** — no complete, valid report was produced. "
