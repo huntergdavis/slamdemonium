@@ -31,6 +31,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] D5 | designer | Speed cues as code (design 10.2): fog tuning, speed lines above ~80% top speed and during boost, vignette. NOT camera FOV/shake/roll (developer 1, WP6). Check WP3 first for overlap. | design/speed-cues
 
+- [ ] T11 | techwriter | Document gamepad: the press-a-button-to-wake gotcha (CTO hit this), keyboard+pad simultaneous, analog triggers. README controls + FAQ entry. Verify mapping against src/input/gamepad.ts. | docs/gamepad
+
 ## Later (phase 3)
 
 - [ ] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10).
