@@ -1,5 +1,16 @@
 # Decisions
 
+Running log of technical decisions, spike results and changed defaults. New entries go at the bottom; this index is the way in.
+
+## Index
+
+| Date | Decision | Consequence |
+|---|---|---|
+| 2026-09-20 | [WP0: minimal browser scaffold and reproducible tooling](#2026-09-20--wp0-minimal-browser-scaffold-and-reproducible-tooling) | Strict TypeScript, Vite, three.js, Vitest and Playwright, every dependency pinned exactly; TypeScript held at 6.0.3 for typescript-eslint; no physics dependency until WP1 confirms the Jolt flavor. |
+| 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number | null` because stock Jolt cannot supply a solved value. |
+
+When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
+
 ## 2026-09-20 — WP0: minimal browser scaffold and reproducible tooling
 
 - Use strict TypeScript, Vite, three.js WebGLRenderer, Vitest, and Playwright.
