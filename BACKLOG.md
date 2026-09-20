@@ -36,7 +36,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] WP15 | designer | Reachability guard: `npm run check:reachable` fails when a module under `src/` is unreachable from `main.ts`. Understands dynamic imports; allowlist requires a one-line reason. Prevents the WP14 class of bug. | design/reachability-guard
 
-- [ ] T13 | techwriter | QA checklist refresh: Firefox is required not bonus, game is drivable, zero-assist placement, plus new mount/persistence/key checks pending WP14. | docs/qa-refresh
 
 - [ ] O5 | devops | Cross-browser evidence for design 3 criterion 1: Firefox + WebKit smoke (boot, base path, WASM, keyboard driving) in CI. Full suite stays Chromium. Advise on the broadband cold-load measurement. | devops/cross-browser
 
@@ -84,3 +83,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP9b | developer 2 | Design 13.2 integration tests expressed as scripts: accel, brake distance (~77 m ±15%), constant-steer circle, handbrake turn, plus determinism/soak/energy invariants. | dev2/wp9b-integration (PR #46)
 - [x] T12 | techwriter | `docs/SCRIPTED_INPUT.md`: record, replay, hand-author, assertions, lap timing, and why recordings must start from a fresh respawn. | docs/scripted-input (PR #47)
 - [x] R5 | research | Honest end-of-slice assessment against design section 3: every acceptance criterion marked MET / UNVERIFIED / NOT MET with evidence, including the human-judged ones pending CTO playtest. | research/slice-review (PR #45)
+- [x] T13 | techwriter | QA checklist refresh: Firefox is required not bonus, game is drivable, zero-assist placement, plus new mount/persistence/key checks pending WP14. | docs/qa-refresh (PR #49)
