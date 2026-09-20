@@ -22,7 +22,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] WP9a | research | Performance harness from design 13.4 (`npm run perf`): frame/step p99, JS+WASM heap, configurable thresholds, swappable scenario. Not wired into CI (devops owns that). | research/perf-harness
 
-- [ ] D4 | designer | Car visual as CODE (design 10.3): chassis box, nose chevron, rear light strip, wheel meshes with steer/spin/suspension, witness stripes, G-key gizmos. Reads a documented vehicle-state interface agreed with developer 1. | design/car-visual
 
 - [ ] O4 | devops | CI job running research's `npm run perf` with design 13.4 gates; decide required vs advisory vs main-only and justify; surface the trend. Blocked on WP9a. | devops/perf-ci
 
@@ -64,3 +63,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] T9 | techwriter | Reproducible screenshot capture: Playwright script + `docs/screenshots/README.md` conventions, so shots can be regenerated identically. | docs/screenshot-tooling (PR #28)
 - [x] T10 | techwriter | README: player-facing 'play in your browser' link above the npm path; docs/TEAM.md: PR-preview paragraph (URL shape, timing, bot comment, SHA check, cleanup). | docs/play-link (PR #29)
 - [x] WP7 | developer 2 | Options UI (8). Gate G2. (PR #30, G2)
+- [x] D4 | designer | Car visual as CODE (design 10.3): chassis box, nose chevron, rear light strip, wheel meshes with steer/spin/suspension, witness stripes, G-key gizmos. Reads a documented vehicle-state interface agreed with developer 1. | design/car-visual (PR #32)
