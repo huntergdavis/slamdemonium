@@ -25,14 +25,20 @@ When you are tuning and something feels wrong, start with [docs/TUNING_PLAYBOOK.
 
 ## Run it
 
-You need [Node.js](https://nodejs.org) 22 or newer. Then, from the project folder:
+**Play it in your browser:** <https://hunterdavis.com/slamdemonium/>
+
+Open the link in Chrome, Firefox or Safari on a desktop, click the page, press **W** and go. Nothing to install, no account.
+
+### Run it from source
+
+For contributors, or if you want to change the code. You need [Node.js](https://nodejs.org) 22 or newer. Then, from the project folder:
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173/> in Chrome, Firefox or Safari, click the page, press **W** and go. Press **O** for the options panel. Changes to the code reload in place while the dev server runs.
+Open <http://127.0.0.1:5173/> in your browser. Changes to the code reload in place while the dev server runs.
 
 To build a standalone copy for any static web host:
 

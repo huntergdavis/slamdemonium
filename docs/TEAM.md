@@ -30,6 +30,12 @@ Work packages and their current owners are in [BACKLOG.md](../BACKLOG.md). The d
 
 Keep PRs to one topic. A one-line fix gets its own branch and PR rather than riding along in something unrelated.
 
+### PR previews
+
+Every PR that targets `main` gets a playable preview at `https://hunterdavis.com/slamdemonium/pr/<number>/`, drafts included. It appears roughly one to three minutes after a push, longer when deployments are queued. A single bot comment on the PR holds the link and updates in place on every push. The preview shows a persistent yellow banner marking it as a preview and linking back to the live game. When the PR closes or merges, the preview is removed and the comment says so.
+
+Before judging a preview, check the deployed commit SHA on the bot comment against the branch head. If they differ, the build you are looking at is stale; wait for the next update.
+
 ## Talking to each other
 
 Everyone reports to the PM. Ping the PM whenever you finish a task, open a PR, get blocked, or have a question, without waiting to be asked:
