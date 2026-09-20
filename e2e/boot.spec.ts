@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { GAME_NAME } from '../src/core/constants';
 
-test('renders an empty scene and exposes the ready automation surface', async ({
+test('renders the physics scene and exposes the ready automation surface', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -19,7 +19,7 @@ test('renders an empty scene and exposes the ready automation surface', async ({
     if (message.type() === 'error' || message.type() === 'warning')
       errors.push(message.text());
   });
-  await page.goto('/');
+  await page.goto('./');
   await page.waitForFunction(() => window.__game?.ready);
   await expect(page).toHaveTitle(GAME_NAME);
   const canvas = page.getByLabel('Driving view');

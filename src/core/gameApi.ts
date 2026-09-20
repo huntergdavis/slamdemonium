@@ -1,3 +1,5 @@
+import type { PhysicsSpikeResult } from '../physics/spike';
+
 export interface GameInput {
   throttle: number;
   brake: number;
@@ -18,6 +20,7 @@ export interface GameTestApi {
   stepMany(steps: number): void;
   getTelemetry(): Readonly<Record<string, unknown>>;
   respawn(): void;
+  runPhysicsSpike?: () => Promise<PhysicsSpikeResult>;
 }
 
 function unavailable(): never {

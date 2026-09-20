@@ -195,3 +195,42 @@ describe('the real single-thread WASM adapter', () => {
     expect(stats.heapBytes).toBeGreaterThan(0);
   });
 });
+
+it('reports real contact geometry with an explicitly unavailable solved impulse', async () => {
+  const w = await world();
+  const floor = w.createStaticBox(
+    { x: 0, y: -0.5, z: 0 },
+    { x: 5, y: 0.5, z: 5 },
+  );
+  const car = w.createDynamicBox(box());
+  let seen = false;
+  w.onContact((a, b, impulse, point, normal) => {
+    expect([a, b].sort()).toEqual([floor, car].sort());
+    expect(impulse).toBeNull();
+    expect(Number.isFinite(point.x + point.y + point.z)).toBe(true);
+    expect(Math.abs(normal.y)).toBeCloseTo(1, 5);
+    seen = true;
+  });
+  for (let i = 0; i < 240; i++) w.step(1 / 120);
+  expect(seen).toBe(true);
+});
+
+it('uses rebuilt mass and scaled yaw inertia for force and torque response', async () => {
+  const w = await world();
+  w.setGravity(0);
+  const id = w.createDynamicBox(box());
+  w.updateMassProperties(id, {
+    mass: 24,
+    comOffset: { x: 0, y: 0, z: 0 },
+    inertiaScale: { x: 1, y: 2, z: 1 },
+  });
+  w.applyForceAtPoint(id, { x: 0, y: 0, z: -2880 }, { x: 0, y: 2, z: 0 });
+  w.applyTorque(id, { x: 0, y: 120, z: 0 });
+  w.step(1 / 120);
+  const velocity = vec();
+  const omega = vec();
+  w.getLinearVelocity(id, velocity);
+  w.getAngularVelocity(id, omega);
+  expect(velocity.z).toBeCloseTo(-1, 5);
+  expect(omega.y).toBeCloseTo(0.125, 5); // 24 kg cube: I_y = 4, doubled to 8.
+});
