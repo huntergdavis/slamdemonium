@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Asphalt material study</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; color: #f2f6f8; background: #121a23; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 36px clamp(18px, 4vw, 64px); }
+    header { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 28px; }
+    .eyebrow { color: #6fe4ff; font: 12px ui-monospace, monospace; letter-spacing: .15em; text-transform: uppercase; }
+    h1 { font-size: clamp(32px, 4vw, 52px); font-weight: 650; letter-spacing: -.04em; margin: 8px 0; }
+    p { color: #acbbc7; line-height: 1.6; margin: 0; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+    .preview, aside { border: 1px solid #516170; border-radius: 12px; overflow: hidden; }
+    .preview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; background: #1b2732; }
+    .preview-head p, .small { font-size: 12px; }
+    #preview { display: block; width: 100%; height: auto; background: #45494d; }
+    .preview-foot { padding: 14px 20px; border-top: 1px solid #516170; font-size: 13px; }
+    aside { padding: 22px; background: #1b2732; }
+    h2 { font-size: 16px; margin: 0 0 20px; }
+    .field { margin-bottom: 22px; }
+    label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 14px; }
+    output { font-family: ui-monospace, monospace; color: #6fe4ff; }
+    input[type=range] { width: 100%; accent-color: #6fe4ff; margin: 0 0 6px; }
+    input[type=number] { background: #121a23; color: #f2f6f8; border: 1px solid #516170; border-radius: 5px; padding: 10px; width: 100%; font: 14px ui-monospace, monospace; }
+    button { cursor: pointer; border: 1px solid #516170; border-radius: 6px; background: #253341; color: #f2f6f8; padding: 10px 14px; font: inherit; font-size: 13px; }
+    button:hover { background: #33485a; }
+    button[aria-pressed=true] { border-color: #6fe4ff; color: #6fe4ff; }
+    button.primary { background: #6fe4ff; color: #121a23; border-color: #6fe4ff; font-weight: 650; }
+    :focus-visible { outline: 2px solid #6fe4ff; outline-offset: 3px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .stats { border-top: 1px solid #516170; margin-top: 22px; padding-top: 18px; }
+    dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 10px; font-size: 13px; }
+    dt { color: #acbbc7; } dd { margin: 0; font-family: ui-monospace, monospace; }
+    .note { margin-top: 20px; padding-left: 12px; border-left: 2px solid #ff6b24; font-size: 12px; }
+    #status { min-height: 42px; margin-top: 18px; font-size: 12px; }
+    footer { margin-top: 22px; font-size: 12px; color: #acbbc7; }
+    a { color: #6fe4ff; }
+    @media(max-width: 850px) { main { grid-template-columns: 1fr; } header { align-items: start; flex-direction: column; } aside { width: 100%; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><div class="eyebrow">Driving-feel lab / material study 01</div><h1>Asphalt, in motion.</h1><p>Fine grain for speed. Broad blotches for a road that feels physical.</p></div>
+    <div class="eyebrow">Procedural · seamless · seeded</div>
+  </header>
+  <main>
+    <section class="preview" aria-label="Asphalt texture preview">
+      <div class="preview-head"><div><strong id="viewTitle">2 × 2 repeat</strong><p id="viewSize">16 × 16 m at the default material scale</p></div><div class="actions"><button id="single" aria-pressed="false">One tile</button><button id="repeat" aria-pressed="true">2 × 2</button></div></div>
+      <canvas id="preview" width="1024" height="1024" aria-label="Generated asphalt tiles; use PNG export for the full-resolution texture"></canvas>
+      <div class="preview-foot">Repeat joins cross the center. Look for continuous blotches without a visible grid.</div>
+    </section>
+    <aside aria-label="Texture controls">
+      <h2>Shape the surface</h2>
+      <div class="field"><label for="grain">Grain scale <output id="grainValue" for="grain">1 px</output></label><input id="grain" type="range" min="1" max="32" step="0.25" value="1"><p class="small">Larger values make the aggregate coarser.</p></div>
+      <div class="field"><label for="blotch">Blotch scale <output id="blotchValue" for="blotch">128 px</output></label><input id="blotch" type="range" min="16" max="512" step="8" value="128"><p class="small">Reference texels at 1024 px; 128 px = 1 m.</p></div>
+      <div class="field"><label for="contrast">Contrast <output id="contrastValue" for="contrast">1.00×</output></label><input id="contrast" type="range" min="0" max="3" step="0.05" value="1"><p class="small">Zero produces the flat base color #45494D.</p></div>
+      <div class="field"><label for="seed">Seed</label><input id="seed" type="number" min="0" max="4294967295" step="1" aria-describedby="seedHelp"><p class="small" id="seedHelp">Same seed and settings, same pixels.</p></div>
+      <div class="actions"><button class="primary" id="download">Download PNG</button><button id="reset">Reset</button></div>
+      <div class="stats"><dl><dt>Texture</dt><dd>1024 × 1024</dd><dt>Tile scale</dt><dd>8 m</dd><dt>Roughness</dt><dd>0.95</dd><dt>Metalness</dt><dd>0.00</dd><dt>Generation</dt><dd id="duration">—</dd><dt>Pixel data</dt><dd>4 MiB</dd></dl></div>
+      <p class="note">This is a 2D albedo preview. Roughness 0.95 is the material handoff default; lighting and roughness are not simulated here. Enable mipmaps and maximum supported anisotropy in the world renderer.</p>
+      <p id="status" role="status" aria-live="polite">Generating the default texture…</p>
+    </aside>
+  </main>
+  <footer><a href="README.md">Integration and verification notes</a> · No network requests or build step needed to view this demo.</footer>
+  <canvas id="textureSource" width="1024" height="1024" hidden></canvas>
+  <script src="asphalt-demo.js" defer></script>
+</body>
+</html>
