@@ -221,6 +221,88 @@ The thin-wall sweep, performance budget, five-minute soak, deterministic replay,
 and Safari/Firefox checks remain **WP1's gate**, not claims established by this note.
 `deja` recall returned no matching prior session; no prior findings were reused.
 
+## R1b: solved contact impulse is not exposed by Jolt 1.1.0
+
+**No public binding retrieves the current step's solved rigid-body contact impulse.**
+`OnContactAdded` and `OnContactPersisted` supply detection-time manifold/settings,
+not a post-solve event. The native documentation explicitly says the solver has
+not run when a contact is added. `ContactSettings` contains friction, restitution,
+mass/inertia scales, sensor status and relative surface velocities; `ContactManifold`
+contains points, normal, penetration and subshape IDs. Neither contains solved
+impulses, and retaining the callback objects until after `Step` does not create
+that data. Copy needed scalars during the callback; do not retain temporary wrappers.
+[Native callback timing](https://jrouwe.github.io/JoltPhysics/class_contact_listener.html)
+· [Exact 1.1.0 declarations][types] · [Published-source IDL][idl]
+
+`EstimateCollisionResponse` and `CollisionEstimationResult` are absent from this
+package's declarations and IDL. Even the native helper is an **estimate**, not a
+getter for the actual solver result. Exposed `GetTotalLambda…` methods belong to
+specific joint constraints, and wheel lambda methods to the built-in vehicle;
+they are not accessors for arbitrary chassis/wall collision impulses.
+
+**Practical workaround for approximate FX:** sample a dynamic body's linear
+velocity immediately before and after the full fixed step, recording its contact
+pairs during callbacks. In SI units, the residual momentum change is:
+
+```text
+J_residual = mass * (v_after - v_before)
+             - dt * (mass * gravityVector + sumOfKnownAppliedForces)
+```
+
+Also account for damping, explicit impulses and other velocity modifications;
+respawns/mass changes invalidate the sample. For one dominant isolated impact,
+`max(0, dot(J_residual, normalOnThisBody))` is a useful **estimated** normal impulse
+in N·s. It includes unresolved support/constraint effects and sums all contacts on
+that body. Floor + wall, several vehicles, or several CCD contacts cannot be
+reliably partitioned into pair impulses from that one velocity difference.
+Deduplicate contact notifications before attaching an estimate; do not report the
+whole body residual once for every contact point/pair.
+
+Recommendation: retain Jolt for G0 and document any such FX scalar as estimated.
+Do not silently promise solved impulses in `onContact(a,b,impulse,point,normal)`,
+and do not encode unavailable data as a physically meaningful zero. Exact future
+pairwise damage scoring needs a revised contract or an engine/binding change; a
+custom Jolt post-solve export is more work than exposing the existing estimator.
+This is a research recommendation for the PM, not an adapter contract change.
+
+**Rapier 0.20.0 offers both post-solve force events and contact impulse queries.**
+Enable events on at least one participating collider:
+
+```ts
+collider.setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS);
+collider.setContactForceEventThreshold(thresholdNewtons); // 0 while inspecting
+const queue = new RAPIER.EventQueue(true); // allocate once
+world.step(queue);
+queue.drainContactForceEvents(event => {
+  const a = event.collider1(); // collider handles: map to our body IDs
+  const b = event.collider2();
+  const aggregateImpulse = event.totalForceMagnitude() * world.timestep;
+  // Copy values here; event is temporary. Aggregate N*s, not a single-point impulse.
+});
+// Teardown: queue.free(), as well as world.free().
+```
+
+`totalForceMagnitude()` sums contact-force magnitudes; it is not the magnitude of
+the vector returned by `totalForce()`. Thresholds use **newtons**, so convert a
+desired impulse threshold using `J_min / dt`, not render-frame time. For individual
+normal impulses after stepping, use
+`world.contactPair(colliderA, colliderB, (manifold, flipped) => ...)`, iterate
+`i < manifold.numContacts()`, and read `manifold.contactImpulse(i)` in N·s.
+Tangent components are `contactTangentImpulseX/Y(i)`. Respect `flipped` when
+orienting the normal. Geometric-contact and solver-contact indices are different
+sets: do not zip `contactImpulse(i)` with `solverContactPoint(i)` blindly; transform
+the corresponding local geometric contact point when pairing impulse and position.
+Force events alone do not supply an impact point. Support forces can produce
+events too; an impact detector still needs contact/approach-speed semantics.
+[Rapier collision guide](https://rapier.rs/docs/user_guides/javascript/advanced_collision_detection/)
+· [Event types](https://unpkg.com/@dimforge/rapier3d-compat@0.20.0/dist/pipeline/event_queue.d.ts)
+· [Manifold types](https://unpkg.com/@dimforge/rapier3d-compat@0.20.0/dist/geometry/narrow_phase.d.ts)
+
+Verification: inspected the published Jolt types and matching release IDL;
+exercised Rapier's event and manifold calls with an isolated sphere/floor impact.
+`deja "EstimateCollisionResponse"` found only the current developer question;
+no prior solution was reused.
+
 [package]: https://unpkg.com/jolt-physics@1.1.0/package.json
 [types]: https://unpkg.com/jolt-physics@1.1.0/dist/types.d.ts
 [readme]: https://github.com/jrouwe/JoltPhysics.js/blob/c9c122bcd48e92885fbee7d267c928c3781d581c/README.md
