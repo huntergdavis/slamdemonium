@@ -32,7 +32,9 @@ def report():
         "parameterFingerprint": "b" * 64,
         "configurationFingerprint": "c" * 64,
         "timing": {key: copy.deepcopy(timing) for key in perf.TIMINGS},
-        "memory": {"first": memory, "last": {**memory, "elapsedSeconds": 300},
+        "memory": {"first": memory,
+                   "minuteFive": {**memory, "elapsedSeconds": 300},
+                   "last": {**memory, "elapsedSeconds": 308},
                    "jsUsedPercent": 0, "wasmUsedPercent": 0,
                    "wasmCapacityPercent": 0},
     }
@@ -95,6 +97,19 @@ class PerformanceTests(unittest.TestCase):
                      "mass", "1200", "WASM used", "FAIL", "d" * 12, "b" * 64,
                      "not directly comparable"):
             self.assertIn(text, output)
+        self.assertIn("Minute five (MiB)", output)
+        self.assertIn("Final EOF (MiB)", output)
+
+    def test_sustained_report_requires_actual_minute_five_measurement(self):
+        for value in (None, {**report()["memory"]["first"], "elapsedSeconds": 299}):
+            sample = report()
+            sample["memory"]["minuteFive"] = value
+            with self.subTest(checkpoint=value), self.assertRaises(ValueError):
+                perf.validate(sample)
+        sample = report()
+        sample["mode"] = "smoke/custom"
+        sample["memory"]["minuteFive"] = None
+        self.assertEqual(perf.verdict(perf.validate(sample)), "SMOKE/CUSTOM")
 
     def test_archive_reads_only_the_bounded_report_member(self):
         self.assertEqual(perf.read_archive(archive(report())), report())
