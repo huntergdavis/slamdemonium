@@ -104,8 +104,12 @@ export function createSpeedCues(host: HTMLElement) {
     previousLine = levels.lineAlpha;
     previousVignette = levels.vignetteAlpha;
     previousPhase = phase;
+    if (painted) {
+      // Fractional DPR can leave a partially covered last pixel in CSS space.
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    }
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    if (painted) context.clearRect(0, 0, width, height);
     painted = false;
     if (!moving && levels.vignetteAlpha === 0) {
       canvas.style.display = 'none';
