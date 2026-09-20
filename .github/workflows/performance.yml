@@ -2,8 +2,7 @@ name: Performance
 
 on:
   push:
-    # Temporary validation of the runner guard; remove draft branch before ready.
-    branches: [main, devops/perf-ci]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
