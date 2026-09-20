@@ -29,6 +29,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] WP12 | developer 1 + developer 2 | Fix duplicate mass-rebuild: single debounced applier in boot (dev1, with flush/cancel); Options panel displays reported rebuild state only (dev2). See QUESTIONS #9. | dev1/wp12-rebuild-owner
 
+- [ ] D5 | designer | Speed cues as code (design 10.2): fog tuning, speed lines above ~80% top speed and during boost, vignette. NOT camera FOV/shake/roll (developer 1, WP6). Check WP3 first for overlap. | design/speed-cues
+
 ## Later (phase 3)
 
 - [ ] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10).
