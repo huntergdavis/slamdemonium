@@ -111,6 +111,7 @@ export async function createPhysicsWorld(
       halfExtents: V3;
       dynamic: boolean;
       surfaceId: number;
+      inertia: V3;
     }
   >();
   let disposed = false;
@@ -166,6 +167,7 @@ export async function createPhysicsWorld(
     box.Release();
     return shifted;
   }
+  const lastInertia: V3 = { x: 0, y: 0, z: 0 };
   function setMass(
     body: initJolt.Body,
     bodyShape: initJolt.Shape,
@@ -189,6 +191,9 @@ export async function createPhysicsWorld(
     const colZ = inertia.GetAxisZ();
     vector.Set(colZ.GetX() * x * z, colZ.GetY() * y * z, colZ.GetZ() * z * z);
     inertia.SetAxisZ(vector);
+    lastInertia.x = inertia.GetAxisX().GetX();
+    lastInertia.y = inertia.GetAxisY().GetY();
+    lastInertia.z = inertia.GetAxisZ().GetZ();
     body.GetMotionProperties().SetMassProperties(J.EAllowedDOFs_All, massProps);
   }
   function add(
@@ -205,6 +210,7 @@ export async function createPhysicsWorld(
       halfExtents: { ...half },
       dynamic,
       surfaceId,
+      inertia: { ...lastInertia },
     });
     bodies.AddBody(
       id,
@@ -290,6 +296,7 @@ export async function createPhysicsWorld(
       const box = shape(entry.halfExtents, desc.comOffset);
       bodies.SetShape(entry.id, box, false, J.EActivation_Activate);
       setMass(entry.body, box, desc);
+      Object.assign(entry.inertia, lastInertia);
       box.Release();
       bodies.SetPositionRotationAndVelocity(
         entry.id,
@@ -298,6 +305,20 @@ export async function createPhysicsWorld(
         linear,
         angular,
       );
+    },
+    setBodyProperties(id, properties) {
+      const body = record(id).body;
+      const motion = body.GetMotionProperties();
+      motion.SetAngularDamping(properties.angularDamping);
+      motion.SetMaxAngularVelocity(properties.maxAngularVelocity);
+      body.SetFriction(properties.friction);
+      body.SetRestitution(properties.restitution);
+    },
+    getLocalInertia(id, out) {
+      const inertia = record(id).inertia;
+      out.x = inertia.x;
+      out.y = inertia.y;
+      out.z = inertia.z;
     },
     getTransform(id, outPos: V3, outQuat: Quat) {
       bodies.GetPositionAndRotation(record(id).id, position, rotation);
