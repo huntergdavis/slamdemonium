@@ -31,6 +31,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] WP13 | developer 1 | **Allocation-free hot path** (design 3 requirement, found by research in WP9a). Per-step churn measured: `Vehicle.tires` ~606 KB, suspension ~279 KB, Jolt `rayCast` ~475 KB, three.js shader-parameter paths ~2.7 MB (`WebGLPrograms.getParameters`, `getProgramCacheKey` arrays/joins, matrix paths). Preallocate/reuse in preStep, postStep and render; add a heap-growth regression test. Note: research showed GC is NOT the dominant p99 tail, so this is a correctness fix against the stated requirement, not a promised speedup. | dev1/wp13-no-alloc
 
+- [ ] WP9b | developer 2 | Design 13.2 integration tests expressed as scripts: accel, brake distance (~77 m ±15%), constant-steer circle, handbrake turn, plus determinism/soak/energy invariants. | dev2/wp9b-integration
+
 ## Later (phase 3)
 
 - [ ] WP8 | designer | HUD, telemetry graphs, CSV recorder (12). Gate G4.
