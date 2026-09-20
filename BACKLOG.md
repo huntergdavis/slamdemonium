@@ -17,7 +17,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] D2 | designer | Procedural asphalt generator prototype (9.3): standalone canvas/TS that produces the tiled 1024 noise texture; ready to drop into `src/world/materials.ts`. | design/asphalt
 - [ ] O1 | devops | GitHub Actions CI on PRs and main: lint, test, build, e2e (Playwright with browsers cached). Owns .github/. | devops/ci
 - [ ] O2 | devops | GitHub Pages deploy of `dist/` from main to hunterdavis.com/slamdemonium/ (Vite base path via VITE_BASE_PATH), enable Pages via gh api, branch protection on main requiring CI. | devops/pages
-- [ ] T1 | techwriter | README rewrite for Slamdemonium Racing: what it is (driving-feel lab), run instructions (fill in after WP0), controls table (11.1), team + workflow. Leave `docs/DECISIONS.md` to developer 1. | docs/readme
 - [ ] T2 | techwriter | `docs/TUNING_PLAYBOOK.md` from design 7.4, kept in sync. | docs/playbook
 
 ## Next (phase 2, after G0/G1)
@@ -33,3 +32,5 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] WP9 | all | QA, perf harness, soak/determinism, manual QA, Gate G5. Techwriter: screenshots in README.
 
 ## Done
+
+- [x] T1 | techwriter | README rewrite for Slamdemonium Racing: what it is (driving-feel lab), run instructions (fill in after WP0), controls table (11.1), team + workflow. Leave `docs/DECISIONS.md` to developer 1. | docs/readme (PR #1)
