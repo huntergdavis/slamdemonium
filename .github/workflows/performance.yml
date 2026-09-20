@@ -2,7 +2,8 @@ name: Performance
 
 on:
   push:
-    branches: [main]
+    # Temporary draft-PR validation; remove devops/perf-ci before marking ready.
+    branches: [main, devops/perf-ci]
   workflow_dispatch:
 
 permissions:
