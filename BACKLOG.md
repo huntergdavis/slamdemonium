@@ -15,8 +15,9 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] R4 | research | `docs/research/tuning-method.md`: how to run a feel-tuning session without fooling yourself (one change at a time, A/B, fixed route, G-G diagram, CSV, adaptation), plus a 30 min first-session script and common traps. | research/tuning-method
 
-- [ ] T6 | techwriter | Editorial consistency pass: update playbook and glossary for the approved drift-law replacement and FOV bound; verify all cross-links. | docs/consistency-pass
 - [ ] O3 | devops | PR preview deployments so the CTO can playtest a branch before merge; sticky PR comment with the link; cleanup on close. Plus CI badge and live link in README (2 lines max). | devops/pr-previews
+
+- [ ] T7 | techwriter | `docs/QA_CHECKLIST.md`: the design 13.5 manual QA pass as a runnable checklist a human follows on real hardware, with what to look for and how to report a failure. | docs/qa-checklist
 
 ## Next (phase 2, after G0/G1)
 
@@ -46,3 +47,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP2 | developer 2 | Tuning schema (all 69 rows of 7.2), typed store with change events, presets (7.3), JSON import/export, URL-hash share, validation, schema tests. | dev2/wp2-tuning
 - [x] D2 | designer | Procedural asphalt generator prototype (9.3): standalone canvas/TS that produces the tiled 1024 noise texture; ready to drop into `src/world/materials.ts`. | design/asphalt (PR #15)
 - [x] R3 | research | "Feels fast" and crash-happy arcade vibe references (10.2, section 1). `docs/research/speed-and-vibe.md` | research/vibe (PR #17)
+- [x] T6 | techwriter | Editorial consistency pass: update playbook and glossary for the approved drift-law replacement and FOV bound; verify all cross-links. | docs/consistency-pass (PR #18)
