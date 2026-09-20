@@ -33,6 +33,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] WP9b | developer 2 | Design 13.2 integration tests expressed as scripts: accel, brake distance (~77 m ±15%), constant-steer circle, handbrake turn, plus determinism/soak/energy invariants. | dev2/wp9b-integration
 
+- [ ] R5 | research | Honest end-of-slice assessment against design section 3: every acceptance criterion marked MET / UNVERIFIED / NOT MET with evidence, including the human-judged ones pending CTO playtest. | research/slice-review
+
 ## Later (phase 3)
 
 - [ ] WP8 | designer | HUD, telemetry graphs, CSV recorder (12). Gate G4.
