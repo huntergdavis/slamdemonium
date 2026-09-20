@@ -4,7 +4,7 @@ Record a drive, replay it exactly, and assert on what happened. For contributors
 
 The authoritative contract is [`src/input/SCRIPTS.md`](../src/input/SCRIPTS.md); this page explains how to use it. Terms like slide angle and physics step are in the [Glossary](GLOSSARY.md).
 
-> **Status.** The recorder, player, assertions and lap timer are merged and exercised by `tests/script-examples.test.ts`. Runtime exposure as `window.__game.scripts` is part of WP14 and not mounted yet; the two places below that depend on it are marked **pending WP14**.
+> **Status.** Fully wired. The recorder, player, assertions and lap timer are exercised by `tests/script-examples.test.ts`, and the live game exposes the controller as `window.__game.scripts` (WP14, merged).
 
 ## What it is for
 
@@ -71,7 +71,7 @@ Two more things break a recording in progress: changing any tuning value, and an
 
 ### Only one thing may own the input
 
-A recording captures what the real input mapper delivered, so nothing else may be feeding input at the same time. `startRecording` refuses if an automation `setInput` override or a perf step driver currently owns the input. While a recording or a replay is active, `setInput` and attaching a perf driver are refused in turn. *(These guards are being implemented in WP14; the rule already holds for tests.)*
+A recording captures what the real input mapper delivered, so nothing else may be feeding input at the same time. `startRecording` refuses if an automation `setInput` override or a perf step driver currently owns the input. While a recording or a replay is active, `setInput` and attaching a perf driver are refused in turn.
 
 The contributor sequence, in order:
 
@@ -115,7 +115,7 @@ While a replay is armed, the script owns the input. Live keyboard and controller
 
 The replay reports end of file only after the final step's `postStep` has completed, so the final telemetry is the real final state. Stepping past the end throws; `canStep()` is false there. `progress()` returns `{ completedSteps, totalSteps, done }` as a reused readonly view, so copy it if you keep history. `cancel()` releases the script's hold on input; it does not respawn and does not restore the tuning that `apply` overwrote.
 
-In the browser the controller is exposed as `window.__game.scripts` with `load`, `progress`, `cancel`, `result`, `lapProgress`, `startRecording` and `stopRecording`. **Pending WP14:** the property is declared in `src/core/gameApi.ts` but the live boot does not assign it until that PR merges. Until then these calls are reachable only in tests, where you hold the `ScriptController` directly.
+In the browser the controller is exposed as `window.__game.scripts` with `load`, `progress`, `cancel`, `result`, `lapProgress`, `startRecording`, `stopRecording`, and the read-only `recording` and `recordedSteps`. Loading a replay through it also handles the game's pause state for you: the loop runs the replay and pauses at the end. From a test you hold the `ScriptController` directly and drive the loop yourself.
 
 ## Writing a scenario by hand
 
