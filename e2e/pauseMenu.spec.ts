@@ -247,6 +247,8 @@ for (const mode of ['fullscreen', 'pointer'] as const) {
       await expect(
         page.getByRole('dialog', { name: 'Pause menu', exact: true }),
       ).toBeVisible();
+      if (process.env.WP16_NATIVE_ESCAPE === '1')
+        await page.screenshot({ path: 'scratch/wp16-' + mode + '.png' });
     },
   );
 }

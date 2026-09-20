@@ -80,3 +80,15 @@ and [Fullscreen UI](https://fullscreen.spec.whatwg.org/#ui).
 mapper/loop/Options/menu. It tests keyboard and gamepad use, stable stopped
 physics/script-sample counts, preserved external pause reasons, Options DOM
 identity, native fullscreen/pointer-lock exit and a 320×480 viewport.
+
+For a native browser-exit check on Linux with Xvfb and xdotool installed, run:
+
+```sh
+WP16_NATIVE_ESCAPE=1 xvfb-run -a npx playwright test e2e/pauseMenu.spec.ts --headed --workers=1
+```
+
+This sends an actual OS Escape to Chromium and asserts fullscreen/pointer lock
+exits before a later keypress toggles the menu. Ordinary headless CI verifies
+the Escape event is not canceled, the menu stays closed, and a subsequent
+keypress works after the real browser API exits the mode. CDP's page-level key
+injection does not itself invoke Chromium's browser-level exit gesture.

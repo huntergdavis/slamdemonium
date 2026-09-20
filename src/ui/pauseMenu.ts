@@ -112,6 +112,7 @@ export class PauseMenu {
     table.append(head, body);
     this.controls.append(
       node(doc, 'h2', 'sl-heading', 'Controls'),
+      this.button('Back', () => this.showView('menu')),
       node(
         doc,
         'p',
@@ -131,7 +132,6 @@ export class PauseMenu {
         'sl-caption',
         'Escape exits fullscreen or releases pointer lock first; press it again for the pause menu. P is a separate pause toggle and stays active until pressed again.',
       ),
-      this.button('Back', () => this.showView('menu')),
     );
     this.element.append(this.menu, this.controls);
     this.element.addEventListener('keydown', this.keydown);
