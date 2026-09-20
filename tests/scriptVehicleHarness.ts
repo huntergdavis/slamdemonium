@@ -27,9 +27,19 @@ export const neutralScriptInput: ScriptInput = {
   source: 'gamepad',
 };
 
-export async function scriptVehicleHarness() {
+export async function scriptVehicleHarness(
+  options: {
+    flatPlane?: boolean;
+    observeStep?: (vehicle: Vehicle, completedSteps: number) => void;
+  } = {},
+) {
   const world = await createPhysicsWorld({ wasmPath });
-  installTrackColliders(world, DEFAULT_TRACK_CONFIG);
+  if (options.flatPlane) {
+    world.createStaticBox(
+      { x: 0, y: -0.5, z: 0 },
+      { x: 5000, y: 0.5, z: 5000 },
+    );
+  } else installTrackColliders(world, DEFAULT_TRACK_CONFIG);
   const store = new TuningStore();
   const vehicle = new Vehicle(world, store, ringSpawn.position);
   const keyboard = new KeyboardInput(new EventTarget(), {
@@ -38,10 +48,12 @@ export async function scriptVehicleHarness() {
   const pad = makePad();
   const pads = [pad];
   const mapper = new InputMapper(keyboard, new GamepadInput(() => pads));
+  let completedSteps = 0;
   const scripts = new ScriptController({
     store,
     mapper,
     reset: (spawn) => {
+      completedSteps = 0;
       vehicle.rebuildMassProperties();
       vehicle.updateBodyProperties();
       vehicle.respawn(spawn.position, spawn.rotation);
@@ -65,6 +77,7 @@ export async function scriptVehicleHarness() {
       stepPhysics: (dt) => world.step(dt),
       postStep: (dt) => {
         vehicle.postStep(dt);
+        options.observeStep?.(vehicle, ++completedSteps);
         scripts.afterStep();
       },
       render: () => {},

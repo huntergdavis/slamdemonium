@@ -12,6 +12,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "e2e": "playwright test",
     "shots": "playwright test --config playwright.shots.config.ts",
     "perf": "npm run build && tsx scripts/perf/run.ts",
