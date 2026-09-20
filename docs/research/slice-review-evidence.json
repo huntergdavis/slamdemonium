@@ -1,0 +1,665 @@
+{
+  "reviewedRevision": "54a429695ce197be59cde999d33911c080529286",
+  "observedAt": "2026-09-20T23:27:14.261Z",
+  "browser": {
+    "revision": "54a429695ce197be59cde999d33911c080529286",
+    "startedAt": "2026-09-20T23:27:14.261Z",
+    "viewport": {
+      "width": 800,
+      "height": 450
+    },
+    "browser": "153.0.8010.12",
+    "errors": [],
+    "mounts": {
+      "options": 1,
+      "hud": 1,
+      "scriptsType": "object",
+      "minimalFpsText": "1 FPS \u00b7 1360.6 ms",
+      "hotkeys": [
+        "P pauses",
+        "O opens",
+        "H selects Minimal",
+        "T toggles 0.25/1",
+        "Tab swaps A/B"
+      ]
+    },
+    "bindings": {
+      "count": 85,
+      "uniqueKeys": 71,
+      "mismatches": []
+    },
+    "acceleration": [
+      {
+        "value": 6,
+        "applied": 6,
+        "before": 13.011435199639852,
+        "after": 13.059122738769355,
+        "deltaSpeed": 0.04768753912950352
+      },
+      {
+        "value": 30,
+        "applied": 30,
+        "before": 13.011435199639852,
+        "after": 13.20357101195778,
+        "deltaSpeed": 0.19213581231792887
+      }
+    ],
+    "mass": [
+      {
+        "target": 1800,
+        "actual": 1800,
+        "elapsedMs": 2970.300000190735,
+        "beforePosition": {
+          "x": 130,
+          "y": 0.8611573576927185,
+          "z": -6.360708236694336
+        },
+        "afterPosition": {
+          "x": 130,
+          "y": 0.8611573576927185,
+          "z": -6.360708236694336
+        },
+        "beforeSpeed": 13.20357101195778,
+        "afterSpeed": 13.20357101195778,
+        "status": "idle"
+      },
+      {
+        "target": 1300,
+        "actual": 1300,
+        "elapsedMs": 3436.4000005722046,
+        "beforePosition": {
+          "x": 130,
+          "y": 0.8611573576927185,
+          "z": -6.360708236694336
+        },
+        "afterPosition": {
+          "x": 130,
+          "y": 0.8611573576927185,
+          "z": -6.360708236694336
+        },
+        "beforeSpeed": 13.20357101195778,
+        "afterSpeed": 13.20357101195778,
+        "status": "idle"
+      },
+      {
+        "target": 1800,
+        "actual": 1800,
+        "elapsedMs": 3995.300000190735,
+        "beforePosition": {
+          "x": 130,
+          "y": 0.8611573576927185,
+          "z": -6.360708236694336
+        },
+        "afterPosition": {
+          "x": 130,
+          "y": 0.8611573576927185,
+          "z": -6.360708236694336
+        },
+        "beforeSpeed": 13.20357101195778,
+        "afterSpeed": 13.20357101195778,
+        "status": "idle"
+      }
+    ],
+    "persistence": {
+      "tuningMass": 1800,
+      "bodyMass": 1800
+    },
+    "csv": {
+      "sampleCount": 24,
+      "lines": 26
+    },
+    "replay": {
+      "durationSteps": 420,
+      "exactEqual": true,
+      "runs": [
+        {
+          "result": {
+            "completedSteps": 420,
+            "finalPose": {
+              "position": {
+                "x": 120.54461669921875,
+                "y": 0.8591241240501404,
+                "z": -42.242008209228516
+              },
+              "rotation": {
+                "x": -0.005153217818588018,
+                "y": 0.7217019200325012,
+                "z": -0.00791221670806408,
+                "w": 0.6921395659446716
+              }
+            },
+            "peakSpeed": 22.647726095218566,
+            "peakAbsSlideAngle": 0.674940630467509,
+            "allFinite": true,
+            "firstNonFiniteStep": null
+          },
+          "progress": {
+            "completedSteps": 420,
+            "totalSteps": 420,
+            "done": true
+          },
+          "position": {
+            "x": 120.54461669921875,
+            "y": 0.8591241240501404,
+            "z": -42.242008209228516
+          },
+          "rotation": {
+            "x": -0.005153217818588018,
+            "y": 0.7217019200325012,
+            "z": -0.00791221670806408,
+            "w": 0.6921395659446716
+          },
+          "velocity": {
+            "x": -13.886834144592285,
+            "y": 0.0031269851606339216,
+            "z": -9.207127571105957
+          },
+          "angularVelocity": {
+            "x": 0.00017406100232619792,
+            "y": 0.7766097784042358,
+            "z": 0.0003258410724811256
+          },
+          "wheels": [
+            {
+              "Fx": 753.3624326940474,
+              "Fy": -3776.7111427042323,
+              "mu": 1.6194114218013616,
+              "compression": 0.06045455694198609,
+              "suspensionLength": 0.3395454430580139,
+              "steerAngle": -0.17199284524982747,
+              "spinAngle": 1.9520160148852703,
+              "Fz": 2867.000502506583,
+              "alpha": 0.4330813801627192,
+              "gripUsage": 0.8294720258234883,
+              "spinning": false,
+              "locked": false,
+              "grounded": true
+            },
+            {
+              "Fx": 753.3624326940474,
+              "Fy": -8083.903377784533,
+              "mu": 1.4199487890727185,
+              "compression": 0.08988732337951666,
+              "suspensionLength": 0.3101126766204833,
+              "steerAngle": -0.17199284524982747,
+              "spinAngle": 0.7396973648551706,
+              "Fz": 6886.383607296694,
+              "alpha": 0.3903086276844743,
+              "gripUsage": 0.8302998974908424,
+              "spinning": false,
+              "locked": false,
+              "grounded": true
+            },
+            {
+              "Fx": 1530.833329273772,
+              "Fy": -4370.870631557613,
+              "mu": 1.5678997014670155,
+              "compression": 0.07160998582839972,
+              "suspensionLength": 0.32839001417160024,
+              "steerAngle": 0,
+              "spinAngle": 3.0586618510478427,
+              "Fz": 3556.481658420933,
+              "alpha": 0.7100118801785964,
+              "gripUsage": 0.830527758813605,
+              "spinning": false,
+              "locked": false,
+              "grounded": true
+            },
+            {
+              "Fx": 1530.833329273772,
+              "Fy": -8329.879479481277,
+              "mu": 1.3997703392743222,
+              "compression": 0.10104275226593018,
+              "suspensionLength": 0.2989572477340698,
+              "steerAngle": 0,
+              "spinAngle": 5.049847595257408,
+              "Fz": 7575.835072593372,
+              "alpha": 0.6639089352832372,
+              "gripUsage": 0.7986640849423927,
+              "spinning": false,
+              "locked": false,
+              "grounded": true
+            }
+          ],
+          "recoveryCount": 0
+        }
+      ]
+    },
+    "timeScales": [],
+    "failure": "TimeoutError: page.waitForFunction: Timeout 240000ms exceeded.",
+    "scope": "Production Chromium + software WebGL. Functional stages passed; the subsequent 0.05x RAF replay timed out at 240 seconds and was not counted as completed."
+  },
+  "directMassTimer": {
+    "revision": "54a429695ce197be59cde999d33911c080529286",
+    "method": "Timestamp the native 100 ms timer callback before and after it applies mass; no polling timer in the measured interval.",
+    "runs": [
+      {
+        "target": 1800,
+        "requestedDelayMs": 100,
+        "callbackStartMs": 3931.699999809265,
+        "callbackEndMs": 3939.800000190735,
+        "callbackDurationMs": 8.100000381469727,
+        "positionPreserved": true,
+        "speedPreserved": true,
+        "frameMs": 2147.874375497866
+      },
+      {
+        "target": 1300,
+        "requestedDelayMs": 100,
+        "callbackStartMs": 2880,
+        "callbackEndMs": 2880.3999996185303,
+        "callbackDurationMs": 0.39999961853027344,
+        "positionPreserved": true,
+        "speedPreserved": true,
+        "frameMs": 1618.7802945809187
+      },
+      {
+        "target": 1800,
+        "requestedDelayMs": 100,
+        "callbackStartMs": 3177.3999996185303,
+        "callbackEndMs": 3177.800000190735,
+        "callbackDurationMs": 0.40000057220458984,
+        "positionPreserved": true,
+        "speedPreserved": true,
+        "frameMs": 1649.3069676190237
+      }
+    ]
+  },
+  "timeScale": {
+    "scope": "Real Jolt Vehicle + InputMapper + ScriptController + FixedStepLoop; synthetic frame schedules, no renderer or physical display claim.",
+    "results": [
+      {
+        "displayHz": 60,
+        "timeScale": 0.05,
+        "frames": 4200,
+        "virtualWallSeconds": 70,
+        "expectedWallSeconds": 70,
+        "physicsSteps": 420,
+        "dt": [0.008333333333333333],
+        "allFinite": true,
+        "recoveryCount": 0,
+        "interpolationValid": true,
+        "exactStateEqual": true
+      },
+      {
+        "displayHz": 60,
+        "timeScale": 0.5,
+        "frames": 420,
+        "virtualWallSeconds": 7,
+        "expectedWallSeconds": 7,
+        "physicsSteps": 420,
+        "dt": [0.008333333333333333],
+        "allFinite": true,
+        "recoveryCount": 0,
+        "interpolationValid": true,
+        "exactStateEqual": true
+      },
+      {
+        "displayHz": 60,
+        "timeScale": 1,
+        "frames": 210,
+        "virtualWallSeconds": 3.5,
+        "expectedWallSeconds": 3.5,
+        "physicsSteps": 420,
+        "dt": [0.008333333333333333],
+        "allFinite": true,
+        "recoveryCount": 0,
+        "interpolationValid": true,
+        "exactStateEqual": true
+      },
+      {
+        "displayHz": 60,
+        "timeScale": 2,
+        "frames": 105,
+        "virtualWallSeconds": 1.75,
+        "expectedWallSeconds": 1.75,
+        "physicsSteps": 420,
+        "dt": [0.008333333333333333],
+        "allFinite": true,
+        "recoveryCount": 0,
+        "interpolationValid": true,
+        "exactStateEqual": true
+      },
+      {
+        "displayHz": 144,
+        "timeScale": 0.05,
+        "frames": 10080,
+        "virtualWallSeconds": 70,
+        "expectedWallSeconds": 70,
+        "physicsSteps": 420,
+        "dt": [0.008333333333333333],
+        "allFinite": true,
+        "recoveryCount": 0,
+        "interpolationValid": true,
+        "exactStateEqual": true
+      },
+      {
+        "displayHz": 144,
+        "timeScale": 0.5,
+        "frames": 1008,
+        "virtualWallSeconds": 7,
+        "expectedWallSeconds": 7,
+        "physicsSteps": 420,
+        "dt": [0.008333333333333333],
+        "allFinite": true,
+        "recoveryCount": 0,
+        "interpolationValid": true,
+        "exactStateEqual": true
+      },
+      {
+        "displayHz": 144,
+        "timeScale": 1,
+        "frames": 504,
+        "virtualWallSeconds": 3.5,
+        "expectedWallSeconds": 3.5,
+        "physicsSteps": 420,
+        "dt": [0.008333333333333333],
+        "allFinite": true,
+        "recoveryCount": 0,
+        "interpolationValid": true,
+        "exactStateEqual": true
+      },
+      {
+        "displayHz": 144,
+        "timeScale": 2,
+        "frames": 252,
+        "virtualWallSeconds": 1.75,
+        "expectedWallSeconds": 1.75,
+        "physicsSteps": 420,
+        "dt": [0.008333333333333333],
+        "allFinite": true,
+        "recoveryCount": 0,
+        "interpolationValid": true,
+        "exactStateEqual": true
+      }
+    ]
+  },
+  "hostedPerformance": {
+    "source": "https://github.com/huntergdavis/slamdemonium/actions/runs/35543714296",
+    "revision": "5856e04d8285ff9f3481c60bdf52176c800baf13",
+    "configurationFingerprint": "16581fb4f669cba8ebc8b00c28d5b39c40f26b799f2aa577a7fb4f79501a22c4",
+    "parametersFingerprint": "5848a55659f3c4991d5e96dde59beebc3b5f5d8afca9fb1893ea81a8791a47ed",
+    "physicsGate": {
+      "source": "manualBaseline.physicsStep",
+      "p99Ms": 0.19999999999708962,
+      "limitMs": 2
+    },
+    "completedSteps": 9600,
+    "simulatedSeconds": 80.0,
+    "memory": {
+      "first": {
+        "elapsedSeconds": 61.61013868599999,
+        "jsUsedBytes": 8637088,
+        "jsTotalBytes": 9666560,
+        "backingStorageBytes": 9402661,
+        "wasmHeapBytes": 134217728,
+        "wasmFreeBytes": 121256312,
+        "wasmUsedBytes": 12961416
+      },
+      "minuteFive": {
+        "elapsedSeconds": 301.637967381,
+        "jsUsedBytes": 8883228,
+        "jsTotalBytes": 9666560,
+        "backingStorageBytes": 9402661,
+        "wasmHeapBytes": 134217728,
+        "wasmFreeBytes": 121256312,
+        "wasmUsedBytes": 12961416
+      },
+      "last": {
+        "elapsedSeconds": 332.322859803,
+        "jsUsedBytes": 8898692,
+        "jsTotalBytes": 9666560,
+        "backingStorageBytes": 9402661,
+        "wasmHeapBytes": 134217728,
+        "wasmFreeBytes": 121256312,
+        "wasmUsedBytes": 12961416
+      },
+      "jsUsedPercent": 3.0288449069871697,
+      "wasmUsedPercent": 0,
+      "wasmCapacityPercent": 0
+    },
+    "scope": "Pre-WP14 workload; historical hosted evidence, not a new performance pass for the reviewed application."
+  },
+  "integration": {
+    "source": "https://github.com/huntergdavis/slamdemonium/actions/runs/35544417491",
+    "revision": "54a429695ce197be59cde999d33911c080529286",
+    "results": {
+      "scope": "Node, real stock Jolt + Vehicle, fresh-spawn v1 scripts on a flat plane, stepMany only",
+      "node": "v22.23.2",
+      "platform": "linux",
+      "architecture": "x64",
+      "measurements": {
+        "handbrake": {
+          "result": {
+            "completedSteps": 1020,
+            "finalPose": {
+              "position": {
+                "x": -36.0873908996582,
+                "y": 0.8578047752380371,
+                "z": -105.79000854492188
+              },
+              "rotation": {
+                "x": -0.00808117724955082,
+                "y": 0.9078505039215088,
+                "z": -0.005798990838229656,
+                "w": 0.41917601227760315
+              }
+            },
+            "peakSpeed": 35.824915454402905,
+            "peakAbsSlideAngle": 0.7827094565586191,
+            "allFinite": true,
+            "firstNonFiniteStep": null
+          },
+          "maxAngularSpeed": 2.1250298192213912,
+          "elapsedMs": 313.727792,
+          "lockedSteps": 60,
+          "minimumRearGrip": 0.35,
+          "finalRearGrip": 1
+        },
+        "determinism": {
+          "seed": 20903,
+          "stepsPerRun": 3600,
+          "hashes": [
+            "04d97dbc37d6ded0eb8718bbdb723d4cbb5c921a1d6b26791722e7f4d5107907",
+            "04d97dbc37d6ded0eb8718bbdb723d4cbb5c921a1d6b26791722e7f4d5107907"
+          ],
+          "differentSeedHash": "0dcd2d008739a8a9ceac52b8e419134c2755f35bcdcf9be82498c09a7dbf3357",
+          "runs": [
+            {
+              "result": {
+                "completedSteps": 3600,
+                "finalPose": {
+                  "position": {
+                    "x": -81.23687744140625,
+                    "y": 0.8525789976119995,
+                    "z": -321.17236328125
+                  },
+                  "rotation": {
+                    "x": 0.0007872784044593573,
+                    "y": 0.014038518071174622,
+                    "z": -0.00027934901299886405,
+                    "w": 0.9999011158943176
+                  }
+                },
+                "peakSpeed": 31.749217281327837,
+                "peakAbsSlideAngle": 1.0144231616573545,
+                "allFinite": true,
+                "firstNonFiniteStep": null
+              },
+              "maxAngularSpeed": 2.1735194942210505,
+              "elapsedMs": 375.4232559999999
+            },
+            {
+              "result": {
+                "completedSteps": 3600,
+                "finalPose": {
+                  "position": {
+                    "x": -81.23687744140625,
+                    "y": 0.8525789976119995,
+                    "z": -321.17236328125
+                  },
+                  "rotation": {
+                    "x": 0.0007872784044593573,
+                    "y": 0.014038518071174622,
+                    "z": -0.00027934901299886405,
+                    "w": 0.9999011158943176
+                  }
+                },
+                "peakSpeed": 31.749217281327837,
+                "peakAbsSlideAngle": 1.0144231616573545,
+                "allFinite": true,
+                "firstNonFiniteStep": null
+              },
+              "maxAngularSpeed": 2.1735194942210505,
+              "elapsedMs": 226.45952699999998
+            }
+          ]
+        },
+        "soak": {
+          "result": {
+            "completedSteps": 36000,
+            "finalPose": {
+              "position": {
+                "x": 665.97412109375,
+                "y": 0.8545193672180176,
+                "z": -21.627153396606445
+              },
+              "rotation": {
+                "x": 0.01193286757916212,
+                "y": -0.9980643391609192,
+                "z": -0.0008762724464759231,
+                "w": 0.061028528958559036
+              }
+            },
+            "peakSpeed": 50.70156076855473,
+            "peakAbsSlideAngle": 1.565344387702182,
+            "allFinite": true,
+            "firstNonFiniteStep": null
+          },
+          "maxAngularSpeed": 2.4158313972357455,
+          "elapsedMs": 1974.202628,
+          "seed": 20903,
+          "simulatedSeconds": 300,
+          "observedSteps": 36000
+        },
+        "energy": {
+          "result": {
+            "completedSteps": 2160,
+            "finalPose": {
+              "position": {
+                "x": 1.8386714373264113e-6,
+                "y": 0.8514710664749146,
+                "z": -532.0081176757812
+              },
+              "rotation": {
+                "x": -0.000606697634793818,
+                "y": -1.7849804967440264e-9,
+                "z": 1.8665913259496847e-9,
+                "w": 0.9999998211860657
+              }
+            },
+            "peakSpeed": 49.30785019028406,
+            "peakAbsSlideAngle": 3.9878956468064125e-9,
+            "allFinite": true,
+            "firstNonFiniteStep": null
+          },
+          "maxAngularSpeed": 0.07550785690546039,
+          "elapsedMs": 118.73493599999983,
+          "startSpeed": 49.25549335185847,
+          "endSpeed": 29.952678702988234,
+          "worstIncrease": -0.012508392359116272,
+          "samples": 1190
+        },
+        "acceleration": {
+          "result": {
+            "completedSteps": 1800,
+            "finalPose": {
+              "position": {
+                "x": 1.8620079345055274e-6,
+                "y": 0.8176051378250122,
+                "z": -540.108154296875
+              },
+              "rotation": {
+                "x": 7.987175922608003e-5,
+                "y": -1.883407652059077e-9,
+                "z": 8.17718739942741e-11,
+                "w": 1
+              }
+            },
+            "peakSpeed": 59.56125259489775,
+            "peakAbsSlideAngle": 3.4838074127343117e-9,
+            "allFinite": true,
+            "firstNonFiniteStep": null
+          },
+          "maxAngularSpeed": 0.07550785690546039,
+          "elapsedMs": 101.26673500000015,
+          "to100": 2.2083333333333335,
+          "to55": 6.75,
+          "maxLateralOffset": 1.8620079345055274e-6
+        },
+        "braking": {
+          "result": {
+            "completedSteps": 4440,
+            "finalPose": {
+              "position": {
+                "x": -9.973066335078329e-5,
+                "y": 0.8619438409805298,
+                "z": -1683.89208984375
+              },
+              "rotation": {
+                "x": -0.0019141992088407278,
+                "y": -2.914495311756582e-8,
+                "z": -4.4704720481014704e-10,
+                "w": 0.9999982118606567
+              }
+            },
+            "peakSpeed": 59.99951934818126,
+            "peakAbsSlideAngle": 1.1236382382197057e-6,
+            "allFinite": true,
+            "firstNonFiniteStep": null
+          },
+          "maxAngularSpeed": 0.14763215188918663,
+          "elapsedMs": 249.11968100000013,
+          "startingSpeed": 59.99951934814513,
+          "distance": 72.3990478515625,
+          "stopSeconds": 2.5166666666666666
+        },
+        "circle": {
+          "result": {
+            "completedSteps": 4320,
+            "finalPose": {
+              "position": {
+                "x": -137.3175811767578,
+                "y": 0.8429290056228638,
+                "z": -97.18290710449219
+              },
+              "rotation": {
+                "x": -0.00923075806349516,
+                "y": 0.974425733089447,
+                "z": -0.002463869284838438,
+                "w": 0.2245066910982132
+              }
+            },
+            "peakSpeed": 39.48595555284491,
+            "peakAbsSlideAngle": 0.0542129834906669,
+            "allFinite": true,
+            "firstNonFiniteStep": null
+          },
+          "maxAngularSpeed": 0.5864279464670112,
+          "elapsedMs": 241.16479300000037,
+          "samples": 1800,
+          "maxExcess": -13.223371101620085,
+          "peakLateral": 20.198339177130055,
+          "yawTravel": 7.532134829536089,
+          "minSpeed": 39.039684517429855,
+          "minGrounded": 4
+        }
+      }
+    }
+  },
+  "sources": {
+    "scratch/r6/probe.mts": "import { preview } from 'vite';\nimport { chromium, expect } from '@playwright/test';\nimport { readFile, writeFile } from 'node:fs/promises';\nimport { PARAM_DEFS } from '../../src/tuning/schema';\nconst result: any = { revision: '54a429695ce197be59cde999d33911c080529286', startedAt: new Date().toISOString(), viewport: { width: 800, height: 450 } };\nconst save = async (stage: string) => { await writeFile('scratch/r6/probe.json', JSON.stringify(result, null, 2)); console.log(stage, JSON.stringify(result[stage] ?? {})); };\nconst server = await preview({ preview: { host: '127.0.0.1', port: 4190, strictPort: true } });\nconst browser = await chromium.launch({ headless: true, args: ['--enable-unsafe-swiftshader'] });\nconst watchdog = setTimeout(() => { console.error('Probe exceeded 10 minute watchdog'); process.exit(2); }, 600000);\ntry {\n  result.browser = browser.version();\n  const page = await browser.newPage({ viewport: result.viewport, acceptDownloads: true });\n  page.setDefaultTimeout(60000);\n  result.errors = [];\n  page.on('pageerror', error => result.errors.push(error.message));\n  page.on('console', msg => { if (msg.type() === 'error') result.errors.push(msg.text()); });\n  await page.goto('http://127.0.0.1:4190/');\n  await page.waitForFunction(() => window.__game?.ready);\n  await page.getByLabel('Driving view').focus();\n  await page.keyboard.press('KeyP');\n  await expect.poll(() => page.evaluate(() => window.__game.getTelemetry().paused)).toBe(true);\n  await page.keyboard.press('KeyO');\n  await expect(page.locator('.sl-options')).toHaveAttribute('data-open','true');\n  await page.keyboard.press('KeyH');\n  await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode','minimal');\n  await expect(page.locator('[data-reading=fps]')).toBeVisible();\n  await page.keyboard.press('KeyT');\n  await expect.poll(() => page.evaluate(() => window.__game.tuning.get('timeScale'))).toBe(0.25);\n  await page.keyboard.press('KeyT');\n  await expect.poll(() => page.evaluate(() => window.__game.tuning.get('timeScale'))).toBe(1);\n  await page.keyboard.press('Tab');\n  await expect(page.getByRole('button',{name:'Activate slot B'})).toHaveAttribute('aria-pressed','true');\n  await page.keyboard.press('Tab');\n  await expect(page.getByRole('button',{name:'Activate slot A'})).toHaveAttribute('aria-pressed','true');\n  result.mounts = { options: await page.locator('.sl-options').count(), hud: await page.locator('.sl-hud').count(), scriptsType: await page.evaluate(() => typeof window.__game.scripts), minimalFpsText: await page.locator('[data-reading=fps]').innerText(), hotkeys: ['P pauses','O opens','H selects Minimal','T toggles 0.25/1','Tab swaps A/B'] };\n  await save('mounts');\n  result.bindings = await page.evaluate(defs => {\n    const game = window.__game, changes: any[] = [];\n    for (const range of document.querySelectorAll<HTMLInputElement>('.sl-field input[type=range]')) {\n      const key = range.closest<HTMLElement>('[data-key]')!.dataset.key!;\n      const def = defs.find(d => d.key === key)!;\n      const original = range.value;\n      const useMax = Number(range.value) !== Number(range.max);\n      range.value = useMax ? range.max : range.min;\n      range.dispatchEvent(new Event('input',{bubbles:true}));\n      const expected = useMax ? def.max : def.min;\n      changes.push({ id: range.id, key, expected, actual: game.tuning.get(key), synchronous: Math.abs(game.tuning.get(key) - expected) < 1e-9 });\n      range.value = original;\n      range.dispatchEvent(new Event('input',{bubbles:true}));\n    }\n    game.tuning.applyPreset('Default');\n    game.stepMany(0);\n    return { count: changes.length, uniqueKeys: new Set(changes.map(c=>c.key)).size, mismatches: changes.filter(c=>!c.synchronous), changes };\n  }, PARAM_DEFS.map(d=>({key:d.key,min:d.min,max:d.max})));\n  expect(result.bindings.mismatches).toEqual([]);\n  expect(result.bindings.uniqueKeys).toBe(PARAM_DEFS.length);\n  await save('bindings');\n  result.acceleration = await page.evaluate(() => {\n    const game=window.__game, results:any[]=[];\n    for (const value of [6,30]) {\n      game.tuning.applyPreset('Default'); game.respawn();\n      game.setInput({throttle:0,brake:0,steer:0,handbrake:false,boost:false}); game.stepMany(360);\n      game.setInput({throttle:1}); game.stepMany(120);\n      const before=Number(game.getTelemetry().speed);\n      const field=document.querySelector<HTMLInputElement>('#group-accel0-number')!;\n      field.value=String(value); field.dispatchEvent(new Event('input',{bubbles:true}));\n      const applied=game.tuning.get('accel0');\n      game.stepMany(1);\n      const after=Number(game.getTelemetry().speed);\n      results.push({value,applied,before,after,deltaSpeed:after-before});\n    }\n    return results;\n  });\n  expect(result.acceleration[1].deltaSpeed).toBeGreaterThan(result.acceleration[0].deltaSpeed);\n  await save('acceleration');\n  result.mass = [];\n  for (const target of [1800,1300,1800]) {\n    result.mass.push(await page.evaluate(async target => {\n      const game=window.__game, before=game.getTelemetry();\n      const field=document.querySelector<HTMLInputElement>('#group-mass-number')!;\n      const began=performance.now();\n      field.value=String(target); field.dispatchEvent(new Event('input',{bubbles:true}));\n      return await new Promise(resolve=>{\n        const poll=setInterval(()=>{\n          const after=game.getTelemetry();\n          if(after.mass===target || performance.now()-began>3000) {\n            clearInterval(poll);\n            resolve({target,actual:after.mass,elapsedMs:performance.now()-began,beforePosition:before.position,afterPosition:after.position,beforeSpeed:before.speed,afterSpeed:after.speed,status:after.massRebuildStatus});\n          }\n        },1);\n      });\n    }, target));\n  }\n  await save('mass');\n  await page.waitForTimeout(300);\n  await page.reload(); await page.waitForFunction(()=>window.__game?.ready);\n  result.persistence = await page.evaluate(()=>({tuningMass:window.__game.tuning.get('mass'),bodyMass:window.__game.getTelemetry().mass}));\n  expect(result.persistence).toEqual({tuningMass:1800,bodyMass:1800});\n  await page.getByLabel('Driving view').focus(); await page.keyboard.press('KeyP');\n  await expect.poll(()=>page.evaluate(()=>window.__game.getTelemetry().paused)).toBe(true);\n  await page.keyboard.press('F9');\n  await expect(page.locator('.sl-hud__recording')).toContainText('REC');\n  await page.evaluate(()=>window.__game.stepMany(24));\n  const pendingDownload=page.waitForEvent('download');\n  await page.keyboard.press('F9');\n  const download=await pendingDownload;\n  const csv=(await readFile((await download.path())!,'utf8')).trim().split('\\n');\n  result.csv={sampleCount:JSON.parse(csv[0].slice(2)).sampleCount,lines:csv.length};\n  expect(result.csv).toEqual({sampleCount:24,lines:26});\n  await save('persistence'); await save('csv');\n  const handbrake=JSON.parse(await readFile('src/input/examples/handbrake-turn.json','utf8'));\n  result.replay=await page.evaluate(script=>{\n    const game=window.__game, runs:any[]=[];\n    for(let i=0;i<2;i++){\n      game.scripts!.load(script,{tuning:i===0?'apply':'verify'}); game.stepMany(script.durationSteps+10);\n      const terminal=game.getTelemetry(), progress={...game.scripts!.progress()};\n      runs.push({result:structuredClone(game.scripts!.result()),progress,position:terminal.position,rotation:terminal.rotation,velocity:terminal.velocity,angularVelocity:terminal.angularVelocity,wheels:terminal.wheels,recoveryCount:terminal.recoveryCount});\n      const steps=game.getTelemetry().totalSteps; game.stepMany(10);\n      if(game.getTelemetry().totalSteps!==steps) throw Error('EOF advanced');\n    }\n    return {durationSteps:script.durationSteps,exactEqual:JSON.stringify(runs[0])===JSON.stringify(runs[1]),runs};\n  },handbrake);\n  expect(result.replay.exactEqual).toBe(true);\n  await save('replay');\n  const standing=JSON.parse(await readFile('src/input/examples/standing-start.json','utf8'));\n  result.timeScales=[];\n  for (const timeScale of [0.05,0.5,1,2]) {\n    const script={...standing,name:'R6 rate probe',durationSteps:120,tuning:{...standing.tuning,timeScale},frames:[{step:0,input:{throttle:1,brake:0,steer:0,handbrake:false,boost:false,source:'keyboard'}}]};\n    const began=Date.now();\n    await page.evaluate(script=>{window.__game.setOptionsOpen(false);window.__game.scripts!.load(script,{tuning:'apply'});},script);\n    await page.waitForFunction(()=>window.__game.scripts!.progress().done,undefined,{timeout:240000});\n    const capture=await page.evaluate(()=>({progress:{...window.__game.scripts!.progress()},result:structuredClone(window.__game.scripts!.result()),telemetry:window.__game.getTelemetry()}));\n    result.timeScales.push({timeScale,wallMs:Date.now()-began,progress:capture.progress,result:capture.result,recoveryCount:capture.telemetry.recoveryCount,physicsHz:capture.telemetry.physicsHz,position:capture.telemetry.position,velocity:capture.telemetry.velocity,rotation:capture.telemetry.rotation});\n    await save('timeScales');\n  }\n  result.timeScaleStatesEqual=result.timeScales.every((v:any)=>JSON.stringify(v.result)===JSON.stringify(result.timeScales[0].result));\n  expect(result.timeScaleStatesEqual).toBe(true);\n  expect(result.errors).toEqual([]);\n  result.completedAt=new Date().toISOString(); result.passed=true; await save('passed');\n} catch(error) {\n  result.failure=String(error); await save('failure'); process.exitCode=1;\n} finally {\n  clearTimeout(watchdog); await browser.close(); await new Promise(resolve=>server.httpServer.close(resolve));\n}\n",
+    "scratch/r6/mass-timer.mts": "import { preview } from 'vite';\nimport { chromium } from '@playwright/test';\nimport { writeFile } from 'node:fs/promises';\nconst server=await preview({preview:{host:'127.0.0.1',port:4191,strictPort:true}});\nconst browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']});\nconst report:any={revision:'54a429695ce197be59cde999d33911c080529286',method:'Timestamp the native 100 ms timer callback before and after it applies mass; no polling timer in the measured interval.',runs:[]};\nconst watchdog=setTimeout(()=>process.exit(2),180000);\ntry {\n const page=await browser.newPage({viewport:{width:800,height:450}});\n await page.goto('http://127.0.0.1:4191/');\n await page.waitForFunction(()=>window.__game?.ready,undefined,{timeout:60000});\n await page.evaluate(()=>{window.__game.perf!.pauseSimulation(true);window.__game.setOptionsOpen(true);window.__game.setHudMode('minimal');});\n for(const target of [1800,1300,1800]){\n  const sample=await page.evaluate(async target=>{\n   const game=window.__game,nativeTimeout=window.setTimeout;\n   const before=game.getTelemetry(),began=performance.now();\n   return await new Promise(resolve=>{\n    window.setTimeout=((fn:any,delay:number,...args:any[])=>nativeTimeout((...passed:any[])=>{\n     const callbackStart=performance.now();\n     fn(...passed);\n     const callbackEnd=performance.now();\n     if(delay===100 && game.getTelemetry().mass===target) {\n      const after=game.getTelemetry();\n      resolve({target,requestedDelayMs:delay,callbackStartMs:callbackStart-began,callbackEndMs:callbackEnd-began,callbackDurationMs:callbackEnd-callbackStart,positionPreserved:JSON.stringify(before.position)===JSON.stringify(after.position),speedPreserved:before.speed===after.speed,frameMs:after.smoothedFrameMs});\n     }\n    },delay,...args)) as typeof window.setTimeout;\n    try {\n     const input=document.querySelector<HTMLInputElement>('#group-mass-number')!;\n     input.value=String(target);input.dispatchEvent(new Event('input',{bubbles:true}));\n    } finally {window.setTimeout=nativeTimeout;}\n    nativeTimeout(()=>resolve({target,timeout:true}),20000);\n   });\n  },target);\n  report.runs.push(sample);console.log(JSON.stringify(sample));\n }\n await writeFile('scratch/r6/mass-timer.json',JSON.stringify(report,null,2));\n} finally {clearTimeout(watchdog);await browser.close();await new Promise(resolve=>server.httpServer.close(resolve));}\n",
+    "tests/r6-timescale.test.ts": "import { it } from 'vitest';\nimport { readFile, writeFile } from 'node:fs/promises';\nimport assert from 'node:assert/strict';\nimport { scriptVehicleHarness } from './scriptVehicleHarness';\nimport { FixedStepLoop } from '../src/core/loop';\nit('R6: timeScale on real vehicle frame schedules', async () => {\nconst source=JSON.parse(await readFile('src/input/examples/handbrake-turn.json','utf8'));\nconst results:any[]=[];\nlet reference:string|undefined;\nfor(const displayHz of [60,144]) for(const timeScale of [0.05,0.5,1,2]) {\n const rig=await scriptVehicleHarness();\n const script={...source,tuning:{...source.tuning,timeScale}};\n const dts=new Set<number>(); let interpolationValid=true;\n const loop=new FixedStepLoop({physicsHz:120,timeScale},{\n  shouldStopStepping:()=>!rig.scripts.canStep(),\n  sampleForStep:()=>{rig.mapper.sampleForStep();},\n  preStep:dt=>{dts.add(dt);rig.vehicle.preStep(dt,rig.mapper.state,rig.mapper.state.source);},\n  stepPhysics:dt=>rig.world.step(dt),\n  postStep:dt=>{rig.vehicle.postStep(dt);rig.scripts.afterStep();},\n  render:alpha=>{interpolationValid &&= alpha>=0 && alpha<1;},\n });\n try {\n  rig.scripts.load(script,{tuning:'apply'});\n  let frame=0;loop.frame(0);\n  while(!rig.scripts.progress().done && frame<50000) loop.frame(++frame*1000/displayHz);\n  const result=rig.scripts.result();\n  const state=JSON.stringify({result,velocity:rig.vehicle.telemetry.velocity,angularVelocity:rig.vehicle.telemetry.angularVelocity,wheels:rig.vehicle.telemetry.wheels});\n  reference ??= state;\n  assert.equal(state,reference);assert.equal(result.allFinite,true);\n  assert.equal(rig.vehicle.telemetry.recoveryCount,0);\n  assert.equal(loop.totalSteps,script.durationSteps);\n  assert.deepEqual([...dts],[1/120]);assert.equal(interpolationValid,true);\n  const expectedSeconds=script.durationSteps/120/timeScale;\n  assert.ok(Math.abs(frame/displayHz-expectedSeconds)<=1/displayHz+1e-9);\n  results.push({displayHz,timeScale,frames:frame,virtualWallSeconds:frame/displayHz,expectedWallSeconds:expectedSeconds,physicsSteps:loop.totalSteps,dt:[...dts],allFinite:result.allFinite,recoveryCount:rig.vehicle.telemetry.recoveryCount,interpolationValid,exactStateEqual:true});\n  console.log(JSON.stringify(results.at(-1)));\n } finally {rig.dispose();}\n}\nawait writeFile('scratch/r6/time-scale.json',JSON.stringify({scope:'Real Jolt Vehicle + InputMapper + ScriptController + FixedStepLoop; synthetic frame schedules, no renderer or physical display claim.',results},null,2));\n\n}, 90000);\n"
+  }
+}
