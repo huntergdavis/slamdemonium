@@ -1,6 +1,6 @@
 # Glossary
 
-Plain-language definitions of the terms you meet in the Options page, the HUD and the [Tuning Playbook](TUNING_PLAYBOOK.md). Each entry points to the section of the [design doc](vertical-slice-design.md) where the idea is defined. Parameter names in `code` are sliders in the Options page.
+Plain-language definitions of the terms you meet in the Options page, the HUD and the [Tuning Playbook](TUNING_PLAYBOOK.md). Each entry points to the section of the [design doc](vertical-slice-design.md) where the idea is defined. Where the shipped behavior has moved on from the design doc, the entry says so and points to the research note that replaced it. Parameter names in `code` are sliders in the Options page.
 
 Units are metric throughout: meters, kilograms, seconds. Speeds show in km/h on the HUD and m/s in most sliders. Angles show in degrees.
 
@@ -86,15 +86,21 @@ Units are metric throughout: meters, kilograms, seconds. Speeds show in km/h on 
 
 ## Assists
 
-**Assist.** A helping force added on top of the tire model to make sliding fun and catchable. Every assist has a strength slider that goes to zero. The Raw preset turns them all off. Design 6.8, 7.3.
+**Assist.** A helping force added on top of the tire model to make sliding fun and catchable. Every assist has a strength slider that goes to zero, and at zero nothing hidden remains, including the drift limiter. The Raw preset turns them all off. Design 6.8, 7.3.
 
 **Counter-steer assist (`countersteerAssist`).** Automatically steers the front wheels toward the direction of travel when the car slides, the way an experienced driver would. Design 6.6, 6.8 A.
 
-**Yaw assist (`yawAssist`).** Two jobs with one slider. While gripping, it helps the car rotate at the rate your steering asks for (crisp turn-in). While sliding, it becomes drift angle control. Design 6.8 B and C.
+**Yaw assist (`yawAssist`).** Two jobs with one slider. While gripping, it helps the car rotate at the rate your steering asks for (crisp turn-in). While sliding, it becomes drift angle control, and it also scales the drift limiter. Design 6.8 B and C.
 
-**Drift angle control.** Once the car is sliding, steering stops meaning "rotate faster" and starts meaning "how far sideways". Steer into the slide for more angle, up to `maxDriftAngle`; counter-steer for less. This is what makes a drift holdable. Design 6.8 C.
+**Drift angle control.** Once the car is in a real slide, steering stops meaning "rotate faster" and starts meaning "how far sideways". Stick neutral holds the angle you entered with. Steer into the slide for more, up to `maxDriftAngle`. Counter-steer fully and the car aims for zero, which is how you exit cleanly. Lifting the throttle (with the handbrake released) also asks the car to straighten. This is what makes a drift holdable and catchable. The shipped control law replaces the one printed in design 6.8 C; see the [drift assist note](research/drift-assist.md).
 
-**Soft limit.** A strong restoring force past about 1.15 times `maxDriftAngle` so the car cannot accidentally spin out. Design 6.8 C.
+**Latched drift side.** When a slide begins, the game remembers which way you are sliding and keeps that decision until the drift ends. It stops the assist from flip-flopping when the car passes through straight. A new slide the other way has to start fresh. [Drift assist note](research/drift-assist.md).
+
+**Captured neutral angle.** The slide angle you had when the drift began, kept between about 14 degrees and 30 degrees. With the stick centered, drift angle control holds this angle rather than some fixed number, so a gentle catch stays gentle. [Drift assist note](research/drift-assist.md).
+
+**Drift exit.** The drift ends once the slide angle stays under about 6 degrees for a tenth of a second, or the car crosses to the other side. The small delay stops the assist from switching on and off around zero. [Drift assist note](research/drift-assist.md).
+
+**Drift limiter (soft limit).** Past `maxDriftAngle` a restoring push blends in, reaching full strength about 15 percent beyond it, so a slide does not become a spin by accident. It shares the drift control's torque budget and scales with `yawAssist`, so it is a soft nudge rather than a wall, and at `yawAssist` zero it is gone. Design 6.8 C, replaced by the [drift assist note](research/drift-assist.md).
 
 **Air control and anti-flip.** Small automatic corrections that land jumps flat and right a car that has rolled onto its side. Not sliders. Design 6.8 D and E.
 
@@ -103,6 +109,16 @@ Units are metric throughout: meters, kilograms, seconds. Speeds show in km/h on 
 **Drift meter.** Fills while the slide angle stays above `driftMinAngle` at speed. It charges faster at bigger angles and higher speeds (`driftChargeRate`) and does not decay when the drift ends. Design 6.9.
 
 **Boost.** Spends the drift meter for extra acceleration (`boostAccelMult`) and extra top speed (`boostTopSpeedAdd`) while held, draining at `boostDrainRate`. Also kicks the field of view and camera shake. Design 6.9, 6.7.1.
+
+## Camera
+
+**Field of view (FOV).** How wide a slice of the world the camera shows, measured in vertical degrees. `fovBase` sets it at rest; `fovSpeedGain` widens it with speed and `fovBoostKick` widens it further while boosting. A widening view is one of the strongest cues that you are accelerating. Design 10.1.
+
+**FOV cap.** The delivered field of view is clamped to a ceiling, initially 115 degrees vertical, because boost pushes speed past `topSpeed` and the raw formula would keep widening without limit. When the cap is active, raising FOV sliders changes nothing, and the debug text shows the delivered FOV and whether the cap is engaged. Slider ranges are unchanged. [Speed and vibe note](research/speed-and-vibe.md#camera-finding-the-existing-fov-curve-needs-a-final-bound).
+
+**Velocity blend (`camVelocityBlend`).** Whether the camera looks along the car's nose (0) or along its direction of travel (1). Halfway shows the slide without hiding turn-in. Design 10.1, 7.2.
+
+**Camera shake (`camShake`).** Small, speed-scaled motion that suggests mass and speed. Zero removes it. Design 10.1.
 
 ## Time and simulation
 

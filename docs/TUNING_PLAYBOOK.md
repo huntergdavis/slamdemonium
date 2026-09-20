@@ -2,7 +2,7 @@
 
 How to make the car feel right, and what to turn when it does not.
 
-This is the human-facing copy of section 7.4 of the [design doc](vertical-slice-design.md). The same table ships inside the game as a collapsible help panel in the Options page. If you change one, change the other.
+This is the human-facing copy of section 7.4 of the [design doc](vertical-slice-design.md). The same table ships inside the game as a collapsible help panel in the Options page. If you change one, change the other. Two behaviors have moved on from the design doc since it was written, and this page follows the shipped behavior: how drift angle control works ([drift assist note](research/drift-assist.md)) and the cap on camera field of view ([speed and vibe note](research/speed-and-vibe.md)). Terms are defined in the [Glossary](GLOSSARY.md).
 
 ## How tuning works
 
@@ -46,7 +46,7 @@ At the top of the Tires group a small plot draws the grip curve for the front an
 
 ### Compare with A/B slots
 
-Two parameter slots, A and B, hold complete sets of values. Press **Tab** while driving to swap them instantly; the HUD shows which one is live. The workflow that works:
+Two parameter slots, A and B, hold complete sets of values. Press **Tab** while the game has focus to swap them instantly; the HUD shows which one is live. Inside the Options page, Tab moves between controls as usual, so the panel has its own A and B buttons. The workflow that works:
 
 1. Click **Copy A to B**.
 2. Change one thing in B.
@@ -74,7 +74,7 @@ Find the row that matches what you feel. Try the knobs in the order listed; each
 
 | Symptom | First knobs to try |
 |---|---|
-| Feels slow even at top speed | Raise `fovSpeedGain`, raise `accel0`, lower `camDistance`, raise `powerCurveExp` so acceleration lasts. Check the speed cues (roadside posts, centre line, fog, camera shake; design section 10.2) before touching physics. |
+| Feels slow even at top speed | Raise `fovSpeedGain`, raise `accel0`, lower `camDistance`, raise `powerCurveExp` so acceleration lasts. Check the speed cues (roadside posts, centre line, fog, camera shake; design section 10.2) before touching physics. Delivered FOV is capped at 115 degrees vertical; once the debug text says the cap is active, FOV sliders do nothing more, so try `camDistance` on its own instead. |
 | Feels floaty or weightless | Raise `gravity`, raise `suspFrequency`, raise `downforceAtTopSpeed`, lower `comHeightOffset`. |
 | Twitchy or nervous at high speed | Lower `steerMaxTopSpeed`, raise `tireRelaxationLength`, raise `yawInertiaScale`, raise `steerExpo` on gamepad. |
 | Understeers, will not turn in | Raise `gripFront`, lower `slipFalloffRate`, move `comLongOffset` forward, raise `steerMaxTopSpeed`, raise `yawAssist`. |
@@ -84,6 +84,17 @@ Find the row that matches what you feel. Try the knobs in the order listed; each
 | Drift never ends / feels on rails | Lower `yawAssist`, lower `countersteerAssist`, lower `slideGripRatio`. |
 | Brakes feel grabby or weak | Adjust `brakeCurveExp` first (pedal shape), then `brakeDecel`; if wheels lock, raise `absStrength` or lower `brakeBiasFront`. |
 | Body rocks like a boat | Raise `suspDampingRatio`, raise `suspAntiRoll`, raise `tireForceHeight`, lower `comHeightOffset`. |
+
+### How drift control behaves
+
+The drift rows above assume the shipped drift angle control, which differs from the formula printed in design 6.8 C. What to expect:
+
+- A drift starts once you are sliding about 10 degrees with intent: handbrake, or throttle plus steering. The game latches which side you are sliding and remembers the angle you entered with.
+- Stick centered holds that entry angle. Steering into the slide asks for more, up to `maxDriftAngle`. Full counter-steer asks for zero, which is how you exit cleanly. Lifting the throttle with the handbrake released also asks the car to straighten.
+- The drift ends once you are under about 6 degrees for a tenth of a second. Outside a drift the control does nothing.
+- Past `maxDriftAngle` a limiter blends in to stop an accidental spin. It scales with `yawAssist`, so it is a soft nudge, not a wall, and at `yawAssist` zero it is off along with everything else.
+
+So if a drift will not end, counter-steer fully or lift before reaching for sliders. If a drift will not hold with the stick centered, raise `yawAssist` first. If you want fewer surprises, keep `maxDriftAngle` near the angles you actually drive at. Details and the acceptance test are in the [drift assist note](research/drift-assist.md).
 
 ## Sanity references
 
@@ -102,8 +113,8 @@ With the defaults, these are the numbers the car should roughly hit. If a tune d
 | Key | Does |
 |---|---|
 | O | Options page |
-| Tab | Swap A/B slots |
 | T | Slow motion (0.25x), to watch a drift catch frame by frame |
+| Tab | Swap A/B slots (game focused; use the panel's A/B buttons when the panel has focus) |
 | H | Cycle HUD: full / minimal / off |
 | G | Debug gizmos (forces, contact points) |
 | F9 | Start/stop a telemetry CSV recording |
