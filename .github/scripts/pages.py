@@ -259,7 +259,9 @@ def comment_body(number, sha, removed=False):
     if removed:
         return f"{COMMENT_MARKER}\nPreview removed because this pull request is closed."
     return (f"{COMMENT_MARKER}\n**[Play PR #{number} preview]({SITE_URL}/pr/{number}/)**\n\n"
-            f"Built from commit `{sha}`. Updates automatically when a new preview deploys.")
+            f"Built from commit `{sha}`. Updates automatically when a new preview deploys.\n\n"
+            "Preview publication is independent of CI status; check this PR's checks "
+            "for the commit above before trusting the build.")
 
 
 def comment(repo, temporary):
