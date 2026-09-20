@@ -27,7 +27,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] WP11 | developer 2 | **Scripted input (CTO request).** Record/author/replay input sequences as deterministic test scenarios. Format: versioned JSON, physics-step indexed, recordable from live play and hand-authorable. Must capture the tuning parameter set in the header (replay under different params is a different drive). Playback drives the real `sampleForStep` path, never wall-clock. Ship: recorder, player, assertion helpers (final pose, lap time, max |beta|, no NaN), a checkpoint/lap timer for the ring, and 2-3 example scripts. Consumed by WP9a perf harness, e2e, and T9 screenshots. | dev2/wp11-scripted-input
 
 
-- [ ] D5 | designer | Speed cues as code (design 10.2): fog tuning, speed lines above ~80% top speed and during boost, vignette. NOT camera FOV/shake/roll (developer 1, WP6). Check WP3 first for overlap. | design/speed-cues
 
 
 ## Later (phase 3)
@@ -68,3 +67,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] T11 | techwriter | Document gamepad: the press-a-button-to-wake gotcha (CTO hit this), keyboard+pad simultaneous, analog triggers. README controls + FAQ entry. Verify mapping against src/input/gamepad.ts. | docs/gamepad (PR #35, #36)
 - [x] WP5 | developer 1 | Vehicle model 5a/5b/5c (6) + unit and integration tests (13.1, 13.2). Gates G1, G3. (PR #31, G1 + G3 partial)
 - [x] WP12 | developer 1 + developer 2 | Fix duplicate mass-rebuild: single debounced applier in boot (dev1, with flush/cancel); Options panel displays reported rebuild state only (dev2). See QUESTIONS #9. | dev1/wp12-rebuild-owner (PR #37)
+- [x] D5 | designer | Speed cues as code (design 10.2): fog tuning, speed lines above ~80% top speed and during boost, vignette. NOT camera FOV/shake/roll (developer 1, WP6). Check WP3 first for overlap. | design/speed-cues (PR #38)
