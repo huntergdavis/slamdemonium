@@ -17,7 +17,7 @@ const test = base.extend<{ runtimeErrors: void }>({
   ],
 });
 
-test('live boot dispatches O/H/F9/Tab/T/P/R/C/G and a slider changes vehicle behavior', async ({
+test('O opens while driving; P pauses and resumes; H and T remain usable while paused', async ({
   page,
 }) => {
   await page.goto('./');
@@ -61,6 +61,33 @@ test('live boot dispatches O/H/F9/Tab/T/P/R/C/G and a slider changes vehicle beh
   await expect
     .poll(() => page.evaluate(() => window.__game.tuning.get('timeScale')))
     .toBe(1);
+  await page.keyboard.press('KeyO');
+  await expect(page.locator('.sl-options')).toHaveAttribute(
+    'data-open',
+    'false',
+  );
+  await page.keyboard.press('KeyP');
+  await expect
+    .poll(() => page.evaluate(() => window.__game.getTelemetry().paused))
+    .toBe(false);
+  await expect
+    .poll(() =>
+      page.evaluate(() => Number(window.__game.getTelemetry().totalSteps)),
+    )
+    .toBeGreaterThan(Number(before));
+});
+
+test('Tab swaps tuning slots and C/G/R drive the mounted scene while paused', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.waitForFunction(() => window.__game?.ready);
+  await page.evaluate(() => {
+    window.__game.perf!.pauseSimulation(true);
+    window.__game.setOptionsOpen(true);
+  });
+  const canvas = page.getByLabel('Driving view');
+  await canvas.focus();
   await page.keyboard.press('Tab');
   await expect(
     page.getByRole('button', { name: 'Activate slot B' }),
@@ -78,6 +105,27 @@ test('live boot dispatches O/H/F9/Tab/T/P/R/C/G and a slider changes vehicle beh
     .poll(() => page.evaluate(() => window.__game.getTelemetry().gizmosVisible))
     .toBe(true);
 
+  await page.evaluate(() => {
+    window.__game.setInput({ throttle: 1 });
+    window.__game.stepMany(120);
+  });
+  await page.keyboard.press('KeyR');
+  await expect
+    .poll(() => page.evaluate(() => window.__game.getTelemetry().speed))
+    .toBe(0);
+});
+
+test('a live slider changes acceleration and F9 downloads real physics CSV', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.waitForFunction(() => window.__game?.ready);
+  await page.evaluate(() => {
+    window.__game.perf!.pauseSimulation(true);
+    window.__game.setOptionsOpen(true);
+  });
+  const canvas = page.getByLabel('Driving view');
+  await canvas.focus();
   // Use the real slider event, then compare equal fixed-step launches.
   await page.getByRole('searchbox').fill('accel0');
   const slider = page.locator('#group-accel0-range');
@@ -120,20 +168,6 @@ test('live boot dispatches O/H/F9/Tab/T/P/R/C/G and a slider changes vehicle beh
     .split('\n');
   expect(JSON.parse(lines[0]!.slice(2)).sampleCount).toBe(24);
   expect(lines).toHaveLength(26);
-  await page.keyboard.press('KeyO');
-  await expect(page.locator('.sl-options')).toHaveAttribute(
-    'data-open',
-    'false',
-  );
-  await page.keyboard.press('KeyP');
-  await expect
-    .poll(() => page.evaluate(() => window.__game.getTelemetry().paused))
-    .toBe(false);
-  await expect
-    .poll(() =>
-      page.evaluate(() => Number(window.__game.getTelemetry().totalSteps)),
-    )
-    .toBeGreaterThan(Number(before));
 });
 
 test('boot mass rebuild preserves motion; tuning survives reload, JSON import and share hashes', async ({
