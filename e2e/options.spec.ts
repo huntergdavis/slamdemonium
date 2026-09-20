@@ -1,5 +1,6 @@
 import { expect, test as base, type Page } from '@playwright/test';
 import { serveOptionsBuild } from '../tests/options/server';
+import { PARAM_DEFS } from '../src/tuning/schema';
 
 const test = base.extend<
   { optionsPage: Page },
@@ -28,9 +29,11 @@ test('schema controls update in place, preserve typed precision, validate, reset
   optionsPage: page,
 }) => {
   await page.getByRole('button', { name: '⚙ Options' }).click();
-  await expect(page.locator('.sl-field')).toHaveCount(83);
+  await expect(page.locator('.sl-field')).toHaveCount(PARAM_DEFS.length + 14);
   await expect(page.locator('.sl-options__quick .sl-field')).toHaveCount(14);
-  await expect(page.locator('.sl-options__groups .sl-field')).toHaveCount(69);
+  await expect(page.locator('.sl-options__groups .sl-field')).toHaveCount(
+    PARAM_DEFS.length,
+  );
   expect(
     await page
       .locator('[id]')
@@ -204,7 +207,7 @@ test('presets, JSON, share links, autosave and reset preserve named tunes and co
     values: Record<string, number>;
     changeLog: unknown[];
   };
-  expect(Object.keys(exported.values)).toHaveLength(69);
+  expect(Object.keys(exported.values)).toHaveLength(PARAM_DEFS.length);
   expect(exported.values.gravity).toBe(24.25);
   expect(exported.changeLog.length).toBeGreaterThan(1);
   await page.getByRole('button', { name: 'Share link', exact: true }).click();
@@ -245,6 +248,7 @@ test('plot reads are gated before telemetry access, track axle points, and hide 
     test.setAutomaticUpdates(false);
     test.panel.update(1000); // closed: no getter call
     const closed = test.state.telemetryReads;
+    const feedbackBefore = test.state.rebuildReads;
     test.panel.setOpen(true);
     test.state.telemetry = {
       wheels: [
@@ -255,10 +259,15 @@ test('plot reads are gated before telemetry access, track axle points, and hide 
       ],
     };
     for (let ms = 1000; ms < 2000; ms++) test.panel.update(ms);
-    return { closed, reads: test.state.telemetryReads };
+    return {
+      closed,
+      reads: test.state.telemetryReads,
+      feedbackReads: test.state.rebuildReads - feedbackBefore,
+    };
   });
   expect(result.closed).toBe(0);
   expect(result.reads).toBe(30);
+  expect(result.feedbackReads).toBe(30);
   await expect(page.locator('.sl-graph__legend')).toContainText(
     'F 15.0° / 1.00 · R 0.0° / 0.30',
   );
@@ -288,7 +297,7 @@ test('plot reads are gated before telemetry access, track axle points, and hide 
   );
 });
 
-test('mass updates debounce, helpers stay keyboard accessible, and the panel fits a narrow viewport', async ({
+test('external rebuild feedback is displayed, helpers stay keyboard accessible, and the panel fits a narrow viewport', async ({
   optionsPage: page,
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 700 });
@@ -300,11 +309,24 @@ test('mass updates debounce, helpers stay keyboard accessible, and the panel fit
     store.set('mass', 1700);
     store.set('mass', 1800);
   });
-  await expect
-    .poll(() => page.evaluate(() => window.__optionsTest.state.rebuilds))
-    .toBe(1);
   const field = page.locator('.sl-options__groups .sl-field[data-key=mass]');
   await expect(field.locator('.sl-badge')).toBeHidden();
+  await page.evaluate(() => {
+    window.__optionsTest.state.rebuild.status = 'pending';
+  });
+  await expect(field.locator('.sl-badge')).toHaveText('Applying…');
+  await page.evaluate(() => {
+    window.__optionsTest.state.rebuild.status = 'error';
+    window.__optionsTest.state.rebuild.error = 'Mass adapter failed';
+  });
+  await expect(field.locator('.sl-badge')).toHaveText('Update failed');
+  await expect(page.getByRole('status')).toHaveText('Mass adapter failed');
+  await page.evaluate(() => {
+    window.__optionsTest.state.rebuild.status = 'idle';
+    window.__optionsTest.state.rebuild.error = null;
+  });
+  await expect(field.locator('.sl-badge')).toBeHidden();
+  await expect(page.getByRole('status')).toBeEmpty();
   const help = field.getByRole('button', { name: 'Help for Mass' });
   await help.focus();
   await expect(field.locator('.sl-tooltip')).toBeVisible();

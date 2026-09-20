@@ -10,6 +10,10 @@ import { TuningStore, type TuningChange } from '../tuning/store';
 
 export type ComparisonSlot = 'A' | 'B';
 export type RebuildState = 'idle' | 'pending' | 'error' | 'unavailable';
+export interface RebuildFeedback {
+  readonly status: RebuildState;
+  readonly error: string | null;
+}
 interface SavedSlot {
   values: ParamSet;
   baseline: ParamSet;
@@ -18,8 +22,8 @@ interface SavedSlot {
 export interface TuningSessionOptions {
   persistence?: TuningStorage;
   persistenceOptions?: PersistenceOptions;
-  /** Adapter updates the existing body's mass properties; never creates or respawns a body. */
-  applyMassProperties?: () => void | Promise<void>;
+  /** Boot owns the headless-safe debounce; Options only displays its stable state. */
+  readRebuildState?: () => Readonly<RebuildFeedback>;
 }
 
 /** Only the injected store is live state. A/B snapshots are stored when leaving a slot. */
@@ -27,15 +31,14 @@ export class TuningSession {
   readonly persistence: TuningStorage;
   activeSlot: ComparisonSlot = 'A';
   presetName: string;
-  rebuildState: RebuildState = 'idle';
+  rebuildState: RebuildState = 'unavailable';
+  rebuildError: string | null = null;
   message = '';
   private baseline: ParamSet;
   private readonly slots: Record<ComparisonSlot, SavedSlot>;
   private readonly listeners = new Set<(key?: ParamKey) => void>();
   private readonly unsubscribeStore: () => void;
   private readonly unsubscribeStatus: () => void;
-  private rebuildTimer: ReturnType<typeof setTimeout> | undefined;
-  private revision = 0;
   private disposed = false;
 
   constructor(
@@ -46,7 +49,6 @@ export class TuningSession {
       throw new TypeError(
         'Persistence and Options must share the same tuning store.',
       );
-    const beforeRestore = store.snapshot();
     this.persistence =
       options.persistence ??
       new TuningStorage(store, {
@@ -64,14 +66,7 @@ export class TuningSession {
     this.unsubscribeStatus = this.persistence.onStatus(() => {
       this.notify();
     });
-    if (
-      PARAM_DEFS.some(
-        (definition) =>
-          definition.needsRebuild &&
-          beforeRestore[definition.key] !== store.get(definition.key),
-      )
-    )
-      this.scheduleRebuild();
+    this.updateRebuildState();
   }
 
   onUpdate(listener: (key?: ParamKey) => void): () => void {
@@ -182,8 +177,6 @@ export class TuningSession {
 
   dispose(): void {
     this.disposed = true;
-    this.revision++;
-    if (this.rebuildTimer !== undefined) clearTimeout(this.rebuildTimer);
     this.unsubscribeStore();
     this.unsubscribeStatus();
     this.listeners.clear();
@@ -210,35 +203,18 @@ export class TuningSession {
   }
 
   private readonly changed = (change: TuningChange): void => {
-    if (change.needsRebuild) this.scheduleRebuild();
     this.notify(change.key);
   };
 
-  private scheduleRebuild(): void {
-    this.revision++;
-    this.rebuildState = 'pending';
-    if (this.rebuildTimer !== undefined) clearTimeout(this.rebuildTimer);
-    this.rebuildTimer = setTimeout(() => {
-      void this.rebuild(this.revision);
-    }, 100);
-  }
-
-  private async rebuild(revision: number): Promise<void> {
-    this.rebuildTimer = undefined;
-    if (!this.options.applyMassProperties) {
-      this.rebuildState = 'unavailable';
-      this.notify();
-      return;
-    }
-    try {
-      await this.options.applyMassProperties();
-      if (this.disposed || revision !== this.revision) return;
-      this.rebuildState = 'idle';
-    } catch {
-      if (this.disposed || revision !== this.revision) return;
-      this.rebuildState = 'error';
-      this.message = 'Mass update failed; retry by adjusting a mass parameter.';
-    }
+  /** Called by the panel's <=30 Hz update gate; never schedules or applies a rebuild. */
+  updateRebuildState(): void {
+    if (this.disposed) return;
+    const feedback = this.options.readRebuildState?.();
+    const status = feedback?.status ?? 'unavailable';
+    const error = feedback?.error ?? null;
+    if (status === this.rebuildState && error === this.rebuildError) return;
+    this.rebuildState = status;
+    this.rebuildError = error;
     this.notify();
   }
 

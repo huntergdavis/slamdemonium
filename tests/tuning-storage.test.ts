@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_VALUES } from '../src/tuning/schema';
+import { DEFAULT_VALUES, PARAM_DEFS } from '../src/tuning/schema';
 import { TuningStore } from '../src/tuning/store';
 import {
   TuningStorage,
@@ -54,7 +54,7 @@ describe('tuning import and sharing', () => {
     expect(document.values.mass).toBe(1300);
     expect(document.values.physicsHz).toBe(180);
     expect(document.values.accel0).toBe(14);
-    expect(Object.keys(document.values)).toHaveLength(69);
+    expect(Object.keys(document.values)).toHaveLength(PARAM_DEFS.length);
     expect(warn).toHaveBeenCalledTimes(4);
   });
 

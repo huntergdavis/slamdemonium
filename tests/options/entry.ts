@@ -2,6 +2,7 @@ import { KeyboardInput } from '../../src/input/keyboard';
 import { InputMapper } from '../../src/input/mapper';
 import { TuningStore } from '../../src/tuning/store';
 import { mountOptionsPanel } from '../../src/ui/optionsPanel';
+import type { RebuildState } from '../../src/ui/tuningSession';
 import type { TirePlotTelemetry } from '../../src/ui/tireCurvePlot';
 import '../../src/style.css';
 
@@ -13,7 +14,8 @@ const store = new TuningStore();
 const input = new InputMapper(new KeyboardInput());
 const state = {
   telemetryReads: 0,
-  rebuilds: 0,
+  rebuildReads: 0,
+  rebuild: { status: 'idle' as RebuildState, error: null as string | null },
   paused: false,
   telemetry: undefined as TirePlotTelemetry | undefined,
 };
@@ -21,8 +23,9 @@ const panel = mountOptionsPanel({
   host,
   drivingSurface,
   store,
-  applyMassProperties: () => {
-    state.rebuilds++;
+  readRebuildState: () => {
+    state.rebuildReads++;
+    return state.rebuild;
   },
   readTelemetry: () => {
     state.telemetryReads++;
