@@ -29,10 +29,12 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 
 
+- [ ] T12 | techwriter | `docs/SCRIPTED_INPUT.md`: record, replay, hand-author, assertions, lap timing, and why recordings must start from a fresh respawn. | docs/scripted-input
+
 ## Later (phase 3)
 
 - [ ] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10).
-- [ ] WP8 | developer 2 | HUD, telemetry graphs, CSV recorder (12). Gate G4.
+- [ ] WP8 | designer | HUD, telemetry graphs, CSV recorder (12). Gate G4.
 - [ ] WP9 | all | QA, perf harness, soak/determinism, manual QA, Gate G5. Techwriter: screenshots in README.
 
 ## Done
