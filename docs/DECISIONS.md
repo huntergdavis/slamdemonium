@@ -395,4 +395,13 @@ assertions: retained JS was 9,300,436 → 9,533,468 bytes (+2.51%), WASM capacit
 and warmed parameter builds were zero versus 24 after restoring shared materials.
 Give this regression its own 180-second budget, preserving the full workload
 and every memory/counter assertion. These elapsed times are test-runner evidence,
-not measurements of the physics step budget; final CI verification is pending.
+not measurements of the physics step budget.
+
+[Hosted CI run 35545284828](https://github.com/huntergdavis/slamdemonium/actions/runs/35545284828)
+then passed all 174 unit tests and 27 browser tests, with no browser retries.
+The full 36,000-step regression completed: retained JS was 9,236,500 → 9,466,408
+bytes (+2.49%); WASM capacity remained 134,217,728 bytes and allocator free space
+remained 121,256,280 bytes. The warmed fixed view made zero parameter builds;
+restoring shared materials produced 24. This demonstrates the repaired render
+call pattern and bounded retained memory, without resolving the separate
+vehicle/suspension allocation attributions discussed above.
