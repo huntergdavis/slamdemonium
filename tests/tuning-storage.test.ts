@@ -88,6 +88,63 @@ describe('tuning import and sharing', () => {
 });
 
 describe('TuningStorage', () => {
+  it('reports metadata-only saves and returns immutable log entries without exposing the mutable array', () => {
+    vi.useFakeTimers();
+    const storage = new MemoryStorage();
+    const persistence = new TuningStorage(new TuningStore(), {
+      storage,
+      hash: '',
+    });
+    const states: string[] = [];
+    persistence.onStatus((state) => states.push(state));
+    persistence.setName('Named defaults');
+    vi.advanceTimersByTime(200);
+    expect(parseTuningJSON(storage.getItem(WORKING_SET_KEY) ?? '').name).toBe(
+      'Named defaults',
+    );
+    expect(states).toEqual(['saving', 'saved']);
+    persistence.store.set('gravity', 20);
+    const entry = persistence.changeLogEntry(0);
+    expect(Object.isFrozen(entry)).toBe(true);
+    expect(persistence.changeLogEntry(0)).toBe(entry);
+    const exported = persistence.exportJSON();
+    persistence.store.set('gravity', 21);
+    expect(parseTuningJSON(exported).changeLog).toHaveLength(1);
+    expect(persistence.changeLogLength).toBe(2);
+    persistence.dispose();
+  });
+
+  it('retries failed named-preset writes and never reports saved when only the working set succeeded', () => {
+    const storage = new MemoryStorage();
+    const originalWrite = storage.setItem.bind(storage);
+    let rejectPresets = true;
+    vi.spyOn(storage, 'setItem').mockImplementation((key, value) => {
+      if (key === USER_PRESETS_KEY && rejectPresets) throw new Error('quota');
+      originalWrite(key, value);
+    });
+    const persistence = new TuningStorage(new TuningStore({ gravity: 25 }), {
+      storage,
+      hash: '',
+      warn: vi.fn(),
+    });
+    persistence.savePreset('Keep me');
+    persistence.flush();
+    expect(storage.getItem(WORKING_SET_KEY)).not.toBeNull();
+    expect(storage.getItem(USER_PRESETS_KEY)).toBeNull();
+    expect(persistence.status).toBe('error');
+    rejectPresets = false;
+    persistence.flush();
+    expect(persistence.status).toBe('saved');
+    const reloaded = new TuningStorage(new TuningStore(), {
+      storage,
+      hash: '',
+    });
+    reloaded.applyUserPreset('Keep me');
+    expect(reloaded.store.get('gravity')).toBe(25);
+    reloaded.dispose();
+    persistence.dispose();
+  });
+
   it('debounces autosave, logs every effective change, and restores without duplicating history', () => {
     vi.useFakeTimers();
     const storage = new MemoryStorage();

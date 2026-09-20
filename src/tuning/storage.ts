@@ -13,7 +13,8 @@ export const TUNING_VERSION = 1;
 export const WORKING_SET_KEY = 'vehicle-feel.tuning.working';
 export const USER_PRESETS_KEY = 'vehicle-feel.tuning.presets';
 export type Warn = (message: string) => void;
-export type PersistenceStatus = 'idle' | 'saving' | 'saved' | 'unavailable' | 'error';
+export type PersistenceStatus =
+  'idle' | 'saving' | 'saved' | 'unavailable' | 'error';
 export interface ChangeLogEntry {
   readonly timestamp: number;
   readonly key: ParamKey;
@@ -163,8 +164,11 @@ export class TuningStorage {
   private readonly unsubscribe: () => void;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private dirty = false;
+  private presetsDirty = false;
   private disposed = false;
-  private readonly statusListeners = new Set<(status: PersistenceStatus) => void>();
+  private readonly statusListeners = new Set<
+    (status: PersistenceStatus) => void
+  >();
   private persistenceStatus: PersistenceStatus = 'idle';
   name: string;
 
@@ -205,13 +209,22 @@ export class TuningStorage {
     return this.log.slice();
   }
 
-  get status(): PersistenceStatus { return this.persistenceStatus; }
-  get changeLogLength(): number { return this.log.length; }
-  changeLogEntry(index: number): ChangeLogEntry | undefined { return this.log[index]; }
+  get status(): PersistenceStatus {
+    return this.persistenceStatus;
+  }
+  get changeLogLength(): number {
+    return this.log.length;
+  }
+  /** Frozen entry, safe to retain; never exposes the mutable internal array. */
+  changeLogEntry(index: number): ChangeLogEntry | undefined {
+    return this.log[index];
+  }
 
   onStatus(listener: (status: PersistenceStatus) => void): () => void {
     this.statusListeners.add(listener);
-    return () => { this.statusListeners.delete(listener); };
+    return () => {
+      this.statusListeners.delete(listener);
+    };
   }
 
   setName(name: string): void {
@@ -254,7 +267,7 @@ export class TuningStorage {
       name,
       parseTuningJSON(exportTuningJSON(this.store, name), this.warn),
     );
-    this.write(
+    this.presetsDirty = !this.write(
       USER_PRESETS_KEY,
       JSON.stringify([...this.userPresets.values()]),
     );
@@ -284,15 +297,29 @@ export class TuningStorage {
   flush(): void {
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
-    if (!this.dirty) return;
-    this.dirty = !this.write(WORKING_SET_KEY, this.exportJSON());
-    this.setStatus(!this.storage ? 'unavailable' : this.dirty ? 'error' : 'saved');
+    if (!this.dirty && !this.presetsDirty) return;
+    if (this.presetsDirty) {
+      this.presetsDirty = !this.write(
+        USER_PRESETS_KEY,
+        JSON.stringify([...this.userPresets.values()]),
+      );
+    }
+    if (this.dirty)
+      this.dirty = !this.write(WORKING_SET_KEY, this.exportJSON());
+    this.setStatus(
+      !this.storage
+        ? 'unavailable'
+        : this.dirty || this.presetsDirty
+          ? 'error'
+          : 'saved',
+    );
   }
 
   dispose(): void {
     this.flush();
     this.unsubscribe();
     this.disposed = true;
+    this.statusListeners.clear();
   }
 
   private readonly recordChange = (change: TuningChange): void => {
