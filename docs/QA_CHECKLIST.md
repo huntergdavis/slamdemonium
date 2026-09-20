@@ -2,16 +2,16 @@
 
 For a human, on real hardware. Automated tests cover the numbers; this list covers what only a person can judge. It expands section 13.5 of the [design doc](vertical-slice-design.md) and the human-judged items from its section 3 acceptance list.
 
-Run the whole list at least once in **Chrome** and once in **Safari** on an **M-series MacBook Air**, at a 1080p-equivalent window. Firefox is a bonus pass. Use a **gamepad** for the drift items; repeat them on keyboard afterwards.
+Run the whole list at least once each in **Chrome**, **Safari** and **Firefox** on an **M-series MacBook Air**, at a 1080p-equivalent window. All three browsers are required: design section 3 says the build must load and reach a drivable state in each of them. Use a **gamepad** for the drift items; repeat them on keyboard afterwards.
 
-> **Status:** the game is not yet drivable, so every item below is **pending** until the vehicle model (WP5) lands. Items that also need the HUD or Options page say so. Steps are written against the design; where the shipped game differs, fix this page.
+> **Status:** the game is drivable. The live site has the real ring, the designed car with working wheels, the chase camera, skid marks and speed cues, so items 1 to 5, 10 and 11 can be run today. The Options panel, HUD, telemetry recording and the T and P keys are built but not yet mounted in the live game (WP14 is wiring them); every item that needs them is marked **pending WP14** and is not a failure until that merges. Steps are written against the design; where the shipped game differs, fix this page.
 
 ## Before you start
 
-1. Open the game fresh. Press **O**, choose the **Default** preset, click **Reset everything**, close the panel.
-2. Press **H** until the full HUD is showing.
+1. Open the game fresh. Press **O**, choose the **Default** preset, click **Reset everything**, close the panel. *(Pending WP14: until the panel is mounted, a fresh page load is at defaults.)*
+2. Press **H** until the full HUD is showing. *(Pending WP14.)*
 3. Note the browser, browser version, display refresh rate and window size at the top of your report.
-4. Press **F9** to start a telemetry recording. Leave it running for the whole session; press **F9** again at the end to download the CSV.
+4. Press **F9** to start a telemetry recording. Leave it running for the whole session; press **F9** again at the end to download the CSV. *(Pending WP14.)*
 
 Terms used below (slide angle, grip usage, G-G diagram) are in the [Glossary](GLOSSARY.md).
 
@@ -68,7 +68,7 @@ Repeat each left and right.
 
 ### 6. Switching presets while driving
 
-Needs the Options page (WP7).
+Pending WP14 (Options page not yet mounted).
 
 **Steps.** On the ring at speed, press **O**, switch Default to Grip, drive a corner, switch to Drifty, drive a corner, switch to Raw, drive a corner, switch back to Default. Keep driving throughout.
 
@@ -78,7 +78,7 @@ Needs the Options page (WP7).
 
 ### 7. Presets distinguishable blind within 30 seconds
 
-Acceptance item from design section 3. Needs a second person.
+Acceptance item from design section 3. Needs a second person. Pending WP14 (needs the Options page).
 
 **Steps.** The helper opens the Options page, picks Grip, Drifty or Raw at random, and hides the panel and the HUD's preset name (press **H** to minimal). You drive for up to 30 seconds and say which one it is. Do it six times in random order, mixing in repeats.
 
@@ -90,15 +90,17 @@ Acceptance item from design section 3. Needs a second person.
 
 Acceptance item from design section 3.
 
-**Steps.** Pick the **Raw** preset. Then also set `countersteerAssist`, `yawAssist` and `absStrength` to 0 by hand if they are not already, and check nothing in the Steering group is left above zero. Drive the ring for 60 seconds and try a drift.
+Pending WP14 (needs the Options page to select Raw).
 
-**Pass.** The car drives. It can be twitchy and it is fine if you spin, but it responds to input, it can be caught with effort, and nothing invisible helps you. Once past the maximum drift angle there is no push back; you are on your own. No flicker, no NaN, no reset.
+**Steps.** Pick the **Raw** preset and confirm `countersteerAssist` and `yawAssist` both read 0. Those two are "every assist": counter-steer, yaw assist, and the drift limiter, which scales with yaw assist and so is off too. Leave steering lock and the other Steering sliders alone; they are not assists. Airborne damping and extreme-roll recovery are internal safety constants and stay on per the PM ruling (QUESTIONS #7); they act only in the air or past 35 degrees of roll, so they never touch flat-pavement driving. Drive the ring for 60 seconds and try a drift.
+
+**Pass.** The car drives. It can be twitchy and it is fine if you spin, but it responds to input, it can be caught with effort, and nothing invisible helps you. Once past the maximum drift angle there is no push back; you are on your own. If you do roll it, the car righting itself is expected and not a fail. No flicker, no NaN, no reset.
 
 **Fail.** The car becomes uncontrollable in a way that has nothing to do with skill: an oscillation that grows on its own, a spin that never slows, a jump to NaN or a respawn you did not ask for. Or the opposite: you can feel a helper still straightening the car, which means an assist is not truly off.
 
 ### 9. Opening and closing the panel while driving
 
-Needs the Options page (WP7).
+Pending WP14 (Options page not yet mounted).
 
 **Steps.** At speed, press **O** to open, drag a Quick Tune slider with the mouse, click a numeric box and type a value, press **O** to close, keep driving. Repeat with the gear button instead of the key. Try pressing arrow keys while a slider is focused and after clicking off it.
 
@@ -124,13 +126,47 @@ Needs the Options page (WP7).
 
 ### 12. Frame rate and smoothness (spot check)
 
-Design target: sustained 60 FPS on the reference laptop. The performance harness measures it; you confirm it looks right.
+Design target: sustained 60 FPS on the reference laptop. The performance harness measures it; you confirm it looks right. Pending WP14 for the HUD figures; until then judge smoothness by eye.
 
 **Steps.** Watch the FPS and physics-ms figures in the HUD text block during items 1, 2 and 5.
 
 **Pass.** FPS stays at the display rate with no visible drops during drifts, skid marks or wall hits. Physics time per step stays well under a millisecond.
 
 **Fail.** Visible frame drops in any of those moments, or physics time creeping upward over the session.
+
+### 13. Options page mounts and applies live
+
+Pending WP14.
+
+**Steps.** At speed on the ring, press **O**. Drag `gripRear` from its default down to 0.8 while still driving. Drag it back. Then drag `accel0` up to 30 and floor the throttle from a standstill.
+
+**Pass.** The panel opens on the first press with the game still running behind it. The rear starts sliding within a frame of the slider moving, no reload, no respawn. Dragging it back restores grip just as fast. The higher `accel0` is obviously quicker off the line. The "unsaved change" marker appears next to each slider you touched.
+
+**Fail.** O does nothing. A slider moves but the car does not change until a reload or respawn. The car jumps, stops or teleports when a slider moves. A value snaps back on its own.
+
+### 14. Values survive a reload, an export reimports, a share link applies
+
+Pending WP14.
+
+**Steps.**
+
+1. Set three sliders to unusual values you will recognise (for example `gravity` 20, `topSpeed` 45, `fovBase` 90). Note them. Reload the page.
+2. Click **Export**. Click **Reset everything**. Confirm the three sliders are back at defaults. Click **Import** and pick the file you just exported.
+3. Click **Share link** and copy the URL. Open it in a fresh private window.
+
+**Pass.** After the reload, the three values are exactly as you left them and the change log in the panel still lists your edits. After the import, the three values come back and the change log from the export is present. In the private window, the three values are applied on load with no clicks.
+
+**Fail.** Any of the three values reverts after a reload. The exported file will not import, or imports with a different value. The share link opens at defaults, or shows an error, or has to be applied by hand.
+
+### 15. HUD, recording and time keys
+
+Pending WP14.
+
+**Steps.** Press **H** three times while driving. Press **F9**, drive for ten seconds, press **F9** again. Press **T** at speed, then again. Press **P**, wait two seconds, press **P** again.
+
+**Pass.** H cycles full, minimal, off, full, and the picture keeps running underneath. F9 shows a recording indicator on the first press and downloads a CSV on the second; the file opens and has one row per physics step with a parameter header. T drops the world to quarter speed with the physics still smooth and the T press again returns it to normal. P freezes the car where it is, and the second P resumes it from exactly that state with no jump.
+
+**Fail.** Any key does nothing. The HUD hides but the game pauses. No file downloads, or the CSV is empty or has no header. Slow motion stutters, or changes the car's behaviour once back at normal speed. Pause loses input state or teleports the car on resume.
 
 ## Reporting a failure
 
@@ -146,4 +182,4 @@ Attach the CSV and JSON to the report. If the failure needs a specific setup to 
 
 ## Sign-off
 
-Record the date, hardware, browser and version, and a Pass / Fail / Pending mark for each of the twelve items. The slice is not hardened until every item passes in both Chrome and Safari.
+Record the date, hardware, browser and version, and a Pass / Fail / Pending mark for each of the fifteen items. The slice is not hardened until every item passes in Chrome, Safari and Firefox, with nothing left pending.
