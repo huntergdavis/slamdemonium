@@ -7,10 +7,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 ## Now (phase 1: unblock everything)
 
 - [ ] WP1 | developer 1 | Day-1 Jolt spike (design 4.2 a-f) with go/no-go in DECISIONS.md, then `IPhysicsWorld` adapter + Jolt impl, fixed-step loop with interpolation and timeScale, loop unit tests. Gate G0. | dev1/wp1-physics-loop
-- [ ] WP2 | developer 2 | Tuning schema (all 69 rows of 7.2), typed store with change events, presets (7.3), JSON import/export, URL-hash share, validation, schema tests. | dev2/wp2-tuning
 - [ ] WP4 | developer 2 | Input: keyboard, gamepad, mapper, per-step sampling, latency probe (11). | dev2/wp4-input
 - [ ] R3 | research | "Feels fast" and crash-happy arcade vibe references (10.2, section 1). `docs/research/speed-and-vibe.md` | research/vibe
-- [ ] D2 | designer | Procedural asphalt generator prototype (9.3): standalone canvas/TS that produces the tiled 1024 noise texture; ready to drop into `src/world/materials.ts`. | design/asphalt
 
 
 
@@ -39,3 +37,5 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] O2 | devops | GitHub Pages deploy of `dist/` from main to hunterdavis.com/slamdemonium/ (Vite base path via VITE_BASE_PATH), enable Pages via gh api, branch protection on main requiring CI. | devops/pages (PR #9)
 - [x] T5 | techwriter | `docs/FAQ.md`, player-facing: what this is, why a box, why no track yet, controls, presets, sharing settings, browser support. | docs/faq (PR #11)
 - [x] R2 | research | Drift assist research (design 6.8 C): how arcade racers make drifts holdable; recommend a control law keeping the parameter names. `docs/research/drift-assist.md` | research/drift-assist (PR #16)
+- [x] WP2 | developer 2 | Tuning schema (all 69 rows of 7.2), typed store with change events, presets (7.3), JSON import/export, URL-hash share, validation, schema tests. | dev2/wp2-tuning
+- [x] D2 | designer | Procedural asphalt generator prototype (9.3): standalone canvas/TS that produces the tiled 1024 noise texture; ready to drop into `src/world/materials.ts`. | design/asphalt (PR #15)
