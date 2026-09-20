@@ -113,9 +113,20 @@ export function createSpeedCues(host: HTMLElement) {
     }
     canvas.style.display = 'block';
     if (gradient && levels.vignetteAlpha > 0) {
+      context.save();
+      // Gradients use the paint-time transform (HTML Canvas 2D standard).
+      context.setTransform(
+        (pixelRatio * width) / 2,
+        0,
+        0,
+        (pixelRatio * height) / 2,
+        (pixelRatio * width) / 2,
+        (pixelRatio * height) / 2,
+      );
       context.globalAlpha = levels.vignetteAlpha;
       context.fillStyle = gradient;
-      context.fillRect(0, 0, width, height);
+      context.fillRect(-1, -1, 2, 2);
+      context.restore();
       painted = true;
     }
     if (moving) {
@@ -195,14 +206,6 @@ export function createSpeedCues(host: HTMLElement) {
     pixelRatio = dpr;
     canvas.width = Math.ceil(width * pixelRatio);
     canvas.height = Math.ceil(height * pixelRatio);
-    context.setTransform(
-      (pixelRatio * width) / 2,
-      0,
-      0,
-      (pixelRatio * height) / 2,
-      (pixelRatio * width) / 2,
-      (pixelRatio * height) / 2,
-    );
     gradient = context.createRadialGradient(0, 0, 0.72, 0, 0, Math.SQRT2);
     gradient.addColorStop(0, 'rgba(0,0,0,0)');
     gradient.addColorStop(1, 'rgba(0,0,0,1)');
