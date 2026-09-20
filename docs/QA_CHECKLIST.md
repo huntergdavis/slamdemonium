@@ -76,19 +76,7 @@ Pending WP14 (Options page not yet mounted).
 
 **Fail.** A pause, freeze, teleport or speed change on switching. The car explodes, flips or spins without input. The preset name on the HUD does not match the dropdown. Any slider not moving to the preset's value.
 
-### 7. Drivable with every assist at zero
-
-Acceptance item from design section 3.
-
-Do this straight after item 6, while the Options page is still open. *(Pending WP14 for the panel; until then the Raw preset cannot be selected in the live game.)*
-
-**Steps.** Pick the **Raw** preset and confirm `countersteerAssist` and `yawAssist` both read 0; Raw also zeroes `absStrength`. "Every assist" means the tunable handling assists: counter-steer, yaw assist and the drift limiter that scales with yaw assist. Air damping and anti-flip are internal safety constants and stay on; they act only in the air or past 35 degrees of roll, so they never touch flat-pavement driving. Drive the ring for 60 seconds and try a drift.
-
-**Pass.** The car drives. It can be twitchy and it is fine if you spin, but it responds to input, it can be caught with effort, and nothing invisible helps you. Once past the maximum drift angle there is no push back; you are on your own. If you do roll it, the car righting itself is expected and not a fail. No flicker, no NaN, no reset.
-
-**Fail.** The car becomes uncontrollable in a way that has nothing to do with skill: an oscillation that grows on its own, a spin that never slows, a jump to NaN or a respawn you did not ask for. Or the opposite: you can feel a helper still straightening the car, which means an assist is not truly off.
-
-### 8. Presets distinguishable blind within 30 seconds
+### 7. Presets distinguishable blind within 30 seconds
 
 Acceptance item from design section 3. Needs a second person. Pending WP14 (needs the Options page).
 
@@ -97,6 +85,18 @@ Acceptance item from design section 3. Needs a second person. Pending WP14 (need
 **Pass.** You name the preset correctly at least five times out of six, each within 30 seconds of driving.
 
 **Fail.** Two or more wrong guesses, or regularly needing longer than 30 seconds. Note which pair you confuse; that is the tuning finding.
+
+### 8. Drivable with every assist at zero
+
+Acceptance item from design section 3.
+
+Pending WP14 (needs the Options page to select Raw).
+
+**Steps.** Pick the **Raw** preset and confirm `countersteerAssist` and `yawAssist` both read 0. Those two are "every assist": counter-steer, yaw assist, and the drift limiter, which scales with yaw assist and so is off too. Leave steering lock and the other Steering sliders alone; they are not assists. Airborne damping and extreme-roll recovery are internal safety constants and stay on per the PM ruling (QUESTIONS #7); they act only in the air or past 35 degrees of roll, so they never touch flat-pavement driving. Drive the ring for 60 seconds and try a drift.
+
+**Pass.** The car drives. It can be twitchy and it is fine if you spin, but it responds to input, it can be caught with effort, and nothing invisible helps you. Once past the maximum drift angle there is no push back; you are on your own. If you do roll it, the car righting itself is expected and not a fail. No flicker, no NaN, no reset.
+
+**Fail.** The car becomes uncontrollable in a way that has nothing to do with skill: an oscillation that grows on its own, a spin that never slows, a jump to NaN or a respawn you did not ask for. Or the opposite: you can feel a helper still straightening the car, which means an assist is not truly off.
 
 ### 9. Opening and closing the panel while driving
 
