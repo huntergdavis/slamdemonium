@@ -45,7 +45,7 @@ G-G is right-positive lateral X and forward-positive longitudinal Y, m/s². Its 
 
 Five panes share ten **wall-clock** seconds: speed m/s, beta degrees, yaw degrees/s, lateral Earth G (acceleration/9.81), signed mean loaded-wheel front/rear slip degrees. Front is solid cyan, rear dashed violet. Missing contacts and long observation gaps are not connected. The ring holds 301 samples. Minimal retains history without drawing plots.
 
-Minimal keeps speed, slide, boost/drift, preset/A–B, timeScale and FOV feedback. Off removes instruments but preserves recording feedback. The narrow/short dock can collapse without changing H mode. Options owns the gear button; mount under its root for panel-aware placement.
+Minimal keeps speed, slide, boost/drift, preset/A–B, timeScale and FOV feedback. Off removes instruments but preserves recording feedback. The dock activates at widths up to 1100 px or heights up to 820 px, preventing overlap at 1440×720. It can collapse without changing H mode. Options owns the gear button; mount under its root for panel-aware placement.
 
 ## CSV
 
@@ -62,3 +62,5 @@ Line 1 is a # JSON header: version 1, start time, initial complete parameter set
 - npx vitest run tests/hud-telemetry.test.ts: reused-object acceleration does not alias prior samples; rate-sized capacity; stop reasons; full parameters/live changes; bounded signed history.
 - npx playwright test e2e/hud.spec.ts: built DOM/CSS, stable nodes, units/flags/FOV, read throttling, H/F9, actual CSV download, automatic stops, responsive layout and Options.
 - TypeScript, production build and lint remain required. This synthetic fixture verifies the UI contract, not vehicle dynamics or hardware performance.
+
+The CSV header explicitly defines steps_per_frame as the **last completed rendered frame** total, stable during the current catch-up loop. Developer 1 confirmed the producer retains that value until render; WP8 never substitutes the partial loop counter. Each row uses the supplied physics dt for simulated time and the shared store for timeScale.

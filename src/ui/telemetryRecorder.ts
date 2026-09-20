@@ -174,6 +174,8 @@ export class TelemetryRecorder {
     if (!this.pending || !this.buffer || !this.stopReason) return null;
     const header = {
       version: 1,
+      stepsPerFrameSemantics:
+        'Total physics steps in the last completed rendered frame; stable during the current frame catch-up loop.',
       startedAt: this.startedAt,
       parameters: this.parameters,
       physicsHz: this.physicsHz,

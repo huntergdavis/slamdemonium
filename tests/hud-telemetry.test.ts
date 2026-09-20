@@ -37,6 +37,9 @@ describe('physics-rate CSV', () => {
     expect(recorder.capacity).toBe(store.get('physicsHz'));
     for (let i = 1; i <= 4; i++) {
       telemetry.speed = i * 3;
+      // Two samples in each synthetic frame; the producer changes this only
+      // after a frame completes, never to its partial catch-up counter.
+      telemetry.stepsPerFrame = i <= 2 ? 3 : 5;
       telemetry.speedKmh = telemetry.speed * 3.6;
       telemetry.wheels[0].Fz = 1000 * i;
       telemetry.wheels[0].spinning = i === 3;
@@ -54,6 +57,10 @@ describe('physics-rate CSV', () => {
     expect(column('FL_Fz_N')).toEqual([1000, 2000, 3000, 4000]);
     expect(column('FL_spinning')).toEqual([0, 0, 1, 0]);
     expect(column('camera_fov_deg')).toEqual([71, 72, 73, 74]);
+    expect(column('steps_per_frame')).toEqual([3, 3, 5, 5]);
+    expect(data.header.stepsPerFrameSemantics).toContain(
+      'last completed rendered frame',
+    );
     expect(column('time_s')[3]).toBeCloseTo(4 / 120);
     expect(data.header.parameters).toEqual(store.snapshot());
     expect(data.columns).toHaveLength(53);

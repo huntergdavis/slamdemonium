@@ -105,7 +105,13 @@ test('Options shifts the HUD, narrow layouts scroll, and the dock collapses with
   const hud = await page.locator('.sl-hud').boundingBox();
   expect(hud!.x + hud!.width).toBeLessThanOrEqual(1050);
   await page.getByRole('button', { name: 'Close Options' }).click();
+  await page.setViewportSize({ width: 1440, height: 720 });
+  const wheelCard = await page.locator('.sl-hud__wheels').boundingBox();
+  const bottom = await page.locator('.sl-hud__bottom').boundingBox();
+  expect(bottom!.y + bottom!.height).toBeLessThanOrEqual(wheelCard!.y);
+  await expect(page.locator('[data-reading="speed"]')).toBeInViewport();
   await page.setViewportSize({ width: 390, height: 680 });
+  await expect(page.locator('[data-reading="speed"]')).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
@@ -114,6 +120,8 @@ test('Options shifts the HUD, narrow layouts scroll, and the dock collapses with
   await expect(page.locator('.sl-hud__wheels')).toBeHidden();
   await page.getByRole('button', { name: 'Expand instruments' }).click();
   await expect(page.locator('.sl-hud__wheels')).toBeVisible();
+  await page.evaluate(() => window.__hudTest.hud.toggleRecording());
+  await expect(page.locator('.sl-hud__recording')).toBeInViewport();
 });
 
 test('instruments preserve nodes, units, thresholds, state text and the FOV cap', async ({
@@ -181,14 +189,29 @@ test('gates both getters before reading, cycles H, and keeps recording independe
 }) => {
   const reads = await page.evaluate(() => {
     const api = window.__hudTest;
+    const observer = new MutationObserver(() => {});
+    observer.observe(api.hud.element, {
+      attributes: true,
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    for (let i = 0; i < 120; i++) {
+      api.hud.cycleMode(0);
+      api.hud.cycleMode(3);
+      api.hud.setMode('full');
+    }
+    const noOpWrites = observer.takeRecords().length;
+    observer.disconnect();
     api.state.reads = api.state.renderReads = 0;
     for (let i = 0; i < 1000; i++) api.advance(1);
     const full = api.state.reads,
       render = api.state.renderReads;
     api.hud.setMode('off');
     for (let i = 0; i < 1000; i++) api.advance(1);
-    return { full, render, afterOff: api.state.reads };
+    return { full, render, afterOff: api.state.reads, noOpWrites };
   });
+  expect(reads.noOpWrites).toBe(0);
   expect(reads.full).toBeGreaterThan(0);
   expect(reads.full).toBeLessThanOrEqual(30);
   expect(reads.render).toBe(reads.full);

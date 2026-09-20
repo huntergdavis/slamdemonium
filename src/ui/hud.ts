@@ -242,6 +242,7 @@ export class Hud {
     if (this.disposed) return;
     if (mode !== 'full' && mode !== 'minimal' && mode !== 'off')
       throw new RangeError('Unknown HUD mode.');
+    if (mode === this.mode) return;
     this.mode = mode;
     this.element.dataset.mode = mode;
     write(
@@ -251,7 +252,7 @@ export class Hud {
   }
 
   cycleMode(count = 1): void {
-    if (!Number.isFinite(count)) return;
+    if (!Number.isFinite(count) || Math.trunc(count) % 3 === 0) return;
     const index = this.mode === 'full' ? 0 : this.mode === 'minimal' ? 1 : 2;
     const next = (((index + Math.trunc(count)) % 3) + 3) % 3;
     this.setMode(next === 0 ? 'full' : next === 1 ? 'minimal' : 'off');
@@ -355,7 +356,7 @@ export class Hud {
     this.set('steps', fixed(telemetry.stepsPerFrame, 0) + ' steps/frame');
     this.fill(this.boost, telemetry.boostMeter);
     this.fill(this.drift, telemetry.driftMeter);
-    this.set('charging', telemetry.charging ? '● CHARGING' : '○ Not charging');
+    this.set('charging', telemetry.charging ? 'CHARGING' : 'Not charging');
     this.charging.dataset.charging = String(telemetry.charging);
     if (this.mode !== 'full') return;
     this.fill(this.throttle, telemetry.throttle);
@@ -464,6 +465,7 @@ export class Hud {
     const recorder = this.recorder;
     if (recorder.recording) {
       this.notice.hidden = false;
+      this.element.dataset.recordingNotice = 'true';
       this.notice.dataset.state = 'recording';
       this.notice.setAttribute('aria-live', 'off');
       this.set(
@@ -472,6 +474,7 @@ export class Hud {
       );
     } else if (recorder.stopReason) {
       this.notice.hidden = false;
+      this.element.dataset.recordingNotice = 'true';
       this.notice.dataset.state =
         recorder.stopReason === 'manual' ? 'saved' : 'stopped';
       this.notice.setAttribute('aria-live', 'polite');

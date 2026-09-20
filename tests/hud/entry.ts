@@ -20,6 +20,8 @@ telemetry.steerAngle = -0.06;
 telemetry.throttle = 0.85;
 telemetry.brake01 = 0.24;
 telemetry.boostMeter = telemetry.driftMeter = 0.62;
+telemetry.groundedWheels = 3;
+telemetry.charging = true;
 telemetry.physicsStepMs = 0.42;
 telemetry.stepsPerFrame = 2;
 telemetry.lateralAcceleration = 13;
