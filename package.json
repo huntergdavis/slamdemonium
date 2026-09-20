@@ -18,7 +18,8 @@
     "perf": "npm run build && tsx scripts/perf/run.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:reachable": "tsx scripts/check-reachability.ts"
   },
   "dependencies": {
     "jolt-physics": "1.1.0",

@@ -1,0 +1,10 @@
+[
+  {
+    "path": "src/physics/adapter.ts",
+    "reason": "Type-only physics boundary interfaces; consumers erase these imports and no runtime feature lives here."
+  },
+  {
+    "path": "src/render/carVisualState.ts",
+    "reason": "Type-only vehicle-to-renderer state contract; actual car rendering is wired through carVisual.ts."
+  }
+]
