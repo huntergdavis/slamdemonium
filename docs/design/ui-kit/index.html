@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Driving-feel lab — UI components</title>
+    <link rel="stylesheet" href="../../../src/ui/ui.css" />
+    <script src="demo.js" defer></script>
+  </head>
+  <body class="sl-ui sl-kit" data-options-open="true">
+    <main class="sl-kit__main" id="kit-main" tabindex="-1">
+      <header class="sl-kit__header">
+        <p class="sl-kit__eyebrow">Driving-feel lab / UI kit</p>
+        <h1 class="sl-kit__title">Every number. In reach.</h1>
+        <p class="sl-muted">
+          Real components, sample values. Open the drawer, edit a control,
+          inspect a state.
+        </p>
+        <div class="sl-toolbar">
+          <button
+            class="sl-button sl-button--primary"
+            id="open-options"
+            aria-controls="kit-options"
+            aria-expanded="true"
+          >
+            Options</button
+          ><button class="sl-button" id="animate" aria-pressed="false">
+            Animate sample values</button
+          ><a href="README.md">Integration contract</a>
+        </div>
+      </header>
+      <section class="sl-card" aria-label="Runtime status">
+        <div class="sl-status">
+          <span><b id="fps">60</b> FPS</span><span>0.42 ms/step</span
+          ><span>2 steps/frame</span><span>1.00× time</span
+          ><span
+            >Default
+            <span class="sl-badge" data-state="edited">modified</span></span
+          ><span class="sl-badge" id="hud-slot">A ACTIVE</span>
+        </div>
+      </section>
+      <h2 class="sl-kit__section">Driving instruments</h2>
+      <div class="sl-kit__grid">
+        <section class="sl-card" aria-labelledby="speed-title">
+          <h3 class="sl-card__title" id="speed-title">Speed</h3>
+          <div class="sl-speed">
+            <span class="sl-speed__value" id="speed">198</span
+            ><span class="sl-speed__unit">km/h</span>
+          </div>
+          <div class="sl-speed__secondary">
+            <span id="speed-ms">55.0</span> m/s
+          </div>
+        </section>
+        <section class="sl-card" aria-labelledby="slide-title">
+          <h3 class="sl-card__title" id="slide-title">Slide angle</h3>
+          <div class="sl-meter__label">
+            <span class="sl-value" id="slide-value">+18°</span
+            ><span class="sl-badge" data-state="charging">● CHARGING</span>
+          </div>
+          <div
+            class="sl-gauge"
+            id="slide-gauge"
+            style="--sl-position: 60%"
+            role="meter"
+            aria-label="Slide angle"
+            aria-valuemin="-90"
+            aria-valuemax="90"
+            aria-valuenow="18"
+            aria-valuetext="18 degrees right"
+          >
+            <div class="sl-gauge__track" aria-hidden="true">
+              <span class="sl-gauge__zero"></span
+              ><span class="sl-gauge__threshold sl-gauge__threshold--low"></span
+              ><span
+                class="sl-gauge__threshold sl-gauge__threshold--high"
+              ></span
+              ><span class="sl-gauge__marker"></span>
+            </div>
+            <div class="sl-gauge__axis" aria-hidden="true">
+              <span>−90°</span><span>0°</span><span>+90°</span>
+            </div>
+          </div>
+          <p class="sl-caption">Drift thresholds ±12°</p>
+        </section>
+        <section class="sl-card" aria-labelledby="wheel-title">
+          <h3 class="sl-card__title" id="wheel-title">
+            Wheel grip / normal load
+          </h3>
+          <div class="sl-meter-stack">
+            <div
+              class="sl-meter"
+              style="--sl-fill: 0.5467"
+              role="meter"
+              aria-label="Front left grip usage"
+              aria-valuemin="0"
+              aria-valuemax="1.5"
+              aria-valuenow="0.82"
+            >
+              <div class="sl-meter__label">
+                <span>FL</span><span class="sl-meter__value">0.82</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span
+                ><span class="sl-meter__threshold"></span>
+              </div>
+              <div class="sl-wheel__meta">
+                <span>4.8 kN</span><span>GRIP</span>
+              </div>
+            </div>
+            <div
+              class="sl-meter"
+              data-state="over"
+              style="--sl-fill: 0.72"
+              role="meter"
+              aria-label="Front right grip usage"
+              aria-valuemin="0"
+              aria-valuemax="1.5"
+              aria-valuenow="1.08"
+              aria-valuetext="1.08, over grip limit, spinning"
+            >
+              <div class="sl-meter__label">
+                <span>FR</span><span class="sl-meter__value">1.08 !</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span
+                ><span class="sl-meter__threshold"></span>
+              </div>
+              <div class="sl-wheel__meta">
+                <span>3.9 kN</span><span>SPIN</span>
+              </div>
+            </div>
+            <div
+              class="sl-meter"
+              style="--sl-fill: 0.44"
+              role="meter"
+              aria-label="Rear left grip usage"
+              aria-valuemin="0"
+              aria-valuemax="1.5"
+              aria-valuenow="0.66"
+            >
+              <div class="sl-meter__label">
+                <span>RL</span><span class="sl-meter__value">0.66</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span
+                ><span class="sl-meter__threshold"></span>
+              </div>
+              <div class="sl-wheel__meta">
+                <span>4.7 kN</span><span>LOCK</span>
+              </div>
+            </div>
+            <div
+              class="sl-meter"
+              data-state="air"
+              role="group"
+              aria-label="Rear right airborne, no grip reading"
+            >
+              <div class="sl-meter__label">
+                <span>RR</span><span class="sl-meter__value">—</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span
+                ><span class="sl-meter__threshold"></span>
+              </div>
+              <div class="sl-wheel__meta">
+                <span>0.0 kN</span><span>AIR</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="sl-card" aria-labelledby="charge-title">
+          <h3 class="sl-card__title" id="charge-title">Boost &amp; drift</h3>
+          <div class="sl-meter-stack">
+            <div
+              class="sl-meter"
+              id="boost-meter"
+              style="--sl-fill: 0.62"
+              role="meter"
+              aria-label="Boost charge"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="62"
+            >
+              <div class="sl-meter__label">
+                <span>Boost</span
+                ><span class="sl-meter__value" id="boost-value">62%</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span>
+              </div>
+            </div>
+            <div
+              class="sl-meter sl-meter--drift"
+              style="--sl-fill: 0.62"
+              role="meter"
+              aria-label="Drift-earned charge"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="62"
+            >
+              <div class="sl-meter__label">
+                <span>Drift</span><span class="sl-meter__value">62%</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span>
+              </div>
+            </div>
+            <span class="sl-badge" data-state="charging">● CHARGING</span>
+          </div>
+          <h3 class="sl-card__title" style="margin-top: 24px">Inputs</h3>
+          <div class="sl-meter-stack">
+            <div
+              class="sl-meter"
+              style="--sl-fill: 0.85"
+              role="meter"
+              aria-label="Throttle"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="85"
+            >
+              <div class="sl-meter__label">
+                <span>Throttle</span><span class="sl-meter__value">85%</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span>
+              </div>
+            </div>
+            <div
+              class="sl-meter sl-meter--brake"
+              style="--sl-fill: 0.24"
+              role="meter"
+              aria-label="Brake"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="24"
+            >
+              <div class="sl-meter__label">
+                <span>Brake</span><span class="sl-meter__value">24%</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span>
+              </div>
+            </div>
+            <div
+              class="sl-meter sl-meter--handbrake"
+              style="--sl-fill: 0"
+              role="meter"
+              aria-label="Handbrake"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            >
+              <div class="sl-meter__label">
+                <span>Handbrake</span><span class="sl-meter__value">0%</span>
+              </div>
+              <div class="sl-meter__track" aria-hidden="true">
+                <span class="sl-meter__fill"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="sl-card" aria-labelledby="gg-title">
+          <h3 class="sl-card__title" id="gg-title">G-G diagram</h3>
+          <figure class="sl-graph sl-graph--gg">
+            <canvas
+              class="sl-graph__canvas"
+              id="gg-canvas"
+              width="320"
+              height="320"
+              role="img"
+              aria-label="Sample acceleration diagram with nominal grip circle"
+              >Sample G-G diagram: lateral 10, longitudinal 7 m/s².</canvas
+            >
+            <figcaption class="sl-graph__legend">
+              Lateral → / longitudinal ↑ · m/s² · μg reference
+            </figcaption>
+          </figure>
+        </section>
+        <section class="sl-card" aria-labelledby="steer-title">
+          <h3 class="sl-card__title" id="steer-title">Steering</h3>
+          <div
+            class="sl-gauge"
+            style="--sl-position: 31.25%"
+            role="meter"
+            aria-label="Steering angle"
+            aria-valuemin="-32"
+            aria-valuemax="32"
+            aria-valuenow="-12"
+          >
+            <div class="sl-meter__label">
+              <span>Steer</span><span class="sl-value">−12°</span>
+            </div>
+            <div class="sl-gauge__track" aria-hidden="true">
+              <span class="sl-gauge__zero"></span
+              ><span class="sl-gauge__marker"></span>
+            </div>
+            <div class="sl-gauge__axis" aria-hidden="true">
+              <span>−32°</span><span>0°</span><span>+32°</span>
+            </div>
+          </div>
+          <p class="sl-caption">Right steering uses the negative sign.</p>
+        </section>
+      </div>
+      <h2 class="sl-kit__section">Telemetry graph container</h2>
+      <section class="sl-card">
+        <figure class="sl-graph">
+          <canvas
+            class="sl-graph__canvas"
+            id="history-canvas"
+            width="760"
+            height="112"
+            role="img"
+            aria-label="Sample front and rear slip angle over ten seconds"
+            >Front and rear slip angle, ten-second sample.</canvas
+          >
+          <figcaption class="sl-graph__legend">
+            <span class="sl-legend-key">Front, degrees</span
+            ><span class="sl-legend-key sl-legend-key--rear">Rear, degrees</span
+            ><span>10 s history</span>
+          </figcaption>
+        </figure>
+      </section>
+      <h2 class="sl-kit__section">State colors, with words</h2>
+      <section class="sl-card sl-kit__states">
+        <span class="sl-badge">A ACTIVE</span
+        ><span class="sl-badge" data-state="edited">* MODIFIED</span
+        ><span class="sl-badge" data-state="pending">Applying…</span
+        ><span class="sl-badge" data-state="error">! OVER LIMIT</span
+        ><span class="sl-badge" data-state="recording">● REC 00:12</span
+        ><span class="sl-badge" data-state="charging">● CHARGING</span
+        ><button class="sl-button" disabled>Unavailable</button>
+      </section>
+      <p class="sl-kit__footnote">
+        Sample values demonstrate independent component states. This page does
+        not read or alter game physics.
+      </p>
+    </main>
+    <aside
+      class="sl-options"
+      id="kit-options"
+      data-open="true"
+      role="region"
+      aria-label="Options"
+    >
+      <header class="sl-options__header">
+        <div class="sl-options__title">
+          <h2 class="sl-heading">Options</h2>
+          <button
+            class="sl-button sl-button--icon"
+            id="close-options"
+            aria-label="Close Options"
+          >
+            ×
+          </button>
+        </div>
+        <label class="sl-checkbox"
+          ><input id="pause-open" type="checkbox" />Pause while open</label
+        >
+        <div class="sl-options__preset">
+          <label for="preset"
+            ><span class="sl-caption">Preset</span
+            ><select class="sl-select" id="preset">
+              <option>Default</option>
+              <option>Grip</option>
+              <option>Drifty</option>
+              <option>Raw</option>
+            </select></label
+          ><button
+            class="sl-button"
+            disabled
+            title="Persistence is implemented by WP7"
+          >
+            Save as…
+          </button>
+        </div>
+        <div class="sl-toolbar" aria-label="A/B comparison">
+          <button class="sl-slot" id="slot-a" aria-pressed="true">
+            A ACTIVE</button
+          ><button class="sl-slot" id="slot-b" aria-pressed="false">B</button
+          ><button class="sl-button" id="copy-slot">Copy A → B</button>
+        </div>
+        <p class="sl-caption">
+          Tab swaps A/B while driving; navigates controls here.
+        </p>
+        <label class="sl-sr-only" for="search"
+          >Search tuning controls by label or key</label
+        ><input
+          class="sl-input"
+          id="search"
+          type="search"
+          placeholder="Search label or key…"
+        />
+      </header>
+      <div class="sl-options__body">
+        <details class="sl-options__quick" open>
+          <summary>
+            Quick Tune <span class="sl-unit">sample controls</span>
+          </summary>
+          <div
+            class="sl-field"
+            data-key="gravity"
+            data-edited="false"
+            data-default="14.7"
+            data-baseline="14.7"
+          >
+            <label
+              class="sl-field__label"
+              id="gravity-label"
+              for="gravity-range"
+              >Gravity
+              <span
+                class="sl-field__edited"
+                aria-label="Changed from active preset"
+                >*</span
+              ><span class="sl-field__unit" id="gravity-unit">m/s²</span></label
+            >
+            <input
+              class="sl-input sl-field__number"
+              id="gravity-number"
+              type="number"
+              min="4"
+              max="40"
+              step="any"
+              value="14.7"
+              aria-labelledby="gravity-label"
+              aria-describedby="gravity-unit gravity-error"
+            />
+            <button
+              class="sl-button sl-button--icon sl-field__reset"
+              type="button"
+              aria-label="Reset gravity to default"
+            >
+              ↺
+            </button>
+            <button
+              class="sl-button sl-button--icon sl-field__help"
+              type="button"
+              aria-label="Help for gravity"
+              aria-controls="gravity-help"
+              aria-describedby="gravity-help"
+              aria-expanded="false"
+            >
+              ?
+            </button>
+            <input
+              class="sl-field__range"
+              id="gravity-range"
+              type="range"
+              min="4"
+              max="40"
+              step="0.1"
+              value="14.7"
+              aria-labelledby="gravity-label"
+              aria-describedby="gravity-unit"
+            />
+            <p class="sl-tooltip" id="gravity-help" role="tooltip" hidden>
+              Weight of everything. Higher feels heavier and grippier.
+            </p>
+            <p class="sl-field__error" id="gravity-error" hidden>
+              Enter a finite number within the shown range.
+            </p>
+          </div>
+          <div
+            class="sl-field"
+            data-key="accel0"
+            data-edited="false"
+            data-default="14"
+            data-baseline="14"
+          >
+            <label class="sl-field__label" id="accel0-label" for="accel0-range"
+              >Launch acceleration
+              <span
+                class="sl-field__edited"
+                aria-label="Changed from active preset"
+                >*</span
+              ><span class="sl-field__unit" id="accel0-unit">m/s²</span></label
+            >
+            <input
+              class="sl-input sl-field__number"
+              id="accel0-number"
+              type="number"
+              min="4"
+              max="40"
+              step="any"
+              value="14"
+              aria-labelledby="accel0-label"
+              aria-describedby="accel0-unit accel0-error"
+            />
+            <button
+              class="sl-button sl-button--icon sl-field__reset"
+              type="button"
+              aria-label="Reset launch acceleration to default"
+            >
+              ↺
+            </button>
+            <button
+              class="sl-button sl-button--icon sl-field__help"
+              type="button"
+              aria-label="Help for launch acceleration"
+              aria-controls="accel0-help"
+              aria-describedby="accel0-help"
+              aria-expanded="false"
+            >
+              ?
+            </button>
+            <input
+              class="sl-field__range"
+              id="accel0-range"
+              type="range"
+              min="4"
+              max="40"
+              step="0.1"
+              value="14"
+              aria-labelledby="accel0-label"
+              aria-describedby="accel0-unit"
+            />
+            <p class="sl-tooltip" id="accel0-help" role="tooltip" hidden>
+              Full-throttle acceleration from a standstill.
+            </p>
+            <p class="sl-field__error" id="accel0-error" hidden>
+              Enter a finite number within the shown range.
+            </p>
+          </div>
+        </details>
+        <div class="sl-options__groups">
+          <div class="sl-toolbar">
+            <button class="sl-button" id="collapse-groups">Collapse all</button>
+          </div>
+          <p class="sl-empty" id="search-empty" hidden>No matching controls.</p>
+          <details class="sl-group">
+            <summary>World</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <p class="sl-caption">Schema-generated controls mount here.</p>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Chassis</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <span class="sl-badge" data-state="pending"
+                >rebuild · Applying…</span
+              >
+              <div
+                class="sl-field"
+                data-key="mass"
+                data-edited="false"
+                data-default="1300"
+                data-baseline="1300"
+              >
+                <label class="sl-field__label" id="mass-label" for="mass-range"
+                  >Mass
+                  <span
+                    class="sl-field__edited"
+                    aria-label="Changed from active preset"
+                    >*</span
+                  ><span class="sl-field__unit" id="mass-unit">kg</span></label
+                >
+                <input
+                  class="sl-input sl-field__number"
+                  id="mass-number"
+                  type="number"
+                  min="500"
+                  max="4000"
+                  step="any"
+                  value="1300"
+                  aria-labelledby="mass-label"
+                  aria-describedby="mass-unit mass-error"
+                />
+                <button
+                  class="sl-button sl-button--icon sl-field__reset"
+                  type="button"
+                  aria-label="Reset mass to default"
+                >
+                  ↺
+                </button>
+                <button
+                  class="sl-button sl-button--icon sl-field__help"
+                  type="button"
+                  aria-label="Help for mass"
+                  aria-controls="mass-help"
+                  aria-describedby="mass-help"
+                  aria-expanded="false"
+                >
+                  ?
+                </button>
+                <input
+                  class="sl-field__range"
+                  id="mass-range"
+                  type="range"
+                  min="500"
+                  max="4000"
+                  step="10"
+                  value="1300"
+                  aria-labelledby="mass-label"
+                  aria-describedby="mass-unit"
+                />
+                <p class="sl-tooltip" id="mass-help" role="tooltip" hidden>
+                  Mass updates preserve position and velocity.
+                </p>
+                <p class="sl-field__error" id="mass-error" hidden>
+                  Enter a finite number within the shown range.
+                </p>
+              </div>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Engine</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <p class="sl-caption">Schema-generated controls mount here.</p>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Brakes</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <p class="sl-caption">Schema-generated controls mount here.</p>
+            </div>
+          </details>
+          <details class="sl-group" open>
+            <summary>Tires</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <figure class="sl-graph sl-graph--tire">
+                <canvas
+                  class="sl-graph__canvas"
+                  id="tire-canvas"
+                  width="332"
+                  height="144"
+                  role="img"
+                  aria-label="Sample normalized tire curve, peak at 11 degrees"
+                  >Normalized tire curve with peak at 11°.</canvas
+                >
+                <figcaption class="sl-graph__legend">
+                  <span class="sl-legend-key">Front</span
+                  ><span class="sl-legend-key sl-legend-key--rear">Rear</span
+                  ><span>Slip angle ° →</span>
+                </figcaption>
+              </figure>
+              <div
+                class="sl-field"
+                data-key="gripRear"
+                data-edited="true"
+                data-default="1.5"
+                data-baseline="1.5"
+              >
+                <label
+                  class="sl-field__label"
+                  id="gripRear-label"
+                  for="gripRear-range"
+                  >Rear grip
+                  <span
+                    class="sl-field__edited"
+                    aria-label="Changed from active preset"
+                    >*</span
+                  ><span class="sl-field__unit" id="gripRear-unit"
+                    >μ</span
+                  ></label
+                >
+                <input
+                  class="sl-input sl-field__number"
+                  id="gripRear-number"
+                  type="number"
+                  min="0.4"
+                  max="3.5"
+                  step="any"
+                  value="1.25"
+                  aria-labelledby="gripRear-label"
+                  aria-describedby="gripRear-unit gripRear-error"
+                />
+                <button
+                  class="sl-button sl-button--icon sl-field__reset"
+                  type="button"
+                  aria-label="Reset rear grip to default"
+                >
+                  ↺
+                </button>
+                <button
+                  class="sl-button sl-button--icon sl-field__help"
+                  type="button"
+                  aria-label="Help for rear grip"
+                  aria-controls="gripRear-help"
+                  aria-describedby="gripRear-help"
+                  aria-expanded="false"
+                >
+                  ?
+                </button>
+                <input
+                  class="sl-field__range"
+                  id="gripRear-range"
+                  type="range"
+                  min="0.4"
+                  max="3.5"
+                  step="0.01"
+                  value="1.25"
+                  aria-labelledby="gripRear-label"
+                  aria-describedby="gripRear-unit"
+                />
+                <p class="sl-tooltip" id="gripRear-help" role="tooltip" hidden>
+                  Rear tire peak friction. Lower than front gives oversteer.
+                </p>
+                <p class="sl-field__error" id="gripRear-error" hidden>
+                  Enter a finite number within the shown range.
+                </p>
+              </div>
+              <div
+                class="sl-field"
+                data-key="slipFalloffRate"
+                data-edited="false"
+                data-default="1.5"
+                data-baseline="1.5"
+              >
+                <label
+                  class="sl-field__label"
+                  id="slipFalloffRate-label"
+                  for="slipFalloffRate-range"
+                  >Slip falloff rate
+                  <span
+                    class="sl-field__edited"
+                    aria-label="Changed from active preset"
+                    >*</span
+                  ><span class="sl-field__unit" id="slipFalloffRate-unit"></span
+                ></label>
+                <input
+                  class="sl-input sl-field__number"
+                  id="slipFalloffRate-number"
+                  type="number"
+                  min="0.1"
+                  max="6"
+                  step="any"
+                  value="1.5"
+                  aria-labelledby="slipFalloffRate-label"
+                  aria-describedby="slipFalloffRate-unit slipFalloffRate-error"
+                />
+                <button
+                  class="sl-button sl-button--icon sl-field__reset"
+                  type="button"
+                  aria-label="Reset slip falloff rate to default"
+                >
+                  ↺
+                </button>
+                <button
+                  class="sl-button sl-button--icon sl-field__help"
+                  type="button"
+                  aria-label="Help for slip falloff rate"
+                  aria-controls="slipFalloffRate-help"
+                  aria-describedby="slipFalloffRate-help"
+                  aria-expanded="false"
+                >
+                  ?
+                </button>
+                <input
+                  class="sl-field__range"
+                  id="slipFalloffRate-range"
+                  type="range"
+                  min="0.1"
+                  max="6"
+                  step="0.05"
+                  value="1.5"
+                  aria-labelledby="slipFalloffRate-label"
+                  aria-describedby="slipFalloffRate-unit"
+                />
+                <p
+                  class="sl-tooltip"
+                  id="slipFalloffRate-help"
+                  role="tooltip"
+                  hidden
+                >
+                  How abruptly grip drops after the peak. High is a cliff; low
+                  is progressive.
+                </p>
+                <p class="sl-field__error" id="slipFalloffRate-error" hidden>
+                  Enter a finite number within the shown range.
+                </p>
+              </div>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Steering</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <p class="sl-caption">Schema-generated controls mount here.</p>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Suspension</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <p class="sl-caption">Schema-generated controls mount here.</p>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Boost & Drift</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <p class="sl-caption">Schema-generated controls mount here.</p>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Collision</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <p class="sl-caption">Schema-generated controls mount here.</p>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Camera</summary>
+            <div class="sl-group__body">
+              <div class="sl-group__actions">
+                <button class="sl-button sl-group__reset">Reset group</button>
+              </div>
+              <p class="sl-caption">Schema-generated controls mount here.</p>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Tuning playbook</summary>
+            <div class="sl-group__body">
+              <p>
+                Snaps into a spin? Lower slip falloff, raise sliding grip, then
+                add counter-steer assistance.
+              </p>
+            </div>
+          </details>
+          <details class="sl-group">
+            <summary>Change log</summary>
+            <div class="sl-group__body">
+              <p class="sl-value">12:04:18 · gripRear · 1.50 → 1.25</p>
+            </div>
+          </details>
+        </div>
+      </div>
+      <footer class="sl-options__footer">
+        <div class="sl-toolbar">
+          <button class="sl-button" disabled>Export JSON</button
+          ><button class="sl-button" disabled>Import JSON</button
+          ><button class="sl-button" disabled>Share link</button>
+        </div>
+        <div class="sl-toolbar">
+          <span class="sl-caption" id="demo-status" role="status"
+            >Demo values only</span
+          ><button class="sl-button" id="reset-all">Reset everything</button>
+        </div>
+      </footer>
+    </aside>
+    <noscript
+      ><p>
+        Native controls and groups work without JavaScript. Demo state changes
+        and sample canvas plots need JavaScript enabled.
+      </p></noscript
+    >
+  </body>
+</html>
