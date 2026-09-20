@@ -38,6 +38,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] O5 | devops | Cross-browser evidence for design 3 criterion 1: Firefox + WebKit smoke (boot, base path, WASM, keyboard driving) in CI. Full suite stays Chromium. Advise on the broadband cold-load measurement. | devops/cross-browser
 
+- [ ] WP16 | developer 2 | **Pause menu (CTO request).** Escape opens pause menu; must also work from controller. Resume / Restart / Options / Controls. Uses existing loop pause and the merged UI kit. Keyboard + gamepad navigable. Coordinate binding with developer 1 (design 11.2 assigns Start to Options). | dev2/wp16-pause-menu
+
 ## Later (phase 3)
 
 - [ ] WP9 | all | QA, perf harness, soak/determinism, manual QA, Gate G5. Techwriter: screenshots in README.
