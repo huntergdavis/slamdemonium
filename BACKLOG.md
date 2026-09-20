@@ -19,7 +19,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 
 
-- [ ] WP9a | research | Performance harness from design 13.4 (`npm run perf`): frame/step p99, JS+WASM heap, configurable thresholds, swappable scenario. Not wired into CI (devops owns that). | research/perf-harness
 
 
 - [ ] O4 | devops | CI job running research's `npm run perf` with design 13.4 gates; decide required vs advisory vs main-only and justify; surface the trend. Blocked on WP9a. | devops/perf-ci
@@ -70,3 +69,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP5 | developer 1 | Vehicle model 5a/5b/5c (6) + unit and integration tests (13.1, 13.2). Gates G1, G3. (PR #31, G1 + G3 partial)
 - [x] WP12 | developer 1 + developer 2 | Fix duplicate mass-rebuild: single debounced applier in boot (dev1, with flush/cancel); Options panel displays reported rebuild state only (dev2). See QUESTIONS #9. | dev1/wp12-rebuild-owner (PR #37)
 - [x] D5 | designer | Speed cues as code (design 10.2): fog tuning, speed lines above ~80% top speed and during boost, vignette. NOT camera FOV/shake/roll (developer 1, WP6). Check WP3 first for overlap. | design/speed-cues (PR #38)
+- [x] WP9a | research | Performance harness from design 13.4 (`npm run perf`): frame/step p99, JS+WASM heap, configurable thresholds, swappable scenario. Not wired into CI (devops owns that). | research/perf-harness (PR #41)
