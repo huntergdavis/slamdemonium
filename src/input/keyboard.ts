@@ -22,6 +22,7 @@ const KEY_ACTIONS = {
   KeyC: 'camera',
   KeyT: 'slowMotion',
   KeyP: 'pause',
+  Escape: 'pauseMenu',
   KeyL: 'latencyProbe',
   Tab: 'swapAB',
   F9: 'recordTelemetry',
@@ -84,6 +85,9 @@ export class KeyboardInput {
   private readonly editingTarget: (target: EventTarget | null) => boolean;
   private readonly optionsTarget: (target: EventTarget | null) => boolean;
   private readonly visibilityTarget: Document | null;
+  private browserModeActive = false;
+  private browserExitTime = -Infinity;
+  private browserEscapeHeld = false;
 
   constructor(
     private readonly target: EventTarget | null = typeof window === 'undefined'
@@ -99,6 +103,17 @@ export class KeyboardInput {
           ? null
           : document
         : options.visibilityTarget;
+    this.browserModeActive = this.browserOwnsEscape();
+    target?.addEventListener('keydown', this.browserEscape, true);
+    target?.addEventListener('keyup', this.browserEscapeRelease, true);
+    this.visibilityTarget?.addEventListener(
+      'fullscreenchange',
+      this.browserModeChanged,
+    );
+    this.visibilityTarget?.addEventListener(
+      'pointerlockchange',
+      this.browserModeChanged,
+    );
     target?.addEventListener('keydown', this.keydown);
     target?.addEventListener('keyup', this.keyup);
     target?.addEventListener('blur', this.blur);
@@ -114,6 +129,16 @@ export class KeyboardInput {
   }
 
   dispose(): void {
+    this.target?.removeEventListener('keydown', this.browserEscape, true);
+    this.target?.removeEventListener('keyup', this.browserEscapeRelease, true);
+    this.visibilityTarget?.removeEventListener(
+      'fullscreenchange',
+      this.browserModeChanged,
+    );
+    this.visibilityTarget?.removeEventListener(
+      'pointerlockchange',
+      this.browserModeChanged,
+    );
     this.target?.removeEventListener('keydown', this.keydown);
     this.target?.removeEventListener('keyup', this.keyup);
     this.target?.removeEventListener('blur', this.blur);
@@ -127,10 +152,11 @@ export class KeyboardInput {
   private readonly keydown = (rawEvent: Event): void => {
     const event = rawEvent as KeyboardEvent;
     const code = event.code;
-    if (!isKnownKey(code)) return;
+    if (!isKnownKey(code) || event.defaultPrevented) return;
     if (
-      this.editingTarget(event.target) ||
-      this.optionsTarget(event.target) ||
+      (code !== 'Escape' &&
+        (this.editingTarget(event.target) ||
+          this.optionsTarget(event.target))) ||
       event.isComposing
     )
       return;
@@ -165,6 +191,42 @@ export class KeyboardInput {
   };
   private readonly visibilitychange = (): void => {
     if (this.visibilityTarget?.hidden) this.clearHeld();
+  };
+
+  private browserOwnsEscape(): boolean {
+    return Boolean(
+      this.visibilityTarget?.fullscreenElement ||
+      this.visibilityTarget?.pointerLockElement,
+    );
+  }
+
+  private readonly browserModeChanged = (event: Event): void => {
+    const active = this.browserOwnsEscape();
+    if (this.browserModeActive && !active)
+      this.browserExitTime = event.timeStamp;
+    this.browserModeActive = active;
+  };
+
+  // Browser exit can precede its key event. Preserve native Escape, including
+  // repeats, and prevent the same gesture reaching an Options/menu listener.
+  // No preventDefault: the browser must retain its unlock/fullscreen gesture.
+  private readonly browserEscape = (rawEvent: Event): void => {
+    const event = rawEvent as KeyboardEvent;
+    if (event.code !== 'Escape') return;
+    if (
+      this.browserOwnsEscape() ||
+      event.timeStamp - this.browserExitTime < 150 ||
+      (event.repeat && this.browserEscapeHeld)
+    ) {
+      this.browserEscapeHeld = true;
+      event.stopImmediatePropagation();
+    }
+  };
+
+  private readonly browserEscapeRelease = (rawEvent: Event): void => {
+    if ((rawEvent as KeyboardEvent).code !== 'Escape') return;
+    this.browserEscapeHeld = false;
+    this.browserExitTime = -Infinity;
   };
 
   private clearHeld(): void {

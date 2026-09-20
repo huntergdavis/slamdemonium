@@ -23,7 +23,7 @@ export class InputMapper {
   };
   private readonly previousKeys = createActionCounts();
   private previousPadRespawn = 0;
-  private previousPadOptions = 0;
+  private previousPadPauseMenu = 0;
   private scriptProcessor: ((sample: StepInput) => void) | undefined;
 
   constructor(
@@ -89,9 +89,10 @@ export class InputMapper {
       this.previousKeys[action] = count;
     }
     this.state.actions.respawn += pad.respawnPresses - this.previousPadRespawn;
-    this.state.actions.options += pad.optionsPresses - this.previousPadOptions;
+    this.state.actions.pauseMenu +=
+      pad.pauseMenuPresses - this.previousPadPauseMenu;
     this.previousPadRespawn = pad.respawnPresses;
-    this.previousPadOptions = pad.optionsPresses;
+    this.previousPadPauseMenu = pad.pauseMenuPresses;
   }
 
   /** Call after drawing the resulting state, using that frame's rAF timestamp. */
