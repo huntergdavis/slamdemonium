@@ -8,3 +8,6 @@ __pycache__/
 *.pyc
 .env
 ._*
+
+playwright-report/
+test-results/
