@@ -186,7 +186,8 @@ test('boot mass rebuild preserves motion; tuning survives reload, JSON import an
   await page.getByRole('button', { name: 'Share link', exact: true }).click();
   const shared = page.url();
   expect(new URL(shared).hash.length).toBeGreaterThan(10);
-  await page.evaluate(() => localStorage.clear());
+  // Clear after pagehide saves, before the next boot reads persistence.
+  await page.addInitScript(() => localStorage.clear());
   await page.goto(shared);
   await page.reload();
   await page.waitForFunction(() => window.__game?.ready);
