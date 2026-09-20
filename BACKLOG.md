@@ -38,6 +38,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] T13 | techwriter | QA checklist refresh: Firefox is required not bonus, game is drivable, zero-assist placement, plus new mount/persistence/key checks pending WP14. | docs/qa-refresh
 
+- [ ] O5 | devops | Cross-browser evidence for design 3 criterion 1: Firefox + WebKit smoke (boot, base path, WASM, keyboard driving) in CI. Full suite stays Chromium. Advise on the broadband cold-load measurement. | devops/cross-browser
+
 ## Later (phase 3)
 
 - [ ] WP9 | all | QA, perf harness, soak/determinism, manual QA, Gate G5. Techwriter: screenshots in README.
