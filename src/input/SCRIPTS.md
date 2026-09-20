@@ -78,6 +78,6 @@ The perf harness consumes `load/progress/cancel` directly. It must clear its tem
 
 ## Assertions and ring laps
 
-`assertReplay(result, expectations)` always rejects non-finite telemetry and can assert elapsed steps, final position/rotation tolerance (metres/radians), peak speed (m/s) and peak absolute slide angle (radians). Quaternion signs are treated equivalently. `result()` snapshots the collected final pose and peaks; later runs cannot mutate it.
+`assertReplay(result, expectations)` always rejects non-finite telemetry (including an increased Vehicle recovery counter, even when its published pose has already been repaired) and can assert elapsed steps, final position/rotation tolerance (metres/radians), peak speed (m/s) and peak absolute slide angle (radians). Quaternion signs are treated equivalently. `result()` snapshots the collected final pose and peaks; later runs cannot mutate it.
 
 `RingLapTimer` places eight ordered forward-crossing gates on the 130 m centre line, starting at `(130, *, 0)` facing -Z. A known fresh spawn on that line starts a standing-start lap at step zero. `lapProgress()` reports completed laps, next checkpoint, last lap steps/seconds and invalidation. Leaving the 110–150 m annulus or teleporting invalidates the attempt; re-enter through the start gate. Reverse crossings cannot advance a checkpoint. Timing uses completed physics steps only. `assertCompletedLap(progress, maximumSteps?)` requires a complete ordered lap and optionally enforces a step budget.

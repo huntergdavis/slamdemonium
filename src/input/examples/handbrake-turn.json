@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "name": "handbrake-turn",
+  "seed": 20903,
+  "spawn": {
+    "position": {
+      "x": 130,
+      "y": 0.86,
+      "z": 0
+    },
+    "rotation": {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    }
+  },
+  "tuning": {
+    "gravity": 14.7,
+    "timeScale": 1,
+    "surfaceGrip": 1,
+    "physicsHz": 120,
+    "mass": 1300,
+    "comHeightOffset": -0.2,
+    "comLongOffset": 0,
+    "yawInertiaScale": 1,
+    "pitchRollInertiaScale": 1,
+    "angularDamping": 0.4,
+    "accel0": 14,
+    "topSpeed": 60,
+    "powerCurveExp": 2,
+    "throttleRiseTime": 0.12,
+    "throttleFallTime": 0.08,
+    "driveBias": 0.65,
+    "coastDecel": 1.5,
+    "reverseSpeed": 15,
+    "brakeDecel": 24,
+    "brakeCurveExp": 1.5,
+    "brakeRiseTime": 0.08,
+    "brakeBiasFront": 0.62,
+    "absStrength": 0.7,
+    "handbrakeRearGrip": 0.35,
+    "handbrakeDecel": 6,
+    "handbrakeRecoveryTime": 0.35,
+    "gripFront": 1.5,
+    "gripRear": 1.5,
+    "slideGripRatio": 0.78,
+    "peakSlipAngle": 11,
+    "slipFalloffRate": 1.5,
+    "combinedSlipCoupling": 0.85,
+    "tireRelaxationLength": 0.6,
+    "loadSensitivity": 0.15,
+    "downforceAtTopSpeed": 0.6,
+    "lowSpeedBlend": 3,
+    "steerMaxLowSpeed": 32,
+    "steerMaxTopSpeed": 5,
+    "steerSpeedExp": 0.5,
+    "steerRiseTime": 0.18,
+    "steerReturnTime": 0.1,
+    "steerExpo": 0.25,
+    "steerDeadzone": 0.08,
+    "countersteerAssist": 0.6,
+    "yawAssist": 0.4,
+    "maxDriftAngle": 55,
+    "suspFrequency": 2.2,
+    "suspDampingRatio": 0.55,
+    "suspRestLength": 0.4,
+    "suspMaxTravel": 0.25,
+    "suspAntiRoll": 0.6,
+    "tireForceHeight": 0.6,
+    "boostAccelMult": 1.6,
+    "boostTopSpeedAdd": 25,
+    "boostDrainRate": 0.25,
+    "driftChargeRate": 0.35,
+    "driftMinAngle": 12,
+    "restitution": 0.25,
+    "wallFriction": 0.05,
+    "maxAngularVelocity": 12,
+    "fovBase": 70,
+    "fovSpeedGain": 15,
+    "fovBoostKick": 15,
+    "camDistance": 7.5,
+    "camHeight": 2.6,
+    "camFollowTime": 0.25,
+    "camVelocityBlend": 0.5,
+    "camShake": 0.3,
+    "camRollGain": 3,
+    "speedLinesStrength": 0.5,
+    "vignetteStrength": 0.5
+  },
+  "durationSteps": 420,
+  "frames": [
+    {
+      "step": 0,
+      "input": {
+        "throttle": 0,
+        "brake": 0,
+        "steer": 0,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 60,
+      "input": {
+        "throttle": 1,
+        "brake": 0,
+        "steer": 0,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 270,
+      "input": {
+        "throttle": 0.3,
+        "brake": 0,
+        "steer": 0.65,
+        "handbrake": true,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 330,
+      "input": {
+        "throttle": 0.3,
+        "brake": 0,
+        "steer": 0.65,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    }
+  ]
+}

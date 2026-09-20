@@ -1,0 +1,4637 @@
+{
+  "version": 1,
+  "name": "ring-lap",
+  "seed": 20903,
+  "spawn": {
+    "position": {
+      "x": 130,
+      "y": 0.86,
+      "z": 0
+    },
+    "rotation": {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    }
+  },
+  "tuning": {
+    "gravity": 14.7,
+    "timeScale": 1,
+    "surfaceGrip": 1,
+    "physicsHz": 120,
+    "mass": 1300,
+    "comHeightOffset": -0.2,
+    "comLongOffset": 0,
+    "yawInertiaScale": 1,
+    "pitchRollInertiaScale": 1,
+    "angularDamping": 0.4,
+    "accel0": 14,
+    "topSpeed": 60,
+    "powerCurveExp": 2,
+    "throttleRiseTime": 0.12,
+    "throttleFallTime": 0.08,
+    "driveBias": 0.65,
+    "coastDecel": 1.5,
+    "reverseSpeed": 15,
+    "brakeDecel": 24,
+    "brakeCurveExp": 1.5,
+    "brakeRiseTime": 0.08,
+    "brakeBiasFront": 0.62,
+    "absStrength": 0.7,
+    "handbrakeRearGrip": 0.35,
+    "handbrakeDecel": 6,
+    "handbrakeRecoveryTime": 0.35,
+    "gripFront": 1.5,
+    "gripRear": 1.5,
+    "slideGripRatio": 0.78,
+    "peakSlipAngle": 11,
+    "slipFalloffRate": 1.5,
+    "combinedSlipCoupling": 0.85,
+    "tireRelaxationLength": 0.6,
+    "loadSensitivity": 0.15,
+    "downforceAtTopSpeed": 0.6,
+    "lowSpeedBlend": 3,
+    "steerMaxLowSpeed": 32,
+    "steerMaxTopSpeed": 5,
+    "steerSpeedExp": 0.5,
+    "steerRiseTime": 0.18,
+    "steerReturnTime": 0.1,
+    "steerExpo": 0.25,
+    "steerDeadzone": 0.08,
+    "countersteerAssist": 0.6,
+    "yawAssist": 0.4,
+    "maxDriftAngle": 55,
+    "suspFrequency": 2.2,
+    "suspDampingRatio": 0.55,
+    "suspRestLength": 0.4,
+    "suspMaxTravel": 0.25,
+    "suspAntiRoll": 0.6,
+    "tireForceHeight": 0.6,
+    "boostAccelMult": 1.6,
+    "boostTopSpeedAdd": 25,
+    "boostDrainRate": 0.25,
+    "driftChargeRate": 0.35,
+    "driftMinAngle": 12,
+    "restitution": 0.25,
+    "wallFriction": 0.05,
+    "maxAngularVelocity": 12,
+    "fovBase": 70,
+    "fovSpeedGain": 15,
+    "fovBoostKick": 15,
+    "camDistance": 7.5,
+    "camHeight": 2.6,
+    "camFollowTime": 0.25,
+    "camVelocityBlend": 0.5,
+    "camShake": 0.3,
+    "camRollGain": 3,
+    "speedLinesStrength": 0.5,
+    "vignetteStrength": 0.5
+  },
+  "durationSteps": 5169,
+  "frames": [
+    {
+      "step": 0,
+      "input": {
+        "throttle": 0,
+        "brake": 0,
+        "steer": 0,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 60,
+      "input": {
+        "throttle": 1,
+        "brake": 0,
+        "steer": 0.2,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 96,
+      "input": {
+        "throttle": 1,
+        "brake": 0,
+        "steer": 0.19,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 120,
+      "input": {
+        "throttle": 1,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 144,
+      "input": {
+        "throttle": 1,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 156,
+      "input": {
+        "throttle": 1,
+        "brake": 0,
+        "steer": 0.16,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 192,
+      "input": {
+        "throttle": 0.85,
+        "brake": 0,
+        "steer": 0.15,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 204,
+      "input": {
+        "throttle": 0.68,
+        "brake": 0,
+        "steer": 0.15,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 216,
+      "input": {
+        "throttle": 0.55,
+        "brake": 0,
+        "steer": 0.16,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 228,
+      "input": {
+        "throttle": 0.45,
+        "brake": 0,
+        "steer": 0.16,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 240,
+      "input": {
+        "throttle": 0.37,
+        "brake": 0,
+        "steer": 0.16,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 252,
+      "input": {
+        "throttle": 0.31,
+        "brake": 0,
+        "steer": 0.16,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 264,
+      "input": {
+        "throttle": 0.26,
+        "brake": 0,
+        "steer": 0.16,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 276,
+      "input": {
+        "throttle": 0.22,
+        "brake": 0,
+        "steer": 0.16,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 288,
+      "input": {
+        "throttle": 0.19,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 300,
+      "input": {
+        "throttle": 0.17,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 312,
+      "input": {
+        "throttle": 0.15,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 324,
+      "input": {
+        "throttle": 0.13,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 336,
+      "input": {
+        "throttle": 0.12,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 348,
+      "input": {
+        "throttle": 0.11,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 360,
+      "input": {
+        "throttle": 0.1,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 384,
+      "input": {
+        "throttle": 0.09,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 420,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 432,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 456,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 516,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 528,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 540,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 552,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 564,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 576,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 588,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 600,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 612,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 624,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 636,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 648,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 660,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 672,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 684,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 696,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 708,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 720,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 732,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 744,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 756,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 768,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 780,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 792,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 804,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 816,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 828,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 840,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 852,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 864,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 876,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 888,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 900,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 912,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 924,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 936,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 948,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 960,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 972,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 984,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 996,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1008,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1020,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1032,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1044,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1056,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1068,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1080,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1092,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1104,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1116,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1128,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1140,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1152,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1164,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1176,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1188,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1200,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1212,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1224,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1236,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1248,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1260,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1272,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1284,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1296,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1308,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1320,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1332,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1344,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1356,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1368,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1380,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1392,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1404,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1416,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1428,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1440,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1452,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1464,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1476,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1488,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1500,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1512,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1524,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1536,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1548,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1560,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1572,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1584,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1596,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1608,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1620,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1632,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1644,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1656,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1668,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1680,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1692,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1704,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1716,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1728,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1740,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1752,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1764,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1776,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1788,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1800,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1812,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1824,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1836,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1848,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1860,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1872,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1884,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1896,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1908,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1920,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1932,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1944,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1956,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1968,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1980,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 1992,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2004,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2016,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2028,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2040,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2052,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2064,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2076,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2088,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2100,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2112,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2124,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2136,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2148,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2160,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2172,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2184,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2196,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2208,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2220,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2232,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2244,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2256,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2268,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2280,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2292,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2304,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2316,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2328,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2340,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2352,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2364,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2376,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2388,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2400,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2412,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2424,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2436,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2448,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2460,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2472,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2484,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2496,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2508,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2520,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2532,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2544,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2556,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2568,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2580,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2592,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2604,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2616,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2628,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2640,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2652,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2664,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2676,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2688,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2700,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2712,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2724,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2736,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2748,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2760,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2772,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2784,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2796,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2808,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2820,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2832,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2844,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2856,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2868,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2880,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2892,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2904,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2916,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2928,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2940,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2952,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2964,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2976,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 2988,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3000,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3012,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3024,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3036,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3048,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3060,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3072,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3084,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3096,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3108,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3120,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3132,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3144,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3156,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3168,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3180,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3192,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3204,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3216,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3228,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3240,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3252,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3264,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3276,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3288,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3300,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3312,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3324,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3336,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3348,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3360,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3372,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3384,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3396,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3408,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3420,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3432,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3444,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3456,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3468,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3480,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3492,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3504,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3516,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3528,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3540,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3552,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3564,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3576,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3588,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3600,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3612,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3624,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3636,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3648,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3660,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3672,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3684,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3696,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3708,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3720,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3732,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3744,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3756,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3768,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3780,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3792,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3804,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3816,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3828,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3840,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3852,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3864,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3876,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3888,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3900,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3912,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3924,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3936,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3948,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3960,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3972,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3984,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 3996,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4008,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4020,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4032,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4044,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4056,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4068,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4080,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4092,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4104,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4116,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4128,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4140,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4152,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4164,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4176,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4188,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4200,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4212,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4224,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4236,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4248,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4260,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4272,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4284,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4296,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4308,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4320,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4332,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4344,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4356,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4368,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4380,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4392,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4404,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4416,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4428,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4440,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4452,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4464,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4476,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4488,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4500,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4512,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4524,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4536,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4548,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4560,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4572,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4584,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4596,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4608,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4620,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4632,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4644,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4656,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4668,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4680,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4692,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4704,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4716,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4728,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4740,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4752,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4764,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4776,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4788,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4800,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4812,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4824,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4836,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4848,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4860,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4872,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4884,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4896,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4908,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4920,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4932,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4944,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4956,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4968,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4980,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 4992,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5004,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5016,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5028,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5040,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5052,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5064,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5076,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5088,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5100,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5112,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.17,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5124,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5136,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5148,
+      "input": {
+        "throttle": 0.07,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 5160,
+      "input": {
+        "throttle": 0.08,
+        "brake": 0,
+        "steer": 0.18,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    }
+  ]
+}

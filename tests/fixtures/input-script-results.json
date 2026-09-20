@@ -1,0 +1,83 @@
+{
+  "standing-start": {
+    "completedSteps": 240,
+    "finalPose": {
+      "position": {
+        "x": 130,
+        "y": 0.858642041683197,
+        "z": -14.421603202819824
+      },
+      "rotation": {
+        "x": 0.005222875624895096,
+        "y": 4.260816144352475e-10,
+        "z": 1.3337899673615539e-9,
+        "w": 0.9999864101409912
+      }
+    },
+    "peakSpeed": 19.495793310384737,
+    "peakAbsSlideAngle": 6.231942087411601e-9,
+    "allFinite": true,
+    "firstNonFiniteStep": null,
+    "lap": {
+      "completedLaps": 0,
+      "nextCheckpoint": 1,
+      "lastLapSteps": null,
+      "lastLapSeconds": null,
+      "invalidated": false
+    }
+  },
+  "handbrake-turn": {
+    "completedSteps": 420,
+    "finalPose": {
+      "position": {
+        "x": 120.54461669921875,
+        "y": 0.8591241240501404,
+        "z": -42.242008209228516
+      },
+      "rotation": {
+        "x": -0.005153217818588018,
+        "y": 0.7217019200325012,
+        "z": -0.00791221670806408,
+        "w": 0.6921395659446716
+      }
+    },
+    "peakSpeed": 22.647726095218566,
+    "peakAbsSlideAngle": 0.674940630467509,
+    "allFinite": true,
+    "firstNonFiniteStep": null,
+    "lap": {
+      "completedLaps": 0,
+      "nextCheckpoint": 1,
+      "lastLapSteps": null,
+      "lastLapSeconds": null,
+      "invalidated": false
+    }
+  },
+  "ring-lap": {
+    "completedSteps": 5169,
+    "finalPose": {
+      "position": {
+        "x": 129.58607482910156,
+        "y": 0.8581873178482056,
+        "z": -0.04021182283759117
+      },
+      "rotation": {
+        "x": 0.000003307512542960467,
+        "y": -0.0002752418222371489,
+        "z": 0.0014846810372546315,
+        "w": -0.9999988675117493
+      }
+    },
+    "peakSpeed": 19.504990868744873,
+    "peakAbsSlideAngle": 0.020964246692425897,
+    "allFinite": true,
+    "firstNonFiniteStep": null,
+    "lap": {
+      "completedLaps": 1,
+      "nextCheckpoint": 1,
+      "lastLapSteps": 5169,
+      "lastLapSeconds": 43.075,
+      "invalidated": false
+    }
+  }
+}
