@@ -29,6 +29,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] T12 | techwriter | `docs/SCRIPTED_INPUT.md`: record, replay, hand-author, assertions, lap timing, and why recordings must start from a fresh respawn. | docs/scripted-input
 
+- [ ] WP13 | developer 1 | **Allocation-free hot path** (design 3 requirement, found by research in WP9a). Per-step churn measured: `Vehicle.tires` ~606 KB, suspension ~279 KB, Jolt `rayCast` ~475 KB, three.js shader-parameter paths ~2.7 MB (`WebGLPrograms.getParameters`, `getProgramCacheKey` arrays/joins, matrix paths). Preallocate/reuse in preStep, postStep and render; add a heap-growth regression test. Note: research showed GC is NOT the dominant p99 tail, so this is a correctness fix against the stated requirement, not a promised speedup. | dev1/wp13-no-alloc
+
 ## Later (phase 3)
 
 - [ ] WP8 | designer | HUD, telemetry graphs, CSV recorder (12). Gate G4.
