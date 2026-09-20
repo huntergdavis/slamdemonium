@@ -111,7 +111,12 @@ export class FixedStepLoop {
     const limit = this.settings.maxStepsPerFrame ?? 8;
     // Tolerance prevents an exact step boundary being lost to floating-point error.
     const epsilon = dt * 1e-10;
-    while (this.accumulator + epsilon >= dt && this.stepsThisFrame < limit) {
+    while (
+      !this.paused &&
+      !this.hooks.shouldStopStepping?.() &&
+      this.accumulator + epsilon >= dt &&
+      this.stepsThisFrame < limit
+    ) {
       this.step(dt);
       this.accumulator = Math.max(0, this.accumulator - dt);
       this.stepsThisFrame++;

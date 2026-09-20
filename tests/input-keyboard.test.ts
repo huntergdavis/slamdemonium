@@ -146,3 +146,36 @@ describe('event-owned keyboard input', () => {
     keyboard.dispose();
   });
 });
+
+it('shares command consumption across paused polls and steps without sampling replay or latency', () => {
+  const target = new EventTarget();
+  const keyboard = new KeyboardInput(target, { visibilityTarget: null });
+  let polls = 0;
+  const mapper = new InputMapper(
+    keyboard,
+    new GamepadInput(() => {
+      polls++;
+      return [];
+    }),
+  );
+  let scriptSamples = 0;
+  const detach = mapper.attachScriptProcessor(() => {
+    scriptSamples++;
+  });
+  keyEvent(target, 'keydown', 'KeyP');
+  keyEvent(target, 'keyup', 'KeyP');
+  expect(mapper.sampleActions().pause).toBe(1);
+  expect(mapper.sampleActions().pause).toBe(0);
+  expect(scriptSamples).toBe(0);
+  const before = polls;
+  expect(mapper.sampleForStep().actions.pause).toBe(0);
+  expect(polls - before).toBe(1);
+  expect(scriptSamples).toBe(1);
+  keyEvent(target, 'keydown', 'KeyH');
+  keyEvent(target, 'keyup', 'KeyH');
+  expect(mapper.sampleForStep().actions.hud).toBe(1);
+  expect(mapper.sampleActions().hud).toBe(0);
+  expect(scriptSamples).toBe(2);
+  detach();
+  keyboard.dispose();
+});

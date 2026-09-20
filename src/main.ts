@@ -18,6 +18,10 @@ import { isParamKey } from './tuning/schema';
 import { TuningStore } from './tuning/store';
 import { KeyboardInput } from './input/keyboard';
 import { InputMapper } from './input/mapper';
+import { ScriptController } from './input/script';
+import type { ActionCounts } from './input/types';
+import { mountOptionsPanel } from './ui/optionsPanel';
+import { mountHud } from './ui/hud';
 import { LatencyProbeView } from './input/latencyProbe';
 import { Vehicle } from './vehicle/vehicle';
 import { VehicleVisualHistory } from './vehicle/visualState';
@@ -110,6 +114,31 @@ async function boot(): Promise<void> {
   let perfStepDriver: ((step: number) => void) | undefined;
   let perfCompletedSteps = 0;
   let perfTotalSteps = 0;
+  let optionsPaused = false;
+  let userPaused = false;
+  let perfPaused = false;
+  let replayStopped = false;
+  let replayActive = false;
+  let respawnRequested = false;
+  const renderTelemetry = {
+    cameraFov: 70,
+    cameraFovRequested: 70,
+    cameraFovCapped: false,
+    renderScale: 1,
+    smoothedFrameMs: 0,
+  };
+  function isPaused(): boolean {
+    return (
+      document.hidden ||
+      optionsPaused ||
+      userPaused ||
+      perfPaused ||
+      replayStopped
+    );
+  }
+  function syncPause(): void {
+    loop.setPaused(isPaused());
+  }
   const loop = new FixedStepLoop(
     {
       get physicsHz() {
@@ -122,16 +151,15 @@ async function boot(): Promise<void> {
     {
       measurement: measurements,
       shouldStopStepping: () =>
-        perfTotalSteps > 0 && perfCompletedSteps === perfTotalSteps,
+        (perfTotalSteps > 0 && perfCompletedSteps === perfTotalSteps) ||
+        !scripts.canStep(),
       sampleForStep() {
         if (perfCompletedSteps < perfTotalSteps)
           perfStepDriver?.(perfCompletedSteps);
         const live = input.sampleForStep();
         sampled = injected ? requested : live;
         source = injected ? 'keyboard' : live.source;
-        if (live.actions.respawn > 0) respawn();
-        if (live.actions.gizmos % 2 !== 0) carVisual.toggleDebug();
-        if (live.actions.camera > 0) cameraRig.cyclePreset(live.actions.camera);
+        dispatchActions(live.actions);
       },
       preStep(dt) {
         history.beforeStep();
@@ -147,14 +175,19 @@ async function boot(): Promise<void> {
       postStep(dt) {
         vehicle.postStep(dt);
         history.afterStep();
-        track.checkKillPlane(vehicle.telemetry.position, respawn);
+        track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
         if (
           perfCompletedSteps < perfTotalSteps &&
           ++perfCompletedSteps === perfTotalSteps
-        )
-          loop.setPaused(true);
+        ) {
+          perfPaused = true;
+          syncPause();
+        }
         skids.sample(vehicle.telemetry.wheels, loop.simulationSeconds + dt);
+        hud.recordStep(vehicle.telemetry, dt, renderTelemetry);
+        scripts.afterStep();
+        if (respawnRequested) respawn();
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -177,20 +210,39 @@ async function boot(): Promise<void> {
         cueState.topSpeed = tuning.get('topSpeed');
         cueState.boostEnvelope = vehicle.telemetry.boostEnvelope;
         speedCues.update(cueState, loop.renderDeltaSeconds);
+        renderTelemetry.cameraFov = cameraRig.telemetry.cameraFov;
+        renderTelemetry.cameraFovRequested =
+          cameraRig.telemetry.cameraFovRequested;
+        renderTelemetry.cameraFovCapped = cameraRig.telemetry.cameraFovCapped;
+        renderTelemetry.renderScale = view.resolution.scale;
+        renderTelemetry.smoothedFrameMs = view.resolution.smoothedFrameMs;
+        options.update(frameTime);
+        hud.update(frameTime);
         input.framePresented(frameTime);
         latencyView?.render(frameTime);
         game.ready = true;
       },
     },
   );
-  function respawn(): void {
-    massRebuild.flush();
-    vehicle.respawn();
+  function resetPresentation(): void {
     history.reset();
     visualHistory.reset();
     cameraRig.reset();
     skids.breakStrips();
     loop.resetClock();
+  }
+  function requestRespawn(): void {
+    respawnRequested = true;
+  }
+  function respawn(): void {
+    respawnRequested = false;
+    scripts.cancel();
+    replayStopped = replayActive = false;
+    massRebuild.flush();
+    vehicle.respawn(track.spawn.position, track.spawn.rotation);
+    resetPresentation();
+    scripts.noteRespawn(track.spawn, 0);
+    syncPause();
   }
   const massRebuild = new DebouncedMassRebuild(tuning, () => {
     vehicle.rebuildMassProperties();
@@ -224,6 +276,92 @@ async function boot(): Promise<void> {
     )
       vehicle.updateBodyProperties();
   });
+  const options = mountOptionsPanel({
+    host: host!,
+    drivingSurface: view.renderer.domElement,
+    store: tuning,
+    readRebuildState: () => massRebuild.state,
+    readTelemetry: () => vehicle.telemetry,
+    onPauseChange(paused) {
+      optionsPaused = paused;
+      syncPause();
+    },
+  });
+  // Options restores persistence through the same store; apply any mass change
+  // before the first step, after the live body/visual subscriptions are installed.
+  massRebuild.flush();
+  const hud = mountHud({
+    host: options.root,
+    store: tuning,
+    session: options.session,
+    readTelemetry: () => vehicle.telemetry,
+    readRenderTelemetry: () => renderTelemetry,
+  });
+  const scripts = new ScriptController({
+    store: tuning,
+    mapper: input,
+    reset(spawn) {
+      injected = false;
+      perfStepDriver = undefined;
+      perfCompletedSteps = perfTotalSteps = 0;
+      massRebuild.cancel();
+      vehicle.rebuildMassProperties();
+      vehicle.respawn(spawn.position, spawn.rotation);
+      resetPresentation();
+    },
+    readTelemetry: () => vehicle.telemetry,
+    onComplete() {
+      replayActive = false;
+      replayStopped = true;
+      syncPause();
+    },
+    onError() {
+      replayActive = false;
+      replayStopped = true;
+      syncPause();
+    },
+  });
+  scripts.noteRespawn(track.spawn, 0);
+  resources.push(options, hud, scripts);
+  function dispatchActions(actions: Readonly<ActionCounts>): void {
+    if (actions.respawn > 0) respawnRequested = true;
+    if (actions.options % 2) options.toggle();
+    hud.cycleMode(actions.hud);
+    if (actions.recordTelemetry % 2) hud.toggleRecording();
+    if (actions.swapAB % 2) options.session.swapSlots();
+    if (actions.gizmos % 2) carVisual.toggleDebug();
+    if (actions.camera > 0) cameraRig.cyclePreset(actions.camera);
+    if (actions.slowMotion % 2)
+      tuning.set('timeScale', tuning.get('timeScale') === 0.25 ? 1 : 0.25);
+    if (actions.pause % 2) {
+      userPaused = !userPaused;
+      syncPause();
+    }
+  }
+  game.scripts = {
+    load(source, settings) {
+      scripts.load(source, settings);
+      replayActive = true;
+      replayStopped = userPaused = perfPaused = false;
+      syncPause();
+    },
+    progress: () => scripts.progress(),
+    cancel() {
+      scripts.cancel();
+      replayActive = replayStopped = false;
+      syncPause();
+    },
+    result: () => scripts.result(),
+    lapProgress: () => scripts.lapProgress(),
+    startRecording: (name) => scripts.startRecording(name),
+    stopRecording: () => scripts.stopRecording(),
+    get recording() {
+      return scripts.recording;
+    },
+    get recordedSteps() {
+      return scripts.recordedSteps;
+    },
+  };
   game.tuning = {
     get(key) {
       if (!isParamKey(key)) throw new RangeError('Unknown parameter.');
@@ -236,7 +374,7 @@ async function boot(): Promise<void> {
     applyPreset(name) {
       if (!Object.hasOwn(BUILTIN_PRESETS, name))
         throw new RangeError('Unknown preset.');
-      tuning.applyPreset(name as BuiltinPresetName);
+      options.session.applyBuiltin(name as BuiltinPresetName);
     },
   };
   game.setInput = (override) => {
@@ -254,6 +392,8 @@ async function boot(): Promise<void> {
     vehicle.setDriftMeter(value);
   };
   game.setCameraPreset = (preset) => cameraRig.setPreset(preset);
+  game.setHudMode = (mode) => hud.setMode(mode);
+  game.setOptionsOpen = (open) => options.setOpen(open);
   game.stepMany = (count) => {
     massRebuild.flush();
     loop.stepMany(count);
@@ -264,6 +404,8 @@ async function boot(): Promise<void> {
       ...s,
       ...cameraRig.telemetry,
       cameraPreset: cameraRig.preset,
+      gizmosVisible:
+        carVisual.root.getObjectByName('car.gizmos')?.visible ?? false,
       renderScale: view.resolution.scale,
       smoothedFrameMs: view.resolution.smoothedFrameMs,
       skidSegments: skids.strips.reduce(
@@ -274,6 +416,7 @@ async function boot(): Promise<void> {
         (total, strip) => total + strip.written,
         0,
       ),
+      paused: isPaused(),
       mass: vehicle.currentMass,
       massRebuildStatus: massRebuild.state.status,
       position: { x: s.position.x, y: s.position.y, z: s.position.z },
@@ -328,10 +471,14 @@ async function boot(): Promise<void> {
       perfCompletedSteps = 0;
       perfTotalSteps = totalSteps;
       measurements.start();
-      loop.setPaused(false);
+      perfPaused = false;
+      syncPause();
     },
     setPaused: (paused) => measurements.setPaused(paused),
-    pauseSimulation: (paused) => loop.setPaused(paused),
+    pauseSimulation(paused) {
+      perfPaused = paused;
+      syncPause();
+    },
     setStepDriver(driver) {
       perfStepDriver = driver;
     },
@@ -348,15 +495,28 @@ async function boot(): Promise<void> {
     },
   };
   visibilityChanged = () => {
-    loop.setPaused(document.hidden);
+    syncPause();
     view.resolution.resetClock();
   };
   document.addEventListener('visibilitychange', visibilityChanged);
   visibilityChanged();
   function frame(nowMs: number): void {
     frameTime = nowMs;
-    loop.frame(nowMs);
-    frameId = requestAnimationFrame(frame);
+    try {
+      // No physics/input-script sample while paused. Both readers consume the
+      // mapper's same edge counters, so unpausing cannot replay an action.
+      if ((isPaused() || tuning.get('timeScale') === 0) && !replayActive) {
+        dispatchActions(input.sampleActions());
+        if (respawnRequested) respawn();
+      }
+      loop.frame(nowMs);
+    } catch (error) {
+      replayStopped = true;
+      syncPause();
+      console.error(error);
+    } finally {
+      frameId = requestAnimationFrame(frame);
+    }
   }
   // Build-time gate: default production emits no fixture module or panel.
   if (import.meta.env.VITE_TEST_API === '1') {

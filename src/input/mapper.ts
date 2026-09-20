@@ -1,7 +1,12 @@
-import { GamepadInput } from './gamepad';
+import { GamepadInput, type GamepadState } from './gamepad';
 import { KeyboardInput } from './keyboard';
 import { LatencyProbe } from './latencyProbe';
-import { INPUT_ACTIONS, createActionCounts, type StepInput } from './types';
+import {
+  INPUT_ACTIONS,
+  createActionCounts,
+  type StepInput,
+  type ActionCounts,
+} from './types';
 
 /** One mapper per driver. The returned state and nested action object are reused;
  * callers recording a replay must copy outside the physics hot path.
@@ -62,10 +67,24 @@ export class InputMapper {
       this.state.handbrake = pad.handbrake;
       this.state.boost = pad.boost;
     }
+    this.consumeActions(pad);
+    this.latency.sampleForStep();
+    this.scriptProcessor?.(this.state);
+    return this.state;
+  }
+
+  /** UI-only polling while physics is paused. Shares edge bookkeeping with steps;
+   * does not advance driving samples, latency measurements, or script state. */
+  sampleActions(): Readonly<ActionCounts> {
+    this.consumeActions(this.gamepad.sampleForStep());
+    return this.state.actions;
+  }
+
+  private consumeActions(pad: Readonly<GamepadState>): void {
     for (let index = 0; index < INPUT_ACTIONS.length; index++) {
       const action = INPUT_ACTIONS[index];
       if (action === undefined) continue;
-      const count = keyboard.presses[action];
+      const count = this.keyboard.state.presses[action];
       this.state.actions[action] = count - this.previousKeys[action];
       this.previousKeys[action] = count;
     }
@@ -73,9 +92,6 @@ export class InputMapper {
     this.state.actions.options += pad.optionsPresses - this.previousPadOptions;
     this.previousPadRespawn = pad.respawnPresses;
     this.previousPadOptions = pad.optionsPresses;
-    this.latency.sampleForStep();
-    this.scriptProcessor?.(this.state);
-    return this.state;
   }
 
   /** Call after drawing the resulting state, using that frame's rAF timestamp. */
