@@ -45,7 +45,7 @@ G-G is right-positive lateral X and forward-positive longitudinal Y, m/s². Its 
 
 Five panes share ten **wall-clock** seconds: speed m/s, beta degrees, yaw degrees/s, lateral Earth G (acceleration/9.81), signed mean loaded-wheel front/rear slip degrees. Front is solid cyan, rear dashed violet. Missing contacts and long observation gaps are not connected. The ring holds 301 samples. Minimal retains history without drawing plots.
 
-Minimal keeps speed, slide, boost/drift, preset/A–B, timeScale and FOV feedback. Off removes instruments but preserves recording feedback. The dock activates at widths up to 1100 px or heights up to 820 px, preventing overlap at 1440×720. It can collapse without changing H mode. Options owns the gear button; mount under its root for panel-aware placement.
+Minimal keeps FPS and smoothed frame time (for example, 60 FPS · 16.7 ms), speed, slide, boost/drift, preset/A–B, timeScale and FOV feedback. Press H once from Full, or use the HUD mode button, for this view without the diagnostic plots. Full shows the same FPS/frame-time readout; Off removes instruments but preserves recording feedback. The dock activates at widths up to 1100 px or heights up to 820 px, preventing overlap at 1440×720. It can collapse without changing H mode. Options owns the gear button; mount under its root for panel-aware placement.
 
 ## CSV
 

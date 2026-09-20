@@ -114,11 +114,11 @@ export class Hud {
     const status = card('sl-hud__status');
     const stats = node(doc, 'div', 'sl-status');
     status.append(stats);
+    reading(stats, 'fps');
     const performance = node(doc, 'span', 'sl-status');
     performance.dataset.hudDetail = 'full';
     stats.append(performance);
-    for (const key of ['fps', 'step', 'steps', 'scale'])
-      reading(performance, key);
+    for (const key of ['step', 'steps', 'scale']) reading(performance, key);
     for (const key of ['timeScale', 'preset', 'slot']) reading(stats, key);
     reading(stats, 'telemetry', 'Waiting for telemetry');
     this.camera = reading(stats, 'fov');
@@ -309,7 +309,7 @@ export class Hud {
       render?.smoothedFrameMs && render.smoothedFrameMs > 0
         ? render.smoothedFrameMs
         : this.frameMs;
-    this.set('fps', fixed(1000 / fpsMs, 0) + ' FPS');
+    this.set('fps', fixed(1000 / fpsMs, 0) + ' FPS · ' + fixed(fpsMs) + ' ms');
     this.set('scale', 'Render ×' + fixed(render?.renderScale ?? NaN, 2));
     this.set(
       'fov',
