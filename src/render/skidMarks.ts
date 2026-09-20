@@ -28,6 +28,7 @@ export class SkidStrip {
   readonly births: BufferAttribute;
   count = 0;
   written = 0;
+  lastBirth = -Infinity;
   private next = 0;
   private hasPoint = false;
   private joined = false;
@@ -116,6 +117,7 @@ export class SkidStrip {
     this.next = (this.next + 1) % this.capacity;
     this.count = Math.min(this.count + 1, this.capacity);
     this.written++;
+    this.lastBirth = time;
     this.geometry.setDrawRange(0, this.count * 6);
     this.previous.copy(this.point);
     this.previousLeft.copy(this.left);
@@ -208,7 +210,11 @@ export function createSkidMarks(scene: Scene) {
     },
     update(time: number): void {
       material.uniforms.now!.value = time;
-      for (const strip of strips) strip.upload();
+      for (let i = 0; i < strips.length; i++) {
+        const strip = strips[i]!;
+        strip.upload();
+        meshes[i]!.visible = skidOpacity(time - strip.lastBirth) > 0;
+      }
     },
     breakStrips(): void {
       for (const strip of strips) strip.breakStrip();

@@ -11,6 +11,7 @@ import { createRenderer } from './render/renderer';
 import { CameraRig } from './render/cameraRig';
 import { createCarVisual } from './render/carVisual';
 import { createSkidMarks } from './render/skidMarks';
+import { createSpeedCues } from './render/speedCues';
 import { BUILTIN_PRESETS } from './tuning/presets';
 import type { BuiltinPresetName } from './tuning/presets';
 import { isParamKey } from './tuning/schema';
@@ -68,7 +69,14 @@ async function boot(): Promise<void> {
   const carVisual = createCarVisual(view.scene);
   const cameraRig = new CameraRig(view.camera, tuning);
   const skids = createSkidMarks(view.scene);
-  resources.push(carVisual, skids);
+  const speedCues = createSpeedCues(host!);
+  const cueState = { speed: 0, topSpeed: 1, boostEnvelope: 0 };
+  const cueOptions = {
+    speedLinesStrength: tuning.get('speedLinesStrength'),
+    vignetteStrength: tuning.get('vignetteStrength'),
+  };
+  speedCues.setOptions(cueOptions);
+  resources.push(carVisual, skids, speedCues);
   physics.onContact((a, b, impulse) => {
     if (a === vehicle.body || b === vehicle.body)
       cameraRig.addImpact(impulse, vehicle.currentMass);
@@ -160,6 +168,15 @@ async function boot(): Promise<void> {
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
         view.render(frameTime);
+        speedCues.resize(
+          view.size.width,
+          view.size.height,
+          Math.min(window.devicePixelRatio, 2),
+        );
+        cueState.speed = vehicle.telemetry.speed;
+        cueState.topSpeed = tuning.get('topSpeed');
+        cueState.boostEnvelope = vehicle.telemetry.boostEnvelope;
+        speedCues.update(cueState, loop.renderDeltaSeconds);
         input.framePresented(frameTime);
         latencyView?.render(frameTime);
         game.ready = true;
@@ -182,6 +199,14 @@ async function boot(): Promise<void> {
   });
   resources.push(massRebuild);
   unsubscribe = tuning.onChange((change) => {
+    if (
+      change.key === 'speedLinesStrength' ||
+      change.key === 'vignetteStrength'
+    ) {
+      cueOptions.speedLinesStrength = tuning.get('speedLinesStrength');
+      cueOptions.vignetteStrength = tuning.get('vignetteStrength');
+      speedCues.setOptions(cueOptions);
+    }
     if (change.key === 'wallFriction' || change.key === 'restitution') {
       for (const barrier of trackBodies.barriers) {
         physics.setContactProperties(

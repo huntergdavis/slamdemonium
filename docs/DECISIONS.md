@@ -289,3 +289,9 @@ clears controls, wheel histories, drift controller, boost meter and visual state
   chase distance and 1.5 times height; hood follows the chassis at local
   (0, 0.65, -1.55). Automation can use
   `window.__game.setCameraPreset('chase' | 'far' | 'hood')`.
+
+- **D5 is mounted from main's render loop.** Its preallocated state receives
+  speed, unboosted topSpeed and the same boost envelope as the camera; both
+  strength controls come directly from the shared tuning store. The overlay
+  retains native DPR (capped at 2) when world resolution decreases, preserving
+  line width and UI clarity. Its canvas does not intercept driving input.

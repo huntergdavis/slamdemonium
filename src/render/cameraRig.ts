@@ -120,7 +120,11 @@ export class CameraRig {
       );
   }
 
-  update(pose: TransformState, state: VehicleTelemetry, dt: number): void {
+  update(
+    pose: Readonly<Pick<TransformState, 'position' | 'rotation'>>,
+    state: VehicleTelemetry,
+    dt: number,
+  ): void {
     const t = this.tuning;
     this.elapsed += dt;
     this.heading.set(0, 0, -1).applyQuaternion(pose.rotation);

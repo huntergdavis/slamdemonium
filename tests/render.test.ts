@@ -224,6 +224,12 @@ describe('skid strips', () => {
     }
     expect(scene.children).toHaveLength(4);
     expect(marks.strips.map((strip) => strip.geometry)).toEqual(geometries);
+    marks.update(40);
+    expect(scene.children.every((mesh) => !mesh.visible)).toBe(true);
+    for (const wheel of wheels) wheel.contactPoint.z = -21;
+    marks.sample(wheels, 41);
+    marks.update(41);
+    expect(scene.children.every((mesh) => mesh.visible)).toBe(true);
     marks.dispose();
     expect(scene.children).toHaveLength(0);
   });
