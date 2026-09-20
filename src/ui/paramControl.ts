@@ -2,7 +2,12 @@ import type { ParamDef, ParamKey } from '../tuning/schema';
 import { configureSlider, sliderToValue, valueToSlider } from './sliderMapping';
 import { TuningSession } from './tuningSession';
 
-export function node<K extends keyof HTMLElementTagNameMap>(doc: Document, tag: K, className = '', text?: string): HTMLElementTagNameMap[K] {
+export function node<K extends keyof HTMLElementTagNameMap>(
+  doc: Document,
+  tag: K,
+  className = '',
+  text?: string,
+): HTMLElementTagNameMap[K] {
   const element = doc.createElement(tag);
   element.className = className;
   if (text !== undefined) element.append(doc.createTextNode(text));
@@ -52,11 +57,21 @@ export class ParamControl {
     this.number.max = String(definition.max);
     this.number.step = 'any';
     this.number.setAttribute('aria-label', definition.label + ' value');
-    const reset = node(doc, 'button', 'sl-button sl-button--icon sl-field__reset', '↺');
+    const reset = node(
+      doc,
+      'button',
+      'sl-button sl-button--icon sl-field__reset',
+      '↺',
+    );
     reset.type = 'button';
     reset.setAttribute('aria-label', 'Reset ' + definition.label);
     reset.title = 'Reset to schema default: ' + definition.default;
-    const help = node(doc, 'button', 'sl-button sl-button--icon sl-field__help', '?');
+    const help = node(
+      doc,
+      'button',
+      'sl-button sl-button--icon sl-field__help',
+      '?',
+    );
     help.type = 'button';
     help.setAttribute('aria-label', 'Help for ' + definition.label);
     help.setAttribute('aria-controls', id + '-help');
@@ -64,6 +79,7 @@ export class ParamControl {
     help.setAttribute('aria-expanded', 'false');
     const tooltip = node(doc, 'p', 'sl-tooltip', definition.help);
     tooltip.id = id + '-help';
+    tooltip.setAttribute('role', 'tooltip');
     tooltip.hidden = true;
     this.range = node(doc, 'input', 'sl-field__range');
     this.range.id = id + '-range';
@@ -75,8 +91,19 @@ export class ParamControl {
     this.error.hidden = true;
     this.errorText = doc.createTextNode('');
     this.error.append(this.errorText);
-    this.number.setAttribute('aria-describedby', tooltip.id + ' ' + this.error.id);
-    this.element.append(label, this.number, reset, help, this.range, tooltip, this.error);
+    this.number.setAttribute(
+      'aria-describedby',
+      tooltip.id + ' ' + this.error.id,
+    );
+    this.element.append(
+      label,
+      this.number,
+      reset,
+      help,
+      this.range,
+      tooltip,
+      this.error,
+    );
     host.append(this.element);
 
     this.number.addEventListener('input', () => {
@@ -89,10 +116,16 @@ export class ParamControl {
       session.store.set(definition.key, value);
       this.sync();
     });
-    this.number.addEventListener('blur', () => { this.setError(''); this.sync(); });
+    this.number.addEventListener('blur', () => {
+      this.setError('');
+      this.sync();
+    });
     this.range.addEventListener('input', () => {
       this.setError('');
-      session.store.set(definition.key, sliderToValue(definition, this.range.valueAsNumber));
+      session.store.set(
+        definition.key,
+        sliderToValue(definition, this.range.valueAsNumber),
+      );
       this.sync();
     });
     this.range.addEventListener('pointerdown', (event) => {
@@ -105,18 +138,41 @@ export class ParamControl {
       this.range.blur();
       this.drivingSurface.focus({ preventScroll: true });
     });
-    this.range.addEventListener('pointercancel', () => { this.pointerEditing = false; });
-    reset.addEventListener('click', () => { this.setError(''); session.store.reset(definition.key); this.sync(); });
+    this.range.addEventListener('pointercancel', () => {
+      this.pointerEditing = false;
+    });
+    reset.addEventListener('click', () => {
+      this.setError('');
+      session.store.reset(definition.key);
+      this.sync();
+    });
     let pinned = false;
-    const showHelp = (show: boolean) => { tooltip.hidden = !show; help.setAttribute('aria-expanded', String(show)); };
-    help.addEventListener('focus', () => { showHelp(true); });
-    help.addEventListener('mouseenter', () => { showHelp(true); });
-    help.addEventListener('mouseleave', () => { if (!pinned && doc.activeElement !== help) showHelp(false); });
-    help.addEventListener('blur', () => { if (!pinned) showHelp(false); });
-    help.addEventListener('click', () => { pinned = !pinned; showHelp(pinned); });
+    const showHelp = (show: boolean) => {
+      tooltip.hidden = !show;
+      help.setAttribute('aria-expanded', String(show));
+    };
+    help.addEventListener('focus', () => {
+      showHelp(true);
+    });
+    help.addEventListener('mouseenter', () => {
+      showHelp(true);
+    });
+    help.addEventListener('mouseleave', () => {
+      if (!pinned && doc.activeElement !== help) showHelp(false);
+    });
+    help.addEventListener('blur', () => {
+      if (!pinned) showHelp(false);
+    });
+    help.addEventListener('click', () => {
+      pinned = !pinned;
+      showHelp(pinned);
+    });
     this.element.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !tooltip.hidden) {
-        pinned = false; showHelp(false); event.preventDefault(); event.stopPropagation();
+        pinned = false;
+        showHelp(false);
+        event.preventDefault();
+        event.stopPropagation();
       }
     });
     this.sync();
@@ -125,14 +181,33 @@ export class ParamControl {
   sync(): void {
     const value = this.session.store.get(this.definition.key);
     const focused = this.number.ownerDocument.activeElement === this.number;
-    if (!focused || (!this.invalid && this.number.valueAsNumber !== value)) this.number.value = String(value);
+    if (!focused || (!this.invalid && this.number.valueAsNumber !== value))
+      this.number.value = String(value);
     this.range.value = String(valueToSlider(this.definition, value));
-    this.range.setAttribute('aria-valuetext', `${value} ${this.definition.unit}`.trim());
-    this.element.dataset.edited = String(this.session.isEdited(this.definition.key));
+    this.range.setAttribute(
+      'aria-valuetext',
+      `${value} ${this.definition.unit}`.trim(),
+    );
+    this.element.dataset.edited = String(
+      this.session.isEdited(this.definition.key),
+    );
     if (this.rebuild && this.rebuildText) {
       const state = this.session.rebuildState;
-      this.rebuild.dataset.state = state === 'pending' ? 'pending' : state === 'error' || state === 'unavailable' ? 'error' : '';
-      this.rebuildText.nodeValue = state === 'pending' ? 'Applying…' : state === 'error' ? 'Update failed' : state === 'unavailable' ? 'Update unavailable' : 'rebuild';
+      this.rebuild.hidden = state === 'idle';
+      this.rebuild.dataset.state =
+        state === 'pending'
+          ? 'pending'
+          : state === 'error' || state === 'unavailable'
+            ? 'error'
+            : '';
+      this.rebuildText.nodeValue =
+        state === 'pending'
+          ? 'Applying…'
+          : state === 'error'
+            ? 'Update failed'
+            : state === 'unavailable'
+              ? 'Update unavailable'
+              : 'rebuild';
     }
   }
 

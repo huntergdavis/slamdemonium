@@ -4,8 +4,23 @@ import { ParamControl, node } from './paramControl';
 import { TireCurvePlot, type TirePlotTelemetry } from './tireCurvePlot';
 import { TuningSession } from './tuningSession';
 
-const GROUPS: readonly ParamGroup[] = ['World', 'Chassis', 'Engine', 'Brakes', 'Tires', 'Steering', 'Suspension', 'Boost & Drift', 'Collision', 'Camera'];
-interface GroupView { element: HTMLDetailsElement; advanced: HTMLDetailsElement; controls: ParamControl[]; }
+const GROUPS: readonly ParamGroup[] = [
+  'World',
+  'Chassis',
+  'Engine',
+  'Brakes',
+  'Tires',
+  'Steering',
+  'Suspension',
+  'Boost & Drift',
+  'Collision',
+  'Camera',
+];
+interface GroupView {
+  element: HTMLDetailsElement;
+  advanced: HTMLDetailsElement;
+  controls: ParamControl[];
+}
 
 export class OptionsGroups {
   readonly quick: HTMLDetailsElement;
@@ -21,7 +36,12 @@ export class OptionsGroups {
   private logIndex = 0;
   private readonly beforeSearch = new Map<HTMLDetailsElement, boolean>();
 
-  constructor(host: HTMLElement, private readonly session: TuningSession, drivingSurface: HTMLElement, readTelemetry?: () => TirePlotTelemetry | undefined) {
+  constructor(
+    host: HTMLElement,
+    private readonly session: TuningSession,
+    drivingSurface: HTMLElement,
+    readTelemetry?: () => TirePlotTelemetry | undefined,
+  ) {
     const doc = host.ownerDocument;
     this.quick = node(doc, 'details', 'sl-options__quick');
     this.quick.open = true;
@@ -31,7 +51,13 @@ export class OptionsGroups {
     host.append(this.quick);
     for (const definition of PARAM_DEFS) {
       if (!definition.quick) continue;
-      const control = new ParamControl(quickBody, definition, session, 'quick', drivingSurface);
+      const control = new ParamControl(
+        quickBody,
+        definition,
+        session,
+        'quick',
+        drivingSurface,
+      );
       this.register(control);
       this.quickControls.push(control);
     }
@@ -40,7 +66,10 @@ export class OptionsGroups {
     const collapse = node(doc, 'button', 'sl-button', 'Collapse all groups');
     collapse.type = 'button';
     collapse.addEventListener('click', () => {
-      for (const group of this.groups) { group.element.open = false; group.advanced.open = false; }
+      for (const group of this.groups) {
+        group.element.open = false;
+        group.advanced.open = false;
+      }
     });
     groupHost.append(collapse);
     this.empty = node(doc, 'p', 'sl-empty', 'No matching controls');
@@ -57,7 +86,9 @@ export class OptionsGroups {
       const reset = node(doc, 'button', 'sl-button', 'Reset group');
       reset.type = 'button';
       reset.setAttribute('aria-label', 'Reset ' + groupName + ' group');
-      reset.addEventListener('click', () => { session.store.resetGroup(groupName); });
+      reset.addEventListener('click', () => {
+        session.store.resetGroup(groupName);
+      });
       actions.append(reset);
       body.append(actions);
       group.append(body);
@@ -76,7 +107,13 @@ export class OptionsGroups {
       let hasAdvanced = false;
       for (const definition of PARAM_DEFS) {
         if (definition.group !== groupName) continue;
-        const control = new ParamControl(definition.advanced ? advancedBody : body, definition, session, 'group', drivingSurface);
+        const control = new ParamControl(
+          definition.advanced ? advancedBody : body,
+          definition,
+          session,
+          'group',
+          drivingSurface,
+        );
         hasAdvanced ||= definition.advanced === true;
         controls.push(control);
         this.register(control);
@@ -84,19 +121,27 @@ export class OptionsGroups {
       if (hasAdvanced) body.append(advanced);
       this.groups.push({ element: group, advanced, controls });
     }
-    if (!plot || !tires) throw new Error('Schema must include the Tires group.');
+    if (!plot || !tires)
+      throw new Error('Schema must include the Tires group.');
     this.plot = plot;
     this.tires = tires;
     const guide = node(doc, 'details', 'sl-group');
     guide.append(node(doc, 'summary', '', 'Tuning playbook'));
     const guideBody = node(doc, 'div', 'sl-group__body');
-    const table = playbook.split('## Symptom to slider')[1]?.split('###')[0] ?? '';
+    const table =
+      playbook.split('## Symptom to slider')[1]?.split('###')[0] ?? '';
     for (const row of table.split('\n')) {
       if (!row.startsWith('| ') || row.startsWith('| Symptom')) continue;
-      const cells = row.split('|').slice(1, -1).map((cell) => cell.trim());
+      const cells = row
+        .split('|')
+        .slice(1, -1)
+        .map((cell) => cell.trim());
       if (cells.length !== 2) continue;
       const paragraph = node(doc, 'p');
-      paragraph.append(node(doc, 'strong', '', cells[0] ?? ''), doc.createTextNode(': ' + (cells[1] ?? '').replace(/`/g, '')));
+      paragraph.append(
+        node(doc, 'strong', '', cells[0] ?? ''),
+        doc.createTextNode(': ' + (cells[1] ?? '').replace(/`/g, '')),
+      );
       guideBody.append(paragraph);
     }
     guide.append(guideBody);
@@ -111,7 +156,9 @@ export class OptionsGroups {
     logBody.append(caption, this.logList);
     this.log.append(logBody);
     groupHost.append(this.log);
-    this.log.addEventListener('toggle', () => { this.updateLog(); });
+    this.log.addEventListener('toggle', () => {
+      this.updateLog();
+    });
   }
 
   sync(key?: ParamKey): void {
@@ -119,10 +166,13 @@ export class OptionsGroups {
       for (const control of this.controls.get(key) ?? []) control.sync();
       // A rebuild applies to the entire body's mass properties.
       if (this.session.rebuildState !== 'idle') {
-        for (const controls of this.controls.values()) for (const control of controls) if (control.definition.needsRebuild) control.sync();
+        for (const controls of this.controls.values())
+          for (const control of controls)
+            if (control.definition.needsRebuild) control.sync();
       }
     } else {
-      for (const controls of this.controls.values()) for (const control of controls) control.sync();
+      for (const controls of this.controls.values())
+        for (const control of controls) control.sync();
     }
     this.updateLog();
   }
@@ -145,7 +195,8 @@ export class OptionsGroups {
     if (query && quickMatches) this.quick.open = true;
     let matches = 0;
     for (const group of this.groups) {
-      let groupMatches = 0, advancedMatches = 0;
+      let groupMatches = 0,
+        advancedMatches = 0;
       for (const control of group.controls) {
         control.element.hidden = !control.searchText.includes(query);
         if (!control.element.hidden) {
@@ -166,11 +217,14 @@ export class OptionsGroups {
     }
   }
 
-  dispose(): void { this.plot.dispose(); }
+  dispose(): void {
+    this.plot.dispose();
+  }
 
   private register(control: ParamControl): void {
     const existing = this.controls.get(control.definition.key);
-    if (existing) existing.push(control); else this.controls.set(control.definition.key, [control]);
+    if (existing) existing.push(control);
+    else this.controls.set(control.definition.key, [control]);
   }
 
   private updateLog(): void {
@@ -181,9 +235,19 @@ export class OptionsGroups {
     while (this.logIndex < count) {
       const entry = this.session.persistence.changeLogEntry(this.logIndex++);
       if (!entry) continue;
-      this.logList.append(node(this.log.ownerDocument, 'li', '', `${new Date(entry.timestamp).toLocaleTimeString()} · ${entry.key}: ${entry.old} → ${entry.new}`));
-      while (this.logList.childElementCount > 200) this.logList.firstElementChild?.remove();
+      this.logList.append(
+        node(
+          this.log.ownerDocument,
+          'li',
+          '',
+          `${new Date(entry.timestamp).toLocaleTimeString()} · ${entry.key}: ${entry.old} → ${entry.new}`,
+        ),
+      );
+      while (this.logList.childElementCount > 200)
+        this.logList.firstElementChild?.remove();
     }
-    this.logLabel.nodeValue = count ? `${count} changes. Showing the latest ${Math.min(count, 200)}; export includes all.` : 'No changes yet.';
+    this.logLabel.nodeValue = count
+      ? `${count} changes. Showing the latest ${Math.min(count, 200)}; export includes all.`
+      : 'No changes yet.';
   }
 }

@@ -1,11 +1,20 @@
 import { BUILTIN_PRESETS, type BuiltinPresetName } from '../tuning/presets';
-import { DEFAULT_VALUES, PARAM_DEFS, type ParamKey, type ParamSet } from '../tuning/schema';
+import {
+  DEFAULT_VALUES,
+  PARAM_DEFS,
+  type ParamKey,
+  type ParamSet,
+} from '../tuning/schema';
 import { TuningStorage, type PersistenceOptions } from '../tuning/storage';
 import { TuningStore, type TuningChange } from '../tuning/store';
 
 export type ComparisonSlot = 'A' | 'B';
 export type RebuildState = 'idle' | 'pending' | 'error' | 'unavailable';
-interface SavedSlot { values: ParamSet; baseline: ParamSet; name: string; }
+interface SavedSlot {
+  values: ParamSet;
+  baseline: ParamSet;
+  name: string;
+}
 export interface TuningSessionOptions {
   persistence?: TuningStorage;
   persistenceOptions?: PersistenceOptions;
@@ -29,25 +38,55 @@ export class TuningSession {
   private revision = 0;
   private disposed = false;
 
-  constructor(readonly store: TuningStore, private readonly options: TuningSessionOptions = {}) {
-    this.persistence = options.persistence ?? new TuningStorage(store, {
-      ...options.persistenceOptions,
-      warn: (message) => { this.message = message; options.persistenceOptions?.warn?.(message); this.notify(); },
-    });
+  constructor(
+    readonly store: TuningStore,
+    private readonly options: TuningSessionOptions = {},
+  ) {
+    if (options.persistence && options.persistence.store !== store)
+      throw new TypeError(
+        'Persistence and Options must share the same tuning store.',
+      );
+    const beforeRestore = store.snapshot();
+    this.persistence =
+      options.persistence ??
+      new TuningStorage(store, {
+        ...options.persistenceOptions,
+        warn: (message) => {
+          this.message = message;
+          options.persistenceOptions?.warn?.(message);
+          this.notify();
+        },
+      });
     this.presetName = this.persistence.name;
     this.baseline = this.resolveBaseline(this.presetName);
     this.slots = { A: this.capture(), B: this.capture() };
     this.unsubscribeStore = store.onChange(this.changed);
-    this.unsubscribeStatus = this.persistence.onStatus(() => { this.notify(); });
+    this.unsubscribeStatus = this.persistence.onStatus(() => {
+      this.notify();
+    });
+    if (
+      PARAM_DEFS.some(
+        (definition) =>
+          definition.needsRebuild &&
+          beforeRestore[definition.key] !== store.get(definition.key),
+      )
+    )
+      this.scheduleRebuild();
   }
 
   onUpdate(listener: (key?: ParamKey) => void): () => void {
     this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
-  isEdited(key: ParamKey): boolean { return this.store.get(key) !== this.baseline[key]; }
-  get modified(): boolean { return PARAM_DEFS.some((definition) => this.isEdited(definition.key)); }
+  isEdited(key: ParamKey): boolean {
+    return this.store.get(key) !== this.baseline[key];
+  }
+  get modified(): boolean {
+    return PARAM_DEFS.some((definition) => this.isEdited(definition.key));
+  }
 
   applyBuiltin(name: BuiltinPresetName): void {
     this.message = '';
@@ -71,7 +110,8 @@ export class TuningSession {
   saveAs(name: string): void {
     name = name.trim();
     if (!name) throw new TypeError('Enter a preset name.');
-    if (Object.hasOwn(BUILTIN_PRESETS, name)) throw new TypeError('Choose a name other than a built-in preset.');
+    if (Object.hasOwn(BUILTIN_PRESETS, name))
+      throw new TypeError('Choose a name other than a built-in preset.');
     this.message = '';
     this.persistence.savePreset(name);
     this.presetName = name;
@@ -87,7 +127,9 @@ export class TuningSession {
     this.notify();
   }
 
-  exportJSON(): string { return this.persistence.exportJSON(); }
+  exportJSON(): string {
+    return this.persistence.exportJSON();
+  }
 
   shareURL(base: string): string {
     const url = new URL(base);
@@ -107,11 +149,17 @@ export class TuningSession {
     this.notify();
   }
 
-  swapSlots(): void { this.switchSlot(this.activeSlot === 'A' ? 'B' : 'A'); }
+  swapSlots(): void {
+    this.switchSlot(this.activeSlot === 'A' ? 'B' : 'A');
+  }
 
   copyAToB(): void {
     const source = this.activeSlot === 'A' ? this.capture() : this.slots.A;
-    this.slots.B = { values: { ...source.values }, baseline: { ...source.baseline }, name: source.name };
+    this.slots.B = {
+      values: { ...source.values },
+      baseline: { ...source.baseline },
+      name: source.name,
+    };
     if (this.activeSlot === 'B') {
       this.baseline = { ...source.baseline };
       this.presetName = source.name;
@@ -143,25 +191,37 @@ export class TuningSession {
   }
 
   private capture(): SavedSlot {
-    return { values: this.store.snapshot(), baseline: { ...this.baseline }, name: this.presetName };
+    return {
+      values: this.store.snapshot(),
+      baseline: { ...this.baseline },
+      name: this.presetName,
+    };
   }
 
   private resolveBaseline(name: string): ParamSet {
     const saved = this.persistence.presetValues(name);
     if (saved) return saved;
-    if (Object.hasOwn(BUILTIN_PRESETS, name)) return { ...DEFAULT_VALUES, ...BUILTIN_PRESETS[name as BuiltinPresetName] };
+    if (Object.hasOwn(BUILTIN_PRESETS, name))
+      return {
+        ...DEFAULT_VALUES,
+        ...BUILTIN_PRESETS[name as BuiltinPresetName],
+      };
     return this.store.snapshot();
   }
 
   private readonly changed = (change: TuningChange): void => {
-    if (change.needsRebuild) {
-      this.revision++;
-      this.rebuildState = 'pending';
-      if (this.rebuildTimer !== undefined) clearTimeout(this.rebuildTimer);
-      this.rebuildTimer = setTimeout(() => { void this.rebuild(this.revision); }, 100);
-    }
+    if (change.needsRebuild) this.scheduleRebuild();
     this.notify(change.key);
   };
+
+  private scheduleRebuild(): void {
+    this.revision++;
+    this.rebuildState = 'pending';
+    if (this.rebuildTimer !== undefined) clearTimeout(this.rebuildTimer);
+    this.rebuildTimer = setTimeout(() => {
+      void this.rebuild(this.revision);
+    }, 100);
+  }
 
   private async rebuild(revision: number): Promise<void> {
     this.rebuildTimer = undefined;
