@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Slamdemonium HUD preview</title>
+  </head>
+  <body style="margin: 0; background: #45494d">
+    <div id="app">
+      <canvas
+        aria-label="Driving view"
+        tabindex="0"
+        style="position: fixed; inset: 0; width: 100%; height: 100%"
+      ></canvas>
+    </div>
+    <div
+      style="
+        position: fixed;
+        left: 50%;
+        top: 43%;
+        transform: translateX(-50%);
+        color: white;
+        font: 14px system-ui;
+        text-align: center;
+        z-index: 1;
+      "
+    >
+      Synthetic HUD preview<br /><label
+        ><input id="animate" type="checkbox" /> Animate telemetry</label
+      ><br />H: mode · F9: record · O: Options
+    </div>
+    <script type="module" src="./entry.ts"></script>
+  </body>
+</html>
