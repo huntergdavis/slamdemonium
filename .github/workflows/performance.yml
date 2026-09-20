@@ -1,0 +1,117 @@
+name: Performance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+# Finish a full measurement. GitHub keeps only the newest pending run per ref.
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  configuration:
+    name: Read performance baseline
+    # This job only reads configuration; it does not measure performance.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      runner: ${{ steps.baseline.outputs.runner }}
+      physics_limit: ${{ steps.baseline.outputs.physics_limit }}
+      heap_limit: ${{ steps.baseline.outputs.heap_limit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read the single baseline record
+        id: baseline
+        run: python3 .github/scripts/performance.py --configuration
+
+  performance:
+    name: Performance gates
+    needs: configuration
+    runs-on: ${{ needs.configuration.outputs.runner }}
+    # Harness watchdog is 30 minutes; leave time for setup and retained diagnostics.
+    timeout-minutes: 40
+    env:
+      CI: true
+      PERF_PHYSICS_LIMIT: ${{ needs.configuration.outputs.physics_limit }}
+      PERF_HEAP_LIMIT: ${{ needs.configuration.outputs.heap_limit }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Record runner class and detect baseline changes
+        env:
+          PERF_RUNNER_ENVIRONMENT: ${{ runner.environment }}
+        run: python3 .github/scripts/performance.py --record-runner
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read Playwright version
+        id: playwright
+        run: node -e "console.log('version=' + require('@playwright/test/package.json').version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ needs.configuration.outputs.runner }}-${{ runner.arch }}-chromium-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium and system dependencies
+        run: npx --no-install playwright install --with-deps chromium
+
+      # npm run perf builds its own production assets. No shortened acceptance run.
+      - name: Measure performance and enforce design 13.4 gates
+        id: perf
+        shell: bash
+        run: |
+          mkdir -p test-results
+          # The reporter decides whether numerical gates apply to this runner class.
+          # Preserve the real exit status so broken measurements always fail.
+          set +e
+          npm run perf -- \
+            --duration-seconds 300 --baseline-seconds 60 \
+            --warmup-replays 2 --demo-steps 960 --timeout-seconds 1800 \
+            --physics-p99-ms "$PERF_PHYSICS_LIMIT" --heap-growth-percent "$PERF_HEAP_LIMIT" \
+            --output test-results/perf.json --port 0 \
+            2>&1 | tee test-results/perf-console.log
+          statuses=("${PIPESTATUS[@]}")
+          set -e
+          printf '%s\n' "${statuses[0]}" > test-results/perf-exit-code.txt
+          test "${statuses[1]}" -eq 0
+
+      - name: Publish metrics and recent main history
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PERF_RUNNER_ENVIRONMENT: ${{ runner.environment }}
+        run: python3 .github/scripts/performance.py
+
+      - name: Retain raw measurements and summary
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: performance-results
+          path: test-results/perf*
+          if-no-files-found: warn
+          retention-days: 90
+          overwrite: true

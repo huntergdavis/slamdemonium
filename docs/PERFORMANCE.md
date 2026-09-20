@@ -65,6 +65,36 @@ state is reproducible, CPU timing is not. Investigate large RAF/manual gaps for
 allocation/GC rather than dismissing them as scheduling noise. See the
 [measured outlier investigation](research/perf-outliers.md).
 
+CPU timings are comparable **only within the same recorded runner class** and
+with the same workload/tuning configuration. **Never compare a local CPU timing
+with a GitHub-hosted measurement.** The same SHA/configuration produced very
+different hosted and local CPU timings during [O4 validation](https://github.com/huntergdavis/slamdemonium/pull/33).
+That does not establish a code regression.
+
+[`.github/performance-baseline.json`](../.github/performance-baseline.json) is the
+single record of the expected runner class, numerical limits, and measured
+hosted baseline, including its SHA, configuration fingerprint, and source run.
+The workflow reads its runner selection and limits from this file. The summary
+computes threshold headroom from this record; the justification is headroom
+within one runner class, not reproducible CPU timing.
+
+Before measuring, the workflow records hosting type, OS/distribution/version,
+architecture, image family/version, and CPU count. If the class differs from
+the baseline, the full measurement still runs and is retained, but numerical
+gates are **SKIPPED**. The summary names expected and found values. Missing or
+malformed reports, incomplete EOF, recorder overflow, unexpected harness errors,
+and abnormal process exits still fail. The raw report retains the original
+harness measurements plus runner metadata, the baseline snapshot and exit code.
+History includes only the current runner class, including skipped-gate runs;
+different or unrecorded classes are excluded from comparison.
+
+To adopt a changed class, review a real sustained measurement and its tuning
+configuration, then update that one baseline file through a PR with the runner
+fields, measured figure, SHA/fingerprint, timestamp and source-run link. Do not
+update the baseline automatically. GitHub can refresh images and CPU hardware
+within a class, so compare repeated runs and inspect image/CPU details and host
+load before calling a moved percentile drift or noise.
+
 Explicit GC pauses freeze simulation and capture together, preserving every
 scripted step. Those pauses, their straddling frame intervals and between-replay
 setup are excluded from frame timing; natural GC remains included. Frame time
@@ -139,10 +169,12 @@ When updating boot wiring, preserve `LoopHooks.measurement`, the engine-only
 `droppedSeconds` telemetry. The full-step timer encloses vehicle pre/post work. [Demo setup](../scripts/perf/scenarios/physics-demo.ts) ·
 [input adapter](../scripts/perf/input.ts)
 
-**Devops owns CI wiring.** Run this separately, collect the JSON even when a gate
-fails, and allow time to finish the current replay after five minutes. PM/devops
-decide whether shared-runner timing is required or advisory. WP9a changes no
-workflow files.
+**Devops owns CI wiring.** The separate [Performance workflow](../.github/workflows/performance.yml)
+runs automatically on main and manually for diagnostics; it is not a required PR
+check. Active measurements finish while only the newest pending run is kept.
+Run summaries expose the distribution, tuning, runner class and recent comparable
+main measurements. Raw reports, exit status, console output and summaries remain
+available as the `performance-results` artifact for 90 days, including failures.
 
 Sources: [design §13.4](vertical-slice-design.md#134-performance-harness),
 [CDP heap usage](https://chromedevtools.github.io/devtools-protocol/tot/Runtime/#method-getHeapUsage),
