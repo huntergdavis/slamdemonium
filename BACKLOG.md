@@ -17,6 +17,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] O3 | devops | PR preview deployments so the CTO can playtest a branch before merge; sticky PR comment with the link; cleanup on close. Plus CI badge and live link in README (2 lines max). | devops/pr-previews
 
 
+- [ ] T8 | techwriter | Navigational index at the top of `docs/DECISIONS.md` (entries only, coordinate with developer 1 who owns the file). | docs/decisions-index
+
 ## Next (phase 2, after G0/G1)
 
 - [ ] WP3 | designer | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator.
