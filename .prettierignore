@@ -1,0 +1,10 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+scratch/
+package-lock.json
+README.md
+BACKLOG.md
+QUESTIONS.md
+docs/vertical-slice-design.md
