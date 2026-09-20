@@ -12,6 +12,7 @@ const host = document.querySelector<HTMLElement>('#app')!;
 const canvas = document.querySelector<HTMLCanvasElement>('canvas')!;
 const store = new TuningStore();
 let pad = makePad();
+let padPolls = 0;
 let lastEscape: KeyboardEvent | null = null;
 window.addEventListener(
   'keydown',
@@ -22,7 +23,10 @@ window.addEventListener(
 );
 const input = new InputMapper(
   new KeyboardInput(),
-  new GamepadInput(() => [pad]),
+  new GamepadInput(() => {
+    padPolls++;
+    return [pad];
+  }),
 );
 const state = {
   menuPaused: false,
@@ -111,6 +115,21 @@ window.__pauseTest = {
   setPad(buttons, x = 0, y = 0) {
     pad = makePad({ buttons, axis: x, verticalAxis: y });
   },
+  async tapPad(button) {
+    const waitForPoll = () =>
+      new Promise<void>((resolve) => {
+        const before = padPolls;
+        const check = () => {
+          if (padPolls > before) resolve();
+          else requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+      });
+    pad = makePad({ buttons: [button] });
+    await waitForPoll();
+    pad = makePad();
+    await waitForPoll();
+  },
   setExternalPaused(value) {
     state.externalPaused = value;
     syncPause();
@@ -135,6 +154,7 @@ declare global {
       loop: typeof loop;
       state: typeof state;
       setPad(buttons: number[], x?: number, y?: number): void;
+      tapPad(button: number): Promise<void>;
       setExternalPaused(value: boolean): void;
       dispose(): void;
     };

@@ -38,10 +38,7 @@ async function frames(page: Page, count = 3): Promise<void> {
   );
 }
 async function pressPad(page: Page, button: number): Promise<void> {
-  await page.evaluate((b) => window.__pauseTest.setPad([b]), button);
-  await frames(page);
-  await page.evaluate(() => window.__pauseTest.setPad([]));
-  await frames(page);
+  await page.evaluate((b) => window.__pauseTest.tapPad(b), button);
 }
 
 test('Escape menu pauses the real loop, traps focus, shows Controls and resumes without tuning changes', async ({
@@ -240,8 +237,12 @@ for (const mode of ['fullscreen', 'pointer'] as const) {
       await expect(page.getByRole('dialog')).toBeHidden();
       // A separate gesture after the browser's exit notification, not an
       // auto-repeat or key event from the same unlock gesture.
-      await frames(page, 12);
+      await page.bringToFront();
       await page.getByLabel('Driving view').focus();
+      const exited = await page.evaluate(() => performance.now());
+      await page.waitForFunction((t) => performance.now() - t >= 150, exited, {
+        polling: 50,
+      });
       await page.keyboard.press('Escape');
       await expect(
         page.getByRole('dialog', { name: 'Pause menu', exact: true }),
