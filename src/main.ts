@@ -415,7 +415,7 @@ async function boot(): Promise<void> {
       ...cameraRig.telemetry,
       cameraPreset: cameraRig.preset,
       gizmosVisible:
-        carVisual.root.getObjectByName('car.gizmos')?.visible ?? false,
+        view.scene.getObjectByName('car.gizmos')?.visible ?? false,
       renderScale: view.resolution.scale,
       smoothedFrameMs: view.resolution.smoothedFrameMs,
       skidSegments: skids.strips.reduce(
