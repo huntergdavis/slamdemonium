@@ -8,7 +8,7 @@ WP3 already contains every required world cue in design 10.2: **137 posts in one
 
 This reuses [D1](../visual-direction.md) and the [R3 speed-and-vibe guidance](../../research/speed-and-vibe.md) found during the required `deja` recall. The shader equation was checked against the installed Three.js `fog_fragment.glsl.js`. Zero fog density is checked both numerically and by comparing actual WebGL pixels against `scene.fog = null`; default fog must also visibly differ, preventing an empty-scene false positive. Fog remains the existing WP3 configuration; no new fog schema key is introduced by D5.
 
-At assignment time main still mounted WP1's proof scene. Developer 1 confirmed PR #31 already replaces that scene with WP3 in the WP5 integration. D5's overlay composes with that owner’s main loop; FOV, shake, roll and camera transforms remain WP6 responsibilities.
+WP5 mounts the original WP3 track through `createTestTrack` and `installTrackColliders`. D5's overlay composes with that owner’s main loop; FOV, shake, roll and camera transforms remain WP6 responsibilities.
 
 ## Store and rendering contract
 
@@ -42,7 +42,7 @@ Factory exports `canvas`, `update(state, dtSeconds)`, `setOptions(options)`, `re
 
 Let `r = clamp(speed/topSpeed, 0, 1)` and `s(x) = clamp(x,0,1)^2 * (3-2*clamp(x,0,1))`.
 
-- Streak alpha ceiling: `0.30 * speedLinesStrength * max(s((r-0.8)/0.2), boostEnvelope)`. No streaks at/below 80% without boost; the shared envelope enables them while boosting below that threshold. Fixed seeded spokes move outward with bounded phase; no flickering random reseeding. Streaks are 1.25 CSS px and cannot draw within the central 64% × 64% rectangle.
+- Streak alpha ceiling: `0.30 * speedLinesStrength * max(s((r-0.8)/0.2), boostEnvelope)`. No streaks at/below 80% without boost; the shared envelope enables them while boosting below that threshold. Deterministic staggered spokes move outward with bounded phase; no flickering random reseeding. Streaks are 1.25 CSS px and cannot draw within the central 64% × 64% rectangle.
 - Vignette corner-alpha ceiling: `0.12 * vignetteStrength * s(r)`. Elliptical falloff leaves the central region transparent. At defaults and top speed, maximum line alpha is 0.15 and corner darkening is 0.06. No vignette at rest.
 - The canvas is `aria-hidden`, has no pointer events and uses z-index 5, below HUD 10 and Options 30. UI contrast is unaffected. No blur, post-processing pass, camera kick or FOV expansion.
 
