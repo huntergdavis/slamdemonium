@@ -7,7 +7,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 ## Now (phase 1: unblock everything)
 
 - [ ] WP1 | developer 1 | Day-1 Jolt spike (design 4.2 a-f) with go/no-go in DECISIONS.md, then `IPhysicsWorld` adapter + Jolt impl, fixed-step loop with interpolation and timeScale, loop unit tests. Gate G0. | dev1/wp1-physics-loop
-- [ ] WP4 | developer 2 | Input: keyboard, gamepad, mapper, per-step sampling, latency probe (11). | dev2/wp4-input
 
 
 
@@ -48,3 +47,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] D2 | designer | Procedural asphalt generator prototype (9.3): standalone canvas/TS that produces the tiled 1024 noise texture; ready to drop into `src/world/materials.ts`. | design/asphalt (PR #15)
 - [x] R3 | research | "Feels fast" and crash-happy arcade vibe references (10.2, section 1). `docs/research/speed-and-vibe.md` | research/vibe (PR #17)
 - [x] T6 | techwriter | Editorial consistency pass: update playbook and glossary for the approved drift-law replacement and FOV bound; verify all cross-links. | docs/consistency-pass (PR #18)
+- [x] WP4 | developer 2 | Input: keyboard, gamepad, mapper, per-step sampling, latency probe (11). | dev2/wp4-input (PR #19)
