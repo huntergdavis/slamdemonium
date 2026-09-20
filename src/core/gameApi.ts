@@ -1,4 +1,6 @@
 import type { PhysicsSpikeResult } from '../physics/spike';
+import type { PhysicsMemory } from '../physics/adapter';
+import type { PerformanceBatch } from './performance';
 
 export interface GameInput {
   throttle: number;
@@ -24,6 +26,22 @@ export interface GameTestApi {
   getTelemetry(): Readonly<Record<string, unknown>>;
   respawn(): void;
   runPhysicsSpike?: () => Promise<PhysicsSpikeResult>;
+  /** Optional diagnostics; scenario input continues through the standard API. */
+  perf?: {
+    start(totalSteps: number): void;
+    setPaused(paused: boolean): void;
+    pauseSimulation(paused: boolean): void;
+    setStepDriver(driver: ((step: number) => void) | undefined): void;
+    progress(): { completedSteps: number; totalSteps: number; done: boolean };
+    drain(): PerformanceBatch;
+    getMemory(): PhysicsMemory;
+  };
+  /** WP11 contract; JSON validation and playback belong to src/input. */
+  scripts?: {
+    load(script: unknown, options: { tuning: 'apply' | 'verify' }): void;
+    progress(): { completedSteps: number; totalSteps: number; done: boolean };
+    cancel(): void;
+  };
 }
 
 function unavailable(): never {

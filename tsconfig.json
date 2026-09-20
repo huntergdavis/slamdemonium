@@ -14,7 +14,8 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["src", "tests", "e2e", "shots", "*.config.ts"]
+  "include": ["src", "tests", "e2e", "shots", "scripts", "*.config.ts"]
 }

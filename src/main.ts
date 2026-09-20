@@ -4,6 +4,7 @@ import { createGameStub } from './core/gameApi';
 import type { GameInput } from './core/gameApi';
 import { DebouncedMassRebuild } from './core/massRebuild';
 import { FixedStepLoop } from './core/loop';
+import { PerformanceRecorder } from './core/performance';
 import { TransformHistory } from './core/transforms';
 import type { IPhysicsWorld } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
@@ -102,6 +103,10 @@ async function boot(): Promise<void> {
   let frameTime = 0;
   const cameraOffset = new Vector3(0, 4, 9);
   const cameraTarget = new Vector3();
+  const measurements = new PerformanceRecorder();
+  let perfStepDriver: ((step: number) => void) | undefined;
+  let perfCompletedSteps = 0;
+  let perfTotalSteps = 0;
   const loop = new FixedStepLoop(
     {
       get physicsHz() {
@@ -112,7 +117,12 @@ async function boot(): Promise<void> {
       },
     },
     {
+      measurement: measurements,
+      shouldStopStepping: () =>
+        perfTotalSteps > 0 && perfCompletedSteps === perfTotalSteps,
       sampleForStep() {
+        if (perfCompletedSteps < perfTotalSteps)
+          perfStepDriver?.(perfCompletedSteps);
         const live = input.sampleForStep();
         sampled = injected ? requested : live;
         source = injected ? 'keyboard' : live.source;
@@ -124,13 +134,20 @@ async function boot(): Promise<void> {
         vehicle.preStep(dt, sampled, source);
       },
       stepPhysics(dt) {
+        const engineStarted = performance.now();
         physics.step(dt);
+        measurements.recordEngineStep(performance.now() - engineStarted);
       },
       postStep(dt) {
         vehicle.postStep(dt);
         history.afterStep();
         track.checkKillPlane(vehicle.telemetry.position, respawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
+        if (
+          perfCompletedSteps < perfTotalSteps &&
+          ++perfCompletedSteps === perfTotalSteps
+        )
+          loop.setPaused(true);
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -260,6 +277,7 @@ async function boot(): Promise<void> {
         locked: wheel.locked,
         grounded: wheel.grounded,
       })),
+      droppedSeconds: loop.droppedSeconds,
       totalSteps: loop.totalSteps,
       stepsPerFrame: loop.stepsThisFrame,
       alpha: loop.alpha,
@@ -269,6 +287,34 @@ async function boot(): Promise<void> {
   };
   game.respawn = respawn;
   game.runPhysicsSpike = () => runPhysicsSpike(createPhysicsWorld);
+  game.perf = {
+    start(totalSteps) {
+      if (!Number.isSafeInteger(totalSteps) || totalSteps < 1)
+        throw new RangeError(
+          'Performance replay length must be a positive step count.',
+        );
+      perfCompletedSteps = 0;
+      perfTotalSteps = totalSteps;
+      measurements.start();
+      loop.setPaused(false);
+    },
+    setPaused: (paused) => measurements.setPaused(paused),
+    pauseSimulation: (paused) => loop.setPaused(paused),
+    setStepDriver(driver) {
+      perfStepDriver = driver;
+    },
+    progress: () => ({
+      completedSteps: perfCompletedSteps,
+      totalSteps: perfTotalSteps,
+      done: perfTotalSteps > 0 && perfCompletedSteps === perfTotalSteps,
+    }),
+    drain: () => measurements.drain(),
+    getMemory() {
+      const memory = { heapBytes: 0, freeBytes: 0 };
+      physics.getMemoryStats(memory);
+      return memory;
+    },
+  };
   visibilityChanged = () => {
     loop.setPaused(document.hidden);
   };
