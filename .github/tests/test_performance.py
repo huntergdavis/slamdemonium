@@ -32,6 +32,11 @@ def report():
         "parameterFingerprint": "b" * 64,
         "configurationFingerprint": "c" * 64,
         "timing": {key: copy.deepcopy(timing) for key in perf.TIMINGS},
+        "manualBaseline": {"completedSteps": timing["count"],
+                           "physicsStep": copy.deepcopy(timing),
+                           "engineStep": copy.deepcopy(timing)},
+        "physicsGate": {"source": "manualBaseline.physicsStep",
+                        "p99Ms": 2.0, "limitMs": 2},
         "memory": {"first": memory,
                    "minuteFive": {**memory, "elapsedSeconds": 300},
                    "last": {**memory, "elapsedSeconds": 308},
@@ -65,11 +70,43 @@ class PerformanceTests(unittest.TestCase):
                 value["passed"] = False
                 self.assertFalse(perf.gates_pass(perf.validate(value)))
         value = report()
-        value["timing"]["physicsStep"]["p99Ms"] = 2.0001
+        value["manualBaseline"]["physicsStep"]["p99Ms"] = 2.0001
+        value["physicsGate"]["p99Ms"] = 2.0001
         with self.assertRaises(ValueError):
             perf.validate(value)
         value["passed"] = False
         self.assertFalse(perf.gates_pass(perf.validate(value)))
+
+    def test_raf_distributions_never_gate_the_manual_measurement(self):
+        value = report()
+        for name in perf.TIMINGS:
+            value["timing"][name]["p99Ms"] = 999
+            value["timing"][name]["maxMs"] = 1000
+        value["manualBaseline"]["physicsStep"]["p99Ms"] = 0.5
+        value["physicsGate"]["p99Ms"] = 0.5
+        self.assertEqual(perf.verdict(perf.validate(value)), "PASS")
+        output = perf.render(value, [], [], "#")
+        self.assertIn("Manual full physics step | 1000 | 0.500 | ≤ 2 ms | PASS", output)
+        self.assertIn("Manual physics P99 ms", output)
+        self.assertIn("| 0.500 | 0.80 / 1.50 / 999.00 |", output)
+        self.assertIn("All requestAnimationFrame (RAF) distributions below are advisory", output)
+        self.assertIn("manualBaseline.physicsStep.p99Ms", output)
+
+    def test_gate_provenance_must_match_complete_manual_measurement(self):
+        for key, bad in (("source", "timing.physicsStep"), ("p99Ms", 0.5),
+                         ("p99Ms", float("nan")), ("limitMs", 3)):
+            value = report()
+            value["physicsGate"][key] = bad
+            with self.subTest(key=key, bad=bad), self.assertRaises(ValueError):
+                perf.validate(value)
+        value = report()
+        value["manualBaseline"]["completedSteps"] += 1
+        with self.assertRaises(ValueError):
+            perf.validate(value)
+        value = report()
+        del value["physicsGate"]
+        with self.assertRaises(KeyError):
+            perf.validate(value)
 
     def test_missing_or_nonfinite_measurements_never_become_zero(self):
         for bad in (None, float("nan"), float("inf"), -1, True):

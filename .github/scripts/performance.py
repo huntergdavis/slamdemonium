@@ -31,6 +31,13 @@ def number(value, minimum=None):
     return value
 
 
+def validate_timing(timing):
+    if type(timing["count"]) is not int or timing["count"] < 1:
+        raise ValueError("Missing timing samples")
+    for stat in STATS:
+        number(timing[stat], 0)
+
+
 def validate(report):
     """Reject incomplete reports instead of displaying missing samples as zero."""
     if report["schemaVersion"] != 1 or type(report["passed"]) is not bool:
@@ -38,11 +45,19 @@ def validate(report):
     if report["mode"] not in ("sustained", "smoke/custom"):
         raise ValueError("Unknown measurement mode")
     for name in TIMINGS:
-        timing = report["timing"][name]
-        if type(timing["count"]) is not int or timing["count"] < 1:
-            raise ValueError("Missing timing samples")
-        for stat in STATS:
-            number(timing[stat], 0)
+        validate_timing(report["timing"][name])
+    manual = report["manualBaseline"]
+    if type(manual["completedSteps"]) is not int or manual["completedSteps"] < 1:
+        raise ValueError("Missing completed manual replay")
+    for name in ("physicsStep", "engineStep"):
+        validate_timing(manual[name])
+        if manual[name]["count"] != manual["completedSteps"]:
+            raise ValueError("Manual timing samples do not cover the complete replay")
+    gate = report["physicsGate"]
+    if (gate["source"] != "manualBaseline.physicsStep"
+            or number(gate["limitMs"], 0) != 2
+            or number(gate["p99Ms"], 0) != manual["physicsStep"]["p99Ms"]):
+        raise ValueError("Physics gate must use the manual full-step P99 with a 2 ms limit")
     if not report["parameters"] or not isinstance(report["parameters"], dict):
         raise ValueError("Missing applied tuning parameters")
     for value in report["parameters"].values():
@@ -87,7 +102,7 @@ def validate(report):
 
 
 def gates_pass(report):
-    return (report["timing"]["physicsStep"]["p99Ms"] <= 2
+    return (report["manualBaseline"]["physicsStep"]["p99Ms"] <= 2
             and all(report["memory"][key] <= 10 for _, _, key in HEAPS))
 
 
@@ -162,10 +177,11 @@ def render(report, prior, notes, run_url):
     parameter_id = report["parameterFingerprint"]
     config_id = report["configurationFingerprint"]
     memory = report["memory"]
+    manual = report["manualBaseline"]["physicsStep"]
     lines = [
         "# Performance measurement",
         "",
-        f"**{verdict(report)}** — design 13.4: full physics-step "
+        f"**{verdict(report)}** — design 13.4: manual stepMany full physics-step "
         "P99 ≤ 2 ms; each measured heap growth ≤ 10%.",
         "This dedicated workflow does not gate ordinary PR merges.",
         f"Measurement mode: **{cell(report['mode'])}**. "
@@ -176,7 +192,21 @@ def render(report, prior, notes, run_url):
         f"Configuration/input fingerprint: <code>{config_id}</code>.",
         f"Tuning fingerprint: <code>{parameter_id}</code>.",
         "",
-        "## Timing distributions",
+        "## Manual physics gate",
+        "",
+        "The 2 ms threshold applies only to <code>manualBaseline.physicsStep.p99Ms</code>, "
+        "measured across a complete manual stepMany replay (input, pre-step, engine, "
+        "and post-step). Physics state is reproducible; CPU timing can still vary.",
+        "",
+        "| Measurement | Samples | P99 (ms) | Limit | Result |",
+        "| --- | ---: | ---: | ---: | --- |",
+        f"| Manual full physics step | {manual['count']} | {manual['p99Ms']:.3f} | "
+        f"≤ 2 ms | {'PASS' if manual['p99Ms'] <= 2 else 'FAIL'} |",
+        "",
+        "## Advisory RAF timing distributions",
+        "",
+        "**All requestAnimationFrame (RAF) distributions below are advisory.** "
+        "They do not determine the physics gate or the workflow verdict.",
         "",
         "**Frame-time variance is expected on shared runners.** These values include "
         "browser scheduling and software WebGL. Compare distributions across repeated "
@@ -214,8 +244,8 @@ def render(report, prior, notes, run_url):
               "Different configuration fingerprints are not directly comparable. "
               "Each linked run retains its full parameters and raw report.",
               "",
-              "| Run (UTC) | Commit | Config | Physics P99 ms | "
-              "Frame P50 / P95 / P99 ms | Heap growth JS / WASM used / capacity | Result |",
+              "| Run (UTC) | Commit | Config | Manual physics P99 ms | "
+              "Advisory RAF frame P50 / P95 / P99 ms | Heap growth JS / WASM used / capacity | Result |",
               "| --- | --- | --- | ---: | ---: | ---: | --- |"]
     for item, url in [(report, run_url), *prior]:
         frame = item["timing"]["frame"]
@@ -223,7 +253,7 @@ def render(report, prior, notes, run_url):
                             for _, _, key in HEAPS)
         lines.append(f"| [{cell(item['recordedAt'])}]({url}) | "
                      f"{item['revision'][:8]} | {item['configurationFingerprint'][:12]} | "
-                     f"{item['timing']['physicsStep']['p99Ms']:.3f} | "
+                     f"{item['manualBaseline']['physicsStep']['p99Ms']:.3f} | "
                      f"{frame['p50Ms']:.2f} / {frame['p95Ms']:.2f} / "
                      f"{frame['p99Ms']:.2f} | {growth} | {verdict(item)} |")
     lines += [""] + [cell(note) for note in notes]
