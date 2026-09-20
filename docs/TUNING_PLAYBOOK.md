@@ -2,6 +2,8 @@
 
 How to make the car feel right, and what to turn when it does not.
 
+For a repeatable first session, follow the [30-minute tuning method](research/tuning-method.md): a fixed route, one-slider A/B comparisons, blind re-tests, and G-G/CSV checks.
+
 This is the human-facing copy of section 7.4 of the [design doc](vertical-slice-design.md). The same table ships inside the game as a collapsible help panel in the Options page. If you change one, change the other. Two behaviors have moved on from the design doc since it was written, and this page follows the shipped behavior: how drift angle control works ([drift assist note](research/drift-assist.md)) and the cap on camera field of view ([speed and vibe note](research/speed-and-vibe.md)). Terms are defined in the [Glossary](GLOSSARY.md).
 
 ## How tuning works
