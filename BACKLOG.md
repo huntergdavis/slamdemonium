@@ -24,6 +24,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] WP9a | research | Performance harness from design 13.4 (`npm run perf`): frame/step p99, JS+WASM heap, configurable thresholds, swappable scenario. Not wired into CI (devops owns that). | research/perf-harness
 - [ ] T9 | techwriter | Reproducible screenshot capture: Playwright script + `docs/screenshots/README.md` conventions, so shots can be regenerated identically. | docs/screenshot-tooling
 
+- [ ] D4 | designer | Car visual as CODE (design 10.3): chassis box, nose chevron, rear light strip, wheel meshes with steer/spin/suspension, witness stripes, G-key gizmos. Reads a documented vehicle-state interface agreed with developer 1. | design/car-visual
+
 ## Later (phase 3)
 
 - [ ] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10).
