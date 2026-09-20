@@ -28,10 +28,19 @@ export interface GameTestApi {
   runPhysicsSpike?: () => Promise<PhysicsSpikeResult>;
   /** Optional diagnostics; scenario input continues through the standard API. */
   perf?: {
-    start(): void;
+    start(totalSteps: number): void;
     setPaused(paused: boolean): void;
+    pauseSimulation(paused: boolean): void;
+    setStepDriver(driver: ((step: number) => void) | undefined): void;
+    progress(): { completedSteps: number; totalSteps: number; done: boolean };
     drain(): PerformanceBatch;
     getMemory(): PhysicsMemory;
+  };
+  /** WP11 contract; JSON validation and playback belong to src/input. */
+  scripts?: {
+    load(script: unknown, options: { tuning: 'apply' | 'verify' }): void;
+    progress(): { completedSteps: number; totalSteps: number; done: boolean };
+    cancel(): void;
   };
 }
 

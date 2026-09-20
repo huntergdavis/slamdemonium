@@ -5,6 +5,8 @@ export interface LoopSettings {
 }
 
 export interface LoopHooks {
+  /** An armed replay can stop at EOF even inside a manual stepMany batch. */
+  shouldStopStepping?(): boolean;
   measurement?: {
     readonly enabled: boolean;
     recordStep(ms: number): void;
@@ -66,7 +68,8 @@ export class FixedStepLoop {
     if (!Number.isSafeInteger(count) || count < 0)
       throw new RangeError('Step count must be a non-negative integer.');
     const dt = 1 / this.settings.physicsHz;
-    for (let i = 0; i < count; i++) this.step(dt);
+    for (let i = 0; i < count && !this.hooks.shouldStopStepping?.(); i++)
+      this.step(dt);
     this.resetClock();
   }
 
@@ -87,7 +90,7 @@ export class FixedStepLoop {
     this.validate();
     if (!Number.isFinite(nowMs))
       throw new RangeError('Frame timestamp must be finite.');
-    this.hooks.measurement?.recordFrame(nowMs);
+    if (!this.paused) this.hooks.measurement?.recordFrame(nowMs);
     this.stepsThisFrame = 0;
     if (this.lastMs === undefined || this.paused) {
       this.lastMs = nowMs;

@@ -104,6 +104,9 @@ async function boot(): Promise<void> {
   const cameraOffset = new Vector3(0, 4, 9);
   const cameraTarget = new Vector3();
   const measurements = new PerformanceRecorder();
+  let perfStepDriver: ((step: number) => void) | undefined;
+  let perfCompletedSteps = 0;
+  let perfTotalSteps = 0;
   const loop = new FixedStepLoop(
     {
       get physicsHz() {
@@ -115,7 +118,11 @@ async function boot(): Promise<void> {
     },
     {
       measurement: measurements,
+      shouldStopStepping: () =>
+        perfTotalSteps > 0 && perfCompletedSteps === perfTotalSteps,
       sampleForStep() {
+        if (perfCompletedSteps < perfTotalSteps)
+          perfStepDriver?.(perfCompletedSteps);
         const live = input.sampleForStep();
         sampled = injected ? requested : live;
         source = injected ? 'keyboard' : live.source;
@@ -136,6 +143,11 @@ async function boot(): Promise<void> {
         history.afterStep();
         track.checkKillPlane(vehicle.telemetry.position, respawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
+        if (
+          perfCompletedSteps < perfTotalSteps &&
+          ++perfCompletedSteps === perfTotalSteps
+        )
+          loop.setPaused(true);
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -276,8 +288,26 @@ async function boot(): Promise<void> {
   game.respawn = respawn;
   game.runPhysicsSpike = () => runPhysicsSpike(createPhysicsWorld);
   game.perf = {
-    start: () => measurements.start(),
+    start(totalSteps) {
+      if (!Number.isSafeInteger(totalSteps) || totalSteps < 1)
+        throw new RangeError(
+          'Performance replay length must be a positive step count.',
+        );
+      perfCompletedSteps = 0;
+      perfTotalSteps = totalSteps;
+      measurements.start();
+      loop.setPaused(false);
+    },
     setPaused: (paused) => measurements.setPaused(paused),
+    pauseSimulation: (paused) => loop.setPaused(paused),
+    setStepDriver(driver) {
+      perfStepDriver = driver;
+    },
+    progress: () => ({
+      completedSteps: perfCompletedSteps,
+      totalSteps: perfTotalSteps,
+      done: perfTotalSteps > 0 && perfCompletedSteps === perfTotalSteps,
+    }),
     drain: () => measurements.drain(),
     getMemory() {
       const memory = { heapBytes: 0, freeBytes: 0 };
