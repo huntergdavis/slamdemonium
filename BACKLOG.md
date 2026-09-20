@@ -6,7 +6,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 ## Now (phase 1: unblock everything)
 
-- [ ] WP1 | developer 1 | Day-1 Jolt spike (design 4.2 a-f) with go/no-go in DECISIONS.md, then `IPhysicsWorld` adapter + Jolt impl, fixed-step loop with interpolation and timeScale, loop unit tests. Gate G0. | dev1/wp1-physics-loop
 
 
 
@@ -50,3 +49,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] T6 | techwriter | Editorial consistency pass: update playbook and glossary for the approved drift-law replacement and FOV bound; verify all cross-links. | docs/consistency-pass (PR #18)
 - [x] WP4 | developer 2 | Input: keyboard, gamepad, mapper, per-step sampling, latency probe (11). | dev2/wp4-input (PR #19)
 - [x] T7 | techwriter | `docs/QA_CHECKLIST.md`: the design 13.5 manual QA pass as a runnable checklist a human follows on real hardware, with what to look for and how to report a failure. | docs/qa-checklist (PR #20)
+- [x] WP1 | developer 1 | Day-1 Jolt spike (design 4.2 a-f) with go/no-go in DECISIONS.md, then `IPhysicsWorld` adapter + Jolt impl, fixed-step loop with interpolation and timeScale, loop unit tests. Gate G0. | dev1/wp1-physics-loop (PR #21, G0 GO)
