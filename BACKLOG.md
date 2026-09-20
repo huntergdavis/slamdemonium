@@ -17,7 +17,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 ## Next (phase 2, after G0/G1)
 
-- [ ] WP5 | developer 1 | Vehicle model 5a/5b/5c (6) + unit and integration tests (13.1, 13.2). Gates G1, G3.
 
 
 - [ ] WP9a | research | Performance harness from design 13.4 (`npm run perf`): frame/step p99, JS+WASM heap, configurable thresholds, swappable scenario. Not wired into CI (devops owns that). | research/perf-harness
@@ -68,3 +67,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP7 | developer 2 | Options UI (8). Gate G2. (PR #30, G2)
 - [x] D4 | designer | Car visual as CODE (design 10.3): chassis box, nose chevron, rear light strip, wheel meshes with steer/spin/suspension, witness stripes, G-key gizmos. Reads a documented vehicle-state interface agreed with developer 1. | design/car-visual (PR #32)
 - [x] T11 | techwriter | Document gamepad: the press-a-button-to-wake gotcha (CTO hit this), keyboard+pad simultaneous, analog triggers. README controls + FAQ entry. Verify mapping against src/input/gamepad.ts. | docs/gamepad (PR #35, #36)
+- [x] WP5 | developer 1 | Vehicle model 5a/5b/5c (6) + unit and integration tests (13.1, 13.2). Gates G1, G3. (PR #31, G1 + G3 partial)
