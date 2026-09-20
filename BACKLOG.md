@@ -33,7 +33,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] WP13 | developer 1 | **Allocation-free hot path** (design 3 requirement, found by research in WP9a). Per-step churn measured: `Vehicle.tires` ~606 KB, suspension ~279 KB, Jolt `rayCast` ~475 KB, three.js shader-parameter paths ~2.7 MB (`WebGLPrograms.getParameters`, `getProgramCacheKey` arrays/joins, matrix paths). Preallocate/reuse in preStep, postStep and render; add a heap-growth regression test. Note: research showed GC is NOT the dominant p99 tail, so this is a correctness fix against the stated requirement, not a promised speedup. | dev1/wp13-no-alloc
 
-- [ ] WP9b | developer 2 | Design 13.2 integration tests expressed as scripts: accel, brake distance (~77 m ±15%), constant-steer circle, handbrake turn, plus determinism/soak/energy invariants. | dev2/wp9b-integration
 
 - [ ] R5 | research | Honest end-of-slice assessment against design section 3: every acceptance criterion marked MET / UNVERIFIED / NOT MET with evidence, including the human-judged ones pending CTO playtest. | research/slice-review
 
@@ -82,3 +81,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP11 | developer 2 | **Scripted input (CTO request).** Record/author/replay input sequences as deterministic test scenarios. Format: versioned JSON, physics-step indexed, recordable from live play and hand-authorable. Must capture the tuning parameter set in the header (replay under different params is a different drive). Playback drives the real `sampleForStep` path, never wall-clock. Ship: recorder, player, assertion helpers (final pose, lap time, max |beta|, no NaN), a checkpoint/lap timer for the ring, and 2-3 example scripts. Consumed by WP9a perf harness, e2e, and T9 screenshots. | dev2/wp11-scripted-input (PR #42)
 - [x] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10). (PR #40, G4 partial)
 - [x] WP8 | designer | HUD, telemetry graphs, CSV recorder (12). Gate G4. (PR #44, G4)
+- [x] WP9b | developer 2 | Design 13.2 integration tests expressed as scripts: accel, brake distance (~77 m ±15%), constant-steer circle, handbrake turn, plus determinism/soak/energy invariants. | dev2/wp9b-integration (PR #46)
