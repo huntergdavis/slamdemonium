@@ -13,6 +13,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] D3 | designer | UI kit: CSS custom-property palette + component styles for Options panel and HUD, plus a static demo page under `docs/design/ui-kit/`. Feeds WP7 and WP8. | design/ui-kit
 
+- [ ] R4 | research | `docs/research/tuning-method.md`: how to run a feel-tuning session without fooling yourself (one change at a time, A/B, fixed route, G-G diagram, CSV, adaptation), plus a 30 min first-session script and common traps. | research/tuning-method
+
 ## Next (phase 2, after G0/G1)
 
 - [ ] WP3 | developer 2 | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator.
