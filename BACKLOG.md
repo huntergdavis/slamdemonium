@@ -31,7 +31,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] D5 | designer | Speed cues as code (design 10.2): fog tuning, speed lines above ~80% top speed and during boost, vignette. NOT camera FOV/shake/roll (developer 1, WP6). Check WP3 first for overlap. | design/speed-cues
 
-- [ ] T11 | techwriter | Document gamepad: the press-a-button-to-wake gotcha (CTO hit this), keyboard+pad simultaneous, analog triggers. README controls + FAQ entry. Verify mapping against src/input/gamepad.ts. | docs/gamepad
 
 ## Later (phase 3)
 
@@ -68,3 +67,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] T10 | techwriter | README: player-facing 'play in your browser' link above the npm path; docs/TEAM.md: PR-preview paragraph (URL shape, timing, bot comment, SHA check, cleanup). | docs/play-link (PR #29)
 - [x] WP7 | developer 2 | Options UI (8). Gate G2. (PR #30, G2)
 - [x] D4 | designer | Car visual as CODE (design 10.3): chassis box, nose chevron, rear light strip, wheel meshes with steer/spin/suspension, witness stripes, G-key gizmos. Reads a documented vehicle-state interface agreed with developer 1. | design/car-visual (PR #32)
+- [x] T11 | techwriter | Document gamepad: the press-a-button-to-wake gotcha (CTO hit this), keyboard+pad simultaneous, analog triggers. README controls + FAQ entry. Verify mapping against src/input/gamepad.ts. | docs/gamepad (PR #35, #36)
