@@ -14,7 +14,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 
 
-- [ ] T8 | techwriter | Navigational index at the top of `docs/DECISIONS.md` (PR #23, needs rebase after WP1). | docs/decisions-index
 
 ## Next (phase 2, after G0/G1)
 
@@ -52,3 +51,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] R4 | research | `docs/research/tuning-method.md`: how to run a feel-tuning session without fooling yourself (one change at a time, A/B, fixed route, G-G diagram, CSV, adaptation), plus a 30 min first-session script and common traps. | research/tuning-method (PR #22)
 - [x] D3 | designer | UI kit: CSS custom-property palette + component styles for Options panel and HUD, plus a static demo page under `docs/design/ui-kit/`. Feeds WP7 and WP8. | design/ui-kit (PR #24)
 - [x] O3 | devops | PR preview deployments so the CTO can playtest a branch before merge; sticky PR comment with the link; cleanup on close. Plus CI badge and live link in README (2 lines max). | devops/pr-previews (PR #25)
+- [x] T8 | techwriter | Navigational index at the top of `docs/DECISIONS.md` (PR #23, needs rebase after WP1). | docs/decisions-index (PR #23)
