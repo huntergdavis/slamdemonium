@@ -85,5 +85,6 @@ export const HELP = `npm run perf -- [options]
   --output test-results/perf.json --port 0
   --skip-spike  Skip the separate WP1 baseline reproduction (smoke checks only).
 Duration is a minimum soak interval; termination is always at complete replay EOF.
+Physics gate uses manual stepMany full-step p99; RAF distributions are advisory.
 Shortened runs are smoke checks, not the five-minute acceptance run.
 No CI workflow is installed; a failed gate exits nonzero.`;

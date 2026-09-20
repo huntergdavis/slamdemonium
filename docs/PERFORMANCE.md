@@ -50,13 +50,19 @@ of deterministic physics also varies with host load.
 | JS heap            | CDP `Runtime.getHeapUsage().usedSize`; equivalent post-GC checkpoints near second 60, second 300, and final EOF. Actual times are recorded. |
 | WASM memory        | Adapter capacity, allocator free bytes, and capacity minus free bytes, sampled throughout.                                                  |
 
-Exit **1** if full physics p99 exceeds **2 ms**, or retained JS, WASM non-free
+Exit **1** if the manual `stepMany` full-step p99 exceeds **2 ms**, or retained JS, WASM non-free
 bytes, or WASM capacity grow more than **10%** from the first checkpoint to final
 EOF. Equality passes; shrinking is allowed. Exit **0** means configured checks
 passed. Runtime errors, missing samples, recorder overflow, tuning changes and
 incomplete EOF/sample coverage also fail. A timed-out replay is invalid, never
 a shortened successful drive. Startup/runtime failures can occur before a JSON
 report exists; threshold failures write the report before exiting.
+
+The PM's gate ruling uses `manualBaseline.physicsStep` to isolate simulation
+cost. All `timing.*` distributions come from RAF and are **advisory**, including
+RAF physics p99. Manual timing still varies with CPU load; fixed-step physics
+state is reproducible, CPU timing is not. Investigate large RAF/manual gaps for
+allocation/GC rather than dismissing them as scheduling noise.
 
 Explicit GC pauses freeze simulation and capture together, preserving every
 scripted step. Those pauses, their straddling frame intervals and between-replay
@@ -89,12 +95,15 @@ are labeled `smoke/custom` and do not replace the default sustained run. Keep ot
 
 Default JSON path: **`test-results/perf.json`**. Stable fields for devops:
 
+`physicsGate` records `source: "manualBaseline.physicsStep"`, `p99Ms` and
+`limitMs`. Use this for the physics result; label all RAF fields advisory.
+
 | Field                                                                          | Contents                                                                                                                                                                                                                                     |
 | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `timing.frame`, `timing.physicsStep`, `timing.engineStep`                      | Each has `count`, `meanMs`, `p50Ms`, `p95Ms`, `p99Ms`, `minMs`, `maxMs`, `standardDeviationMs` (population). Percentiles are nearest-rank.                                                                                                   |
 | `memory.first`, `memory.minuteFive`, `memory.last`                             | Each checkpoint has `elapsedSeconds`, `jsUsedBytes`, `jsTotalBytes`, `backingStorageBytes`, `wasmHeapBytes`, `wasmFreeBytes`, `wasmUsedBytes`. `minuteFive` is null on short runs; `last` is final EOF, which may be later than minute five. |
 | `memory.jsUsedPercent`, `memory.wasmUsedPercent`, `memory.wasmCapacityPercent` | First-to-final growth; `memory.samples` preserves the intermediate trend.                                                                                                                                                                    |
-| `parameters`, `parameterFingerprint`, `configurationFingerprint`               | Full applied 69-value tuning map, its sorted-key JSON SHA-256, and combined identity including input and scenario fingerprints. `finalParameters` is checked against the starting map.                                                       |
+| `parameters`, `parameterFingerprint`, `configurationFingerprint`               | Full applied tuning map, its sorted-key JSON SHA-256, and combined identity including input and scenario fingerprints. `finalParameters` is checked against the starting map.                                                                |
 | `inputIdentity`, `scenarioFingerprint`, `revision`, `worktreeDirty`            | Input-document identity (SHA-256 for WP11), scene-module SHA-256, code revision and dirty-state warning.                                                                                                                                     |
 | `replay`, `manualBaseline`, `reference`                                        | Complete step/replay counts and terminal states, selected-drive stepMany measurements, historical WP1 comparison.                                                                                                                            |
 | `host`, `browser`, `config`, `passed`, `failures`                              | CPU/Node/browser, logical CPUs and load averages, effective controls, result and reasons.                                                                                                                                                    |

@@ -334,7 +334,7 @@ async function main(): Promise<void> {
       engineStep: summarize(batches.engineStepMs),
     };
     const checks = assess(
-      timing.physicsStep,
+      manualBaseline.physicsStep,
       first,
       last,
       config.limits,
@@ -401,6 +401,11 @@ async function main(): Promise<void> {
       config,
       reference,
       manualBaseline,
+      physicsGate: {
+        source: 'manualBaseline.physicsStep',
+        p99Ms: manualBaseline.physicsStep.p99Ms,
+        limitMs: config.limits.physicsP99Ms,
+      },
       timing,
       memory: {
         first,
@@ -419,7 +424,12 @@ async function main(): Promise<void> {
     await mkdir(dirname(output), { recursive: true });
     await writeFile(output, JSON.stringify(report, null, 2) + '\n');
     console.table(
-      Object.entries(timing).map(([metric, data]) => ({
+      Object.entries({
+        manualPhysicsGate: manualBaseline.physicsStep,
+        advisoryRafFrame: timing.frame,
+        advisoryRafPhysics: timing.physicsStep,
+        advisoryRafEngine: timing.engineStep,
+      }).map(([metric, data]) => ({
         metric,
         samples: data.count,
         averageMs: data.meanMs.toFixed(4),
@@ -438,7 +448,7 @@ async function main(): Promise<void> {
         configurationFingerprint,
     );
     console.log(
-      'Physics state uses complete fixed-step replays; frame timing is a distribution, not a deterministic result.',
+      'GATE: manual stepMany full-step p99. ADVISORY: all RAF distributions; host scheduling and GC can affect timing. Physics state uses complete fixed-step replays.',
     );
     console.log(
       'Memory checkpoints: ' +
