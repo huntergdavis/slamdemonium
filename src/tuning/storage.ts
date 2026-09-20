@@ -13,6 +13,8 @@ export const TUNING_VERSION = 1;
 export const WORKING_SET_KEY = 'vehicle-feel.tuning.working';
 export const USER_PRESETS_KEY = 'vehicle-feel.tuning.presets';
 export type Warn = (message: string) => void;
+export type PersistenceStatus =
+  'idle' | 'saving' | 'saved' | 'unavailable' | 'error';
 export interface ChangeLogEntry {
   readonly timestamp: number;
   readonly key: ParamKey;
@@ -162,7 +164,12 @@ export class TuningStorage {
   private readonly unsubscribe: () => void;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private dirty = false;
+  private presetsDirty = false;
   private disposed = false;
+  private readonly statusListeners = new Set<
+    (status: PersistenceStatus) => void
+  >();
+  private persistenceStatus: PersistenceStatus = 'idle';
   name: string;
 
   constructor(
@@ -184,6 +191,7 @@ export class TuningStorage {
       );
     }
     this.storage = storage;
+    this.persistenceStatus = storage ? 'idle' : 'unavailable';
     // Restore before observing: reloading is not an edit and must not duplicate history.
     this.restore();
     this.unsubscribe = store.onChange(this.recordChange);
@@ -199,6 +207,34 @@ export class TuningStorage {
 
   get changeLog(): readonly ChangeLogEntry[] {
     return this.log.slice();
+  }
+
+  get status(): PersistenceStatus {
+    return this.persistenceStatus;
+  }
+  get changeLogLength(): number {
+    return this.log.length;
+  }
+  /** Frozen entry, safe to retain; never exposes the mutable internal array. */
+  changeLogEntry(index: number): ChangeLogEntry | undefined {
+    return this.log[index];
+  }
+
+  onStatus(listener: (status: PersistenceStatus) => void): () => void {
+    this.statusListeners.add(listener);
+    return () => {
+      this.statusListeners.delete(listener);
+    };
+  }
+
+  setName(name: string): void {
+    this.name = name;
+    this.scheduleSave();
+  }
+
+  presetValues(name: string): ParamSet | undefined {
+    const preset = this.userPresets.get(name);
+    return preset ? { ...preset.values } : undefined;
   }
 
   exportJSON(): string {
@@ -231,7 +267,7 @@ export class TuningStorage {
       name,
       parseTuningJSON(exportTuningJSON(this.store, name), this.warn),
     );
-    this.write(
+    this.presetsDirty = !this.write(
       USER_PRESETS_KEY,
       JSON.stringify([...this.userPresets.values()]),
     );
@@ -261,14 +297,29 @@ export class TuningStorage {
   flush(): void {
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
-    if (!this.dirty) return;
-    this.dirty = !this.write(WORKING_SET_KEY, this.exportJSON());
+    if (!this.dirty && !this.presetsDirty) return;
+    if (this.presetsDirty) {
+      this.presetsDirty = !this.write(
+        USER_PRESETS_KEY,
+        JSON.stringify([...this.userPresets.values()]),
+      );
+    }
+    if (this.dirty)
+      this.dirty = !this.write(WORKING_SET_KEY, this.exportJSON());
+    this.setStatus(
+      !this.storage
+        ? 'unavailable'
+        : this.dirty || this.presetsDirty
+          ? 'error'
+          : 'saved',
+    );
   }
 
   dispose(): void {
     this.flush();
     this.unsubscribe();
     this.disposed = true;
+    this.statusListeners.clear();
   }
 
   private readonly recordChange = (change: TuningChange): void => {
@@ -287,6 +338,7 @@ export class TuningStorage {
     if (this.disposed) return;
     this.dirty = true;
     if (this.timer !== undefined) clearTimeout(this.timer);
+    this.setStatus(this.storage ? 'saving' : 'unavailable');
     this.timer = setTimeout(() => {
       this.flush();
     }, this.debounceMs);
@@ -300,8 +352,10 @@ export class TuningStorage {
         this.name = document.name;
         this.log.push(...document.changeLog);
         this.store.replace(document.values, 'restore');
+        this.setStatus('saved');
       }
     } catch {
+      this.setStatus('error');
       this.warn('Ignoring unreadable saved working set.');
     }
     try {
@@ -329,8 +383,15 @@ export class TuningStorage {
       this.storage.setItem(key, value);
       return true;
     } catch {
+      this.setStatus('error');
       this.warn('Could not save tuning to local storage.');
       return false;
     }
+  }
+
+  private setStatus(status: PersistenceStatus): void {
+    if (status === this.persistenceStatus) return;
+    this.persistenceStatus = status;
+    for (const listener of this.statusListeners) listener(status);
   }
 }
