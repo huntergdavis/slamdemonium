@@ -160,8 +160,10 @@ export class PauseMenu {
       this.resetPad();
     } else {
       if (this.view === 'options') {
-        this.deps.options.setOpen(false);
+        // Resume releases only our pause. Leave the existing nonmodal Options
+        // drawer (and its own pause checkbox) in the state the user chose.
         this.restoreOptions();
+        this.view = 'menu';
       }
       this.element.close();
       this.deps.onPauseChange(false);

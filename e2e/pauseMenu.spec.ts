@@ -175,6 +175,7 @@ test('closing menu preserves P, Options and external pause requests; Escape in O
   await page.keyboard.press('KeyO');
   await page.getByRole('checkbox', { name: 'Pause while open' }).check();
   await pressPad(page, 9);
+  await page.getByRole('button', { name: 'Options', exact: true }).click();
   await pressPad(page, 9);
   expect(
     await page.evaluate(() => window.__pauseTest.state.optionsPaused),

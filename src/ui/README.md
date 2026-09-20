@@ -67,7 +67,8 @@ The native dialog isolates focus. When Options is selected, the existing panel
 element is temporarily moved into that dialog's focus scope, retaining all its
 nodes/listeners/store. Closing Options returns to the paused menu; resuming
 restores the element to its original DOM position and focuses the driving
-surface. Dispose the menu **before** disposing Options.
+surface. If the menu is closed while Options is displayed, the nonmodal drawer
+stays open: its independent pause checkbox is preserved. Dispose the menu **before** disposing Options.
 
 KeyboardInput gives native fullscreen/pointer-lock Escape priority, without
 calling preventDefault for that gesture. It also guards an exit event arriving
