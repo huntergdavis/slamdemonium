@@ -25,6 +25,9 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] D4 | designer | Car visual as CODE (design 10.3): chassis box, nose chevron, rear light strip, wheel meshes with steer/spin/suspension, witness stripes, G-key gizmos. Reads a documented vehicle-state interface agreed with developer 1. | design/car-visual
 
+- [ ] T10 | techwriter | README: player-facing 'play in your browser' link above the npm path; docs/TEAM.md: PR-preview paragraph (URL shape, timing, bot comment, SHA check, cleanup). | docs/play-link
+- [ ] O4 | devops | CI job running research's `npm run perf` with design 13.4 gates; decide required vs advisory vs main-only and justify; surface the trend. Blocked on WP9a. | devops/perf-ci
+
 ## Later (phase 3)
 
 - [ ] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10).
