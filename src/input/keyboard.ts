@@ -152,7 +152,11 @@ export class KeyboardInput {
   private readonly keydown = (rawEvent: Event): void => {
     const event = rawEvent as KeyboardEvent;
     const code = event.code;
-    if (!isKnownKey(code) || event.defaultPrevented) return;
+    if (!isKnownKey(code)) return;
+    // Options/help can handle Escape locally. Other bound keys retain their
+    // independent-reader behavior: the live mapper and bundled input fixture
+    // both observe the event even after one prevents the browser default.
+    if (code === 'Escape' && event.defaultPrevented) return;
     if (
       (code !== 'Escape' &&
         (this.editingTarget(event.target) ||

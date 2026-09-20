@@ -249,3 +249,40 @@ describe('browser-owned Escape', () => {
     );
   }
 });
+
+it('preserves independent keyboard readers after browser defaults are canceled', () => {
+  const target = new EventTarget();
+  const live = new KeyboardInput(target, { visibilityTarget: null });
+  const fixture = new KeyboardInput(target, { visibilityTarget: null });
+  const first = new InputMapper(live, new GamepadInput(() => []));
+  const second = new InputMapper(fixture, new GamepadInput(() => []));
+  expect(keyEvent(target, 'keydown', 'KeyW').defaultPrevented).toBe(true);
+  for (const code of ['Tab', 'KeyL', 'KeyO', 'KeyH', 'F9']) {
+    keyEvent(target, 'keydown', code);
+    keyEvent(target, 'keyup', code);
+  }
+  for (const mapper of [first, second]) {
+    expect(mapper.sampleForStep()).toMatchObject({
+      throttle: 1,
+      actions: {
+        swapAB: 1,
+        latencyProbe: 1,
+        options: 1,
+        hud: 1,
+        recordTelemetry: 1,
+      },
+    });
+    expect(mapper.sampleActions().swapAB).toBe(0);
+  }
+  live.dispose();
+  fixture.dispose();
+});
+
+it('leaves locally handled Escape with the Options/help handler', () => {
+  const target = new EventTarget();
+  target.addEventListener('keydown', (event) => event.preventDefault());
+  const keyboard = new KeyboardInput(target, { visibilityTarget: null });
+  keyEvent(target, 'keydown', 'Escape');
+  expect(keyboard.state.presses.pauseMenu).toBe(0);
+  keyboard.dispose();
+});
