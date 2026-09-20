@@ -3,6 +3,8 @@ import type { ScriptSpawn } from './scriptFormat';
 export interface ReplayTelemetry extends ScriptSpawn {
   readonly speed: number;
   readonly beta: number; // radians
+  /** Vehicle increments this when it repairs non-finite state before publication. */
+  readonly recoveryCount?: number;
 }
 export interface ReplayResult {
   readonly completedSteps: number;
@@ -30,6 +32,7 @@ function allNumbersFinite(value: unknown, depth = 0): boolean {
 
 /** Mutable storage is private and reused in postStep; snapshot only at a result boundary. */
 export class ReplayMetrics {
+  private initialRecoveryCount = 0;
   private readonly pose = {
     position: { x: 0, y: 0, z: 0 },
     rotation: { x: 0, y: 0, z: 0, w: 1 },
@@ -43,7 +46,8 @@ export class ReplayMetrics {
     firstNonFiniteStep: null as number | null,
   };
 
-  reset(spawn: ScriptSpawn): void {
+  reset(spawn: ScriptSpawn, recoveryCount = 0): void {
+    this.initialRecoveryCount = recoveryCount;
     this.state.completedSteps = 0;
     this.state.peakSpeed = 0;
     this.state.peakAbsSlideAngle = 0;
@@ -55,6 +59,8 @@ export class ReplayMetrics {
   record(telemetry: ReplayTelemetry): void {
     this.state.completedSteps++;
     if (
+      (telemetry.recoveryCount ?? this.initialRecoveryCount) !==
+        this.initialRecoveryCount ||
       !Number.isFinite(telemetry.speed) ||
       !Number.isFinite(telemetry.beta) ||
       !allNumbersFinite(telemetry)
@@ -163,7 +169,7 @@ export function assertReplay(
     const norm =
       Math.hypot(q.x, q.y, q.z, q.w) *
       Math.hypot(target.x, target.y, target.z, target.w);
-    if (norm === 0)
+    if (!Number.isFinite(norm) || norm === 0)
       throw new Error('Final rotation is not a valid quaternion.');
     const angle =
       2 *

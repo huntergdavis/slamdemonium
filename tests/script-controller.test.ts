@@ -80,6 +80,24 @@ function setup() {
   };
 }
 
+it('invalidates both result reads and the next sample immediately when tuning changes', () => {
+  for (const mode of ['record', 'play']) {
+    const rig = setup();
+    if (mode === 'play')
+      rig.scripts.load(scriptFixture(), { tuning: 'verify' });
+    else {
+      rig.scripts.noteRespawn(scriptFixture().spawn, 1);
+      rig.scripts.startRecording('Fresh');
+    }
+    rig.store.set('mass', 2000);
+    expect(() => rig.scripts.result()).toThrow(/[Tt]uning changed/);
+    expect(() => rig.loop.stepMany(1)).toThrow(/[Tt]uning changed/);
+    expect(rig.trace).toHaveLength(0);
+    expect(rig.onError).toHaveBeenCalledOnce();
+    rig.dispose();
+  }
+});
+
 it('replays identically through stepMany and variable RAF batches, stopping at the final postStep', () => {
   const direct = setup();
   const raf = setup();
@@ -103,7 +121,7 @@ it('replays identically through stepMany and variable RAF batches, stopping at t
     totalSteps: 4,
     done: true,
   });
-  expect(direct.readTelemetry).toHaveBeenCalledTimes(4);
+  expect(direct.readTelemetry).toHaveBeenCalledTimes(5); // reset baseline + four completed steps
   expect(direct.onComplete).toHaveBeenCalledOnce();
   expect(raf.onComplete).toHaveBeenCalledOnce();
   expect(direct.scripts.canStep()).toBe(false);

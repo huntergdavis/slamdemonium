@@ -13,6 +13,17 @@ const point = (degree: number, radius = 130) => ({
   z: -radius * Math.sin((degree * Math.PI) / 180),
 });
 
+it('rejects vehicle recovery even if the published pose has already been repaired', () => {
+  const metrics = new ReplayMetrics();
+  const spawn = scriptFixture().spawn;
+  metrics.reset(spawn, 2);
+  metrics.record({ ...spawn, speed: 0, beta: 0, recoveryCount: 2 });
+  expect(metrics.current.allFinite).toBe(true);
+  metrics.record({ ...spawn, speed: 0, beta: 0, recoveryCount: 3 });
+  expect(() => assertReplay(metrics.snapshot(), {})).toThrow(/non-finite/);
+  expect(metrics.current.firstNonFiniteStep).toBe(2);
+});
+
 it('counts all eight ordered ring gates with physics-step lap timing and a reused progress object', () => {
   const lap = new RingLapTimer({ physicsHz: 120 });
   lap.reset(point(0));

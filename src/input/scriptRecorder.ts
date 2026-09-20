@@ -43,6 +43,10 @@ export class InputScriptRecorder {
     return this.count;
   }
 
+  assertHealthy(): void {
+    if (this.error) throw this.error;
+  }
+
   /** Call only after the engine's actual synchronous fresh respawn, never from a pose guess. */
   noteRespawn(spawn: ScriptSpawn, seed: number): void {
     if (this.active)

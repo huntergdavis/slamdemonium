@@ -144,9 +144,7 @@ export class ScriptController {
       if (this.player.armed && this.player.progress().done)
         this.options.onComplete();
     } catch (error) {
-      this.error = error instanceof Error ? error : new Error(String(error));
-      this.options.onError?.(this.error);
-      throw this.error;
+      this.fail(error);
     }
   }
 
@@ -174,12 +172,27 @@ export class ScriptController {
   };
 
   private resetCapture(header: ScriptHeader): void {
-    this.metrics.reset(header.spawn);
+    this.metrics.reset(
+      header.spawn,
+      this.options.readTelemetry().recoveryCount ?? 0,
+    );
     this.lap = new RingLapTimer({ physicsHz: header.tuning.physicsHz });
     this.lap.reset(header.spawn.position);
   }
 
   private check(): void {
     if (this.error) throw this.error;
+    try {
+      this.player.progress();
+      this.recorder.assertHealthy();
+    } catch (error) {
+      this.fail(error);
+    }
+  }
+
+  private fail(error: unknown): never {
+    this.error = error instanceof Error ? error : new Error(String(error));
+    this.options.onError?.(this.error);
+    throw this.error;
   }
 }
