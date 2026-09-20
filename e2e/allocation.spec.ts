@@ -68,6 +68,15 @@ test('five simulated minutes keep JS/WASM memory bounded and warmed shader varia
     };
   });
   const evidence = { baseline, final, ...result };
+  console.log(
+    'WP13 heap regression',
+    JSON.stringify({
+      baseline,
+      final,
+      completedSteps: result.progress.completedSteps,
+      shaderParameterBuilds: result.shaderParameterBuilds,
+    }),
+  );
   await testInfo.attach('heap-regression.json', {
     body: JSON.stringify(evidence, null, 2),
     contentType: 'application/json',
@@ -88,5 +97,6 @@ test('five simulated minutes keep JS/WASM memory bounded and warmed shader varia
     fixture.renderFrames(12);
     return fixture.programCalls();
   });
+  console.log('WP13 shared-material negative control', negativeControl);
   expect(negativeControl).toBeGreaterThan(0);
 });
