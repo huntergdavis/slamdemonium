@@ -62,7 +62,8 @@ The PM's gate ruling uses `manualBaseline.physicsStep` to isolate simulation
 cost. All `timing.*` distributions come from RAF and are **advisory**, including
 RAF physics p99. Manual timing still varies with CPU load; fixed-step physics
 state is reproducible, CPU timing is not. Investigate large RAF/manual gaps for
-allocation/GC rather than dismissing them as scheduling noise.
+allocation/GC rather than dismissing them as scheduling noise. See the
+[measured outlier investigation](research/perf-outliers.md).
 
 Explicit GC pauses freeze simulation and capture together, preserving every
 scripted step. Those pauses, their straddling frame intervals and between-replay

@@ -1,0 +1,2669 @@
+{
+  "builtFromCommit": "70640d123ea750d3d1c3d39305e674515f49b0c7",
+  "publicRuntimeEquivalentCommit": "03b79e4063698e1171ce608232fd3f5bb7b9f64e",
+  "samplingIntervalBytes": 16384,
+  "includeCollectedByMinorAndMajorGC": true,
+  "method": "Sum disjoint selfSize nodes grouped by stack; estimates of allocation traffic, not retained heap. CallFrame lineNumber/columnNumber are zero-based.",
+  "selectedGroupTotals": {
+    "Three.WebGLPrograms.getParameters": 2759488,
+    "Vehicle.tires": 1016196,
+    "adapter.rayCast": 475308,
+    "Vehicle.suspension": 295060,
+    "Three.WebGLPrograms.getProgramCacheKey": 1056624
+  },
+  "stacks": [
+    {
+      "group": "Three.WebGLPrograms.getParameters",
+      "sampledSelfBytes": 1096592,
+      "profileNodeId": 73,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "pt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 35738
+        },
+        {
+          "functionName": "ht",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37583
+        },
+        {
+          "functionName": "gt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37815
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "h",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 2274
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getParameters",
+      "sampledSelfBytes": 1023016,
+      "profileNodeId": 31,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "h",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 2274
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getParameters",
+      "sampledSelfBytes": 607080,
+      "profileNodeId": 35,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "h",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 2274
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 606432,
+      "profileNodeId": 92,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        }
+      ]
+    },
+    {
+      "group": "adapter.rayCast",
+      "sampledSelfBytes": 475308,
+      "profileNodeId": 95,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "suspension",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95534
+        },
+        {
+          "functionName": "rayCast",
+          "scriptId": "5",
+          "url": "http://127.0.0.1:42037/assets/joltWorld-CTBKz_IZ.js",
+          "lineNumber": 0,
+          "columnNumber": 937559
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.suspension",
+      "sampledSelfBytes": 278668,
+      "profileNodeId": 94,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "suspension",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95534
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 198264,
+      "profileNodeId": 30,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "_",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 9202
+        },
+        {
+          "functionName": "push",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 181676,
+      "profileNodeId": 109,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "join",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 165060,
+      "profileNodeId": 172,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "join",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 132084,
+      "profileNodeId": 193,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "pt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 35738
+        },
+        {
+          "functionName": "ht",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37583
+        },
+        {
+          "functionName": "gt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37815
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "join",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 99144,
+      "profileNodeId": 29,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "_",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 9202
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 81948,
+      "profileNodeId": 228,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "kl",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 91373
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 66192,
+      "profileNodeId": 178,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "_",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 9202
+        },
+        {
+          "functionName": "push",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 65964,
+      "profileNodeId": 131,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "pt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 35738
+        },
+        {
+          "functionName": "ht",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37583
+        },
+        {
+          "functionName": "gt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37815
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "_",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 9202
+        },
+        {
+          "functionName": "push",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 65556,
+      "profileNodeId": 229,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "Pl",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 92545
+        },
+        {
+          "functionName": "abs",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 65556,
+      "profileNodeId": 190,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "Fl",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 92607
+        },
+        {
+          "functionName": "abs",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 49184,
+      "profileNodeId": 42,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "pt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 35738
+        },
+        {
+          "functionName": "ht",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37583
+        },
+        {
+          "functionName": "gt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37815
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 49176,
+      "profileNodeId": 189,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "Fl",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 92607
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 33264,
+      "profileNodeId": 130,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "pt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 35738
+        },
+        {
+          "functionName": "ht",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37583
+        },
+        {
+          "functionName": "gt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37815
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "_",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 9202
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 32784,
+      "profileNodeId": 116,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "Tl",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 91064
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 32784,
+      "profileNodeId": 117,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "Tl",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 91064
+        },
+        {
+          "functionName": "abs",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 32784,
+      "profileNodeId": 121,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "Pl",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 92545
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 32784,
+      "profileNodeId": 93,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "hypot",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 16560,
+      "profileNodeId": 177,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "_",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 9202
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 16416,
+      "profileNodeId": 222,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        },
+        {
+          "functionName": "push",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 16416,
+      "profileNodeId": 171,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getParameters",
+      "sampledSelfBytes": 16400,
+      "profileNodeId": 205,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "h",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 2274
+        },
+        {
+          "functionName": "customProgramCacheKey",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 0,
+          "columnNumber": 106587
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getProgramCacheKey",
+      "sampledSelfBytes": 16400,
+      "profileNodeId": 28,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 731
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4195,
+          "columnNumber": 5829
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "g",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 8888
+        }
+      ]
+    },
+    {
+      "group": "Three.WebGLPrograms.getParameters",
+      "sampledSelfBytes": 16400,
+      "profileNodeId": 227,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 117784
+        },
+        {
+          "functionName": "a",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 64675
+        },
+        {
+          "functionName": "render",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 32610
+        },
+        {
+          "functionName": "pt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 35738
+        },
+        {
+          "functionName": "ht",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37583
+        },
+        {
+          "functionName": "gt",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 37815
+        },
+        {
+          "functionName": "renderBufferDirect",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 29382
+        },
+        {
+          "functionName": "St",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 41300
+        },
+        {
+          "functionName": "_t",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 38315
+        },
+        {
+          "functionName": "h",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4168,
+          "columnNumber": 2274
+        },
+        {
+          "functionName": "customProgramCacheKey",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 0,
+          "columnNumber": 106587
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.suspension",
+      "sampledSelfBytes": 16392,
+      "profileNodeId": 221,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "suspension",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95534
+        },
+        {
+          "functionName": "Ol",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 91249
+        }
+      ]
+    },
+    {
+      "group": "Vehicle.tires",
+      "sampledSelfBytes": 16392,
+      "profileNodeId": 254,
+      "stack": [
+        {
+          "functionName": "(root)",
+          "scriptId": "0",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1
+        },
+        {
+          "functionName": "E",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 120676
+        },
+        {
+          "functionName": "frame",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58664
+        },
+        {
+          "functionName": "step",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 58043
+        },
+        {
+          "functionName": "preStep",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 95261
+        },
+        {
+          "functionName": "tires",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 98184
+        },
+        {
+          "functionName": "Sl",
+          "scriptId": "4",
+          "url": "http://127.0.0.1:42037/assets/index-DrBzFu_H.js",
+          "lineNumber": 4219,
+          "columnNumber": 90884
+        }
+      ]
+    }
+  ]
+}
