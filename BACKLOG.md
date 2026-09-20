@@ -11,7 +11,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 
 
-- [ ] O3 | devops | PR preview deployments so the CTO can playtest a branch before merge; sticky PR comment with the link; cleanup on close. Plus CI badge and live link in README (2 lines max). | devops/pr-previews
 
 
 
@@ -52,3 +51,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP1 | developer 1 | Day-1 Jolt spike (design 4.2 a-f) with go/no-go in DECISIONS.md, then `IPhysicsWorld` adapter + Jolt impl, fixed-step loop with interpolation and timeScale, loop unit tests. Gate G0. | dev1/wp1-physics-loop (PR #21, G0 GO)
 - [x] R4 | research | `docs/research/tuning-method.md`: how to run a feel-tuning session without fooling yourself (one change at a time, A/B, fixed route, G-G diagram, CSV, adaptation), plus a 30 min first-session script and common traps. | research/tuning-method (PR #22)
 - [x] D3 | designer | UI kit: CSS custom-property palette + component styles for Options panel and HUD, plus a static demo page under `docs/design/ui-kit/`. Feeds WP7 and WP8. | design/ui-kit (PR #24)
+- [x] O3 | devops | PR preview deployments so the CTO can playtest a branch before merge; sticky PR comment with the link; cleanup on close. Plus CI badge and live link in README (2 lines max). | devops/pr-previews (PR #25)
