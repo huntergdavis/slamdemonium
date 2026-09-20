@@ -4,11 +4,11 @@ Running log of technical decisions, spike results and changed defaults. New entr
 
 ## Index
 
-| Date | Decision | Consequence |
-|---|---|---|
-| 2026-09-20 | [WP0: minimal browser scaffold and reproducible tooling](#2026-09-20--wp0-minimal-browser-scaffold-and-reproducible-tooling) | Strict TypeScript, Vite, three.js, Vitest and Playwright, every dependency pinned exactly; TypeScript held at 6.0.3 for typescript-eslint; no physics dependency until WP1 confirms the Jolt flavor. |
-| 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number | null` because stock Jolt cannot supply a solved value. |
-| 2026-09-20 | [WP5: vehicle force model and approved design corrections](#2026-09-20--wp5-vehicle-force-model-and-approved-design-corrections) | Preserve the configurable ellipse, correct COM load direction, cap dissipative impulses only, use the research drift latch, and keep recovery safeguards independent of handling sliders. |
+| Date       | Decision                                                                                                                                | Consequence                                                                                                                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-20 | [WP0: minimal browser scaffold and reproducible tooling](#2026-09-20--wp0-minimal-browser-scaffold-and-reproducible-tooling)            | Strict TypeScript, Vite, three.js, Vitest and Playwright, every dependency pinned exactly; TypeScript held at 6.0.3 for typescript-eslint; no physics dependency until WP1 confirms the Jolt flavor. |
+| 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number                    | null` because stock Jolt cannot supply a solved value. |
+| 2026-09-20 | [WP5: vehicle force model and approved design corrections](#2026-09-20--wp5-vehicle-force-model-and-approved-design-corrections)        | Preserve the configurable ellipse, correct COM load direction, cap dissipative impulses only, use the research drift latch, and keep recovery safeguards independent of handling sliders.            |
 
 | 2026-09-20 | [WP6: bounded camera and fixed rendering buffers](#2026-09-20--wp6-bounded-camera-and-fixed-rendering-buffers) | Cap delivered vertical FOV at 115 degrees with honest telemetry; share scaled render time; reuse four skid geometries and adjust resolution from wall time. |
 
@@ -379,10 +379,20 @@ The automated regression runs through the **production preview build** at
 120 Hz for 36,000 real vehicle steps, with steering, braking and handbrake,
 plus an explicit render per simulated second. It compares post-GC JS heap at
 simulated minute one and minute five (maximum 10% growth), checks WASM allocator
-free bytes as well as heap capacity, requires finite unrecovered state and skid
+free bytes as well as heap capacity, requires zero non-finite-state recoveries and skid
 activity, and records exact EOF. This accelerated test does not replace
 npm run perf's sustained wall-time run. The VITE_TEST_API-only diagnostic counts
 actual customProgramCacheKey calls, which observe parameter reconstruction
 even on compiled-program cache hits. A fixed warmed view must make zero calls;
 restoring the original shared-material pattern is a negative control that
 must make calls again. A default production build excludes the diagnostic.
+
+The first CI run exceeded the suite's 90-second deadline on all three attempts;
+it is not counted as passing. Its traces show 87–90 seconds inside completed
+simulation/render batches. The last attempt reached all 36,000 steps and all
+assertions: retained JS was 9,300,436 → 9,533,468 bytes (+2.51%), WASM capacity
+134,217,728 bytes and allocator free space 121,256,280 bytes were unchanged,
+and warmed parameter builds were zero versus 24 after restoring shared materials.
+Give this regression its own 180-second budget, preserving the full workload
+and every memory/counter assertion. These elapsed times are test-runner evidence,
+not measurements of the physics step budget; final CI verification is pending.

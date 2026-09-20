@@ -3,6 +3,9 @@ import { expect, test } from '@playwright/test';
 test('five simulated minutes keep JS/WASM memory bounded and warmed shader variants stable', async ({
   page,
 }, testInfo) => {
+  // CI traces spent 87–90 s in completed batches before the 90 s suite deadline.
+  // Keep the full 36,000 steps and heap limits; this is not a timing benchmark.
+  test.setTimeout(180_000);
   await page.setViewportSize({ width: 320, height: 180 });
   await page.goto('./');
   await page.waitForFunction(
