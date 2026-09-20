@@ -206,6 +206,12 @@ test('runtime scripts reset injected input and mass work, replay exactly, and re
     game.setInput({ throttle: 0, brake: 1 });
     game.tuning.set('mass', 1800); // pending debounce must not fire mid-replay
     game.scripts!.load(script, { tuning: 'apply' });
+    let playbackInjectionRejected = false;
+    try {
+      game.setInput({ throttle: 0 });
+    } catch {
+      playbackInjectionRejected = true;
+    }
     game.stepMany(100);
     const first = game.scripts!.result();
     const terminalSteps = game.getTelemetry().totalSteps;
@@ -215,6 +221,7 @@ test('runtime scripts reset injected input and mass work, replay exactly, and re
     game.stepMany(100);
     return {
       first,
+      playbackInjectionRejected,
       second: game.scripts!.result(),
       progress: game.scripts!.progress(),
       terminalSteps,
@@ -228,6 +235,7 @@ test('runtime scripts reset injected input and mass work, replay exactly, and re
     totalSteps: 37,
     done: true,
   });
+  expect(result.playbackInjectionRejected).toBe(true);
   expect(result.first).toEqual(result.second);
   expect(result.afterExtra).toBe(result.terminalSteps);
   expect(result.mass).toBe(result.tuningMass);
@@ -243,4 +251,45 @@ test('runtime scripts reset injected input and mass work, replay exactly, and re
       page.evaluate(() => window.__game.scripts!.progress().totalSteps),
     )
     .toBe(0);
+});
+
+test('input recording rejects mismatched automation and captures only mapper controls', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.waitForFunction(() => window.__game?.ready);
+  const result = await page.evaluate(() => {
+    const game = window.__game;
+    game.perf!.pauseSimulation(true);
+    game.respawn();
+    game.setInput({ throttle: 1 });
+    let startRejected = false,
+      injectionRejected = false,
+      driverRejected = false;
+    try {
+      game.scripts!.startRecording('unsafe');
+    } catch {
+      startRejected = true;
+    }
+    game.releaseInput();
+    game.scripts!.startRecording('mapper-only');
+    try {
+      game.setInput({ throttle: 1 });
+    } catch {
+      injectionRejected = true;
+    }
+    try {
+      game.perf!.setStepDriver(() => {});
+    } catch {
+      driverRejected = true;
+    }
+    game.stepMany(4);
+    const recording = game.scripts!.stopRecording();
+    return { startRejected, injectionRejected, driverRejected, recording };
+  });
+  expect(
+    result.startRejected && result.injectionRejected && result.driverRejected,
+  ).toBe(true);
+  expect(result.recording.durationSteps).toBe(4);
+  expect(result.recording.frames[0]!.input.throttle).toBe(0);
 });

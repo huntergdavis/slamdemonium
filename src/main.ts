@@ -353,7 +353,13 @@ async function boot(): Promise<void> {
     },
     result: () => scripts.result(),
     lapProgress: () => scripts.lapProgress(),
-    startRecording: (name) => scripts.startRecording(name),
+    startRecording(name) {
+      if (injected || perfStepDriver)
+        throw new Error(
+          'Release injected input and the perf driver before recording.',
+        );
+      scripts.startRecording(name);
+    },
     stopRecording: () => scripts.stopRecording(),
     get recording() {
       return scripts.recording;
@@ -378,6 +384,10 @@ async function boot(): Promise<void> {
     },
   };
   game.setInput = (override) => {
+    if (replayActive || scripts.recording)
+      throw new Error(
+        'Cancel scripted playback or recording before injecting input.',
+      );
     for (const key of ['throttle', 'brake', 'steer'] as const) {
       if (override[key] !== undefined && !Number.isFinite(override[key]))
         throw new RangeError('Input must be finite.');
@@ -480,6 +490,10 @@ async function boot(): Promise<void> {
       syncPause();
     },
     setStepDriver(driver) {
+      if (driver && (replayActive || scripts.recording))
+        throw new Error(
+          'Cancel scripted playback or recording before attaching a perf driver.',
+        );
       perfStepDriver = driver;
     },
     progress: () => ({

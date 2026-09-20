@@ -331,3 +331,9 @@ Automation now exposes setHudMode and setOptionsOpen alongside setCameraPreset.
 The scripts surface includes playback, results, lap progress and fresh-respawn
 input recording. Runtime integration tests exercise the built application under
 the deployment base path, in addition to the isolated UI component fixtures.
+
+Input-script recording rejects an existing injected input/perf driver, and
+setInput or attaching a perf driver rejects active script capture/playback.
+The recorder observes mapper.state, so allowing a separate vehicle override
+would silently record different commands. Release automation input before a
+fresh-respawn recording. F9 telemetry CSV remains independent.
