@@ -851,3 +851,66 @@
     padding-bottom: 24px;
   }
 }
+
+/* WP16: layout only; surfaces, typography, focus and buttons use the D3 kit. */
+.sl-pause {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(620px, calc(100vw - 2 * var(--sl-safe)));
+  max-height: calc(100dvh - 2 * var(--sl-safe));
+  padding: 20px;
+  overflow: auto;
+  color: var(--sl-text);
+  background: var(--sl-panel);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius);
+}
+.sl-pause::backdrop {
+  background: rgb(0 0 0 / 60%);
+}
+.sl-pause__menu,
+.sl-pause__controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-gap);
+}
+.sl-pause__menu > .sl-button {
+  min-height: 44px;
+}
+.sl-pause__mappings {
+  width: 100%;
+  border-collapse: collapse;
+}
+.sl-pause__mappings th,
+.sl-pause__mappings td {
+  padding: 6px 4px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--sl-border);
+  overflow-wrap: anywhere;
+}
+.sl-pause__mappings th {
+  color: var(--sl-muted);
+}
+.sl-pause[data-view='options'] {
+  width: min(var(--sl-panel-width), 100vw);
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 0 0 auto;
+  padding: 0;
+}
+.sl-pause[data-view='options'] > .sl-options {
+  position: static;
+  height: 100%;
+  width: 100%;
+  border: 0;
+}
+@media (max-width: 420px) {
+  .sl-pause {
+    padding: 12px;
+  }
+  .sl-pause__mappings {
+    font-size: 12px;
+  }
+}

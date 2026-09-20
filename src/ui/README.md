@@ -26,3 +26,57 @@ const options = mountOptionsPanel({
 All schema fields are present once in groups, with 14 additional Quick Tune views sharing the same values. Sliders follow schema steps (discrete physics rates use index positions); typed numeric values retain precision within bounds. Logarithmic mapping applies to positive ranges over 20× and the explicitly recommended mass control. Edited markers compare against the selected preset, so autosave does not clear them.
 
 The browser tests compile `tests/options/index.html` with Vite and serve its built JS/CSS. This isolated consumer exercises the same exported component without touching boot or shipping its test driver. `e2e/options.spec.ts` covers controls, native focus behavior, A/B, persistence, import/export/share, externally reported rebuild states, 30 Hz read limits, and narrow viewports. The boot controller's tests own debounce/flush/cancel behavior.
+
+## Pause menu (WP16)
+
+`mountPauseMenu` from `./pauseMenu` consumes the existing Options instance and
+boot's existing pause coordinator:
+
+```ts
+const pauseMenu = mountPauseMenu({
+  host,
+  drivingSurface: canvas,
+  options, // same OptionsPanel; never create a second store or panel
+  readPaused: isPaused,
+  onPauseChange(paused) { menuPaused = paused; syncPause(); },
+  onRespawn: respawn,
+  readGamepad: () => input.gamepad.state,
+});
+```
+
+Add `menuPaused` to the existing aggregate used by `loop.setPaused`. It is a
+pause reason, not another pause mechanism. A menu close clears only this reason:
+P, Options' checkbox, hidden-tab, performance and replay pauses remain owned by
+boot. Restart calls the same synchronous respawn operation as R, then closes the
+menu. It must also work while physics is stopped.
+
+Dispatch odd `actions.pauseMenu` counts to `pauseMenu.toggle()`. Escape and
+standard gamepad button 9 (Start/Menu) produce this action; P remains `pause`.
+Start now opens the pause menu, where Options is reachable, instead of directly
+opening Options. O and the gear keep their direct Options behavior.
+
+Call `pauseMenu.update(nowMs)` once per RAF **after** action polling, including
+paused frames. Continue WP14's `input.sampleActions()` on paused frames; never
+sample a script's driving state without its matching completed physics step.
+The menu reads preallocated gamepad state and never adds a Gamepad API poll.
+D-pad/left stick navigates, A selects, B returns, and left/right adjusts existing
+Options sliders/numbers/selects. Text entry and native file dialogs still use the
+keyboard/browser UI. A held stick repeats after 350 ms, then every 110 ms.
+
+The native dialog isolates focus. When Options is selected, the existing panel
+element is temporarily moved into that dialog's focus scope, retaining all its
+nodes/listeners/store. Closing Options returns to the paused menu; resuming
+restores the element to its original DOM position and focuses the driving
+surface. Dispose the menu **before** disposing Options.
+
+KeyboardInput gives native fullscreen/pointer-lock Escape priority, without
+calling preventDefault for that gesture. It also guards an exit event arriving
+before its keydown and ignores repeats until release. The following Escape
+opens the menu. This follows the browser's required unlock/exit ownership:
+[Pointer Lock requirements](https://www.w3.org/TR/pointerlock-2/#requirements)
+and [Fullscreen UI](https://fullscreen.spec.whatwg.org/#ui).
+
+`e2e/pauseMenu.spec.ts` compiles a separate Vite consumer of the actual
+mapper/loop/Options/menu. It tests keyboard and gamepad use, stable stopped
+physics/script-sample counts, preserved external pause reasons, Options DOM
+identity, native fullscreen/pointer-lock exit and a 320×480 viewport.
