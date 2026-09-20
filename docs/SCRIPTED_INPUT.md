@@ -69,6 +69,19 @@ Here is why. A car mid-drive carries state that a script cannot capture: the fil
 
 Two more things break a recording in progress: changing any tuning value, and an external respawn. Both fail explicitly. Cancel and start again from a new reset.
 
+### Only one thing may own the input
+
+A recording captures what the real input mapper delivered, so nothing else may be feeding input at the same time. `startRecording` refuses if an automation `setInput` override or a perf step driver currently owns the input. While a recording or a replay is active, `setInput` and attaching a perf driver are refused in turn. *(These guards are being implemented in WP14; the rule already holds for tests.)*
+
+The contributor sequence, in order:
+
+1. `window.__game.releaseInput()` to drop any injected input.
+2. Clear the perf step driver if one is attached (`perf.setStepDriver(undefined)`).
+3. Fresh respawn.
+4. `startRecording(name)`, before any physics step runs.
+
+Telemetry CSV recording (F9) is separate from all of this and may capture injected test driving; that is fine, it is a different file answering a different question.
+
 ### In a test
 
 ```ts
