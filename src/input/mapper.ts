@@ -19,12 +19,23 @@ export class InputMapper {
   private readonly previousKeys = createActionCounts();
   private previousPadRespawn = 0;
   private previousPadOptions = 0;
+  private scriptProcessor: ((sample: StepInput) => void) | undefined;
 
   constructor(
     readonly keyboard: KeyboardInput,
     readonly gamepad: GamepadInput = new GamepadInput(),
     readonly latency: LatencyProbe = new LatencyProbe(keyboard.state),
   ) {}
+
+  /** One replay/recording controller per mapper; processing still occurs inside sampleForStep. */
+  attachScriptProcessor(processor: (sample: StepInput) => void): () => void {
+    if (this.scriptProcessor)
+      throw new Error('An input script controller is already attached.');
+    this.scriptProcessor = processor;
+    return () => {
+      if (this.scriptProcessor === processor) this.scriptProcessor = undefined;
+    };
+  }
 
   sampleForStep(): Readonly<StepInput> {
     const keyboard = this.keyboard.state;
@@ -63,6 +74,7 @@ export class InputMapper {
     this.previousPadRespawn = pad.respawnPresses;
     this.previousPadOptions = pad.optionsPresses;
     this.latency.sampleForStep();
+    this.scriptProcessor?.(this.state);
     return this.state;
   }
 

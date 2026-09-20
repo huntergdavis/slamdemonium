@@ -2,6 +2,8 @@
 
 Create one `KeyboardInput`, `GamepadInput`, and `InputMapper` at startup. Pass the mapper into the loop rather than sharing a singleton. It returns a stable `StepInput` extending `GameInput` from `core/gameApi.ts`.
 
+For physics-step recording, replay, full tuning headers, fresh-respawn requirements and lap assertions, see [input scripts](SCRIPTS.md) and the [validated example drives](examples/README.md).
+
 - Call `mapper.sampleForStep()` immediately before every vehicle step. It polls the Gamepad API exactly once and reads the latest keyboard event state. The returned object and its `actions` object are reused. Copy recordings outside the hot path.
 - Steering is positive left. Keyboard steering is digital; gamepad axes and triggers retain their raw analog values. Vehicle code applies deadzone, expo, steering ramp, and pedal filters using tuning values.
 - Held keyboard driving keys take priority over the selected gamepad for that step. Otherwise the first connected standard controller is used, retaining its selection until disconnected. Both devices' command presses contribute to `actions`.
