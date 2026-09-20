@@ -12,6 +12,8 @@ Running log of technical decisions, spike results and changed defaults. New entr
 
 | 2026-09-20 | [WP6: bounded camera and fixed rendering buffers](#2026-09-20--wp6-bounded-camera-and-fixed-rendering-buffers) | Cap delivered vertical FOV at 115 degrees with honest telemetry; share scaled render time; reuse four skid geometries and adjust resolution from wall time. |
 
+| 2026-09-20 | [WP14: mount the tuning laboratory and share command consumption](#2026-09-20--wp14-mount-the-tuning-laboratory-and-share-command-consumption) | Mount persistent Options, HUD and replay on the live store; consume command edges once across stepping and paused UI polling. |
+
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
 ## 2026-09-20 — WP0: minimal browser scaffold and reproducible tooling
@@ -295,3 +297,43 @@ clears controls, wheel histories, drift controller, boost meter and visual state
   strength controls come directly from the shared tuning store. The overlay
   retains native DPR (capped at 2) when world resolution decreases, preserving
   line width and UI clarity. Its canvas does not intercept driving input.
+
+## 2026-09-20 — WP14: mount the tuning laboratory and share command consumption
+
+Production boot now mounts Options, HUD and ScriptController using the same
+live TuningStore and vehicle. Options creates its TuningSession persistence,
+so local autosave, JSON import/export and hash restoration participate in the
+real game. Boot installs its single mass debounce and live body-property
+subscriber before restoration, then flushes restored mass before the first
+step. UI only observes the rebuild state.
+
+O, H, F9, Tab, T and P now dispatch alongside R/G/C. T toggles 0.25×/1×;
+P, Options' pause request, visibility, perf automation and replay completion
+have independent pause flags. Closing Options cannot silently release another
+pause request. A paused frame calls InputMapper.sampleActions: it consumes the
+same previous-count bookkeeping used by sampleForStep, but does not sample a
+script, driving filters or latency. This keeps unpause usable without delivering
+an edge twice. Live steps still poll the gamepad exactly once.
+
+HUD samples the borrowed vehicle record after postStep/timing, and reads one
+reused render record. CSV stepsPerFrame remains the last completed rendered
+frame total, updated only in render. H cycles all three modes; F9 records real
+physics samples and exports on a HUD update outside the step.
+
+Replay reset releases injected input and a perf step driver, cancels pending
+mass work, synchronously rebuilds current mass, and resets vehicle and visual
+history. Both RAF catch-up and manual stepping gate exact EOF. Live respawn
+cancels replay, resets to the track spawn and certifies fresh-recording
+eligibility. A respawn requested during a step waits until the paired script
+postStep completes; UI command polling never invents a physics sample.
+
+Automation now exposes setHudMode and setOptionsOpen alongside setCameraPreset.
+The scripts surface includes playback, results, lap progress and fresh-respawn
+input recording. Runtime integration tests exercise the built application under
+the deployment base path, in addition to the isolated UI component fixtures.
+
+Input-script recording rejects an existing injected input/perf driver, and
+setInput or attaching a perf driver rejects active script capture/playback.
+The recorder observes mapper.state, so allowing a separate vehicle override
+would silently record different commands. Release automation input before a
+fresh-respawn recording. F9 telemetry CSV remains independent.

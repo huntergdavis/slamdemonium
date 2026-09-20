@@ -2,6 +2,8 @@ import type { PhysicsSpikeResult } from '../physics/spike';
 import type { PhysicsMemory } from '../physics/adapter';
 import type { PerformanceBatch } from './performance';
 import type { CameraPreset } from '../render/cameraRig';
+import type { ScriptController } from '../input/script';
+import type { HudMode } from '../ui/hud';
 
 export interface GameInput {
   throttle: number;
@@ -24,6 +26,8 @@ export interface GameTestApi {
   /** [0,1] earned boost meter; lets a tuner exercise boost without first drifting. */
   setDriftMeter(value: number): void;
   setCameraPreset(preset: CameraPreset): void;
+  setHudMode(mode: HudMode): void;
+  setOptionsOpen(open: boolean): void;
   stepMany(steps: number): void;
   getTelemetry(): Readonly<Record<string, unknown>>;
   respawn(): void;
@@ -39,11 +43,18 @@ export interface GameTestApi {
     getMemory(): PhysicsMemory;
   };
   /** WP11 contract; JSON validation and playback belong to src/input. */
-  scripts?: {
-    load(script: unknown, options: { tuning: 'apply' | 'verify' }): void;
-    progress(): { completedSteps: number; totalSteps: number; done: boolean };
-    cancel(): void;
-  };
+  scripts?: Pick<
+    ScriptController,
+    | 'load'
+    | 'progress'
+    | 'cancel'
+    | 'result'
+    | 'lapProgress'
+    | 'startRecording'
+    | 'stopRecording'
+    | 'recording'
+    | 'recordedSteps'
+  >;
 }
 
 function unavailable(): never {
@@ -58,6 +69,8 @@ export function createGameStub(): GameTestApi {
     releaseInput: unavailable,
     setDriftMeter: unavailable,
     setCameraPreset: unavailable,
+    setHudMode: unavailable,
+    setOptionsOpen: unavailable,
     stepMany: unavailable,
     getTelemetry: unavailable,
     respawn: unavailable,

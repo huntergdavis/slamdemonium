@@ -186,3 +186,14 @@ it('lerps position, slerps rotation, and reuses the render transform', () => {
   expect(history.current.position.x).toBe(10);
   expect(history.previous.position.x).toBe(0);
 });
+
+it('gates exact replay EOF in RAF catch-up as well as oversized manual batches', () => {
+  const h = harness();
+  h.hooks.shouldStopStepping = () => h.steps.length >= 3;
+  h.loop.frame(0);
+  h.loop.frame(100);
+  expect(h.steps).toHaveLength(3);
+  h.loop.frame(200);
+  h.loop.stepMany(100);
+  expect(h.steps).toHaveLength(3);
+});
