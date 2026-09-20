@@ -89,6 +89,30 @@ try {
   assert(pixels.maxAlpha <= 31);
   assert.equal(pixels.clearedImmediately, 0);
   assert(pixels.hidden && pixels.pauseStable);
+  const fractionalClears = await page.evaluate(() => {
+    const { cues, store } = window.__speedPreview;
+    return [1, 1.25, 1.5, 1.75, 2].map((dpr) => {
+      cues.resize(321, 201, dpr);
+      store.patch({ speedLinesStrength: 1, vignetteStrength: 1 });
+      cues.update({ speed: 60, topSpeed: 60, boostEnvelope: 1 }, 0);
+      store.patch({ speedLinesStrength: 0, vignetteStrength: 0 });
+      const data = cues.canvas
+        .getContext('2d')
+        .getImageData(0, 0, cues.canvas.width, cues.canvas.height).data;
+      let maxAlpha = 0;
+      for (let i = 3; i < data.length; i += 4)
+        maxAlpha = Math.max(maxAlpha, data[i]);
+      return { dpr, maxAlpha };
+    });
+  });
+  assert(fractionalClears.every((result) => result.maxAlpha === 0));
+  await page.evaluate(() =>
+    window.__speedPreview.cues.resize(
+      window.innerWidth,
+      window.innerHeight,
+      window.devicePixelRatio,
+    ),
+  );
   const fog = await page.evaluate(() => {
     const { view, fog } = window.__speedPreview;
     const gl = view.renderer.getContext();
@@ -157,6 +181,7 @@ try {
     JSON.stringify({
       result: 'PASS',
       pixels,
+      fractionalClears,
       fog,
       errors,
       screenshots: output,
