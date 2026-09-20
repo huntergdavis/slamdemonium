@@ -379,6 +379,9 @@ async function main(): Promise<void> {
       mode:
         config.durationSeconds >= 300 &&
         config.baselineSeconds === 60 &&
+        config.warmupReplays >= 2 &&
+        config.limits.physicsP99Ms <= 2 &&
+        config.limits.heapGrowthPercent <= 10 &&
         !config.skipSpike
           ? 'sustained'
           : 'smoke/custom',

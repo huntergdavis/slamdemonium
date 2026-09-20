@@ -1,9 +1,9 @@
 import type { PerfScenario } from '../scenario.ts';
 
 const scenario: PerfScenario = {
-  name: 'physics-demo',
+  name: 'vehicle-procedural',
   description:
-    'WP1 box/plane/wall; fresh spawn before each complete procedural replay. Not a vehicle lap.',
+    'WP5 vehicle/test track; fresh spawn before each complete procedural replay. Not a scripted lap.',
   async setup(page) {
     await page.evaluate(() => {
       const game = window.__game;

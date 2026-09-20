@@ -12,9 +12,9 @@ and measures at least five minutes of browser execution. Allow about six minutes
 plus build time on an otherwise quiet host; slow rendering can take longer.
 Pinned `tsx` also supports Node builds without built-in TypeScript execution.
 
-Current scene: the WP1 box/plane/wall proof. A temporary procedural input source
-uses throttle, alternating yaw torque and braking through the real `sampleForStep`
-path. Each drive is exactly 960 steps, followed by a fresh respawn. This is **not
+Current scene: the merged WP5 vehicle and test track. A temporary procedural input
+source uses throttle, alternating steering and braking through the real
+`sampleForStep` path. Each drive is exactly 960 steps, followed by a fresh respawn. This is **not
 a vehicle lap** or a claim that the MacBook acceptance test passed.
 
 ## Two modes, one drive
@@ -44,7 +44,7 @@ of deterministic physics also varies with host load.
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Frame distribution | Consecutive RAF timestamps during playback, including rendering/scheduling delays; not CPU render duration or GPU time.                     |
 | Physics step       | Every complete input/pre-step/engine/post-step operation, including every catch-up step.                                                    |
-| Engine step        | Jolt integration alone, separate from future WP5 force computation.                                                                         |
+| Engine step        | Jolt integration alone, separate from vehicle force computation.                                                                            |
 | JS heap            | CDP `Runtime.getHeapUsage().usedSize`; equivalent post-GC checkpoints near second 60, second 300, and final EOF. Actual times are recorded. |
 | WASM memory        | Adapter capacity, allocator free bytes, and capacity minus free bytes, sampled throughout.                                                  |
 
@@ -82,8 +82,8 @@ replay cutoff. `--baseline-seconds` defaults to 60; `--warmup-replays` to 2;
 `--demo-steps` to 960; `--timeout-seconds` to 1800. The timeout includes browser
 setup and invalidates unfinished work. `--port 0` selects an available local port.
 `VITE_BASE_PATH=/slamdemonium/ npm run perf` also exercises a deployment subpath.
-Shortened/custom runs and `--skip-spike` are labeled and do not replace the default
-sustained run. Keep other CPU-heavy jobs off the measurement host.
+Shortened runs, fewer than two warm-ups, relaxed thresholds and `--skip-spike`
+are labeled `smoke/custom` and do not replace the default sustained run. Keep other CPU-heavy jobs off the measurement host.
 
 Default JSON path: **`test-results/perf.json`**. Stable fields for devops:
 
@@ -117,14 +117,14 @@ It reads `progress()` as `{ completedSteps, totalSteps, done }` and uses that
 exact EOF. Validation/player ownership stays in `src/input/script.ts`.
 The frozen v1 carries version/name/seed, full tuning, explicit spawn pose,
 `durationSteps`, and changed full-input frames indexed by physics step.
+The adapter releases the procedural input override before loading a script.
 WP11 owns fresh-spawn reset and rejection of tuning edits during playback.
 Until that loader is wired, `--input-script` fails explicitly; there is no
 fallback parser, alternate script schema or approximate timer-based replay.
 
-When WP5 replaces boot wiring, preserve `LoopHooks.measurement`, the engine-only
+When updating boot wiring, preserve `LoopHooks.measurement`, the engine-only
 `recordEngineStep` call, exact EOF gating, `window.__game.perf`, and
-`droppedSeconds` telemetry. The full-step timer already encloses future vehicle
-pre/post work. [Demo setup](../scripts/perf/scenarios/physics-demo.ts) ·
+`droppedSeconds` telemetry. The full-step timer encloses vehicle pre/post work. [Demo setup](../scripts/perf/scenarios/physics-demo.ts) ·
 [input adapter](../scripts/perf/input.ts)
 
 **Devops owns CI wiring.** Run this separately, collect the JSON even when a gate

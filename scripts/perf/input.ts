@@ -30,6 +30,7 @@ export async function inputSource(options: {
                 'WP11 scripts API is not wired in this build; no fallback parser/player is used.',
               );
             game.perf!.setStepDriver(undefined);
+            game.releaseInput();
             game.scripts.load(script, { tuning });
             const progress = game.scripts.progress();
             if (progress.completedSteps !== 0 || progress.done)
@@ -44,7 +45,7 @@ export async function inputSource(options: {
     };
   }
   return {
-    identity: `wp1-procedural-v1:${options.demoSteps}-steps`,
+    identity: `vehicle-procedural-v1:${options.demoSteps}-steps`,
     async prepare(page) {
       await page.evaluate(() => {
         const game = window.__game;
