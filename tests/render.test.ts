@@ -137,11 +137,20 @@ describe('dynamic resolution', () => {
     controller.update((now += 100));
     for (let i = 0; i < 120; i++) controller.update((now += 10));
     expect(controller.scale).toBe(1);
+    controller.resetClock(); // The visibility owner resets before a resumed frame.
     controller.update((now += 600_000));
     expect(controller.smoothedFrameMs).toBe(0);
     controller.resetClock();
     controller.update(now);
     expect(controller.scale).toBe(1);
+  });
+
+  it('still reduces resolution for extremely slow visible rendering', () => {
+    const controller = new DynamicResolution();
+    controller.update(0);
+    controller.update(2500);
+    expect(controller.scale).toBe(0.9);
+    expect(controller.smoothedFrameMs).toBe(2500);
   });
 });
 

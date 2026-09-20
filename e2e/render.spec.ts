@@ -64,7 +64,10 @@ test('built renderer bounds boost FOV, draws skid strips and mounts live speed c
     await page.evaluate(() => window.__game.getTelemetry().cameraPreset),
   ).toBe('far');
   await page.setViewportSize({ width: 640, height: 360 });
-  await expect(page.locator('.sl-speed-cues')).toHaveCSS('width', '640px');
+  // The zero-off overlay is display:none, so computed CSS width stays '100%'.
+  // Its backing dimensions still prove the resize owner reached the overlay.
+  await expect(page.locator('.sl-speed-cues')).toHaveAttribute('width', '640');
+  await expect(page.locator('.sl-speed-cues')).toHaveAttribute('height', '360');
   const scale = Number(
     await page.evaluate(() => window.__game.getTelemetry().renderScale),
   );

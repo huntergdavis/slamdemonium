@@ -21,7 +21,7 @@ export class DynamicResolution {
     }
     const frameMs = nowMs - this.lastMs;
     this.lastMs = nowMs;
-    if (frameMs <= 0 || frameMs > 1000) {
+    if (frameMs <= 0) {
       this.resetClock();
       return false;
     }
