@@ -811,6 +811,28 @@ const definitions = [
     step: 0.5,
     help: 'Camera lean into corners.',
   },
+  {
+    key: 'speedLinesStrength',
+    group: 'Camera',
+    label: 'Speed lines strength',
+    unit: '0 to 1',
+    default: 0.5,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    help: 'Edge streaks above 80% of top speed and during boost. Zero disables them; the road center stays clear.',
+  },
+  {
+    key: 'vignetteStrength',
+    group: 'Camera',
+    label: 'Vignette strength',
+    unit: '0 to 1',
+    default: 0.5,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    help: 'Subtle edge darkening that increases with speed. Zero disables it; the center remains unchanged.',
+  },
 ] as const satisfies readonly ParamDef[];
 
 export type ParamKey = (typeof definitions)[number]['key'];
