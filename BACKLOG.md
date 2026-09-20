@@ -6,6 +6,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 ## Now (phase 1: unblock everything)
 
+- [ ] WP14 | developer 1 | **URGENT: mount the UI.** `main.ts` mounts only carVisual and speedCues. OptionsPanel, HUD and ScriptController are merged but NOT wired, so the live site is a driving demo, not a tuning lab: O does nothing, no HUD, no F9, no replay. Found by research in R5 audit. Verify in a built browser run. | dev1/wp14-mounts
+
 
 
 
