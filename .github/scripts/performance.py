@@ -6,8 +6,10 @@ import json
 import math
 import os
 from pathlib import Path
+import platform
 import re
 import subprocess
+import sys
 import time
 import zipfile
 
@@ -15,6 +17,10 @@ import zipfile
 REPORT = Path("test-results/perf.json")
 SUMMARY = Path("test-results/perf-summary.md")
 ARTIFACT = "performance-results"
+BASELINE = json.loads((Path(__file__).parents[1] / "performance-baseline.json").read_text())
+RUNNER_FIELDS = ("environment", "os", "architecture", "distribution", "osVersion",
+                 "imageOS", "logicalCpus")
+EXIT_CODE = Path("test-results/perf-exit-code.txt")
 TIMINGS = ("frame", "physicsStep", "engineStep")
 STATS = ("meanMs", "p50Ms", "p95Ms", "p99Ms", "minMs", "maxMs",
          "standardDeviationMs")
@@ -22,6 +28,45 @@ HEAPS = (("JS retained", "jsUsedBytes", "jsUsedPercent"),
          ("WASM used", "wasmUsedBytes", "wasmUsedPercent"),
          ("WASM capacity", "wasmHeapBytes", "wasmCapacityPercent"))
 FENCE = chr(96) * 3
+
+
+def observed_runner():
+    """Record changes without discarding measurements from a new runner class."""
+    try:
+        release = platform.freedesktop_os_release()
+    except OSError:
+        release = {}
+    return {
+        "environment": os.environ.get("PERF_RUNNER_ENVIRONMENT"),
+        "os": os.environ.get("RUNNER_OS"),
+        "architecture": os.environ.get("RUNNER_ARCH"),
+        "distribution": release.get("ID"), "osVersion": release.get("VERSION_ID"),
+        "imageOS": os.environ.get("ImageOS"),
+        "imageVersion": os.environ.get("ImageVersion"),
+        "logicalCpus": os.cpu_count(),
+    }
+
+
+def runner_identity(runner):
+    return {key: runner.get(key) for key in RUNNER_FIELDS}
+
+
+def runner_matches(report):
+    return runner_identity(report.get("runner", {})) == runner_identity(
+        report.get("baseline", BASELINE)["runner"])
+
+
+def runner_class(report):
+    runner = report.get("runner")
+    if not runner:
+        return "local/unclassified"
+    return (f"{runner.get('environment')}/{runner.get('distribution')}-"
+            f"{runner.get('osVersion')}/{runner.get('architecture')}/"
+            f"{runner.get('logicalCpus')}-vcpu")
+
+
+def limits(report):
+    return report.get("baseline", BASELINE)["limits"]
 
 
 def number(value, minimum=None):
@@ -55,9 +100,9 @@ def validate(report):
             raise ValueError("Manual timing samples do not cover the complete replay")
     gate = report["physicsGate"]
     if (gate["source"] != "manualBaseline.physicsStep"
-            or number(gate["limitMs"], 0) != 2
+            or number(gate["limitMs"], 0) != limits(report)["physicsP99Ms"]
             or number(gate["p99Ms"], 0) != manual["physicsStep"]["p99Ms"]):
-        raise ValueError("Physics gate must use the manual full-step P99 with a 2 ms limit")
+        raise ValueError("Physics gate must use the manual full-step P99 and configured limit")
     if not report["parameters"] or not isinstance(report["parameters"], dict):
         raise ValueError("Missing applied tuning parameters")
     for value in report["parameters"].values():
@@ -67,6 +112,14 @@ def validate(report):
             raise ValueError("Missing configuration identity")
     if not re.fullmatch(r"[0-9a-f]{40}", report["revision"]):
         raise ValueError("Missing measured revision")
+    if report.get("runner"):
+        runner = report["runner"]
+        host = report["host"]
+        if (host["logicalCpus"] != runner["logicalCpus"]
+                or host["arch"].lower() != str(runner["architecture"]).lower()
+                or host["platform"] != {"Linux": "linux", "Windows": "win32",
+                                         "macOS": "darwin"}.get(runner["os"])):
+            raise ValueError("Measured host disagrees with recorded runner metadata")
     if not isinstance(report["failures"], list):
         raise ValueError("Missing harness failure list")
     if not isinstance(report["scenario"]["name"], str):
@@ -102,14 +155,46 @@ def validate(report):
 
 
 def gates_pass(report):
-    return (report["manualBaseline"]["physicsStep"]["p99Ms"] <= 2
-            and all(report["memory"][key] <= 10 for _, _, key in HEAPS))
+    return (report["manualBaseline"]["physicsStep"]["p99Ms"] <= limits(report)["physicsP99Ms"]
+            and all(report["memory"][key] <= limits(report)["heapGrowthPercent"]
+                    for _, _, key in HEAPS))
+
+
+def threshold_failure(message, report):
+    """Only WP9a's exact numerical failure forms may be skipped on a new class."""
+    physics = re.fullmatch(r"Physics p99 ([0-9]+\.[0-9]{3}) ms exceeds ([0-9.]+) ms\.",
+                           str(message))
+    if physics:
+        value = report["manualBaseline"]["physicsStep"]["p99Ms"]
+        limit = limits(report)["physicsP99Ms"]
+        return (value > limit and float(physics[2]) == limit
+                and math.isclose(float(physics[1]), value, rel_tol=0, abs_tol=0.000501))
+    heap = re.fullmatch(r"(jsUsedPercent|wasmUsedPercent|wasmCapacityPercent) grew "
+                        r"([0-9]+\.[0-9]{2})%, exceeding ([0-9.]+)%\.", str(message))
+    if heap:
+        value = report["memory"][heap[1]]
+        limit = limits(report)["heapGrowthPercent"]
+        return (value > limit and float(heap[3]) == limit
+                and math.isclose(float(heap[2]), value, rel_tol=0, abs_tol=0.005001))
+    return False
+
+
+def measurement_failed(report):
+    code = report.get("harnessExitCode", 0 if report["passed"] else 1)
+    return (type(code) is not int or code not in (0, 1)
+            or (code == 0) != report["passed"]
+            or (not report["passed"] and not report["failures"])
+            or any(not threshold_failure(message, report) for message in report["failures"]))
 
 
 def verdict(report):
-    if not report["passed"] or not gates_pass(report):
+    if measurement_failed(report):
         return "FAIL"
-    return "PASS" if report["mode"] == "sustained" else "SMOKE/CUSTOM"
+    if report["mode"] != "sustained":
+        return "SMOKE/CUSTOM" if report["passed"] and gates_pass(report) else "FAIL"
+    if report.get("runner") and not runner_matches(report):
+        return "GATE SKIPPED"
+    return "PASS" if report["passed"] and gates_pass(report) else "FAIL"
 
 
 def cell(value):
@@ -133,6 +218,8 @@ def read_archive(raw):
 
 def history(current, repository, run_id):
     """Include failed measurements; excluding them would hide regressions."""
+    if not current.get("runner"):
+        return [], ["Local/unclassified timings must never be compared with hosted history."]
     if not repository or not os.environ.get("GH_TOKEN"):
         return [], ["History unavailable outside an authenticated Actions run."]
     records, notes = [], []
@@ -160,6 +247,9 @@ def history(current, repository, run_id):
                 raise ValueError("Oversized historical artifact")
             report = read_archive(api(f"{endpoint}/artifacts/{artifact['id']}/zip",
                                       binary=True))
+            if (not report.get("runner") or runner_identity(report["runner"])
+                    != runner_identity(current["runner"])):
+                raise ValueError("Historical runner class is different or unverified")
             if report["revision"] != run["head_sha"]:
                 raise ValueError("Historical revision does not match its workflow run")
             if report["recordedAt"] >= current["recordedAt"]:
@@ -178,11 +268,17 @@ def render(report, prior, notes, run_url):
     config_id = report["configurationFingerprint"]
     memory = report["memory"]
     manual = report["manualBaseline"]["physicsStep"]
+    baseline = report.get("baseline", BASELINE)
+    physics_limit = limits(report)["physicsP99Ms"]
+    heap_limit = limits(report)["heapGrowthPercent"]
+    skip_numeric = bool(report.get("runner")) and not runner_matches(report)
+    manual_result = "SKIPPED" if skip_numeric else (
+        "PASS" if manual["p99Ms"] <= physics_limit else "FAIL")
     lines = [
         "# Performance measurement",
         "",
         f"**{verdict(report)}** — design 13.4: manual stepMany full physics-step "
-        "P99 ≤ 2 ms; each measured heap growth ≤ 10%.",
+        f"configured P99 limit ≤ {physics_limit:g} ms; each heap growth limit ≤ {heap_limit:g}%.",
         "This dedicated workflow does not gate ordinary PR merges.",
         f"Measurement mode: **{cell(report['mode'])}**. "
         "Short/custom runs do not satisfy sustained CI acceptance.",
@@ -191,17 +287,40 @@ def render(report, prior, notes, run_url):
         f"Revision: {cell(report['revision'])}.",
         f"Configuration/input fingerprint: <code>{config_id}</code>.",
         f"Tuning fingerprint: <code>{parameter_id}</code>.",
+        f"Runner class: <code>{cell(runner_class(report))}</code>. "
+        f"Image version: {cell(report.get('runner', {}).get('imageVersion', 'unclassified'))}. "
+        f"CPU: {cell(report.get('host', {}).get('cpu', 'unreported'))}.",
+        "**CPU timing is comparable only within the same recorded runner class. "
+        "Never compare local CPU timings with GitHub-hosted measurements.** "
+        "Use matching configurations and repeated runs; simulation determinism does not "
+        "make CPU timing reproducible.",
+        f"Recorded hosted baseline: **{baseline['measurement']['physicsP99Ms']:.3f} ms**, "
+        f"approximately **{physics_limit / baseline['measurement']['physicsP99Ms']:.1f}×** "
+        f"below the configured limit ([source run]({baseline['measurement']['runUrl']})). "
+        f"Baseline configuration: <code>{baseline['measurement']['configurationFingerprint']}</code>.",
+        "",
+        ("**Numerical gates SKIPPED because the runner class changed.** "
+         "The measurement is still recorded; malformed reports, incomplete EOF, "
+         "and unexpected harness errors still fail. Review a sustained measurement "
+         "on the new class before updating .github/performance-baseline.json."
+         if skip_numeric else "Numerical gates apply to this measurement."),
+        *(["", "| Runner field | Expected baseline | Found |", "| --- | --- | --- |"]
+          + [f"| {key} | {cell(baseline['runner'].get(key))} | "
+             f"{cell(report['runner'].get(key))} |" for key in RUNNER_FIELDS
+             if baseline['runner'].get(key) != report['runner'].get(key)]
+          if skip_numeric else []),
         "",
         "## Manual physics gate",
         "",
-        "The 2 ms threshold applies only to <code>manualBaseline.physicsStep.p99Ms</code>, "
+        f"The configured {physics_limit:g} ms threshold applies only to "
+        "<code>manualBaseline.physicsStep.p99Ms</code>, "
         "measured across a complete manual stepMany replay (input, pre-step, engine, "
         "and post-step). Physics state is reproducible; CPU timing can still vary.",
         "",
         "| Measurement | Samples | P99 (ms) | Limit | Result |",
         "| --- | ---: | ---: | ---: | --- |",
         f"| Manual full physics step | {manual['count']} | {manual['p99Ms']:.3f} | "
-        f"≤ 2 ms | {'PASS' if manual['p99Ms'] <= 2 else 'FAIL'} |",
+        f"≤ {physics_limit:g} ms | {manual_result} |",
         "",
         "## Advisory RAF timing distributions",
         "",
@@ -230,7 +349,7 @@ def render(report, prior, notes, run_url):
         "JS values are retained heap after GC. Growth gates compare first to final EOF; "
         "the minute-five snapshot is shown separately.",
         "",
-        "| Heap | First (MiB) | Minute five (MiB) | Final EOF (MiB) | Growth | Limit |",
+        "| Heap | First (MiB) | Minute five (MiB) | Final EOF (MiB) | Growth | Gate |",
         "| --- | ---: | ---: | ---: | ---: | ---: |",
     ]
     for name, key, growth in HEAPS:
@@ -238,9 +357,11 @@ def render(report, prior, notes, run_url):
         five = f"{minute_five[key] / 2**20:.3f}" if minute_five else "unavailable"
         lines.append(f"| {name} | {memory['first'][key] / 2**20:.3f} | "
                      f"{five} | {memory['last'][key] / 2**20:.3f} | "
-                     f"{memory[growth]:+.3f}% | ≤ 10% |")
-    lines += ["", "## Recent main measurements", "",
-              "Up to five retained earlier main reports, including failures. "
+                     f"{memory[growth]:+.3f}% | "
+                     f"{'SKIPPED' if skip_numeric else f'≤ {heap_limit:g}%'} |")
+    lines += ["", "## Current and earlier main measurements", "",
+              "Current measurement plus up to five retained earlier main reports from "
+              "the same recorded runner class, including failures and skipped gates. "
               "Different configuration fingerprints are not directly comparable. "
               "Each linked run retains its full parameters and raw report.",
               "",
@@ -267,7 +388,8 @@ def render(report, prior, notes, run_url):
         ("Scenario, run configuration, and host",
          {key: report.get(key) for key in
           ("scenario", "scenarioFingerprint", "inputIdentity", "replay", "config",
-           "host", "browser", "viewport", "mode", "worktreeDirty")}),
+           "runner", "baseline", "harnessExitCode", "host", "browser", "viewport",
+           "mode", "worktreeDirty")}),
     ):
         # Escape HTML and prevent data from terminating the fenced block.
         data = html.escape(json.dumps(value, sort_keys=True, indent=2)).replace(
@@ -287,14 +409,23 @@ def write_summary(markdown):
 
 def main():
     try:
-        report = validate(json.loads(REPORT.read_text()))
+        runner = observed_runner() if os.environ.get("GITHUB_ACTIONS") == "true" else None
+        report = json.loads(REPORT.read_text())
+        if runner is not None:
+            report["runner"] = runner
+            report["baseline"] = BASELINE
+            report["harnessExitCode"] = int(EXIT_CODE.read_text().strip())
+        report = validate(report)
+        if runner is not None:
+            # Preserve every harness measurement; append runner/baseline and process status.
+            REPORT.write_text(json.dumps(report, indent=2) + "\n")
         repository = os.environ.get("GITHUB_REPOSITORY", "")
         run_id = os.environ.get("GITHUB_RUN_ID", "")
         run_url = (f"https://github.com/{repository}/actions/runs/{run_id}"
                    if repository and run_id else "#")
         prior, notes = history(report, repository, run_id)
         write_summary(render(report, prior, notes, run_url))
-        return 0 if verdict(report) == "PASS" else 1
+        return 0 if verdict(report) in ("PASS", "GATE SKIPPED") else 1
     except (OSError, ValueError, KeyError, TypeError) as error:
         write_summary("# Performance measurement unavailable\n\n"
                       "**FAIL** — no complete, valid report was produced. "
@@ -306,4 +437,19 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if sys.argv[1:] == ["--configuration"]:
+        label = BASELINE["runner"]["label"]
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", label):
+            raise ValueError("Invalid baseline runner label")
+        with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+            output.write(f"runner={label}\n")
+            output.write(f"physics_limit={number(BASELINE['limits']['physicsP99Ms'], 0)}\n")
+            output.write(f"heap_limit={number(BASELINE['limits']['heapGrowthPercent'], 0)}\n")
+    elif sys.argv[1:] == ["--record-runner"]:
+        runner = observed_runner()
+        print(json.dumps({"expected": BASELINE["runner"], "found": runner}, indent=2))
+        if not runner_matches({"runner": runner}):
+            print("::notice::Runner class changed; measurements will be recorded with "
+                  "numerical gates skipped. Measurement integrity failures still fail.")
+    else:
+        raise SystemExit(main())

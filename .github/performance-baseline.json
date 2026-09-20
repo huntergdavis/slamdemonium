@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "runner": {
+    "label": "ubuntu-24.04",
+    "environment": "github-hosted",
+    "os": "Linux",
+    "architecture": "X64",
+    "distribution": "ubuntu",
+    "osVersion": "24.04",
+    "imageOS": "ubuntu24",
+    "logicalCpus": 4
+  },
+  "limits": { "physicsP99Ms": 2, "heapGrowthPercent": 10 },
+  "measurement": {
+    "physicsP99Ms": 0.1,
+    "revision": "7514b7fabdbe05dbb2844cf886bd00aaa1402afb",
+    "configurationFingerprint": "16581fb4f669cba8ebc8b00c28d5b39c40f26b799f2aa577a7fb4f79501a22c4",
+    "recordedAt": "2026-09-20T22:36:02.597Z",
+    "runUrl": "https://github.com/huntergdavis/slamdemonium/actions/runs/35541847698"
+  }
+}
