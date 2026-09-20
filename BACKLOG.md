@@ -22,7 +22,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 
 - [ ] WP9a | research | Performance harness from design 13.4 (`npm run perf`): frame/step p99, JS+WASM heap, configurable thresholds, swappable scenario. Not wired into CI (devops owns that). | research/perf-harness
-- [ ] T9 | techwriter | Reproducible screenshot capture: Playwright script + `docs/screenshots/README.md` conventions, so shots can be regenerated identically. | docs/screenshot-tooling
 
 - [ ] D4 | designer | Car visual as CODE (design 10.3): chassis box, nose chevron, rear light strip, wheel meshes with steer/spin/suspension, witness stripes, G-key gizmos. Reads a documented vehicle-state interface agreed with developer 1. | design/car-visual
 
@@ -57,3 +56,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] O3 | devops | PR preview deployments so the CTO can playtest a branch before merge; sticky PR comment with the link; cleanup on close. Plus CI badge and live link in README (2 lines max). | devops/pr-previews (PR #25)
 - [x] T8 | techwriter | Navigational index at the top of `docs/DECISIONS.md` (PR #23, needs rebase after WP1). | docs/decisions-index (PR #23)
 - [x] WP3 | designer | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator. (PR #27)
+- [x] T9 | techwriter | Reproducible screenshot capture: Playwright script + `docs/screenshots/README.md` conventions, so shots can be regenerated identically. | docs/screenshot-tooling (PR #28)
