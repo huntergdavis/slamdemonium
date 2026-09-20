@@ -52,7 +52,7 @@ Screenshots will live in `docs/screenshots/` once there is something to look at.
 
 ## Controls
 
-A gamepad is the reference experience because analog triggers matter for feel. Keyboard is the accessible fallback, with ramped steering and pedal filters so it still feels good.
+Keyboard and controller both work, at the same time, with nothing to switch. A controller is the better experience: its triggers are analog, so you can feed in half throttle or trail the brake, which the keyboard cannot do. Keyboard steering and pedals are smoothed so digital keys still feel like pedals.
 
 ### Keyboard
 
@@ -74,14 +74,18 @@ A gamepad is the reference experience because analog triggers matter for feel. K
 | A/B tuning swap | Tab |
 | Telemetry recording (CSV) | F9 |
 
-### Gamepad (standard mapping)
+### Controller
+
+> **Plugged in and nothing happens?** Browsers do not hand a controller to a page until you press a button on it. Click the game once, then press any face button on the pad. After that it just works. If the pad still does nothing, it is probably not reporting the standard layout; most Xbox and PlayStation style pads do.
 
 | Action | Control |
 |---|---|
 | Throttle | Right trigger (analog) |
 | Brake / reverse | Left trigger (analog) |
-| Steer | Left stick X |
-| Handbrake | A |
-| Boost | X |
-| Respawn | Y |
+| Steer | Left stick, left and right |
+| Handbrake | A (bottom face button) |
+| Boost | X (left face button) |
+| Respawn | Y (top face button) |
 | Options panel | Start |
+
+Everything not in this table (HUD, camera, slow motion, pause, A/B swap, recording) stays on the keyboard. If you press a driving key on the keyboard while holding the pad, the keyboard wins for as long as the key is down, then the pad takes over again.

@@ -18,11 +18,19 @@ A flat paved circle with a paved infield is the best place to judge feel. It has
 
 Keyboard: **W** or **Up** to go, **S** or **Down** to brake and reverse, **A / D** or **Left / Right** to steer, **Space** for the handbrake, **Left Shift** to boost, **R** to respawn. **O** opens the Options page. The full list is in the [README](../README.md#controls).
 
-Gamepad: right trigger throttle, left trigger brake, left stick to steer, **A** handbrake, **X** boost, **Y** respawn, **Start** for Options.
+Controller: right trigger throttle, left trigger brake, left stick to steer, **A** handbrake, **X** boost, **Y** respawn, **Start** for Options. Press a face button once to wake it up.
 
-## Does it need a gamepad?
+## Does it need a controller?
 
-No. Keyboard works and is designed to feel good: taps ramp up like a pedal instead of snapping to full, so digital keys behave more like analog ones. A gamepad is the reference experience because analog triggers give finer control of throttle and brake, which matters most for drifting.
+No. Keyboard works and is designed to feel good: taps ramp up like a pedal instead of snapping to full, so digital keys behave more like analog ones. A controller is the better experience because its triggers are analog, so you can hold half throttle or ease onto the brake, which matters most for drifting. Both work at the same time; there is no mode to switch.
+
+## I plugged in a controller and nothing happens
+
+That is the browser, not the game. Browsers keep a controller invisible to a page until you press a button on it. Click the game once, then press any face button on the pad, and it wakes up. You only need to do this once per page load.
+
+If it still does nothing after that, the pad is probably not reporting the standard layout the game expects. Most Xbox and PlayStation style pads do. Try a different USB port or cable, or a different pad. Bluetooth pads sometimes need to be reconnected after the browser opens.
+
+If the pad works but the keyboard seems to override it, let go of every keyboard driving key. The keyboard takes priority only while one of those keys is actually held.
 
 ## Why does the car feel different when I change a slider?
 
