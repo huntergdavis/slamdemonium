@@ -306,6 +306,11 @@ export async function createPhysicsWorld(
         angular,
       );
     },
+    setContactProperties(id, friction, restitution) {
+      const body = record(id).body;
+      body.SetFriction(friction);
+      body.SetRestitution(restitution);
+    },
     setBodyProperties(id, properties) {
       const body = record(id).body;
       const motion = body.GetMotionProperties();

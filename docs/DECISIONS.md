@@ -9,6 +9,8 @@ Running log of technical decisions, spike results and changed defaults. New entr
 | 2026-09-20 | [WP0: minimal browser scaffold and reproducible tooling](#2026-09-20--wp0-minimal-browser-scaffold-and-reproducible-tooling) | Strict TypeScript, Vite, three.js, Vitest and Playwright, every dependency pinned exactly; TypeScript held at 6.0.3 for typescript-eslint; no physics dependency until WP1 confirms the Jolt flavor. |
 | 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number | null` because stock Jolt cannot supply a solved value. |
 
+| 2026-09-20 | [WP5: vehicle force model and approved design corrections](#2026-09-20--wp5-vehicle-force-model-and-approved-design-corrections) | Preserve the configurable ellipse, correct COM load direction, cap dissipative impulses only, use the research drift latch, and keep recovery safeguards independent of handling sliders. |
+
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
 ## 2026-09-20 — WP0: minimal browser scaffold and reproducible tooling
@@ -151,3 +153,52 @@ large-chunk advisories. The served browser build works without Node polyfills.
 - Verified a normal production build with VITE_TEST_API unset: emitted assets
   contain no testFixture chunk, __inputFixture reference, or test-number panel
   marker. This supersedes the proposed later bundled-fixture follow-up.
+
+## 2026-09-20 — WP5: vehicle force model and approved design corrections
+
+The vehicle is one Jolt box and four suspension rays. Pure tire, engine, steering,
+and suspension arithmetic lives under `src/vehicle/`; engine types remain confined
+to `src/physics/joltWorld.ts`. All wheel state, vectors, queries and force scratch
+are allocated once. The model uses the adapter's actual local inertia diagonal
+after mass/COM/inertia updates. The boot path installs WP3's ground and barriers
+once and removes both WP1 proof colliders.
+
+PM rulings on 2026-09-20 resolve four inconsistencies without changing any schema
+names, ranges, or defaults:
+
+- **Friction ellipse:** keep design 6.5.4. `combinedSlipCoupling` intentionally
+  controls forgiveness; at zero both axes independently reach mu × Fz, so the
+  resultant can reach sqrt(2) × mu × Fz. Section 13.1's unconditional circle test
+  was wrong. Tests enforce Fx² + coupling × Fy² <= (mu × Fz)² for every coupling,
+  the strict circle only at one, and independent axes at zero.
+- **COM direction:** front static share is 0.5 + comLongOffset / wheelbase.
+  Positive means forward in both 6.2 and 7.2; the printed minus silently inverted
+  the slider's documented understeer/oversteer meaning. Adapter-local forward is
+  -Z. A unit test pins increasing front load with positive offset.
+- **Impulse cap:** limit forces dissipating existing slip: lateral friction,
+  brakes, handbrake, and passive resistance. Do not cap engine launch force by
+  current slip: zero initial slip would then forbid launching. A lagged lateral
+  force is suppressed when it points along current slip, preventing energy gain.
+- **Assist-off:** `countersteerAssist` and `yawAssist` govern tunable handling
+  assists only. The drift tracking and limiter both go exactly to zero with
+  `yawAssist`. Air damping (fewer than two grounded wheels) and anti-flip
+  (past 35 degrees of roll) remain independent internal stability safeguards.
+  Coupling them to yawAssist would silently make a drift-feel control alter flip
+  recovery. Neither can mask the raw tire model in ordinary grounded flat driving.
+
+Implement the approved [research drift controller](research/drift-assist.md),
+not the printed 6.8 C target law: latch the drift side, capture its neutral angle,
+slew the target at 90 degrees/s, permit a true zero-angle counter-steer/lift exit,
+exit with hysteresis, and share one bounded yawAssist-gated tracking/limiter
+budget. Parameter names `yawAssist` and `maxDriftAngle` are unchanged. Arithmetic
+checks do not certify the human five-second drift acceptance test.
+
+Boost starts empty and is earned by drifting. For repeatable tuning,
+`window.__game.setDriftMeter(value)` fills/clamps the meter to [0,1] without
+requiring a drift; `setInput({ throttle: 1, boost: true })` can exercise boost
+and `releaseInput()` restores keyboard/gamepad control. This is the existing
+automation surface, not a new player control.
+
+Recall before implementation: `deja "Slamdemonium WP5 vehicle suspension drivetrain drift assist"`
+found no prior implementation. `deja "vehicle zero assist"` found research session
+`01a0c04e-e95`, restating the zero-assist/sign checks also documented in R2.

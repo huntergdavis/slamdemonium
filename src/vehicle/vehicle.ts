@@ -173,15 +173,20 @@ export class Vehicle {
       );
       wheel.springForce = wheel.Fz = wheel.Fx = wheel.Fy = wheel.gripUsage = 0;
       wheel.spinning = wheel.locked = false;
+      wheel.tireForceWorld.set(0, 0, 0);
       if (!wheel.grounded) {
         wheel.compression = -G.maxDroop;
         wheel.suspensionLength = t.get('suspRestLength') + G.maxDroop;
         wheel.alpha = wheel.rawAlpha = 0;
+        wheel.centerLocal.copy(G.mounts[i]!);
+        wheel.centerLocal.y -= wheel.suspensionLength;
         continue;
       }
       s.groundedWheels++;
       wheel.compression = Math.max(-G.maxDroop, rest - wheel.hit.distance);
       wheel.suspensionLength = Math.max(0, wheel.hit.distance - G.wheelRadius);
+      wheel.centerLocal.copy(G.mounts[i]!);
+      wheel.centerLocal.y -= wheel.suspensionLength;
       this.world.getPointVelocity(this.body, wheel.mount, this.pointVelocity);
       this.world.getPointVelocity(
         wheel.hit.bodyId,
@@ -272,6 +277,8 @@ export class Vehicle {
     const mass = this.mass.mass;
     const referenceLoad = (mass * t.get('gravity')) / 4;
     const reverse = c.brake > 0 && c.throttle === 0 && s.vLong < 1;
+    s.brake01 = reverse ? 0 : c.brake;
+    s.handbrake01 = c.handbrake ? 1 : 0;
     const engine = reverse
       ? -c.brake *
         reverseAcceleration(
@@ -424,6 +431,7 @@ export class Vehicle {
         .copy(wheel.forward)
         .multiplyScalar(wheel.Fx)
         .addScaledVector(wheel.right, wheel.Fy);
+      wheel.tireForceWorld.copy(this.force);
       this.world.applyForceAtPoint(this.body, this.force, wheel.applyPoint);
     }
   }
@@ -548,9 +556,14 @@ export class Vehicle {
       blend * (this.temp.dot(this.forward) - s.longitudinalAcceleration);
     s.lateralAcceleration +=
       blend * (this.temp.dot(this.right) - s.lateralAcceleration);
-    for (const wheel of s.wheels)
+    for (const wheel of s.wheels) {
+      wheel.spinDelta = wheel.locked
+        ? 0
+        : ((-wheel.vx * dt) / G.wheelRadius) * (wheel.spinning ? 1.5 : 1);
       wheel.spinAngle =
-        (wheel.spinAngle + (wheel.vx * dt) / G.wheelRadius) % (2 * Math.PI);
+        (((wheel.spinAngle + wheel.spinDelta) % (2 * Math.PI)) + 2 * Math.PI) %
+        (2 * Math.PI);
+    }
   }
   /** Tuning-lab automation may refill the earned boost meter without executing a drift. */
   setDriftMeter(value: number): void {
@@ -572,6 +585,7 @@ export class Vehicle {
     this.telemetry.driftTarget = this.telemetry.yawAssistTorque = 0;
     for (const wheel of this.telemetry.wheels) {
       wheel.grounded = false;
+      wheel.spinDelta = 0;
       wheel.alpha = wheel.rawAlpha = wheel.vx = wheel.vy = wheel.spinAngle = 0;
     }
     this.telemetry.longitudinalAcceleration =

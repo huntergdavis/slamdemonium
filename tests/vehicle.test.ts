@@ -1,3 +1,4 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { afterEach, expect, it } from 'vitest';
 import { createPhysicsWorld } from '../src/physics/joltWorld';
@@ -105,3 +106,99 @@ it('rebuilds actual mass/inertia without teleporting or stopping the body', asyn
   expect(vehicle.telemetry.position.y).toBeCloseTo(before.y, 5);
   expect(vehicle.telemetry.speed).toBeCloseTo(speed, 5);
 });
+
+it('Raw applies exactly zero handling-assist yaw torque even beyond the drift limit', async () => {
+  const { world, tuning, vehicle, step } = await setup();
+  tuning.set('countersteerAssist', 0);
+  tuning.set('yawAssist', 0);
+  world.setLinearVelocity(vehicle.body, { x: 40, y: 0, z: -10 });
+  step({ ...idle, throttle: 1, steer: 1 });
+  expect(vehicle.telemetry.groundedWheels).toBe(4);
+  expect(vehicle.telemetry.yawAssistTorque).toBe(0);
+  expect(vehicle.drift.side).toBe(0);
+});
+
+it('keeps equivalent launch behavior at 60, 120 and 240 Hz', async () => {
+  const speeds: number[] = [];
+  for (const hz of [60, 120, 240]) {
+    const { vehicle, step } = await setup(hz);
+    step({ ...idle, throttle: 1 }, hz * 3);
+    speeds.push(vehicle.telemetry.vLong);
+    expect(vehicle.telemetry.groundedWheels).toBe(4);
+    expect(vehicle.telemetry.recoveryCount).toBe(0);
+  }
+  expect(Math.max(...speeds) - Math.min(...speeds)).toBeLessThan(0.5);
+});
+
+it('repeats a seeded 300-second input sequence with bounded finite state', async () => {
+  const hashes: string[] = [];
+  const means: number[] = [];
+  let maxAngularSpeed = 0;
+  for (let run = 0; run < 2; run++) {
+    const { vehicle, step } = await setup();
+    let seed = 0x51a7,
+      hash = 2166136261;
+    const input = { ...idle };
+    function random() {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 0x100000000;
+    }
+    let measuredMs = 0;
+    for (let i = 0; i < 36000; i++) {
+      if (i % 60 === 0) {
+        input.throttle = random();
+        input.brake = random() > 0.8 ? random() : 0;
+        input.steer = 2 * random() - 1;
+        input.handbrake = random() > 0.9;
+        input.boost = random() > 0.8;
+      }
+      const started = performance.now();
+      step(input);
+      measuredMs += performance.now() - started;
+      const s = vehicle.telemetry;
+      if (
+        !Number.isFinite(
+          s.speed + s.position.x + s.position.y + s.position.z,
+        ) ||
+        s.recoveryCount !== 0
+      ) {
+        throw new Error('Non-finite vehicle state at seeded step ' + i);
+      }
+      maxAngularSpeed = Math.max(maxAngularSpeed, s.angularVelocity.length());
+      for (const value of [
+        s.position.x,
+        s.position.y,
+        s.position.z,
+        s.rotation.x,
+        s.rotation.y,
+        s.rotation.z,
+        s.rotation.w,
+        s.velocity.x,
+        s.velocity.y,
+        s.velocity.z,
+      ]) {
+        hash = Math.imul(hash ^ Math.round(value * 1e6), 16777619) >>> 0;
+      }
+    }
+    hashes.push(hash.toString(16));
+    means.push(measuredMs / 36000);
+  }
+  expect(hashes[0]).toBe(hashes[1]);
+  expect(maxAngularSpeed).toBeLessThanOrEqual(12.0001);
+  mkdirSync('scratch', { recursive: true });
+  writeFileSync(
+    'scratch/vehicle-soak.json',
+    JSON.stringify(
+      {
+        simulatedSecondsPerRun: 300,
+        stepsPerRun: 36000,
+        hashes,
+        meanModelAndPhysicsMs: means,
+        maxAngularSpeed,
+        scope: 'same binary, same machine; Node with stock single-thread WASM',
+      },
+      null,
+      2,
+    ),
+  );
+}, 90000);

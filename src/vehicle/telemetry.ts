@@ -3,7 +3,10 @@ import type { RayHit } from '../physics/adapter';
 
 export class WheelState {
   readonly mount = new Vector3();
+  readonly centerLocal = new Vector3();
+  readonly tireForceWorld = new Vector3();
   readonly contactPoint = new Vector3();
+  readonly contactPointWorld = this.contactPoint;
   readonly contactNormal = new Vector3(0, 1, 0);
   readonly hit: RayHit = {
     distance: 0,
@@ -30,6 +33,7 @@ export class WheelState {
   locked = false;
   steerAngle = 0;
   spinAngle = 0;
+  spinDelta = 0;
   vx = 0;
   vy = 0;
 }
@@ -57,6 +61,8 @@ export class VehicleTelemetry {
   throttle = 0;
   brake = 0;
   handbrake = false;
+  brake01 = 0;
+  handbrake01 = 0;
   boostMeter = 0;
   driftMeter = 0;
   boostEnvelope = 0;

@@ -67,6 +67,7 @@ export interface IPhysicsWorld {
   ): BodyId;
   createDynamicBox(desc: DynamicBoxDesc): BodyId;
   updateMassProperties(id: BodyId, desc: MassDesc): void;
+  setContactProperties(id: BodyId, friction: number, restitution: number): void;
   setBodyProperties(id: BodyId, properties: BodyProperties): void;
   /** Diagonal of the local inertia tensor, including the COM shift and scale. */
   getLocalInertia(id: BodyId, out: V3): void;
