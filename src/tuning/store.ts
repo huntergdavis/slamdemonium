@@ -12,7 +12,7 @@ import {
 } from './schema';
 
 export type ChangeSource =
-  'input' | 'preset' | 'import' | 'restore' | 'share' | 'reset';
+  'input' | 'preset' | 'import' | 'restore' | 'share' | 'reset' | 'comparison';
 export interface TuningChange {
   readonly timestamp: number;
   readonly key: ParamKey;
