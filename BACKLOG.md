@@ -18,7 +18,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 ## Next (phase 2, after G0/G1)
 
 - [ ] WP5 | developer 1 | Vehicle model 5a/5b/5c (6) + unit and integration tests (13.1, 13.2). Gates G1, G3.
-- [ ] WP7 | developer 2 | Options UI (8). Gate G2.
 
 
 - [ ] WP9a | research | Performance harness from design 13.4 (`npm run perf`): frame/step p99, JS+WASM heap, configurable thresholds, swappable scenario. Not wired into CI (devops owns that). | research/perf-harness
@@ -62,3 +61,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP3 | designer | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator. (PR #27)
 - [x] T9 | techwriter | Reproducible screenshot capture: Playwright script + `docs/screenshots/README.md` conventions, so shots can be regenerated identically. | docs/screenshot-tooling (PR #28)
 - [x] T10 | techwriter | README: player-facing 'play in your browser' link above the npm path; docs/TEAM.md: PR-preview paragraph (URL shape, timing, bot comment, SHA check, cleanup). | docs/play-link (PR #29)
+- [x] WP7 | developer 2 | Options UI (8). Gate G2. (PR #30, G2)
