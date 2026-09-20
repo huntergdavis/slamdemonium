@@ -1,5 +1,6 @@
 import { expect, test as base, type Page } from '@playwright/test';
 import { serveOptionsBuild } from '../tests/options/server';
+import { PARAM_DEFS } from '../src/tuning/schema';
 
 const test = base.extend<
   { optionsPage: Page },
@@ -28,9 +29,11 @@ test('schema controls update in place, preserve typed precision, validate, reset
   optionsPage: page,
 }) => {
   await page.getByRole('button', { name: '⚙ Options' }).click();
-  await expect(page.locator('.sl-field')).toHaveCount(83);
+  await expect(page.locator('.sl-field')).toHaveCount(PARAM_DEFS.length + 14);
   await expect(page.locator('.sl-options__quick .sl-field')).toHaveCount(14);
-  await expect(page.locator('.sl-options__groups .sl-field')).toHaveCount(69);
+  await expect(page.locator('.sl-options__groups .sl-field')).toHaveCount(
+    PARAM_DEFS.length,
+  );
   expect(
     await page
       .locator('[id]')
@@ -204,7 +207,7 @@ test('presets, JSON, share links, autosave and reset preserve named tunes and co
     values: Record<string, number>;
     changeLog: unknown[];
   };
-  expect(Object.keys(exported.values)).toHaveLength(69);
+  expect(Object.keys(exported.values)).toHaveLength(PARAM_DEFS.length);
   expect(exported.values.gravity).toBe(24.25);
   expect(exported.changeLog.length).toBeGreaterThan(1);
   await page.getByRole('button', { name: 'Share link', exact: true }).click();
