@@ -1,13 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const port = Number(process.env.E2E_PORT || 4173);
+const origin = 'http://127.0.0.1:' + port;
+const baseURL = origin + (process.env.VITE_BASE_PATH || '/');
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Bound CPU contention between software WebGL and the physics benchmark.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -20,8 +26,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev -- --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    // Every spec exercises built assets; only E2E builds include the input fixture.
+    env: { VITE_TEST_API: '1' },
+    command:
+      'npm run build && npm run preview -- --port ' + port + ' --strictPort',
+    url: baseURL,
+    reuseExistingServer: false,
+    timeout: 120_000,
   },
 });

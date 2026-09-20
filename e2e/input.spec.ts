@@ -1,62 +1,10 @@
 import { expect, test } from '@playwright/test';
-import type { StepInput } from '../src/input/types';
-
-declare global {
-  interface Window {
-    __inputFixture: {
-      sample(): Readonly<StepInput>;
-      presented(timestamp: number): void;
-      paintProbe(timestamp: number): void;
-      dispose(): void;
-    };
-  }
-}
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
-  await page.waitForFunction(() => window.__game?.ready);
-  await page.evaluate(async () => {
-    const keyboardPath = '/src/input/keyboard.ts';
-    const gamepadPath = '/src/input/gamepad.ts';
-    const mapperPath = '/src/input/mapper.ts';
-    const probePath = '/src/input/latencyProbe.ts';
-    const { KeyboardInput } = (await import(
-      keyboardPath
-    )) as typeof import('../src/input/keyboard');
-    const { GamepadInput } = (await import(
-      gamepadPath
-    )) as typeof import('../src/input/gamepad');
-    const { InputMapper } = (await import(
-      mapperPath
-    )) as typeof import('../src/input/mapper');
-    const { LatencyProbeView } = (await import(
-      probePath
-    )) as typeof import('../src/input/latencyProbe');
-    const keyboard = new KeyboardInput(window);
-    const input = new InputMapper(keyboard, new GamepadInput(() => []));
-    const probeView = new LatencyProbeView(input.latency, document.body);
-    const canvas = document.querySelector('canvas');
-    if (!canvas) throw new Error('Missing driving surface.');
-    canvas.tabIndex = 0;
-    const panel = document.createElement('div');
-    panel.setAttribute('data-options-panel', '');
-    panel.style.cssText =
-      'position:fixed;right:0;top:0;background:white;z-index:10;';
-    panel.innerHTML =
-      '<input id="test-number" type="number" aria-label="Test parameter"><button id="test-a">A</button><button id="test-b">B</button><input id="test-range" type="range" aria-label="Test slider">';
-    document.body.append(panel);
-    window.__inputFixture = {
-      sample: () => input.sampleForStep(),
-      presented: (timestamp) => input.framePresented(timestamp),
-      paintProbe: (timestamp) => probeView.render(timestamp),
-      dispose: () => {
-        keyboard.dispose();
-        probeView.dispose();
-        panel.remove();
-      },
-    };
-    canvas.focus();
-  });
+  await page.goto('./');
+  await page.waitForFunction(
+    () => window.__game?.ready && !!window.__inputFixture,
+  );
 });
 
 test.afterEach(async ({ page }) => {

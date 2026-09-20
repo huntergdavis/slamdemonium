@@ -1,0 +1,435 @@
+import initJolt from 'jolt-physics/wasm';
+import wasmUrl from 'jolt-physics/jolt-physics.wasm.wasm?url';
+import type {
+  BodyId,
+  ContactCallback,
+  DynamicBoxDesc,
+  IPhysicsWorld,
+  MassDesc,
+  Quat,
+  V3,
+} from './adapter';
+
+const STATIC = 0;
+const MOVING = 1;
+let enginePromise: Promise<typeof initJolt> | undefined;
+
+export interface PhysicsInitOptions {
+  /** Node tests supply the exact published binary path; browsers use Vite asset URLs. */
+  wasmPath?: string;
+}
+
+function copyVector(from: initJolt.Vec3 | initJolt.RVec3, out: V3): void {
+  out.x = from.GetX();
+  out.y = from.GetY();
+  out.z = from.GetZ();
+}
+
+function positive(value: number, label: string): void {
+  if (!Number.isFinite(value) || value <= 0) throw new RangeError(label);
+}
+
+function validateMass(desc: MassDesc): void {
+  positive(desc.mass, 'Mass must be positive and finite.');
+  positive(desc.inertiaScale.x, 'X inertia scale must be positive.');
+  positive(desc.inertiaScale.y, 'Y inertia scale must be positive.');
+  positive(desc.inertiaScale.z, 'Z inertia scale must be positive.');
+  if (
+    !Number.isFinite(desc.comOffset.x + desc.comOffset.y + desc.comOffset.z)
+  ) {
+    throw new RangeError('Center of mass must be finite.');
+  }
+}
+
+/** All native engine types and ownership remain inside this file. */
+export async function createPhysicsWorld(
+  options: PhysicsInitOptions = {},
+): Promise<IPhysicsWorld> {
+  enginePromise ??= initJolt({
+    locateFile: (path: string, prefix: string) =>
+      path.endsWith('.wasm') ? (options.wasmPath ?? wasmUrl) : prefix + path,
+  });
+  const J = await enginePromise;
+
+  const pairs = new J.ObjectLayerPairFilterTable(2);
+  pairs.EnableCollision(STATIC, MOVING);
+  pairs.EnableCollision(MOVING, MOVING);
+  const broad = new J.BroadPhaseLayerInterfaceTable(2, 2);
+  const staticLayer = new J.BroadPhaseLayer(STATIC);
+  const movingLayer = new J.BroadPhaseLayer(MOVING);
+  broad.MapObjectToBroadPhaseLayer(STATIC, staticLayer);
+  broad.MapObjectToBroadPhaseLayer(MOVING, movingLayer);
+  J.destroy(staticLayer);
+  J.destroy(movingLayer);
+  const broadPairs = new J.ObjectVsBroadPhaseLayerFilterTable(
+    broad,
+    2,
+    pairs,
+    2,
+  );
+  const settings = new J.JoltSettings();
+  settings.mMaxBodies = 1024;
+  settings.mMaxBodyPairs = 4096;
+  settings.mMaxContactConstraints = 2048;
+  settings.mMaxWorkerThreads = 0;
+  settings.mObjectLayerPairFilter = pairs;
+  settings.mBroadPhaseLayerInterface = broad;
+  settings.mObjectVsBroadPhaseLayerFilter = broadPairs;
+  const world = new J.JoltInterface(settings);
+  J.destroy(settings); // World owns the three collision-layer interfaces.
+  const physics = world.GetPhysicsSystem();
+  const bodies = physics.GetBodyInterface();
+  const physicsSettings = physics.GetPhysicsSettings();
+  physicsSettings.mDeterministicSimulation = true;
+  physics.SetPhysicsSettings(physicsSettings);
+
+  const vector = new J.Vec3(0, 0, 0);
+  const linear = new J.Vec3(0, 0, 0);
+  const angular = new J.Vec3(0, 0, 0);
+  const position = new J.RVec3(0, 0, 0);
+  const rotation = new J.Quat(0, 0, 0, 1);
+  const massProps = new J.MassProperties();
+  const ray = new J.RRayCast();
+  const raySettings = new J.RayCastSettings();
+  const collector = new J.CastRayClosestHitCollisionCollector();
+  const broadFilter = new J.DefaultBroadPhaseLayerFilter(
+    world.GetObjectVsBroadPhaseLayerFilter(),
+    MOVING,
+  );
+  const objectFilter = new J.DefaultObjectLayerFilter(
+    world.GetObjectLayerPairFilter(),
+    MOVING,
+  );
+  const bodyFilter = new J.IgnoreMultipleBodiesFilter();
+  bodyFilter.Reserve(1);
+  const shapeFilter = new J.ShapeFilter();
+  const records = new Map<
+    BodyId,
+    {
+      id: initJolt.BodyID;
+      body: initJolt.Body;
+      halfExtents: V3;
+      dynamic: boolean;
+      surfaceId: number;
+    }
+  >();
+  let disposed = false;
+  let contactCallback: ContactCallback | undefined;
+  const contactPoint: V3 = { x: 0, y: 0, z: 0 };
+  const contactNormal: V3 = { x: 0, y: 0, z: 0 };
+  const contactListener = new J.ContactListenerJS();
+  contactListener.OnContactValidate = () =>
+    J.ValidateResult_AcceptAllContactsForThisBodyPair;
+  contactListener.OnContactRemoved = () => {};
+  function contact(aPtr: number, bPtr: number, manifoldPtr: number): void {
+    if (!contactCallback) return;
+    const a = J.wrapPointer(aPtr, J.Body);
+    const b = J.wrapPointer(bPtr, J.Body);
+    const manifold = J.wrapPointer(manifoldPtr, J.ContactManifold);
+    copyVector(manifold.GetWorldSpaceContactPointOn1(0), contactPoint);
+    copyVector(manifold.mWorldSpaceNormal, contactNormal);
+    // Published bindings do not expose the solver's contact impulse.
+    contactCallback(
+      a.GetID().GetIndexAndSequenceNumber(),
+      b.GetID().GetIndexAndSequenceNumber(),
+      null,
+      contactPoint,
+      contactNormal,
+    );
+  }
+  contactListener.OnContactAdded = contact;
+  contactListener.OnContactPersisted = contact;
+  physics.SetContactListener(contactListener);
+
+  function assertAlive(): void {
+    if (disposed) throw new Error('Physics world is disposed.');
+  }
+  function record(id: BodyId) {
+    const value = records.get(id);
+    if (!value) throw new Error('Unknown physics body.');
+    return value;
+  }
+  function shape(half: V3, offset?: V3): initJolt.Shape {
+    positive(half.x, 'Box extents must be positive.');
+    positive(half.y, 'Box extents must be positive.');
+    positive(half.z, 'Box extents must be positive.');
+    vector.Set(half.x, half.y, half.z);
+    const box = new J.BoxShape(
+      vector,
+      Math.min(0.05, Math.min(half.x, half.y, half.z) * 0.5),
+    );
+    box.AddRef();
+    if (!offset) return box;
+    vector.Set(offset.x, offset.y, offset.z);
+    const shifted = new J.OffsetCenterOfMassShape(box, vector);
+    shifted.AddRef();
+    box.Release();
+    return shifted;
+  }
+  function setMass(
+    body: initJolt.Body,
+    bodyShape: initJolt.Shape,
+    desc: MassDesc,
+  ): void {
+    const source = bodyShape.GetMassProperties();
+    massProps.mMass = source.mMass;
+    massProps.mInertia = source.mInertia;
+    massProps.ScaleToMass(desc.mass);
+    // D * I * D preserves symmetry even when a shifted CoM produces cross terms.
+    const x = Math.sqrt(desc.inertiaScale.x);
+    const y = Math.sqrt(desc.inertiaScale.y);
+    const z = Math.sqrt(desc.inertiaScale.z);
+    const inertia = massProps.mInertia;
+    const colX = inertia.GetAxisX();
+    vector.Set(colX.GetX() * x * x, colX.GetY() * y * x, colX.GetZ() * z * x);
+    inertia.SetAxisX(vector);
+    const colY = inertia.GetAxisY();
+    vector.Set(colY.GetX() * x * y, colY.GetY() * y * y, colY.GetZ() * z * y);
+    inertia.SetAxisY(vector);
+    const colZ = inertia.GetAxisZ();
+    vector.Set(colZ.GetX() * x * z, colZ.GetY() * y * z, colZ.GetZ() * z * z);
+    inertia.SetAxisZ(vector);
+    body.GetMotionProperties().SetMassProperties(J.EAllowedDOFs_All, massProps);
+  }
+  function add(
+    body: initJolt.Body,
+    half: V3,
+    dynamic: boolean,
+    surfaceId: number,
+  ): BodyId {
+    const id = body.GetID(); // Borrowed until DestroyBody.
+    const key = id.GetIndexAndSequenceNumber();
+    records.set(key, {
+      id,
+      body,
+      halfExtents: { ...half },
+      dynamic,
+      surfaceId,
+    });
+    bodies.AddBody(
+      id,
+      dynamic ? J.EActivation_Activate : J.EActivation_DontActivate,
+    );
+    return key;
+  }
+
+  const api: IPhysicsWorld = {
+    setGravity(g) {
+      assertAlive();
+      if (!Number.isFinite(g) || g < 0)
+        throw new RangeError('Gravity must be a finite magnitude.');
+      vector.Set(0, -g, 0);
+      physics.SetGravity(vector);
+    },
+    step(dt) {
+      assertAlive();
+      positive(dt, 'Physics timestep must be positive and finite.');
+      world.Step(dt, 1);
+    },
+    createStaticBox(
+      center,
+      halfExtents,
+      rotY = 0,
+      friction = 0.5,
+      restitution = 0,
+      surfaceId = 0,
+    ) {
+      assertAlive();
+      const box = shape(halfExtents);
+      position.Set(center.x, center.y, center.z);
+      rotation.Set(0, Math.sin(rotY / 2), 0, Math.cos(rotY / 2));
+      const creation = new J.BodyCreationSettings(
+        box,
+        position,
+        rotation,
+        J.EMotionType_Static,
+        STATIC,
+      );
+      creation.mFriction = friction;
+      creation.mRestitution = restitution;
+      const body = bodies.CreateBody(creation);
+      J.destroy(creation);
+      box.Release();
+      return add(body, halfExtents, false, surfaceId);
+    },
+    createDynamicBox(desc: DynamicBoxDesc) {
+      assertAlive();
+      validateMass(desc);
+      const box = shape(desc.halfExtents, desc.comOffset);
+      position.Set(desc.center.x, desc.center.y, desc.center.z);
+      rotation.Set(0, 0, 0, 1);
+      const creation = new J.BodyCreationSettings(
+        box,
+        position,
+        rotation,
+        J.EMotionType_Dynamic,
+        MOVING,
+      );
+      creation.mFriction = desc.friction;
+      creation.mRestitution = desc.restitution;
+      creation.mMotionQuality = desc.ccd
+        ? J.EMotionQuality_LinearCast
+        : J.EMotionQuality_Discrete;
+      creation.mAngularDamping = desc.angularDamping;
+      creation.mLinearDamping = 0; // The vehicle owns coast drag.
+      creation.mMaxAngularVelocity = desc.maxAngularVelocity;
+      creation.mMaxLinearVelocity = 500;
+      const body = bodies.CreateBody(creation);
+      setMass(body, box, desc);
+      J.destroy(creation);
+      box.Release();
+      return add(body, desc.halfExtents, true, 0);
+    },
+    updateMassProperties(id, desc) {
+      validateMass(desc);
+      const entry = record(id);
+      if (!entry.dynamic)
+        throw new Error('Static bodies have no dynamic mass properties.');
+      bodies.GetPositionAndRotation(entry.id, position, rotation);
+      bodies.GetLinearAndAngularVelocity(entry.id, linear, angular);
+      const box = shape(entry.halfExtents, desc.comOffset);
+      bodies.SetShape(entry.id, box, false, J.EActivation_Activate);
+      setMass(entry.body, box, desc);
+      box.Release();
+      bodies.SetPositionRotationAndVelocity(
+        entry.id,
+        position,
+        rotation,
+        linear,
+        angular,
+      );
+    },
+    getTransform(id, outPos: V3, outQuat: Quat) {
+      bodies.GetPositionAndRotation(record(id).id, position, rotation);
+      copyVector(position, outPos);
+      outQuat.x = rotation.GetX();
+      outQuat.y = rotation.GetY();
+      outQuat.z = rotation.GetZ();
+      outQuat.w = rotation.GetW();
+    },
+    getLinearVelocity(id, out) {
+      bodies.GetLinearAndAngularVelocity(record(id).id, linear, angular);
+      copyVector(linear, out);
+    },
+    getAngularVelocity(id, out) {
+      bodies.GetLinearAndAngularVelocity(record(id).id, linear, angular);
+      copyVector(angular, out);
+    },
+    getPointVelocity(id, point, out) {
+      position.Set(point.x, point.y, point.z);
+      copyVector(bodies.GetPointVelocity(record(id).id, position), out);
+    },
+    applyForceAtPoint(id, force, point) {
+      vector.Set(force.x, force.y, force.z);
+      position.Set(point.x, point.y, point.z);
+      bodies.AddForce(record(id).id, vector, position, J.EActivation_Activate);
+    },
+    applyTorque(id, torque) {
+      vector.Set(torque.x, torque.y, torque.z);
+      bodies.AddTorque(record(id).id, vector, J.EActivation_Activate);
+    },
+    setLinearVelocity(id, velocity) {
+      vector.Set(velocity.x, velocity.y, velocity.z);
+      const body = record(id).id;
+      bodies.SetLinearVelocity(body, vector);
+      bodies.ActivateBody(body);
+    },
+    setAngularVelocity(id, velocity) {
+      vector.Set(velocity.x, velocity.y, velocity.z);
+      const entry = record(id);
+      entry.body.GetMotionProperties().SetAngularVelocityClamped(vector);
+      bodies.ActivateBody(entry.id);
+    },
+    setTransform(id, pos, quat, zeroVelocity) {
+      position.Set(pos.x, pos.y, pos.z);
+      rotation.Set(quat.x, quat.y, quat.z, quat.w);
+      const entry = record(id);
+      bodies.SetPositionAndRotation(
+        entry.id,
+        position,
+        rotation,
+        J.EActivation_Activate,
+      );
+      if (zeroVelocity && entry.dynamic) {
+        vector.Set(0, 0, 0);
+        bodies.SetLinearAndAngularVelocity(entry.id, vector, vector);
+        entry.body.ResetForce();
+        entry.body.ResetTorque();
+      }
+    },
+    rayCast(origin, dir, maxLen, out, ignoreBody) {
+      assertAlive();
+      positive(maxLen, 'Ray length must be positive.');
+      ray.mOrigin.Set(origin.x, origin.y, origin.z);
+      ray.mDirection.Set(dir.x * maxLen, dir.y * maxLen, dir.z * maxLen);
+      collector.Reset();
+      bodyFilter.Clear();
+      if (ignoreBody !== undefined)
+        bodyFilter.IgnoreBody(record(ignoreBody).id);
+      physics
+        .GetNarrowPhaseQuery()
+        .CastRay(
+          ray,
+          raySettings,
+          collector,
+          broadFilter,
+          objectFilter,
+          bodyFilter,
+          shapeFilter,
+        );
+      if (!collector.HadHit()) return false;
+      const hit = collector.mHit;
+      out.distance = hit.mFraction * maxLen;
+      out.bodyId = hit.mBodyID.GetIndexAndSequenceNumber();
+      out.surfaceId = record(out.bodyId).surfaceId;
+      const point = ray.GetPointOnRay(hit.mFraction);
+      copyVector(point, out.point);
+      copyVector(
+        record(out.bodyId).body.GetWorldSpaceSurfaceNormal(
+          hit.mSubShapeID2,
+          point,
+        ),
+        out.normal,
+      );
+      return true;
+    },
+    onContact(callback) {
+      contactCallback = callback;
+    },
+    getMemoryStats(out) {
+      out.heapBytes = J.HEAPU8.byteLength;
+      out.freeBytes = J.JoltInterface.prototype.sGetFreeMemory();
+    },
+    dispose() {
+      if (disposed) return;
+      contactCallback = undefined;
+      for (const entry of records.values()) {
+        bodies.RemoveBody(entry.id);
+        bodies.DestroyBody(entry.id);
+      }
+      records.clear();
+      // Filters borrow world infrastructure, so destroy them before the world.
+      for (const owned of [
+        shapeFilter,
+        bodyFilter,
+        objectFilter,
+        broadFilter,
+        collector,
+        raySettings,
+        ray,
+        massProps,
+        rotation,
+        position,
+        angular,
+        linear,
+        vector,
+      ])
+        J.destroy(owned);
+      J.destroy(world);
+      J.destroy(contactListener);
+      disposed = true;
+    },
+  };
+  api.setGravity(14.7);
+  return api;
+}
