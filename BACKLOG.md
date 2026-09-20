@@ -17,7 +17,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 ## Next (phase 2, after G0/G1)
 
-- [ ] WP3 | designer | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator.
 - [ ] WP5 | developer 1 | Vehicle model 5a/5b/5c (6) + unit and integration tests (13.1, 13.2). Gates G1, G3.
 - [ ] WP7 | developer 2 | Options UI (8). Gate G2.
 
@@ -55,3 +54,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] D3 | designer | UI kit: CSS custom-property palette + component styles for Options panel and HUD, plus a static demo page under `docs/design/ui-kit/`. Feeds WP7 and WP8. | design/ui-kit (PR #24)
 - [x] O3 | devops | PR preview deployments so the CTO can playtest a branch before merge; sticky PR comment with the link; cleanup on close. Plus CI badge and live link in README (2 lines max). | devops/pr-previews (PR #25)
 - [x] T8 | techwriter | Navigational index at the top of `docs/DECISIONS.md` (PR #23, needs rebase after WP1). | docs/decisions-index (PR #23)
+- [x] WP3 | designer | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator. (PR #27)
