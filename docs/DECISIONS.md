@@ -10,6 +10,8 @@ Running log of technical decisions, spike results and changed defaults. New entr
 | 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number | null` because stock Jolt cannot supply a solved value. |
 | 2026-09-20 | [WP5: vehicle force model and approved design corrections](#2026-09-20--wp5-vehicle-force-model-and-approved-design-corrections) | Preserve the configurable ellipse, correct COM load direction, cap dissipative impulses only, use the research drift latch, and keep recovery safeguards independent of handling sliders. |
 
+| 2026-09-20 | [WP6: bounded camera and fixed rendering buffers](#2026-09-20--wp6-bounded-camera-and-fixed-rendering-buffers) | Cap delivered vertical FOV at 115 degrees with honest telemetry; share scaled render time; reuse four skid geometries and adjust resolution from wall time. |
+
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
 ## 2026-09-20 — WP0: minimal browser scaffold and reproducible tooling
@@ -247,3 +249,49 @@ Manual `stepMany` and respawn flush before step zero. Replay integration must
 flush or cancel before reset so no pending timer fires during the script.
 Mass updates preserve pose and linear/angular velocity; respawn separately
 clears controls, wheel histories, drift controller, boost meter and visual state.
+
+## 2026-09-20 — WP6: bounded camera and fixed rendering buffers
+
+- **Final FOV, not speed ratio, is bounded.** Preserve the design 10.1 formula
+  and slider ranges, then clamp delivered vertical FOV to [1, 115] degrees.
+  QUESTIONS.md #3 records why: legal boosted speeds can request an invalid
+  560-degree projection. Debug telemetry exposes `cameraFovRequested`,
+  `cameraFov`, and `cameraFovCapped`; exceeding the ceiling never silently
+  changes the apparent meaning of a slider. NaN falls back to 70 degrees;
+  infinities hit the finite bounds.
+- **Chase position uses the analytical critically damped spring.**
+  `camFollowTime = 2 / omega` is the damping time, not a frame lerp factor.
+  Heading and planar travel direction interpolate by their shortest angle;
+  velocity participates only above 8 m/s. Roll uses conventional G
+  (9.81 m/s²), independent of the gravity tuning control. Shake uses continuous
+  deterministic sine components and suspension compression relative to a
+  smoothed baseline; `camShake = 0` removes both. The future impact hook
+  accepts real solved impulses; Jolt's null never becomes an invented kick.
+- **One scaled render delta** comes from the fixed-step loop after its catch-up
+  cap. Camera motion and speed cues use it, so pause freezes their time and slow
+  motion slows them. Manual `stepMany` advances physics time and skid ages
+  without fabricating a wall-clock frame. Dynamic resolution instead observes
+  real presented-frame intervals: a 0.5 s exponential average above 18 ms for
+  2 s reduces scale by 0.1, down to 0.6. Below 17 ms for 2 s restores 0.1,
+  up to 1.0; the recovery threshold includes healthy 60 Hz rendering.
+  Visibility changes reset the timing sample. Base DPR remains capped at 2.
+- **Skids allocate four geometries once**, each holding 8192 six-vertex segments
+  in typed-array rings. Contact normals lift strips 12 mm above the surface;
+  airborne/low-slip samples and respawns break continuity, and jumps beyond
+  5 m never connect. Samples closer than 15 cm wait for movement. A GPU age
+  uniform fades marks over 20 simulation seconds; expired slots are overwritten
+  by the ring. Dirty uploads reuse range records: there are no per-mark meshes,
+  materials, vectors, or range objects.
+- **D4 owns visual presentation; WP6 supplies render-ready state.** The existing
+  vehicle history interpolates signed wheel spin advance before wrapping to
+  [0, 2π), preserving direction at the wrap boundary. C cycles chase/far/hood
+  and G routes the existing input action to designer gizmos. Far uses 1.6 times
+  chase distance and 1.5 times height; hood follows the chassis at local
+  (0, 0.65, -1.55). Automation can use
+  `window.__game.setCameraPreset('chase' | 'far' | 'hood')`.
+
+- **D5 is mounted from main's render loop.** Its preallocated state receives
+  speed, unboosted topSpeed and the same boost envelope as the camera; both
+  strength controls come directly from the shared tuning store. The overlay
+  retains native DPR (capped at 2) when world resolution decreases, preserving
+  line width and UI clarity. Its canvas does not intercept driving input.

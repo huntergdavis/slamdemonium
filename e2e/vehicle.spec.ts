@@ -10,7 +10,7 @@ test('G1: keyboard drives the suspended box on the track and the camera follows'
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('./');
   await page.waitForFunction(() => window.__game?.ready);
-  await page.locator('canvas').focus();
+  await page.getByLabel('Driving view').focus();
   await page.evaluate(() => {
     window.__game.respawn();
     window.__game.stepMany(240);
@@ -37,11 +37,35 @@ test('G1: keyboard drives the suspended box on the track and the camera follows'
   const turned = await page.evaluate(() => window.__game.getTelemetry());
   expect((turned.position as { x: number }).x).toBeLessThan(129);
   expect(Number(turned.yawRate)).toBeGreaterThan(0);
-  const camera = turned.cameraPosition as { x: number; y: number; z: number };
-  const car = turned.position as { x: number; y: number; z: number };
-  expect(
-    Math.hypot(camera.x - car.x, camera.y - car.y, camera.z - car.z),
-  ).toBeLessThan(12);
+  // A damped camera has a steady moving-target lag of followTime * speed.
+  // Manual stepping jumps the target; allow it to settle over real render frames.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const game = window.__game,
+            s = game.getTelemetry();
+          const camera = s.cameraPosition as {
+            x: number;
+            y: number;
+            z: number;
+          };
+          const car = s.position as { x: number; y: number; z: number };
+          const distance = Math.hypot(
+            camera.x - car.x,
+            camera.y - car.y,
+            camera.z - car.z,
+          );
+          const bound =
+            game.tuning.get('camDistance') +
+            game.tuning.get('camHeight') +
+            Number(s.speed) * game.tuning.get('camFollowTime') +
+            1;
+          return distance < bound;
+        }),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
   expect(turned.recoveryCount).toBe(0);
   expect(errors).toEqual([]);
   await page.screenshot({

@@ -1,6 +1,7 @@
 import type { PhysicsSpikeResult } from '../physics/spike';
 import type { PhysicsMemory } from '../physics/adapter';
 import type { PerformanceBatch } from './performance';
+import type { CameraPreset } from '../render/cameraRig';
 
 export interface GameInput {
   throttle: number;
@@ -22,6 +23,7 @@ export interface GameTestApi {
   releaseInput(): void;
   /** [0,1] earned boost meter; lets a tuner exercise boost without first drifting. */
   setDriftMeter(value: number): void;
+  setCameraPreset(preset: CameraPreset): void;
   stepMany(steps: number): void;
   getTelemetry(): Readonly<Record<string, unknown>>;
   respawn(): void;
@@ -55,6 +57,7 @@ export function createGameStub(): GameTestApi {
     setInput: unavailable,
     releaseInput: unavailable,
     setDriftMeter: unavailable,
+    setCameraPreset: unavailable,
     stepMany: unavailable,
     getTelemetry: unavailable,
     respawn: unavailable,
