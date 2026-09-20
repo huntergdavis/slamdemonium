@@ -234,3 +234,30 @@ it('uses rebuilt mass and scaled yaw inertia for force and torque response', asy
   expect(velocity.z).toBeCloseTo(-1, 5);
   expect(omega.y).toBeCloseTo(0.125, 5); // 24 kg cube: I_y = 4, doubled to 8.
 });
+
+it('reports real local inertia and applies live angular limits, damping and contact settings', async () => {
+  const w = await world();
+  w.setGravity(0);
+  const floor = w.createStaticBox(
+    { x: 0, y: -1, z: 0 },
+    { x: 20, y: 0.5, z: 20 },
+  );
+  w.setContactProperties(floor, 0.3, 0.2);
+  const id = w.createDynamicBox(box());
+  const inertia = vec();
+  w.getLocalInertia(id, inertia);
+  expect(inertia.y).toBeCloseTo(2, 5); // 12 kg, one meter cube.
+  w.setBodyProperties(id, {
+    angularDamping: 2,
+    maxAngularVelocity: 3,
+    friction: 0.1,
+    restitution: 0.4,
+  });
+  w.setAngularVelocity(id, { x: 0, y: 20, z: 0 });
+  const omega = vec();
+  w.getAngularVelocity(id, omega);
+  expect(omega.y).toBeCloseTo(3, 5);
+  w.step(1 / 120);
+  w.getAngularVelocity(id, omega);
+  expect(omega.y).toBeLessThan(3);
+});

@@ -8,7 +8,6 @@ Running log of technical decisions, spike results and changed defaults. New entr
 |---|---|---|
 | 2026-09-20 | [WP0: minimal browser scaffold and reproducible tooling](#2026-09-20--wp0-minimal-browser-scaffold-and-reproducible-tooling) | Strict TypeScript, Vite, three.js, Vitest and Playwright, every dependency pinned exactly; TypeScript held at 6.0.3 for typescript-eslint; no physics dependency until WP1 confirms the Jolt flavor. |
 | 2026-09-20 | [WP1 / G0: GO with the separate single-thread Jolt WASM build](#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build) | Jolt stays; `jolt-physics@1.1.0` via the separate single-thread WASM asset, all six spike probes passed; determinism is same-binary same-machine only; contact impulse is `number | null` because stock Jolt cannot supply a solved value. |
-
 | 2026-09-20 | [WP5: vehicle force model and approved design corrections](#2026-09-20--wp5-vehicle-force-model-and-approved-design-corrections) | Preserve the configurable ellipse, correct COM load direction, cap dissipative impulses only, use the research drift latch, and keep recovery safeguards independent of handling sliders. |
 
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
@@ -202,3 +201,49 @@ automation surface, not a new player control.
 Recall before implementation: `deja "Slamdemonium WP5 vehicle suspension drivetrain drift assist"`
 found no prior implementation. `deja "vehicle zero assist"` found research session
 `01a0c04e-e95`, restating the zero-assist/sign checks also documented in R2.
+
+### Numeric acceptance and replay evidence
+
+At Default, 120 Hz, from a settled spawn, the **real suspended Jolt vehicle**
+reaches **100 km/h in 2.208333 s** and **55 m/s in 6.750000 s**. These include the
+throttle rise filter, suspension, tire limits and force application, and pass the
+2.0–2.3 s / 6.3–7.1 s acceptance ranges. The independent engine-formula unit test
+also passes those ranges. The integration test writes
+`scratch/vehicle-acceleration.json`. Measure simulated steps, not browser wall
+time: headless rAF throttling and the fixed loop's eight-step cap deliberately
+drop excess wall-time debt. A PM headless wall-time probe (about 0.29 m/s after
+2.5 seconds) therefore does not represent a 2.5-second acceleration run.
+
+Two seeded 300-s / 36,000-step real-vehicle runs produce the identical
+**exact float-bit state hash `1e4445c7`** (pose, linear/angular velocity, boost,
+and drift controller state). Maximum angular speed was 2.715300 rad/s, below the
+default 12 rad/s cap; every sampled state stayed finite without recovery.
+This is same-binary, same-machine evidence, not cross-platform determinism.
+
+Measured model-plus-Jolt mean step cost on this shared development machine was
+0.273 ms for the first run and **0.218 ms for the warmed second run**, below the
+1.0 ms model budget. This measures controls, four suspension queries, tires,
+assists, the engine step and telemetry on a flat plane; it excludes rendering
+and is not a target-laptop FPS claim. Compare against WP1's 0.092 ms one-box
+physics-only baseline. The soak writes `scratch/vehicle-soak.json`.
+Vitest files run sequentially so the 300-s vehicle soak does not compete with
+the G0 microbenchmark. No timing threshold is relaxed.
+
+The production-browser G1 test passed in CI in 19.5 s: actual keyboard throttle,
+left turn, following camera, and R respawn on WP3. The boost API test also passed.
+The full track's software shadows make input-heavy browser tests slower than
+the proof scene; their test budget is 90 s while preserving every input assertion.
+The human five-second drift hold/exit evaluation remains a separate playtest.
+
+### One owner for mass rebuilds
+
+PM ruling: boot owns `DebouncedMassRebuild`, the only subscriber that applies
+`needsRebuild` changes. It coalesces them for 100 ms and exposes synchronous
+`flush()`, `cancel()` and a reused read-only `{ status, error }` state
+(idle/pending/error/unavailable). Options only observes that state through
+`readRebuildState`; it must not run a second timer or physics update. This avoids
+double rebuilds and interleaved callbacks, and works without a panel mounted.
+Manual `stepMany` and respawn flush before step zero. Replay integration must
+flush or cancel before reset so no pending timer fires during the script.
+Mass updates preserve pose and linear/angular velocity; respawn separately
+clears controls, wheel histories, drift controller, boost meter and visual state.

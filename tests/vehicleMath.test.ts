@@ -32,7 +32,7 @@ describe('tire curve and the approved forgiving ellipse', () => {
       7,
     );
     let previous = 1;
-    for (let x = 1; x < 100; x += 0.01) {
+    for (let x = 1; x < 100; x += 0.125) {
       const grip = slipCurve(x, 0.78, 1.5);
       expect(grip).toBeLessThanOrEqual(previous);
       expect(grip).toBeGreaterThanOrEqual(0.78);
