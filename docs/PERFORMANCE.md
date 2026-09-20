@@ -10,7 +10,9 @@ The command builds production assets, launches headless Chromium against a priva
 localhost preview, reproduces the WP1 one-box spike, warms two complete replays,
 and measures at least five minutes of browser execution. Allow about six minutes
 plus build time on an otherwise quiet host; slow rendering can take longer.
-Pinned `tsx` also supports Node builds without built-in TypeScript execution.
+Warm-ups use `stepMany` to warm physics; rendered measurement includes the
+renderer’s natural workload. Pinned `tsx` also supports Node builds without
+built-in TypeScript execution.
 
 Current scene: the merged WP5 vehicle and test track. A temporary procedural input
 source uses throttle, alternating steering and braking through the real
