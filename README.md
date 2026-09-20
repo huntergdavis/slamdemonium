@@ -8,8 +8,8 @@ A game build, orchestrated by a team of agents.
 |------|-------|--------------|
 | CTO/CPO | Hunter | sets goals and direction |
 | PM | Claude (Slamdemonium Command) | `slamdemonium/` (canonical, owns `main`) |
-| Developer | Codex | `slamdemonium-for-developer-codex-2/` |
-| Developer | Codex | `slamdemonium-for-developer-codex/` |
+| Developer 2 | Codex | `slamdemonium-for-developer-2/` |
+| Developer 1 | Codex | `slamdemonium-for-developer-1/` |
 | Designer | Codex | `slamdemonium-for-designer/` |
 | Technical writer | Claude | `slamdemonium-for-techwriter/` |
 | Research / SME | Codex | `slamdemonium-for-research/` |
