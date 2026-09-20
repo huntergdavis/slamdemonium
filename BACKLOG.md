@@ -37,6 +37,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] R5 | research | Honest end-of-slice assessment against design section 3: every acceptance criterion marked MET / UNVERIFIED / NOT MET with evidence, including the human-judged ones pending CTO playtest. | research/slice-review
 
+- [ ] WP15 | designer | Reachability guard: `npm run check:reachable` fails when a module under `src/` is unreachable from `main.ts`. Understands dynamic imports; allowlist requires a one-line reason. Prevents the WP14 class of bug. | design/reachability-guard
+
 ## Later (phase 3)
 
 - [ ] WP9 | all | QA, perf harness, soak/determinism, manual QA, Gate G5. Techwriter: screenshots in README.
