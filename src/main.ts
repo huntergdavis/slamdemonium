@@ -1,4 +1,3 @@
-import { BoxGeometry, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { GAME_NAME } from './core/constants';
 import { createGameStub } from './core/gameApi';
 import type { GameInput } from './core/gameApi';
@@ -9,6 +8,9 @@ import { TransformHistory } from './core/transforms';
 import type { IPhysicsWorld } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
 import { createRenderer } from './render/renderer';
+import { CameraRig } from './render/cameraRig';
+import { createCarVisual } from './render/carVisual';
+import { createSkidMarks } from './render/skidMarks';
 import { BUILTIN_PRESETS } from './tuning/presets';
 import type { BuiltinPresetName } from './tuning/presets';
 import { isParamKey } from './tuning/schema';
@@ -17,6 +19,7 @@ import { KeyboardInput } from './input/keyboard';
 import { InputMapper } from './input/mapper';
 import { LatencyProbeView } from './input/latencyProbe';
 import { Vehicle } from './vehicle/vehicle';
+import { VehicleVisualHistory } from './vehicle/visualState';
 import { createTestTrack, installTrackColliders } from './world/track';
 import './style.css';
 
@@ -36,15 +39,6 @@ let frameId = 0;
 let disposed = false;
 let unsubscribe: (() => void) | undefined;
 let visibilityChanged = () => {};
-
-function addBox(width: number, height: number, depth: number, color: number) {
-  const geometry = new BoxGeometry(width, height, depth);
-  const material = new MeshStandardMaterial({ color });
-  resources.push(geometry, material);
-  const mesh = new Mesh(geometry, material);
-  view.scene.add(mesh);
-  return mesh;
-}
 
 async function boot(): Promise<void> {
   const { createPhysicsWorld } = await import('./physics/joltWorld');
@@ -70,12 +64,15 @@ async function boot(): Promise<void> {
   );
   const vehicle = new Vehicle(physics, tuning, track.spawn.position);
   const history = new TransformHistory(physics, vehicle.body);
-  const chassis = addBox(1.8, 1, 4, 0xf09f42);
-  chassis.castShadow = true;
-  chassis.receiveShadow = true;
-  const nose = addBox(1.1, 0.02, 0.4, 0x21dce8);
-  chassis.add(nose);
-  nose.position.set(0, 0.51, -1.55);
+  const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
+  const carVisual = createCarVisual(view.scene);
+  const cameraRig = new CameraRig(view.camera, tuning);
+  const skids = createSkidMarks(view.scene);
+  resources.push(carVisual, skids);
+  physics.onContact((a, b, impulse) => {
+    if (a === vehicle.body || b === vehicle.body)
+      cameraRig.addImpact(impulse, vehicle.currentMass);
+  });
 
   const keyboard = new KeyboardInput(window);
   resources.push(keyboard);
@@ -101,8 +98,6 @@ async function boot(): Promise<void> {
   let injected = false;
   let stepStart = 0;
   let frameTime = 0;
-  const cameraOffset = new Vector3(0, 4, 9);
-  const cameraTarget = new Vector3();
   const measurements = new PerformanceRecorder();
   let perfStepDriver: ((step: number) => void) | undefined;
   let perfCompletedSteps = 0;
@@ -127,9 +122,12 @@ async function boot(): Promise<void> {
         sampled = injected ? requested : live;
         source = injected ? 'keyboard' : live.source;
         if (live.actions.respawn > 0) respawn();
+        if (live.actions.gizmos % 2 !== 0) carVisual.toggleDebug();
+        if (live.actions.camera > 0) cameraRig.cyclePreset(live.actions.camera);
       },
       preStep(dt) {
         history.beforeStep();
+        visualHistory.beforeStep();
         stepStart = performance.now();
         vehicle.preStep(dt, sampled, source);
       },
@@ -148,6 +146,7 @@ async function boot(): Promise<void> {
           ++perfCompletedSteps === perfTotalSteps
         )
           loop.setPaused(true);
+        skids.sample(vehicle.telemetry.wheels, loop.simulationSeconds + dt);
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -156,20 +155,11 @@ async function boot(): Promise<void> {
         vehicle.telemetry.physicsHz = tuning.get('physicsHz');
         vehicle.telemetry.timeScale = tuning.get('timeScale');
         const pose = history.interpolate(alpha);
-        chassis.position.copy(pose.position);
-        chassis.quaternion.copy(pose.rotation);
-        cameraTarget
-          .copy(cameraOffset)
-          .applyQuaternion(pose.rotation)
-          .add(pose.position);
-        view.camera.position.copy(cameraTarget);
-        cameraTarget
-          .set(0, 0.6, -4)
-          .applyQuaternion(pose.rotation)
-          .add(pose.position);
-        view.camera.lookAt(cameraTarget);
+        carVisual.update(visualHistory.interpolate(alpha, pose));
+        cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
+        skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
-        view.render();
+        view.render(frameTime);
         input.framePresented(frameTime);
         latencyView?.render(frameTime);
         game.ready = true;
@@ -180,11 +170,15 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     vehicle.respawn();
     history.reset();
+    visualHistory.reset();
+    cameraRig.reset();
+    skids.breakStrips();
     loop.resetClock();
   }
   const massRebuild = new DebouncedMassRebuild(tuning, () => {
     vehicle.rebuildMassProperties();
     history.reset();
+    visualHistory.reset();
   });
   resources.push(massRebuild);
   unsubscribe = tuning.onChange((change) => {
@@ -234,6 +228,7 @@ async function boot(): Promise<void> {
   game.setDriftMeter = (value) => {
     vehicle.setDriftMeter(value);
   };
+  game.setCameraPreset = (preset) => cameraRig.setPreset(preset);
   game.stepMany = (count) => {
     massRebuild.flush();
     loop.stepMany(count);
@@ -242,6 +237,18 @@ async function boot(): Promise<void> {
     const s = vehicle.telemetry;
     return {
       ...s,
+      ...cameraRig.telemetry,
+      cameraPreset: cameraRig.preset,
+      renderScale: view.resolution.scale,
+      smoothedFrameMs: view.resolution.smoothedFrameMs,
+      skidSegments: skids.strips.reduce(
+        (total, strip) => total + strip.count,
+        0,
+      ),
+      skidSegmentsWritten: skids.strips.reduce(
+        (total, strip) => total + strip.written,
+        0,
+      ),
       mass: vehicle.currentMass,
       massRebuildStatus: massRebuild.state.status,
       position: { x: s.position.x, y: s.position.y, z: s.position.z },
@@ -317,6 +324,7 @@ async function boot(): Promise<void> {
   };
   visibilityChanged = () => {
     loop.setPaused(document.hidden);
+    view.resolution.resetClock();
   };
   document.addEventListener('visibilitychange', visibilityChanged);
   visibilityChanged();

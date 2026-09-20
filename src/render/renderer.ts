@@ -6,6 +6,7 @@ import {
   SRGBColorSpace,
   WebGLRenderer,
 } from 'three';
+import { DynamicResolution } from './dynamicResolution';
 
 export function createRenderer(host: HTMLElement) {
   const scene = new Scene();
@@ -19,17 +20,23 @@ export function createRenderer(host: HTMLElement) {
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.domElement.setAttribute('aria-label', 'Driving view');
   host.append(renderer.domElement);
+  const resolution = new DynamicResolution();
+  const size = { width: 1, height: 1, pixelRatio: 1 };
 
   function resize(): void {
     const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
+    size.width = width;
+    size.height = height;
+    size.pixelRatio = Math.min(window.devicePixelRatio, 2) * resolution.scale;
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(size.pixelRatio);
     renderer.setSize(width, height);
   }
 
-  function render(): void {
+  function render(nowMs?: number): void {
+    if (nowMs !== undefined && resolution.update(nowMs)) resize();
     renderer.render(scene, camera);
   }
 
@@ -41,5 +48,5 @@ export function createRenderer(host: HTMLElement) {
 
   window.addEventListener('resize', resize);
   resize();
-  return { scene, camera, renderer, render, dispose };
+  return { scene, camera, renderer, resolution, size, render, dispose };
 }

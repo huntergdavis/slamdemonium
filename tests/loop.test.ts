@@ -36,6 +36,25 @@ function harness(settings: LoopSettings = { physicsHz: 120, timeScale: 1 }) {
 }
 
 describe('fixed physics timestep', () => {
+  it('shares a scaled render delta without advancing effects during pause or discarded catch-up time', () => {
+    const h = harness({ physicsHz: 120, timeScale: 0.5 });
+    h.loop.frame(0);
+    expect(h.loop.renderDeltaSeconds).toBe(0);
+    h.loop.frame(1000 / 60);
+    expect(h.loop.renderDeltaSeconds).toBeCloseTo(1 / 120);
+    expect(h.loop.simulationSeconds).toBeCloseTo(1 / 120);
+    h.loop.setPaused(true);
+    h.loop.frame(1000);
+    expect(h.loop.renderDeltaSeconds).toBe(0);
+    h.loop.setPaused(false);
+    h.settings.timeScale = 2;
+    h.loop.frame(2000);
+    h.loop.frame(3000);
+    expect(h.loop.renderDeltaSeconds).toBeCloseTo(8 / 120);
+    h.loop.stepMany(120);
+    expect(h.loop.renderDeltaSeconds).toBe(0);
+    expect(h.loop.simulationSeconds).toBeCloseTo(1 + 9 / 120);
+  });
   for (const displayHz of [60, 144]) {
     for (const timeScale of [0.05, 0.5, 1, 2]) {
       it(`runs ${120 * timeScale} steps per real second at ${displayHz} display Hz / ${timeScale}x`, () => {
