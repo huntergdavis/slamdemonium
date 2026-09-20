@@ -29,12 +29,10 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 
 
-- [ ] T12 | techwriter | `docs/SCRIPTED_INPUT.md`: record, replay, hand-author, assertions, lap timing, and why recordings must start from a fresh respawn. | docs/scripted-input
 
 - [ ] WP13 | developer 1 | **Allocation-free hot path** (design 3 requirement, found by research in WP9a). Per-step churn measured: `Vehicle.tires` ~606 KB, suspension ~279 KB, Jolt `rayCast` ~475 KB, three.js shader-parameter paths ~2.7 MB (`WebGLPrograms.getParameters`, `getProgramCacheKey` arrays/joins, matrix paths). Preallocate/reuse in preStep, postStep and render; add a heap-growth regression test. Note: research showed GC is NOT the dominant p99 tail, so this is a correctness fix against the stated requirement, not a promised speedup. | dev1/wp13-no-alloc
 
 
-- [ ] R5 | research | Honest end-of-slice assessment against design section 3: every acceptance criterion marked MET / UNVERIFIED / NOT MET with evidence, including the human-judged ones pending CTO playtest. | research/slice-review
 
 - [ ] WP15 | designer | Reachability guard: `npm run check:reachable` fails when a module under `src/` is unreachable from `main.ts`. Understands dynamic imports; allowlist requires a one-line reason. Prevents the WP14 class of bug. | design/reachability-guard
 
@@ -82,3 +80,5 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10). (PR #40, G4 partial)
 - [x] WP8 | designer | HUD, telemetry graphs, CSV recorder (12). Gate G4. (PR #44, G4)
 - [x] WP9b | developer 2 | Design 13.2 integration tests expressed as scripts: accel, brake distance (~77 m ±15%), constant-steer circle, handbrake turn, plus determinism/soak/energy invariants. | dev2/wp9b-integration (PR #46)
+- [x] T12 | techwriter | `docs/SCRIPTED_INPUT.md`: record, replay, hand-author, assertions, lap timing, and why recordings must start from a fresh respawn. | docs/scripted-input (PR #47)
+- [x] R5 | research | Honest end-of-slice assessment against design section 3: every acceptance criterion marked MET / UNVERIFIED / NOT MET with evidence, including the human-judged ones pending CTO playtest. | research/slice-review (PR #45)
