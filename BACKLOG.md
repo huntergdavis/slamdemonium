@@ -35,7 +35,6 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 - [ ] O5 | devops | Cross-browser evidence for design 3 criterion 1: Firefox + WebKit smoke (boot, base path, WASM, keyboard driving) in CI. Full suite stays Chromium. Advise on the broadband cold-load measurement. | devops/cross-browser
 
-- [ ] WP16 | developer 2 | **Pause menu (CTO request).** Escape opens pause menu; must also work from controller. Resume / Restart / Options / Controls. Uses existing loop pause and the merged UI kit. Keyboard + gamepad navigable. Coordinate binding with developer 1 (design 11.2 assigns Start to Options). | dev2/wp16-pause-menu
 
 ## Later (phase 3)
 
@@ -86,3 +85,4 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [x] WP14 | developer 1 | **URGENT: mount the UI.** `main.ts` mounts only carVisual and speedCues. OptionsPanel, HUD and ScriptController are merged but NOT wired, so the live site is a driving demo, not a tuning lab: O does nothing, no HUD, no F9, no replay. Found by research in R5 audit. Verify in a built browser run. | dev1/wp14-mounts (PR #50)
 - [x] WP15 | designer | Reachability guard: `npm run check:reachable` fails when a module under `src/` is unreachable from `main.ts`. Understands dynamic imports; allowlist requires a one-line reason. Prevents the WP14 class of bug. | design/reachability-guard (PR #51)
 - [x] WP13 | developer 1 | **Allocation-free hot path** (design 3 requirement, found by research in WP9a). Per-step churn measured: `Vehicle.tires` ~606 KB, suspension ~279 KB, Jolt `rayCast` ~475 KB, three.js shader-parameter paths ~2.7 MB (`WebGLPrograms.getParameters`, `getProgramCacheKey` arrays/joins, matrix paths). Preallocate/reuse in preStep, postStep and render; add a heap-growth regression test. Note: research showed GC is NOT the dominant p99 tail, so this is a correctness fix against the stated requirement, not a promised speedup. | dev1/wp13-no-alloc (PR #54)
+- [x] WP16 | developer 2 | **Pause menu (CTO request).** Escape opens pause menu; must also work from controller. Resume / Restart / Options / Controls. Uses existing loop pause and the merged UI kit. Keyboard + gamepad navigable. Coordinate binding with developer 1 (design 11.2 assigns Start to Options). | dev2/wp16-pause-menu (PR #56)
