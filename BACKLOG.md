@@ -6,7 +6,7 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 ## Now (phase 1: unblock everything)
 
-- [ ] WP0 | developer 1 | Scaffold and CI: Vite + TS strict, Vitest, Playwright, lint/format, GitHub Actions, `docs/DECISIONS.md`, `window.__game` stub, empty three.js scene renders. Small PR, merge fast. | dev1/wp0-scaffold
+- [ ] WP0 | developer 1 | Scaffold: Vite + TS strict, Vitest, Playwright, lint/format (CI is O1), `docs/DECISIONS.md`, `window.__game` stub, empty three.js scene renders. Small PR, merge fast. | dev1/wp0-scaffold
 - [ ] WP1 | developer 1 | Day-1 Jolt spike (design 4.2 a-f) with go/no-go in DECISIONS.md, then `IPhysicsWorld` adapter + Jolt impl, fixed-step loop with interpolation and timeScale, loop unit tests. Gate G0. | dev1/wp1-physics-loop
 - [ ] WP2 | developer 2 | Tuning schema (all 69 rows of 7.2), typed store with change events, presets (7.3), JSON import/export, URL-hash share, validation, schema tests. | dev2/wp2-tuning
 - [ ] WP4 | developer 2 | Input: keyboard, gamepad, mapper, per-step sampling, latency probe (11). | dev2/wp4-input
@@ -15,6 +15,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] R3 | research | "Feels fast" and crash-happy arcade vibe references (10.2, section 1). `docs/research/speed-and-vibe.md` | research/vibe
 - [ ] D1 | designer | Visual direction doc: palette, car box look (chevron nose, rear light strip), track markings, curbs, posts, fog; HUD and Options panel layout mockups. `docs/design/` | design/direction
 - [ ] D2 | designer | Procedural asphalt generator prototype (9.3): standalone canvas/TS that produces the tiled 1024 noise texture; ready to drop into `src/world/materials.ts`. | design/asphalt
+- [ ] O1 | devops | GitHub Actions CI on PRs and main: lint, test, build, e2e (Playwright with browsers cached). Owns .github/. | devops/ci
+- [ ] O2 | devops | GitHub Pages deploy of `dist/` from main to hunterdavis.com/slamdemonium/ (Vite base path via VITE_BASE_PATH), enable Pages via gh api, branch protection on main requiring CI. | devops/pages
 - [ ] T1 | techwriter | README rewrite for Slamdemonium Racing: what it is (driving-feel lab), run instructions (fill in after WP0), controls table (11.1), team + workflow. Leave `docs/DECISIONS.md` to developer 1. | docs/readme
 - [ ] T2 | techwriter | `docs/TUNING_PLAYBOOK.md` from design 7.4, kept in sync. | docs/playbook
 

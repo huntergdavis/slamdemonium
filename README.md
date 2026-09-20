@@ -13,6 +13,7 @@ A game build, orchestrated by a team of agents.
 | Designer | Codex | `slamdemonium-for-designer/` |
 | Technical writer | Claude | `slamdemonium-for-techwriter/` |
 | Research / SME | Codex | `slamdemonium-for-research/` |
+| DevOps | Codex | `slamdemonium-for-devops/` |
 
 ## Workflow
 
