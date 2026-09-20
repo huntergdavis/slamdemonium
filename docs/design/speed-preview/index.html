@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>Speed cue preview</title>
+    <style>
+      html,
+      body,
+      #app {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+      #app {
+        position: relative;
+      }
+      body {
+        background: #b8c7cc;
+        color: #f2f6f8;
+        font: 14px system-ui;
+      }
+      nav {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 20;
+        padding: 12px;
+        border-radius: 8px;
+        background: #121a23f0;
+        max-width: calc(100vw - 60px);
+      }
+      label {
+        display: block;
+        margin: 8px 0;
+      }
+      p {
+        font-size: 12px;
+        color: #acbbc7;
+        margin: 5px 0;
+      }
+      button {
+        background: #253341;
+        color: inherit;
+        font: inherit;
+        padding: 6px;
+        border: 1px solid #acbbc7;
+        border-radius: 4px;
+      }
+      :focus-visible {
+        outline: 2px solid #6fe4ff;
+      }
+      output {
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <nav aria-label="Preview controls">
+      <strong>D5 · speed cues on the existing track</strong>
+      <p>Synthetic circle drive · fixed FOV · no camera shake or roll</p>
+      <label
+        >Speed
+        <input id="speed" type="range" min="0" max="100" value="60" /><output
+          id="speed-value"
+          >60 m/s</output
+        ></label
+      >
+      <label><input id="boost" type="checkbox" /> Boost envelope 1</label>
+      <label
+        ><input id="animate" type="checkbox" /> Move along the circle</label
+      >
+      <label><input id="fog" type="checkbox" checked /> Existing WP3 fog</label>
+      <button id="off">Disable both extras</button>
+      <button id="defaults">Restore strengths</button>
+      <p>Options → Camera: speed lines / vignette strengths.</p>
+      <p>Fog, posts, paint and asphalt are the original WP3 objects.</p>
+      <p id="status">Preparing track…</p>
+    </nav>
+    <div id="app"></div>
+    <script type="module" src="preview.js"></script>
+  </body>
+</html>
