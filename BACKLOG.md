@@ -12,6 +12,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 
 
 
+- [ ] D3 | designer | UI kit: CSS custom-property palette + component styles for Options panel and HUD, plus a static demo page under `docs/design/ui-kit/`. Feeds WP7 and WP8. | design/ui-kit
+
 ## Next (phase 2, after G0/G1)
 
 - [ ] WP3 | developer 2 | World: ring, infield, barriers, markings, posts, curbs, skidpad, fog, lights, kill plane (9). Uses designer's asphalt generator.
