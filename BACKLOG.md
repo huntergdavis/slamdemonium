@@ -22,6 +22,8 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 - [ ] WP5 | developer 1 | Vehicle model 5a/5b/5c (6) + unit and integration tests (13.1, 13.2). Gates G1, G3.
 - [ ] WP7 | developer 2 | Options UI (8). Gate G2.
 
+- [ ] WP10 | developer 2 | Move the three input e2e behaviours onto the BUILT bundle via a `testFixture.ts` gated behind `VITE_TEST_API=1` (developer 2's design), removing the dev-server-only input project added in WP1. Closes the built-input coverage gap documented in PR #21. | dev2/wp10-input-fixture
+
 ## Later (phase 3)
 
 - [ ] WP6 | developer 1 | Rendering, camera rig, speed cues, skid marks, dynamic resolution (10).
