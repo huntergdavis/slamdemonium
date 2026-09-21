@@ -16,7 +16,7 @@ Caveat per [slice review](docs/research/slice-review.md): experimental, Chrome
 verified; human feel and reference-hardware checks remain open.
 
 ### v0.2 — Console feel and controller
-- [ ] WP18 | developer 2 | Console-style pause menu: full viewfield, dimmed game, large unambiguous selection, keyboard + pad, genuine pause with no time jump. | dev2/wp18-console-pause
+- [x] WP18 (PR #62) | developer 2 | Console-style pause menu: full viewfield, dimmed game, large unambiguous selection, keyboard + pad, genuine pause with no time jump. | dev2/wp18-console-pause
 - [ ] WP19 | developer 2 + designer | First-class controller: every action on the pad, Options fully adjustable by pad, live glyph prompts, haptics with a zeroable intensity, hot-plug. | dev2/wp19-controller
 
 ### v0.3 — It makes noise
