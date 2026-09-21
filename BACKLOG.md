@@ -9,7 +9,9 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 Each phase ships as its own release. A release is a git tag, a GitHub release with
 notes, and a deployed build whose version is visible in game.
 
-### v0.1 — Driving-feel laboratory + console pause menu (CUTTING NOW)
+### v0.1.0 — Driving-feel laboratory + console pause menu — SHIPPED 2026-09-21
+Tag `v0.1.0` at `ada5b39`. Production: https://hunterdavis.com/slamdemonium/
+Main preview: https://hunterdavis.com/slamdemonium/main/ (marked UNRELEASED)
 The whole vertical slice: physics, track, car, camera, 71 live tuning sliders,
 HUD and telemetry, scripted input, presets, persistence, share links, and the
 full-viewfield console pause menu (WP18).
@@ -37,7 +39,7 @@ verified; human feel and reference-hardware checks remain open.
 - [ ] F4 | unassigned | Maps + in-game editor. HIGHEST ARCHITECTURAL RISK, do last. Versioned `TrackDefinition` with ONE compiler feeding render/collision/lap; quaternion shape descriptors and scoped body removal in the physics adapter; lap timing that does not assume a circle. Do NOT fork a second world builder.
 
 ## Release mechanism
-- [ ] O7 | devops | Release process: semver tags, GitHub release with generated notes, version + commit visible in game and in the bundle, and a documented one-command cut. | devops/releases
+- [x] O7 (PR #64) | devops | Release process: semver tags, GitHub release with generated notes, version + commit visible in game and in the bundle, and a documented one-command cut. | devops/releases
 
 ## Unscheduled
 - [ ] O5 | devops | Cross-browser evidence (Firefox + WebKit smoke). Deferred by the CTO after Orion worked well.
