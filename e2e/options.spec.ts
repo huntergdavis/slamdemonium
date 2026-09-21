@@ -34,6 +34,27 @@ test('schema controls update in place, preserve typed precision, validate, reset
   await expect(page.locator('.sl-options__groups .sl-field')).toHaveCount(
     PARAM_DEFS.length,
   );
+  // Modules can be reachable while a new schema group is absent from the panel.
+  // Derive both levels from the schema so future audio/music/map rows cannot hide.
+  const renderedGroups = await page
+    .locator('.sl-options__groups > .sl-group[data-group]')
+    .evaluateAll((groups) =>
+      groups.map((group) => ({
+        name: group.getAttribute('data-group'),
+        keys: [...group.querySelectorAll('.sl-field')].map((field) =>
+          field.getAttribute('data-key'),
+        ),
+      })),
+    );
+  expect(renderedGroups.map((group) => group.name).sort()).toEqual(
+    [...new Set(PARAM_DEFS.map((definition) => definition.group))].sort(),
+  );
+  for (const definition of PARAM_DEFS)
+    expect(
+      renderedGroups.find((group) => group.name === definition.group)?.keys,
+      definition.key + ' must be reachable in ' + definition.group,
+    ).toContain(definition.key);
+
   expect(
     await page
       .locator('[id]')

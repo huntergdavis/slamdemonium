@@ -48,59 +48,90 @@ test('controller-only play visibly explains locked sound; only a real click or k
     if (/\.ogg(?:\?|$)/.test(response.url()) && response.ok())
       decodedFiles.add(response.url());
   });
-  await page.goto('./');
-  await page.waitForFunction(() => window.__game?.ready);
-  const prompt = page.locator('.sl-audio-unlock');
-  await expect(prompt).toBeVisible();
-  await expect(prompt).toContainText('Enable sound');
-  await expect(prompt).toContainText('Click or press a key');
-  await expect
-    .poll(async () => (await state(page)).output.status)
-    .toBe('locked');
-  expect(await rms(page)).toBe(0);
-  await page.evaluate(() => window.__controllerPad.hold([4]));
-  await expect(prompt).toBeVisible();
-  await expect(page.locator('.sl-controller-legend__item')).toHaveCount(8);
-  const fit = await page
-    .locator('.sl-controller-overlay')
-    .evaluate((overlay) => {
-      const prompt = overlay
-        .querySelector('.sl-audio-unlock')!
-        .getBoundingClientRect();
-      const items = [
-        ...overlay.querySelectorAll('.sl-controller-legend__item'),
-      ].map((item) => item.getBoundingClientRect());
-      return {
-        promptTop: prompt.top,
-        promptBottom: prompt.bottom,
-        firstTop: Math.min(...items.map((item) => item.top)),
-        lastBottom: Math.max(...items.map((item) => item.bottom)),
-        height: innerHeight,
-      };
+  // Playwright page.evaluate/waitForFunction set CDP userGesture:true. That
+  // silently activates the page before asynchronous boot reads sticky activation.
+  // Keep this entire pre-unlock journey genuinely unactivated, including polling.
+  const cdp = await page.context().newCDPSession(page);
+  const read = async <T>(fn: () => T | Promise<T>): Promise<T> => {
+    const result = await cdp.send('Runtime.evaluate', {
+      expression: '(' + fn.toString() + ')()',
+      awaitPromise: true,
+      returnByValue: true,
+      userGesture: false,
     });
+    if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
+    return result.result.value as T;
+  };
+  await page.goto('./');
+  await expect
+    .poll(() => read(() => window.__game?.ready), { timeout: 30_000 })
+    .toBe(true);
+  const locked = await read(() => {
+    const prompt = document.querySelector<HTMLElement>('.sl-audio-unlock')!;
+    const rect = prompt.getBoundingClientRect();
+    return {
+      visible: rect.width > 0 && rect.height > 0 && !prompt.hidden,
+      text: prompt.textContent,
+      status: (window.__game.getTelemetry().audio as AudioSnapshot).output
+        .status,
+      rms: window.__audioProbe?.rms() ?? 0,
+    };
+  });
+  expect(locked.visible).toBe(true);
+  expect(locked.text).toContain('Enable sound');
+  expect(locked.text).toContain('Click or press a key');
+  expect(locked.status).toBe('locked');
+  expect(locked.rms).toBe(0);
+  await read(() => window.__controllerPad.hold([4]));
+  const fit = await read(() => {
+    const overlay = document.querySelector('.sl-controller-overlay')!;
+    const prompt = overlay
+      .querySelector('.sl-audio-unlock')!
+      .getBoundingClientRect();
+    const items = [
+      ...overlay.querySelectorAll('.sl-controller-legend__item'),
+    ].map((item) => item.getBoundingClientRect());
+    return {
+      promptTop: prompt.top,
+      promptBottom: prompt.bottom,
+      promptHeight: prompt.height,
+      firstTop: Math.min(...items.map((item) => item.top)),
+      lastBottom: Math.max(...items.map((item) => item.bottom)),
+      count: items.length,
+      height: innerHeight,
+    };
+  });
+  expect(fit.count).toBe(8);
+  expect(fit.promptHeight).toBeGreaterThan(0);
   expect(fit.promptTop).toBeGreaterThanOrEqual(0);
   expect(fit.promptBottom).toBeLessThanOrEqual(fit.firstTop);
   expect(fit.lastBottom).toBeLessThan(fit.height / 2);
-  await tap(page, [9]);
-  await tap(page, [1]); // Opening/selecting menu via pad is not activation.
-  expect((await state(page)).output.status).toBe('locked');
-  const beforeDrive = await page.evaluate(
+  await read(() => window.__controllerPad.tap([9]));
+  await read(() => window.__controllerPad.tap([1]));
+  expect(
+    await read(
+      () => (window.__game.getTelemetry().audio as AudioSnapshot).output.status,
+    ),
+  ).toBe('locked');
+  const beforeDrive = await read(
     () => window.__game.getTelemetry().totalSteps as number,
   );
-  await page.evaluate(() => window.__controllerPad.hold([7]));
+  await read(() => window.__controllerPad.hold([7]));
   await expect
-    .poll(() => page.evaluate(() => window.__game.getTelemetry().totalSteps))
+    .poll(() => read(() => window.__game.getTelemetry().totalSteps))
     .toBeGreaterThan(beforeDrive + 10);
-  await page.evaluate(() => window.__controllerPad.hold([]));
+  await read(() => window.__controllerPad.hold([]));
+  expect(await read(() => navigator.userActivation.hasBeenActive)).toBe(false);
   expect(audioRequests).toEqual([]); // Async eager loading still steals boot bandwidth.
   await page.getByRole('button', { name: /Enable sound/ }).click();
   await expect
     .poll(async () => (await state(page)).output.status)
     .toBe('ready');
-  await expect(prompt).toBeHidden();
+  await expect(page.locator('.sl-audio-unlock')).toBeHidden();
   await expect.poll(() => rms(page)).toBeGreaterThan(0.0001);
   expect(decodedFiles.size).toBe(7);
   expect((await state(page)).output.peakVoices).toBeLessThanOrEqual(16);
+  await cdp.detach();
 });
 
 test('pause fades real output to silence, resumes continuous sound, and zero SFX volume stays silent', async ({

@@ -4,7 +4,7 @@ import { ParamControl, node } from './paramControl';
 import { TireCurvePlot, type TirePlotTelemetry } from './tireCurvePlot';
 import { TuningSession } from './tuningSession';
 
-const GROUPS: readonly ParamGroup[] = [
+const GROUP_ORDER: readonly ParamGroup[] = [
   'World',
   'Chassis',
   'Engine',
@@ -16,6 +16,10 @@ const GROUPS: readonly ParamGroup[] = [
   'Collision',
   'Camera',
   'Input',
+];
+// Preserve the established navigation order, then include every new schema group.
+const GROUPS = [
+  ...new Set([...GROUP_ORDER, ...PARAM_DEFS.map((def) => def.group)]),
 ];
 interface GroupView {
   element: HTMLDetailsElement;
