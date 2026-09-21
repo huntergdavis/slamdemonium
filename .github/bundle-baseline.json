@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reason": "WP18 CSS-only update from 1676bda9301a8be239e7af68b997d66949dcf8fd: the CTO-requested, design-approved full-viewport pause menu, Controls and Options presentation adds 4,015 raw / 728 gzip CSS bytes. The PM approved this intentional player-facing growth. The complete feature adds 4,921 raw / 930 gzip bytes; the remaining 906 raw / 202 gzip bytes still count against the original budget. Only the CSS asset and its contribution to aggregate totals are refreshed; all other assets, the original O6 source revision and every allowance remain unchanged. The original O6 baseline records the design section 16 physics WASM risk before models, audio, radio and larger maps.",
+  "reason": "WP19 CSS-only update from 803392a67e6acfa377385598d6faaad2cd5fb606: PM-approved controller and Options presentation adds 3,957 raw / 711 gzip CSS bytes. The initial 3,200 raw-byte estimate grew by 757 bytes for the narrow seven-command legend and Options-launcher fit, direct-header scrolling that prevents a zero-height parameter body at 320x480, and root hidden semantics. The final canonical production build records 22,669 raw / 5,423 gzip CSS bytes. Only that CSS entry and its contribution to aggregate totals are refreshed; every allowance, every non-CSS asset and the original O6 source revision remain unchanged. Other accumulated payload growth still counts against the reviewed baseline; this is an approved feature-size update, not the separate post-release allowance calibration. The original O6 baseline records the design section 16 physics WASM risk.",
   "allowance": {
     "totalPercent": 5,
     "assetPercent": 10,
@@ -37,10 +37,10 @@
         "sha256": "3c95f6d625564b67f2369c9e6a9324e58d83ee43447b7bf68bd9a5a790839946"
       },
       "generated:assets/index.css": {
-        "file": "assets/index-BN4C0q5a.css",
-        "rawBytes": 18712,
-        "gzipBytes": 4712,
-        "sha256": "538e55950a218cad4bb19e4e358ca5277793ecd5b1ca76ce1f06b182e34d1c39"
+        "file": "assets/index-Cc103fAj.css",
+        "rawBytes": 22669,
+        "gzipBytes": 5423,
+        "sha256": "01f9acbe0704477c68218f20c989d8c7314825662d6132a44b640c55a7ee8355"
       },
       "source:index.html": {
         "file": "assets/index-DEw5cg8l.js",
@@ -68,8 +68,8 @@
       }
     },
     "total": {
-      "rawBytes": 3686217,
-      "gzipBytes": 1070346
+      "rawBytes": 3690174,
+      "gzipBytes": 1071057
     }
   }
 }

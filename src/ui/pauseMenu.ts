@@ -31,11 +31,11 @@ const MAPPINGS: readonly (readonly [string, string, string])[] = [
   ['Restart / respawn', 'R', 'Y / top face button'],
   ['Pause menu', 'Escape', 'Start / Menu'],
   ['Pause toggle', 'P (press again to clear)', '—'],
-  ['Options', 'O / gear', 'Pause menu → Options'],
-  ['HUD / debug gizmos', 'H / G', '—'],
-  ['Camera / slow motion', 'C / T', '—'],
-  ['A/B tune swap', 'Tab while driving', 'Options → A / B'],
-  ['Latency probe / telemetry CSV', 'L / F9', '—'],
+  ['Options', 'O / gear', 'View / Back, or Pause menu → Options'],
+  ['HUD / debug gizmos', 'H / G', 'LB + D-pad Up / LB + X'],
+  ['Camera / slow motion', 'C / T', 'LB + D-pad Right / Down'],
+  ['A/B tune swap', 'Tab while driving', 'LB + D-pad Left; Options A / B'],
+  ['Latency probe / telemetry CSV', 'L / F9', 'LB + Y / LB + A'],
 ];
 
 export class PauseMenu {
@@ -47,6 +47,7 @@ export class PauseMenu {
   private readonly message: Text;
   private selected: HTMLElement | null = null;
   private opened = false;
+  private externalOptionsNavigation = false;
   private view: 'menu' | 'controls' | 'options' = 'menu';
   private optionsParent: Node | null = null;
   private optionsNext: Node | null = null;
@@ -72,6 +73,13 @@ export class PauseMenu {
     this.message = doc.createTextNode('');
     status.append(this.message);
     this.resume = this.button('Resume', () => this.setOpen(false));
+    const navigationHint = node(
+      doc,
+      'p',
+      'sl-caption',
+      '↑ / ↓ or D-pad / stick: move · Enter / A: select · Escape / Start: resume · B: back',
+    );
+    navigationHint.dataset.controllerReplaced = '';
     this.menu.append(
       title,
       status,
@@ -87,12 +95,7 @@ export class PauseMenu {
       }),
       this.button('Options', () => this.showOptions()),
       this.button('Controls', () => this.showView('controls')),
-      node(
-        doc,
-        'p',
-        'sl-caption',
-        '↑ / ↓ or D-pad / stick: move · Enter / A: select · Escape / Start: resume · B: back',
-      ),
+      navigationHint,
     );
     if (deps.buildLabel) {
       this.menu.append(
@@ -131,7 +134,7 @@ export class PauseMenu {
         doc,
         'p',
         'sl-caption',
-        'In menus: D-pad / left stick moves focus, A selects, B goes back. In Options: left / right adjusts sliders, numbers and presets. Text entry and file pickers use the keyboard or browser dialog.',
+        'In menus: D-pad / left stick moves focus, A selects, B goes back. In Options: left / right adjusts sliders, numbers and presets. RB makes larger adjustments; LT / RT changes section; X resets a parameter; Y finds search. A opens controller text entry for search and preset names. File pickers remain browser-owned.',
       ),
       node(
         doc,
@@ -144,6 +147,18 @@ export class PauseMenu {
     this.element.addEventListener('focusin', this.focusin);
     this.element.addEventListener('keydown', this.keydown);
     this.element.addEventListener('cancel', this.cancel);
+  }
+
+  /** ControllerSupport owns Options navigation in BOTH drawer and modal views. */
+  attachOptionsNavigation(): () => void {
+    this.externalOptionsNavigation = true;
+    return () => {
+      this.externalOptionsNavigation = false;
+    };
+  }
+
+  navigateBack(): void {
+    this.goBack();
   }
 
   get isOpen(): boolean {
@@ -186,6 +201,7 @@ export class PauseMenu {
     if (!this.opened) return;
     if (this.view === 'options' && !this.deps.options.isOpen)
       this.showView('menu');
+    if (this.view === 'options' && this.externalOptionsNavigation) return;
     this.ensureSelection();
     const pad = this.deps.readGamepad();
     if (pad.index !== this.padIndex || !pad.connected) {
@@ -268,6 +284,7 @@ export class PauseMenu {
   }
 
   private readonly focusin = (event: FocusEvent): void => {
+    if (this.view === 'options' && this.externalOptionsNavigation) return;
     const target = event.target;
     const root = this.navigationRoot();
     if (
@@ -320,6 +337,10 @@ export class PauseMenu {
     if (this.view === 'options' && view !== 'options') {
       this.deps.options.setOpen(false);
       this.restoreOptions();
+    }
+    if (view === 'options' && this.externalOptionsNavigation) {
+      this.selected?.removeAttribute('data-selected');
+      this.selected = null;
     }
     this.view = view;
     this.element.dataset.view = view;

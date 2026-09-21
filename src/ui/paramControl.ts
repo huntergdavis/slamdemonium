@@ -106,6 +106,35 @@ export class ParamControl {
     );
     host.append(this.element);
 
+    this.element.addEventListener('sl-tune-step', (raw) => {
+      const event = raw as CustomEvent<{ direction: number; coarse: boolean }>;
+      if (event.target !== this.range && event.target !== this.number) return;
+      event.preventDefault();
+      const direction = Math.sign(event.detail.direction);
+      const current = session.store.get(definition.key);
+      let value: number;
+      if (definition.discrete) {
+        const index = definition.discrete.indexOf(current);
+        value =
+          definition.discrete[
+            Math.max(
+              0,
+              Math.min(definition.discrete.length - 1, index + direction),
+            )
+          ] ?? current;
+      } else {
+        value = Number(
+          (
+            current +
+            direction * definition.step * (event.detail.coarse ? 10 : 1)
+          ).toPrecision(12),
+        );
+      }
+      this.setError('');
+      session.store.set(definition.key, value);
+      this.sync();
+    });
+
     this.number.addEventListener('input', () => {
       const value = this.number.valueAsNumber;
       if (this.number.value === '' || !Number.isFinite(value)) {

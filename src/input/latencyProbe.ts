@@ -1,5 +1,10 @@
 import { PROBE_QUEUE_CAPACITY, type KeyboardState } from './keyboard';
 
+interface ProbeSource {
+  readonly probeTimes: Float64Array;
+  readonly probeSequence: number;
+}
+
 export const LATENCY_SAMPLE_COUNT = 100;
 export interface LatencyStats {
   count: number;
@@ -26,6 +31,14 @@ export class LatencyProbe {
   private sampledSequence = 0;
   private presentedSequence = 0;
   private writeIndex = 0;
+  private polled: ProbeSource | undefined;
+  private sampledPolled = 0;
+  private presentedPolled = 0;
+
+  /** Poll-to-render proxy for controllers; does not claim device-event latency. */
+  attachPolledSource(source: ProbeSource): void {
+    this.polled = source;
+  }
 
   constructor(
     private readonly keyboard: KeyboardState,
@@ -50,42 +63,59 @@ export class LatencyProbe {
 
   get eventTimestamp(): number {
     const sequence = this.keyboard.probeSequence;
-    return sequence === 0
-      ? -Infinity
-      : (this.keyboard.probeTimes[(sequence - 1) % PROBE_QUEUE_CAPACITY] ??
+    const keyboard =
+      sequence === 0
+        ? -Infinity
+        : (this.keyboard.probeTimes[(sequence - 1) % PROBE_QUEUE_CAPACITY] ??
           -Infinity);
+    const polled = this.polled?.probeSequence
+      ? (this.polled.probeTimes[
+          (this.polled.probeSequence - 1) % PROBE_QUEUE_CAPACITY
+        ] ?? -Infinity)
+      : -Infinity;
+    return Math.max(keyboard, polled);
   }
 
   sampleForStep(): void {
     this.sampledSequence = this.keyboard.probeSequence;
+    this.sampledPolled = this.polled?.probeSequence ?? 0;
   }
 
   framePresented(timestamp: number): void {
     if (!Number.isFinite(timestamp)) return;
-    const earliestAvailable = Math.max(
-      0,
-      this.keyboard.probeSequence - PROBE_QUEUE_CAPACITY,
-    );
-    if (this.presentedSequence < earliestAvailable) {
-      this.stats.droppedEvents += earliestAvailable - this.presentedSequence;
-      this.presentedSequence = earliestAvailable;
-    }
     let changed = false;
-    while (this.presentedSequence < this.sampledSequence) {
-      const eventTimestamp =
-        this.keyboard.probeTimes[this.presentedSequence % PROBE_QUEUE_CAPACITY];
-      // A rAF timestamp may precede an event received in that frame. Keep it for the next one.
-      if (eventTimestamp === undefined || eventTimestamp > timestamp) break;
-      this.presentedSequence++;
-      if (!Number.isFinite(eventTimestamp) || eventTimestamp < 0) continue;
-      const delta = timestamp - eventTimestamp;
-      this.samples[this.writeIndex] = delta;
-      this.writeIndex = (this.writeIndex + 1) % LATENCY_SAMPLE_COUNT;
-      this.stats.count = Math.min(LATENCY_SAMPLE_COUNT, this.stats.count + 1);
-      this.stats.totalSamples++;
-      this.stats.lastMs = delta;
-      this.stats.lastFrameTimestamp = timestamp;
-      changed = true;
+    for (let sourceIndex = 0; sourceIndex < 2; sourceIndex++) {
+      const source = sourceIndex === 0 ? this.keyboard : this.polled;
+      if (!source) continue;
+      const sampled =
+        sourceIndex === 0 ? this.sampledSequence : this.sampledPolled;
+      let presented =
+        sourceIndex === 0 ? this.presentedSequence : this.presentedPolled;
+      const earliestAvailable = Math.max(
+        0,
+        source.probeSequence - PROBE_QUEUE_CAPACITY,
+      );
+      if (presented < earliestAvailable) {
+        this.stats.droppedEvents += earliestAvailable - presented;
+        presented = earliestAvailable;
+      }
+      while (presented < sampled) {
+        const eventTimestamp =
+          source.probeTimes[presented % PROBE_QUEUE_CAPACITY];
+        if (eventTimestamp === undefined || eventTimestamp > timestamp) break;
+        presented++;
+        if (!Number.isFinite(eventTimestamp) || eventTimestamp < 0) continue;
+        const delta = timestamp - eventTimestamp;
+        this.samples[this.writeIndex] = delta;
+        this.writeIndex = (this.writeIndex + 1) % LATENCY_SAMPLE_COUNT;
+        this.stats.count = Math.min(LATENCY_SAMPLE_COUNT, this.stats.count + 1);
+        this.stats.totalSamples++;
+        this.stats.lastMs = delta;
+        this.stats.lastFrameTimestamp = timestamp;
+        changed = true;
+      }
+      if (sourceIndex === 0) this.presentedSequence = presented;
+      else this.presentedPolled = presented;
     }
     if (changed) this.updateStats();
   }

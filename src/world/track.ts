@@ -20,6 +20,7 @@ import type { TrackConfig } from './trackConfig';
 import { createTrackLayout } from './trackLayout';
 import type { TrackInstance } from './trackLayout';
 import type { WorldPoint } from './trackPhysics';
+import { createKerbFootprintQuery } from './kerbFootprint';
 export { DEFAULT_TRACK_CONFIG, resolveTrackConfig } from './trackConfig';
 export { installTrackColliders } from './trackPhysics';
 
@@ -38,6 +39,7 @@ export interface TrackSpawn {
 export function createTestTrack(scene: Scene, options: TrackOptions) {
   const config = resolveTrackConfig(options.config);
   const layout = createTrackLayout(config);
+  const kerbFootprint = createKerbFootprintQuery(layout.curbs);
   const materials = createTrackMaterials(
     config,
     options.maxAnisotropy,
@@ -176,6 +178,10 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
     rotation: Object.freeze({ x: 0, y: 0, z: 0, w: 1 }),
   });
   let disposed = false;
+  /** World X/Z metres; visual footprint only, independent of contact/grip. */
+  function isOnKerb(x: number, z: number): boolean {
+    return !disposed && kerbFootprint(x, z);
+  }
   /** Allocation-free; follow the interpolated car position once per render. */
   function updateLighting(position: Readonly<WorldPoint>): void {
     if (disposed) return;
@@ -197,6 +203,7 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
     root,
     config,
     spawn,
+    isOnKerb,
     barrierBoxes: layout.barrierBoxes,
     materials,
     updateLighting,

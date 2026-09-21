@@ -39,6 +39,10 @@ Wall friction/restitution default to 0.05/0.25. Supply current tuning values in 
 
 ## Spawn, kill plane and lifetime
 
+`track.isOnKerb(x, z): boolean` tests world X/Z coordinates in metres against the actual visual kerb-box layout. It ignores Y; callers decide whether a tire is grounded and whether haptics are enabled. It uses the configured widths, lengths, clearance and clipped seam blocks, not an ideal annulus. Edges are inclusive with a 1e-9 m roundoff tolerance. Non-finite inputs and disposed tracks return false. The query changes neither colliders nor surface grip.
+
+Angular candidate buckets and packed box transforms are allocated once during construction. Calls use scalar arithmetic and existing arrays only; they create no objects, arrays or vectors. As with the track colliders, keep the root/parent at identity and recreate the track to change geometry. `tests/kerb-footprint.test.ts` compares the result with Three.js box transforms for default/custom layouts, every corner, seam pieces and off-kerb points.
+
 The cached spawn is (130,0.86,0), identity quaternion, forward -Z: counter-clockwise from +X. `checkKillPlane` invokes the callback strictly below Y=-50 and returns whether it fired. The callback must zero linear/angular velocity via the adapter flag. Vehicle non-finite-state guards remain the vehicle owner's responsibility.
 
 `updateLighting(position)` updates the light and target without allocation. Shadow map is 2048 px with ±35 m bounds; the renderer must enable shadows. The world installs matching sky/fog and restores previous scene fog/background on disposal if another owner has not replaced them. Disposal is idempotent and releases instance resources, shared geometries, materials, asphalt texture and shadow map. Recreate outside the hot loop to change geometry config. Keep the root/parent at identity transform so geometry units and physics descriptors agree.

@@ -94,6 +94,7 @@ export class OptionsPanel {
     });
     const save = node(doc, 'button', 'sl-button', 'Save as…');
     save.type = 'button';
+    save.dataset.controllerText = 'preset';
     save.addEventListener('click', () => {
       const name = doc.defaultView?.prompt(
         'Name this tuning preset',
@@ -165,6 +166,9 @@ export class OptionsPanel {
       pauseLabel,
       search,
     );
+    header
+      .querySelector('p.sl-caption')
+      ?.setAttribute('data-controller-replaced', '');
     const body = node(doc, 'div', 'sl-options__body');
     this.element.append(header, body);
     this.groups = new OptionsGroups(
@@ -262,6 +266,10 @@ export class OptionsPanel {
     });
     doc.defaultView?.addEventListener('pagehide', this.flush);
     this.sync();
+  }
+
+  savePresetAs(name: string): void {
+    this.run(() => this.session.saveAs(name));
   }
 
   get isOpen(): boolean {

@@ -15,6 +15,7 @@ const GROUPS: readonly ParamGroup[] = [
   'Boost & Drift',
   'Collision',
   'Camera',
+  'Input',
 ];
 interface GroupView {
   element: HTMLDetailsElement;

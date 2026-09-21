@@ -27,7 +27,11 @@ export function moveFocus(root: HTMLElement, direction: number): void {
   controls[next]?.focus();
 }
 
-export function adjustFocused(root: HTMLElement, direction: number): void {
+export function adjustFocused(
+  root: HTMLElement,
+  direction: number,
+  coarse = false,
+): void {
   const active = root.ownerDocument.activeElement;
   if (!active || !root.contains(active)) return;
   const win = root.ownerDocument.defaultView!;
@@ -43,6 +47,17 @@ export function adjustFocused(root: HTMLElement, direction: number): void {
     active instanceof win.HTMLInputElement &&
     (active.type === 'range' || active.type === 'number')
   ) {
+    // ParamControl owns schema units, discrete lists and logarithmic mapping.
+    if (
+      !active.dispatchEvent(
+        new win.CustomEvent('sl-tune-step', {
+          bubbles: true,
+          cancelable: true,
+          detail: { direction, coarse },
+        }),
+      )
+    )
+      return;
     const step = Number(active.step) > 0 ? Number(active.step) : 1;
     const min = active.min === '' ? -Infinity : Number(active.min);
     const max = active.max === '' ? Infinity : Number(active.max);

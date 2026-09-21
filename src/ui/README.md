@@ -73,8 +73,8 @@ menu and suppresses gameplay commands such as pad Y respawn. Only the explicit
 Restart entry invokes the respawn callback. The existing loop pause transition
 resets its wall clock; elapsed menu time never becomes physics catch-up work.
 D-pad/left stick navigates, A selects, B returns, and left/right adjusts existing
-Options sliders/numbers/selects. Text entry and native file dialogs still use the
-keyboard/browser UI. A held stick repeats after 350 ms, then every 110 ms.
+Options sliders/numbers/selects. The mounted controller support adds scoped search
+and preset-name text entry; native file dialogs remain browser/OS-owned. A held stick repeats after 350 ms, then every 110 ms.
 
 The native dialog isolates focus. When Options is selected, the existing panel
 element is temporarily moved into that dialog's focus scope, retaining all its
@@ -112,3 +112,11 @@ exits before a later keypress toggles the menu. Ordinary headless CI verifies
 the Escape event is not canceled, the menu stays closed, and a subsequent
 keypress works after the real browser API exits the mode. CDP's page-level key
 injection does not itself invoke Chromium's browser-level exit gesture.
+
+## Controller support
+
+mountControllerSupport composes the shared Options navigator, device prompts and
+optional haptics. Its injection/lifecycle contract, approved mappings, text-entry
+scope and estimated-impact caveat are documented in
+[the input controller contract](../input/CONTROLLERS.md). Do not add another pad poll,
+command consumer, contact subscription or pause owner when mounting it.
