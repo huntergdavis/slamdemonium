@@ -5,7 +5,7 @@ import { DebouncedMassRebuild } from './core/massRebuild';
 import { FixedStepLoop } from './core/loop';
 import { PerformanceRecorder } from './core/performance';
 import { TransformHistory } from './core/transforms';
-import type { IPhysicsWorld } from './physics/adapter';
+import type { IPhysicsWorld, V3 } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
 import { createRenderer } from './render/renderer';
 import { CameraRig } from './render/cameraRig';
@@ -24,6 +24,7 @@ import type { ActionCounts } from './input/types';
 import { mountOptionsPanel } from './ui/optionsPanel';
 import { mountHud } from './ui/hud';
 import { mountPauseMenu } from './ui/pauseMenu';
+import { mountControllerSupport } from './ui/controllerSupport';
 import { LatencyProbeView } from './input/latencyProbe';
 import { Vehicle } from './vehicle/vehicle';
 import { VehicleVisualHistory } from './vehicle/visualState';
@@ -85,10 +86,6 @@ async function boot(): Promise<void> {
   resources.push(carVisual, skids, speedCues);
   const preparedScene = prepareScene(view.scene);
   resources.push(preparedScene);
-  physics.onContact((a, b, impulse) => {
-    if (a === vehicle.body || b === vehicle.body)
-      cameraRig.addImpact(impulse, vehicle.currentMass);
-  });
 
   const keyboard = new KeyboardInput(window);
   resources.push(keyboard);
@@ -192,6 +189,7 @@ async function boot(): Promise<void> {
         }
         skids.sample(vehicle.telemetry.wheels, loop.simulationSeconds + dt);
         hud.recordStep(vehicle.telemetry, dt, renderTelemetry);
+        controllerSupport.afterStep(dt);
         scripts.afterStep();
         if (respawnRequested) respawn();
       },
@@ -235,6 +233,7 @@ async function boot(): Promise<void> {
     visualHistory.reset();
     cameraRig.reset();
     skids.breakStrips();
+    controllerSupport.reset();
     loop.resetClock();
   }
   function requestRespawn(): void {
@@ -342,8 +341,34 @@ async function boot(): Promise<void> {
     },
   });
   scripts.noteRespawn(track.spawn, 0);
+  const controllerSupport = mountControllerSupport({
+    host: host!,
+    input,
+    tuning,
+    options,
+    pauseMenu,
+    readTelemetry: () => vehicle.telemetry,
+    readPaused: isPaused,
+    isOnKerb: track.isOnKerb,
+  });
+  // Release controller capture/navigation before disposing their UI owners.
   // Menu disposal restores the shared Options element before Options removes it.
-  resources.push(pauseMenu, options, hud, scripts);
+  resources.push(controllerSupport, pauseMenu, options, hud, scripts);
+  const impactNormal: V3 = { x: 0, y: 0, z: 0 };
+  // One subscriber serves camera and controller feedback. Jolt's normal separates
+  // body B; orient our reused record out of the other surface into the vehicle.
+  physics.onContact((a, b, impulse, _point, normal) => {
+    if (a !== vehicle.body && b !== vehicle.body) return;
+    const direction = a === vehicle.body ? -1 : 1;
+    impactNormal.x = normal.x * direction;
+    impactNormal.y = normal.y * direction;
+    impactNormal.z = normal.z * direction;
+    cameraRig.addImpact(impulse, vehicle.currentMass);
+    // Consume borrowed scalars synchronously. The haptic fallback uses pre-step
+    // velocity against a static obstacle: estimated approach speed, not a measured
+    // solved contact impulse. Never retain this normal or telemetry as a snapshot.
+    controllerSupport.onImpact(impulse, impactNormal, vehicle.currentMass);
+  });
   function dispatchActions(actions: Readonly<ActionCounts>): void {
     // Consume gameplay edges on menu transitions too; Y must not leak into the
     // opening or resume frame. Only the menu command acts on an owned batch.
@@ -552,6 +577,7 @@ async function boot(): Promise<void> {
       }
       loop.frame(nowMs);
       pauseMenu.update(nowMs);
+      controllerSupport.update(nowMs);
     } catch (error) {
       replayStopped = true;
       syncPause();
