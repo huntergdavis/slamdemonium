@@ -30,9 +30,10 @@ export interface AudioOutputState {
   error: string | null;
 }
 
-/** Six persistent layers reserve six voices; at most ten short effects can
- * coexist. Howler's inactive pool size is not an active-voice limit. */
-export const CONTINUOUS_VOICES = 6;
+/** Five persistent layers (procedural engine, three tyre profiles, boost
+ * sustain) reserve five voices; at most ten short effects can coexist.
+ * Howler's inactive pool size is not an active-voice limit. */
+export const CONTINUOUS_VOICES = 5;
 export const TRANSIENT_VOICES = 10;
 export const MAX_AUDIO_VOICES = CONTINUOUS_VOICES + TRANSIENT_VOICES;
 

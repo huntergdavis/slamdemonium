@@ -37,14 +37,6 @@ export function createAudioCredits(doc: Document): HTMLElement {
     'Slamdemonium resamples the three-second loop to mono 48 kHz and encodes it as Ogg Vorbis. Playback pitch and volume vary in game.',
   );
   entry(
-    'Racing car engine sound loops',
-    'domasx2',
-    'https://opengameart.org/content/racing-car-engine-sound-loops',
-    'CC0',
-    'https://creativecommons.org/publicdomain/zero/1.0/',
-    'Slamdemonium uses loop_0, resampled to mono 48 kHz and encoded as Ogg Vorbis. Engine pitch is synthetic, derived from speed and throttle.',
-  );
-  entry(
     'Impact Sounds',
     'Kenney',
     'https://kenney.nl/assets/impact-sounds',
