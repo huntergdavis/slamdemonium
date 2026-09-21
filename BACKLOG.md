@@ -9,14 +9,14 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 Each phase ships as its own release. A release is a git tag, a GitHub release with
 notes, and a deployed build whose version is visible in game.
 
-### v0.1 — Driving-feel laboratory (READY TO CUT)
+### v0.1 — Driving-feel laboratory + console pause menu (CUTTING NOW)
 The whole vertical slice: physics, track, car, camera, 71 live tuning sliders,
-HUD and telemetry, scripted input, presets, persistence and share links.
+HUD and telemetry, scripted input, presets, persistence, share links, and the
+full-viewfield console pause menu (WP18).
 Caveat per [slice review](docs/research/slice-review.md): experimental, Chrome
 verified; human feel and reference-hardware checks remain open.
 
-### v0.2 — Console feel and controller
-- [x] WP18 (PR #62) | developer 2 | Console-style pause menu: full viewfield, dimmed game, large unambiguous selection, keyboard + pad, genuine pause with no time jump. | dev2/wp18-console-pause
+### v0.2 — First-class controller
 - [ ] WP19 | developer 2 + designer | First-class controller: every action on the pad, Options fully adjustable by pad, live glyph prompts, haptics with a zeroable intensity, hot-plug. | dev2/wp19-controller
 
 ### v0.3 — It makes noise
