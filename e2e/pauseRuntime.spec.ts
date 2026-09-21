@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import handbrakeTurn from '../src/input/examples/handbrake-turn.json';
 
 test('mounted pause menu shares live pause, respawn and Options wiring', async ({
   page,
@@ -168,7 +169,6 @@ test('console menu blocks live driving and respawn, and can close during replay'
 
   // Replay drives the actual mapper; pause polling must still accept menu commands.
   // Keep it short in simulated time, with perf owning a temporary setup pause.
-  const script = await import('../src/input/examples/handbrake-turn.json');
   const slideAngle = await page.evaluate((source) => {
     const game = window.__game;
     game.scripts!.load(source, { tuning: 'apply' });
@@ -180,7 +180,7 @@ test('console menu blocks live driving and respawn, and can close during replay'
     )
       game.stepMany(1);
     return Number(game.getTelemetry().beta);
-  }, script.default);
+  }, handbrakeTurn);
   expect(Math.abs(slideAngle)).toBeGreaterThanOrEqual(0.1);
   await page.keyboard.press('Escape');
   await expect(menu).toBeVisible();
@@ -210,8 +210,8 @@ test('console menu blocks live driving and respawn, and can close during replay'
     window.__game.perf!.pauseSimulation(true);
     window.__game.stepMany(1000);
     return window.__game.scripts!.result();
-  }, script.default);
-  expect(interrupted.completedSteps).toBe(script.default.durationSteps);
+  }, handbrakeTurn);
+  expect(interrupted.completedSteps).toBe(handbrakeTurn.durationSteps);
   expect(interrupted.allFinite).toBe(true);
   expect(interrupted).toEqual(uninterrupted);
   expect(errors).toEqual([]);
