@@ -41,6 +41,26 @@ export interface AudioDirectorOptions {
 
 /** Physics hooks only copy/aggregate scalars into fixed storage. All audio API
  * work happens in update(), after simulation, or explicit user/lifecycle calls. */
+/** Audio-only virtual gearbox. Speeds (m/s) at which gears 1 to 4 shift up;
+ * fifth gear has no upshift and pins at the 2.8 note ceiling from about
+ * 42 m/s. First gear sweeps idle to the 2.7 shift note (about 6850 rpm) in
+ * 8 m/s, roughly half a second of this car's acceleration; each higher gear
+ * is 1.5 times longer, so an upshift lands near 4900 rpm. Downshifts happen
+ * 20 percent below the lower gear's upshift speed, which keeps a fresh
+ * downshift from immediately shifting back up. */
+const GEAR_UP_SPEEDS: readonly number[] = [8, 12, 18, 27];
+const GEAR_RATIO = 1.5;
+const FIRST_GEAR_SLOPE = 2.05 / 8;
+/** Throttle lifts the note by up to this much (about 1750 rpm) on its own,
+ * with a fast attack, so the engine revs the instant the pedal is pressed
+ * and before the car has moved. */
+const THROTTLE_NOTE = 0.6;
+const GEAR_DOWN_HYSTERESIS = 0.8;
+/** A shift cuts throttle for this long: an audible interruption, not a
+ * crossfade, which would read as a pitch wobble. */
+const SHIFT_CUT_SECONDS = 0.15;
+const SHIFT_COOLDOWN_SECONDS = 0.4;
+
 export class AudioDirector {
   private readonly mix: AudioMix = {
     engineIdle: 0,
@@ -65,6 +85,11 @@ export class AudioDirector {
   private speed = 0;
   private throttle = 0;
   private boost = 0;
+  /** Audio-only virtual gear index, 0-based. The drivetrain has one gear. */
+  private gear = 0;
+  private shiftCut = 0;
+  private shiftCooldown = 0;
+  private throttleNote = 0;
   private boostHeld = false;
   private boostAttack = false;
   private disposed = false;
@@ -224,14 +249,42 @@ export class AudioDirector {
       Math.min(Math.SQRT2, Math.sqrt(this.deps.tuning.get('timeScale'))),
     );
     mix.rate = approach(mix.rate, targetRate, dt, 0.1, 0.1);
-    // A synthetic speed/load note, not engine RPM: the vehicle has no gearbox.
-    // Boost spins the note up beyond the throttle ceiling and adds load, so
-    // nitrous reads as the engine working harder, not only a whoosh on top.
+    // A synthetic speed/load note, not engine RPM. The drivetrain has a
+    // single gear (design 6.7.1), so the note would climb once and pin; this
+    // virtual gearbox exists only here. Speed maps to the note within the
+    // current gear, the box shifts up past a speed threshold and down with
+    // hysteresis, and each shift cuts the throttle briefly so the note drops
+    // to the next gear's entry point and recovers. Nothing here feeds back
+    // into simulation, input or tuning.
+    this.shiftCut = Math.max(0, this.shiftCut - dt);
+    this.shiftCooldown = Math.max(0, this.shiftCooldown - dt);
+    if (this.shiftCooldown === 0) {
+      const up = GEAR_UP_SPEEDS[this.gear];
+      const down = this.gear > 0 ? GEAR_UP_SPEEDS[this.gear - 1]! : 0;
+      if (up !== undefined && this.speed > up) this.shift(this.gear + 1);
+      else if (this.gear > 0 && this.speed < down * GEAR_DOWN_HYSTERESIS)
+        this.shift(this.gear - 1);
+    }
+    const throttle = this.shiftCut > 0 ? 0 : this.throttle;
+    const gearNote =
+      0.65 + (this.speed * FIRST_GEAR_SLOPE) / GEAR_RATIO ** this.gear;
+    // The throttle part of the note is smoothed separately and much faster
+    // than the speed part, so a stamp on the pedal is heard at once and a
+    // shift cut is a real interruption. Boost spins the note up beyond the
+    // throttle ceiling and adds load, so nitrous reads as the engine working
+    // harder, not only a whoosh on top.
+    this.throttleNote = approach(
+      this.throttleNote,
+      throttle * THROTTLE_NOTE,
+      dt,
+      0.03,
+      0.1,
+    );
     mix.engineRate = approach(
       mix.engineRate,
       Math.min(
         3.3,
-        0.65 + this.speed / 45 + this.throttle * 0.35 + this.boost * 0.5,
+        Math.min(2.8, gearNote + this.throttleNote) + this.boost * 0.5,
       ),
       dt,
       0.08,
@@ -239,17 +292,17 @@ export class AudioDirector {
     );
     mix.engineIdle = approach(
       mix.engineIdle,
-      0.22 * (1 - this.throttle * 0.75),
+      0.22 * (1 - throttle * 0.75),
       dt,
       0.05,
       0.1,
     );
     mix.engineLoad = approach(
       mix.engineLoad,
-      0.34 * Math.min(1.45, this.throttle + this.boost * 0.6),
+      0.4 * Math.min(1.45, throttle + this.boost * 0.6),
       dt,
-      0.05,
-      0.12,
+      0.025,
+      0.1,
     );
     mix.boost = approach(mix.boost, this.boost * 0.3, dt, 0.04, 0.12);
     for (let index = 0; index < 3; index++)
@@ -299,12 +352,19 @@ export class AudioDirector {
     this.pairTimes.fill(-Infinity);
     this.pairCursor = 0;
     this.simulationTime = this.speed = this.throttle = this.boost = 0;
+    this.gear = 0;
+    this.shiftCut = this.shiftCooldown = this.throttleNote = 0;
     this.boostHeld = false;
     this.tyreTargets.fill(0);
     this.mix.engineIdle = this.mix.engineLoad = this.mix.boost = 0;
     this.mix.tyres.fill(0);
     this.lastUpdate = NaN;
     this.deps.output.reset();
+  }
+  private shift(gear: number): void {
+    this.gear = gear;
+    this.shiftCut = SHIFT_CUT_SECONDS;
+    this.shiftCooldown = SHIFT_COOLDOWN_SECONDS;
   }
   dispose(): void {
     if (this.disposed) return;
