@@ -128,6 +128,7 @@ describe('controller command ownership', () => {
     pad = null;
     expect(input.sampleForStep()).toMatchObject({
       actuator: null,
+      lastActivityTime: -Infinity,
       connected: false,
       throttle: 0,
     });

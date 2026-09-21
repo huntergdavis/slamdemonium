@@ -73,6 +73,13 @@ export class PauseMenu {
     this.message = doc.createTextNode('');
     status.append(this.message);
     this.resume = this.button('Resume', () => this.setOpen(false));
+    const navigationHint = node(
+      doc,
+      'p',
+      'sl-caption',
+      '↑ / ↓ or D-pad / stick: move · Enter / A: select · Escape / Start: resume · B: back',
+    );
+    navigationHint.dataset.controllerReplaced = '';
     this.menu.append(
       title,
       status,
@@ -88,14 +95,8 @@ export class PauseMenu {
       }),
       this.button('Options', () => this.showOptions()),
       this.button('Controls', () => this.showView('controls')),
-      node(
-        doc,
-        'p',
-        'sl-caption',
-        '↑ / ↓ or D-pad / stick: move · Enter / A: select · Escape / Start: resume · B: back',
-      ),
+      navigationHint,
     );
-    this.menu.lastElementChild?.setAttribute('data-controller-replaced', '');
     if (deps.buildLabel) {
       this.menu.append(
         node(doc, 'p', 'sl-caption sl-pause__build', deps.buildLabel),

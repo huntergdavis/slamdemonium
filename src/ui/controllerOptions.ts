@@ -181,7 +181,8 @@ export class ControllerOptions {
     if (
       active instanceof root.ownerDocument.defaultView!.HTMLElement &&
       root.contains(active) &&
-      !active.closest('[hidden], [inert]')
+      !active.closest('[hidden], [inert]') &&
+      active.getClientRects().length > 0
     ) {
       this.select(active);
       return;

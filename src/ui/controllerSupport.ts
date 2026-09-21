@@ -72,6 +72,7 @@ export class ControllerSupport {
       this.deps.options.isOpen &&
       (!this.deps.pauseMenu.isOpen ||
         this.deps.pauseMenu.element.contains(this.deps.options.element));
+    this.navigation.keyboard.setInputDevice(this.prompts.device);
     this.navigation.update(
       nowMs,
       optionsActive,

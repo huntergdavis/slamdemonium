@@ -138,6 +138,7 @@ export class GamepadInput {
       state.connected = false;
       state.index = -1;
       state.actuator = null;
+      state.lastActivityTime = -Infinity;
       state.throttle = state.brake = state.steer = 0;
       state.handbrake = state.boost = state.modifier = state.coarse = false;
       state.menuX = state.menuY = 0;

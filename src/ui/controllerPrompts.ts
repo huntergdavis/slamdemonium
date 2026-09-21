@@ -220,7 +220,7 @@ export class ControllerPrompts {
     const doc = this.root.ownerDocument;
     const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'sl-controller-glyph');
-    svg.setAttribute('viewBox', '0 0 48 48');
+    svg.setAttribute('viewBox', '0 0 40 40');
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
     const use = doc.createElementNS(svg.namespaceURI, 'use');

@@ -7,6 +7,8 @@ export class ControllerKeyboard {
   private readonly title: Text;
   private readonly value: HTMLInputElement;
   private readonly keys: HTMLDivElement;
+  private readonly hint: Text;
+  private inputDevice = '';
   private readonly actions: HTMLDivElement;
   private readonly siblings = new Map<HTMLElement, boolean>();
   private commit: ((value: string) => void) | undefined;
@@ -47,20 +49,22 @@ export class ControllerKeyboard {
       this.button('Done', () => this.close(true)),
       this.button('Cancel', () => this.close(false)),
     );
-    this.element.append(
-      heading,
-      this.value,
-      this.keys,
-      this.actions,
-      node(
-        doc,
-        'p',
-        'sl-controller-keyboard__hint',
-        'D-pad / stick: move · Bottom (A): select · Right (B): cancel',
-      ),
-    );
+    const hint = node(doc, 'p', 'sl-controller-keyboard__hint');
+    this.hint = doc.createTextNode('');
+    hint.append(this.hint);
+    this.element.append(heading, this.value, this.keys, this.actions, hint);
+    this.setInputDevice('gamepad');
     options.append(this.element);
     this.element.addEventListener('keydown', this.keydown);
+  }
+
+  setInputDevice(device: 'keyboard' | 'gamepad'): void {
+    if (device === this.inputDevice) return;
+    this.inputDevice = device;
+    this.hint.nodeValue =
+      device === 'gamepad'
+        ? 'D-pad / stick: move · Bottom (A): select · Right (B): cancel'
+        : 'Tab: move · Enter: select · Escape: cancel · Type directly in the text field';
   }
 
   get isOpen(): boolean {

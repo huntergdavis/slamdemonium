@@ -42,3 +42,8 @@ the pause menu. Gamepad state exposes menu directions and confirm/back edge
 counters for UI reads after the mapper's normal poll. UI never polls separately.
 Escape used to exit fullscreen or pointer lock stays browser-owned and does not
 also toggle the menu; press Escape again after exiting.
+
+WP19 adds the held-LB command legend, direct View/Back Options, full controller
+Options navigation/text entry, live prompts and optional haptics. See the
+[controller contract](CONTROLLERS.md) for mappings, UI capture, step ownership,
+hot-plug behavior and the bounded feedback API.

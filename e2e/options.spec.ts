@@ -350,3 +350,38 @@ test('external rebuild feedback is displayed, helpers stay keyboard accessible, 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.screenshot({ path: testInfo.outputPath('options-desktop.png') });
 });
+
+test('controller adjustments use schema units for numeric, log and discrete controls', async ({
+  optionsPage: page,
+}) => {
+  await page.getByRole('button', { name: '⚙ Options' }).click();
+  const values = await page.evaluate(() => {
+    const panel = window.__optionsTest;
+    const adjust = (id: string, direction: number, coarse: boolean) => {
+      document.getElementById(id)!.dispatchEvent(
+        new CustomEvent('sl-tune-step', {
+          bubbles: true,
+          cancelable: true,
+          detail: { direction, coarse },
+        }),
+      );
+    };
+    adjust('group-gripRear-number', 1, false);
+    const fine = panel.store.get('gripRear');
+    adjust('group-gripRear-number', 1, true);
+    const coarse = panel.store.get('gripRear');
+    adjust('group-mass-range', 1, false);
+    const mass = panel.store.get('mass');
+    adjust('group-physicsHz-range', 1, true);
+    const discrete = panel.store.get('physicsHz');
+    adjust('group-physicsHz-number', -1, false);
+    return { fine, coarse, mass, discrete, back: panel.store.get('physicsHz') };
+  });
+  expect(values).toEqual({
+    fine: 1.51,
+    coarse: 1.61,
+    mass: 1310,
+    discrete: 180,
+    back: 120,
+  });
+});
