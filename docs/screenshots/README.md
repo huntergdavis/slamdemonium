@@ -24,14 +24,16 @@ While iterating on a shot, skip the rebuild: run `npm run preview -- --port 4179
 | Filenames | `<area>-<what>.png`, lowercase, hyphens. Stable: a renamed file breaks the doc that embeds it |
 | Where the list lives | `shots/shotlist.ts` is the source of truth; the table below mirrors it |
 
+**The frame counter is not representative.** Captures come from a headless, software-rendered harness that runs at about one frame per second, so the FPS and frame-time readout in any HUD shot describes the capture machine, not the game. That is why the README hero is the HUD-off frame.
+
 **What is and is not stable.** Car, track, camera and panel are byte-stable for a given build. Two readouts are not, because they measure the capture machine rather than the game: the FPS and frame-time text in the HUD status bar (headless software rendering runs at about one frame per second, so it reads `1 FPS`), and the `Render x0.60` scale. The scrolling HUD graphs sample on real frames, so after a `stepMany` they show a flat line. Treat differences in those areas as noise; treat any other difference as a change in the game.
 
 ## Shot list
 
 | File | Shows | Preset | Scenario | Hooks used | Status |
 |---|---|---|---|---|---|
-| `lab-overview.png` | Car at speed on the painted ring from the chase camera, posts and fog, minimal HUD. The README hero. | Default | Respawn, throttle 1 and steer 0.11 for 540 steps (4.5 s): 46 m/s on the 130 m centre line | `respawn`, `setInput`, `stepMany`, `setCameraPreset('chase')`, `setHudMode('minimal')` | live |
-| `lab-overview-clean.png` | Same moment with the HUD off. | Default | as above | as above with `setHudMode('off')` | live |
+| `lab-overview.png` | Car at speed on the painted ring from the chase camera, posts and fog, minimal HUD. | Default | Respawn, throttle 1 and steer 0.11 for 540 steps (4.5 s): 46 m/s on the 130 m centre line | `respawn`, `setInput`, `stepMany`, `setCameraPreset('chase')`, `setHudMode('minimal')` | live |
+| `lab-overview-clean.png` | Same moment with the HUD off. **The README hero**, because the HUD frame counter would mislead. | Default | as above | as above with `setHudMode('off')` | live |
 | `options-quick-tune.png` | Options page open over the running game, Quick Tune at the top. | Default | as above | as above plus `setOptionsOpen(true)` | live |
 | `hud-full.png` | Full HUD: speed, G-G diagram, per-wheel grip and load, pedals, slide gauge, graphs. 1280 x 1000. | Default | as above | as above with `setHudMode('full')` | live |
 | `drift-hold.png` | Car mid-slide after a handbrake turn, slide angle 37 degrees, drift meter charging. 1280 x 1000. | Default (from the script header) | `scripts.load(handbrake-turn.json, {tuning: 'apply'})`, then `stepMany(372)` | `scripts.load`, `perf.pauseSimulation`, `stepMany`, `setCameraPreset('chase')`, `setHudMode('full')` | live |

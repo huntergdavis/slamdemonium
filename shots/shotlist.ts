@@ -63,7 +63,7 @@ export const SHOTS: readonly Shot[] = [
   {
     file: 'lab-overview.png',
     shows:
-      'The driving-feel lab from the chase camera: car at speed on the painted ring, posts and fog, minimal HUD. The README hero image.',
+      'The driving-feel lab from the chase camera: car at speed on the painted ring, posts and fog, minimal HUD.',
     preset: 'Default',
     scenario: RING_DRIVE,
     camera: 'chase',
@@ -74,7 +74,7 @@ export const SHOTS: readonly Shot[] = [
   {
     file: 'lab-overview-clean.png',
     shows:
-      'Same moment as lab-overview.png with the HUD off: the car, the ring, posts and fog with nothing over them.',
+      'Same moment as lab-overview.png with the HUD off: the car, the ring, posts and fog with nothing over them. The README hero image.',
     preset: 'Default',
     scenario: RING_DRIVE,
     camera: 'chase',

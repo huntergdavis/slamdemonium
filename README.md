@@ -4,7 +4,7 @@
 
 A fast, loud, crash-happy arcade racer that runs in a browser tab.
 
-![The car at speed on the painted ring, seen from the chase camera, with the minimal HUD showing speed and slide angle](docs/screenshots/lab-overview.png)
+![The car at speed on the painted ring, seen from the chase camera, with posts and fog along the barrier](docs/screenshots/lab-overview-clean.png)
 
 ## What this is right now
 
