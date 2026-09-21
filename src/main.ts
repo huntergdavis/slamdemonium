@@ -304,6 +304,7 @@ async function boot(): Promise<void> {
       menuPaused = paused;
       syncPause();
     },
+    // Explicit menu Restart bypasses the gameplay R / pad Y command guard.
     onRespawn: respawn,
     options,
     readGamepad: () => input.gamepad.state,
@@ -343,9 +344,13 @@ async function boot(): Promise<void> {
   // Menu disposal restores the shared Options element before Options removes it.
   resources.push(pauseMenu, options, hud, scripts);
   function dispatchActions(actions: Readonly<ActionCounts>): void {
+    // Consume gameplay edges on menu transitions too; Y must not leak into the
+    // opening or resume frame. Only the menu command acts on an owned batch.
+    const menuOwnsBatch = pauseMenu.isOpen || actions.pauseMenu > 0;
+    if (actions.pauseMenu % 2) pauseMenu.toggle();
+    if (menuOwnsBatch) return;
     if (actions.respawn > 0) respawnRequested = true;
     if (actions.options % 2) options.toggle();
-    if (actions.pauseMenu % 2) pauseMenu.toggle();
     hud.cycleMode(actions.hud);
     if (actions.recordTelemetry % 2) hud.toggleRecording();
     if (actions.swapAB % 2) options.session.swapSlots();
@@ -539,7 +544,8 @@ async function boot(): Promise<void> {
     try {
       // No physics/input-script sample while paused. Both readers consume the
       // mapper's same edge counters, so unpausing cannot replay an action.
-      if ((isPaused() || tuning.get('timeScale') === 0) && !replayActive) {
+      // Active replays still need this command path to close their pause menu.
+      if (isPaused() || tuning.get('timeScale') === 0) {
         dispatchActions(input.sampleActions());
         if (respawnRequested) respawn();
       }
