@@ -64,12 +64,13 @@ Keyboard and controller both work, at the same time, with nothing to switch. A c
 | Handbrake | Space |
 | Boost | Left Shift |
 | Respawn | R |
-| Options panel | O |
+| Pause menu (resume, restart, options) | Escape |
+| Pause, without the menu | P |
+| Options panel, directly | O |
 | HUD mode (full / minimal / off) | H |
 | Debug gizmos | G |
 | Camera preset (chase / far / hood) | C |
 | Slow motion toggle (0.25x) | T |
-| Pause | P |
 | Latency probe | L |
 | A/B tuning swap | Tab |
 | Telemetry recording (CSV) | F9 |
@@ -86,6 +87,12 @@ Keyboard and controller both work, at the same time, with nothing to switch. A c
 | Handbrake | A (bottom face button) |
 | Boost | X (left face button) |
 | Respawn | Y (top face button) |
-| Options panel | Start |
+| Pause menu | Start / Menu |
+| In menus: move | D-pad or left stick |
+| In menus: select | A |
+| In menus: back | B |
+| In Options: adjust a slider or preset | D-pad or stick, left and right |
 
-Everything not in this table (HUD, camera, slow motion, pause, A/B swap, recording) stays on the keyboard. If you press a driving key on the keyboard while holding the pad, the keyboard wins for as long as the key is down, then the pad takes over again.
+The pause menu is built for a pad: Start opens it, the stick moves, A picks Resume, Restart or Options, and B backs out. Inside Options, left and right on the stick adjust whatever is highlighted, so you never need a mouse. Only typing a number or picking a file falls back to the keyboard or a browser dialog. Everything not in this table (HUD, camera, slow motion, A/B swap, recording) stays on the keyboard. If you press a driving key on the keyboard while holding the pad, the keyboard wins for as long as the key is down, then the pad takes over again.
+
+One browser quirk: if you are in fullscreen, the first **Escape** leaves fullscreen and the second opens the menu.

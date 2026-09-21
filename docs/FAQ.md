@@ -10,15 +10,21 @@ Slamdemonium Racing is a fast, loud, crash-happy arcade racer that runs in a bro
 
 Because the box is the honest version of the car. Everything you feel comes from forces the game adds to a plain rigid body: suspension, tires, engine, brakes and assists. A pretty car model would not change any of that, and it would hide whether the driving is good on its own. Models, liveries and crash damage come after the feel is right.
 
-## Why is there no track yet?
+## Why is the track just a big circle?
 
-A flat paved circle with a paved infield is the best place to judge feel. It has long corners for holding drifts, plenty of room to spin, and no bumps or elevation to confuse what a slider did. Real tracks, traffic and other cars arrive once the car on this circle feels fast and fun.
+Because a flat paved circle with a paved infield is the best place to judge feel. It has long corners for holding drifts, plenty of room to spin, and no bumps or elevation to confuse what a slider did. Real tracks, traffic and other cars arrive once the car on this circle feels fast and fun.
 
 ## What do I press?
 
-Keyboard: **W** or **Up** to go, **S** or **Down** to brake and reverse, **A / D** or **Left / Right** to steer, **Space** for the handbrake, **Left Shift** to boost, **R** to respawn. **O** opens the Options page. The full list is in the [README](../README.md#controls).
+Keyboard: **W** or **Up** to go, **S** or **Down** to brake and reverse, **A / D** or **Left / Right** to steer, **Space** for the handbrake, **Left Shift** to boost, **R** to respawn. **Escape** opens the pause menu, **O** opens the Options page directly. The full list is in the [README](../README.md#controls).
 
-Controller: right trigger throttle, left trigger brake, left stick to steer, **A** handbrake, **X** boost, **Y** respawn, **Start** for Options. Press a face button once to wake it up.
+Controller: right trigger throttle, left trigger brake, left stick to steer, **A** handbrake, **X** boost, **Y** respawn, **Start** for the pause menu, where Options lives. Press a face button once to wake it up.
+
+## How do I pause?
+
+Two ways. **Escape** (or **Start** on a pad) opens the pause menu: Resume, Restart and Options, with the game frozen behind it. **P** just freezes the game where it is, with no menu, and a second **P** carries on; it is meant for stopping mid-corner to read the HUD. The menu works entirely from a controller: D-pad or left stick to move, **A** to select, **B** to back out, and left and right to adjust a slider or preset once you are in Options.
+
+If you are in fullscreen, the first **Escape** leaves fullscreen, which is the browser's rule, not ours. Press it again for the menu.
 
 ## Does it need a controller?
 
