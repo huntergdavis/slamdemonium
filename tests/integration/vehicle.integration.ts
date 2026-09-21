@@ -148,6 +148,9 @@ it('accelerates straight ahead within the appendix A default targets', async () 
   // Section 13.1 supplies their acceptance bands: 2.0–2.3 s and 6.3–7.1 s.
   expect(to100).toBeGreaterThanOrEqual(2);
   expect(to100).toBeLessThanOrEqual(2.3);
+  // F0 preserves the measured asphalt baseline: 265 actual steps at 120 Hz.
+  // Keep this narrower regression alongside the original design acceptance band.
+  expect(to100).toBe(265 / HZ);
   expect(to55).toBeGreaterThanOrEqual(6.3);
   expect(to55).toBeLessThanOrEqual(7.1);
   expect(maxLateralOffset).toBeLessThan(0.01);
@@ -187,6 +190,9 @@ it('brakes from a scripted 60 m/s approach within 15 percent of 77 metres', asyn
   expect(distance).toBeDefined();
   expect(distance!).toBeGreaterThanOrEqual(77 * 0.85);
   expect(distance!).toBeLessThanOrEqual(77 * 1.15);
+  // F0 must preserve the pre-surface-change, real Jolt stopping measurement.
+  // Same scripted approach/defaults; compare to sub-millimetre rounding, not wall time.
+  expect(distance!).toBeCloseTo(72.3990478515625, 3);
   expect(stopSeconds).toBeGreaterThan(0);
   expect(stopSeconds).toBeLessThan(4);
 });
