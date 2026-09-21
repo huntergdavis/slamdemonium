@@ -24,7 +24,7 @@ Tag `v0.2.0` at `a5e904e`. Production: https://hunterdavis.com/slamdemonium/
 
 ### v0.3 — It makes noise
 - [x] F0 (PR #68) | designer + developer 1 + developer 2 | Shared surface definitions. Ray hits carry `surfaceId` but grip uses one global `surfaceGrip`; resolve through ONE definition in content data before any grass/gravel. Do WITH F1.
-- [ ] F1 | unassigned | Sound effects: `AudioDirector` consuming telemetry after simulation, synthetic engine note from speed/throttle, screech from real slip/load, boost layers, impact layer ready for breakables.
+- [x] F1 (PR #69) | developer 2 + designer + developer 1 | Sound effects: `AudioDirector` consuming telemetry after simulation, synthetic engine note from speed/throttle, screech from real slip/load, boost layers, impact layer ready for breakables.
 
 ### v0.4 — Something to hit
 - [ ] F5 | unassigned | Crash + retry loop: one smash route, light breakables, bounded debris, impact feel, scoring, instant retry. Contact impulse is nullable on our engine so severity must be estimated explicitly.
