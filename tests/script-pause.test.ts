@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import handbrakeTurn from '../src/input/examples/handbrake-turn.json';
 import { scriptVehicleHarness } from './scriptVehicleHarness';
 
-it('pauses a Jolt handbrake slide without consuming input or changing the completed replay', async () => {
+it('pause preserves replay determinism without input leakage or elapsed-time catch-up', async () => {
   const rig = await scriptVehicleHarness();
   try {
     rig.scripts.load(handbrakeTurn, { tuning: 'apply' });
