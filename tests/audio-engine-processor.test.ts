@@ -106,8 +106,9 @@ describe('procedural engine voice', () => {
   it('gives the muscle voice more low-band energy and an audible idle chug', () => {
     const even = render(2000, 0.8, 1, 0).subarray(-24000);
     const muscle = render(2000, 0.8, 1, 1).subarray(-24000);
+    // Makeup gain after the saturator bounds the muscle voice at 0.8.
     for (const sample of muscle)
-      expect(Math.abs(sample)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(sample)).toBeLessThanOrEqual(0.8);
     expect(highShare(muscle, 200)).toBeLessThan(highShare(even, 200) * 0.75);
     // Envelope depth at idle: loudest to quietest 5 ms window. Separate
     // firing pulses read as a chug rather than a tone.

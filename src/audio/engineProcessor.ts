@@ -20,14 +20,24 @@ const ENGINE_PROCESSOR = 'slamdemonium-engine';
 const FIRINGS_PER_REV = 2;
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 /** Two voices, blended by `character`: 0 is an even small four-cylinder,
- * 1 is a muscle voice with uneven crossplane-style firing gaps, much deeper
- * per-cycle amplitude modulation, longer pulses and a lower, more resonant
- * exhaust. Uneven strengths and gaps give the half-order lope that reads as
- * throat; a slower pulse train gives each chug weight. */
-const STRENGTH_EVEN = new Float32Array([1, 0.78, 0.92, 0.7]);
-const STRENGTH_MUSCLE = new Float32Array([1, 0.45, 0.85, 0.35]);
-const GAP_EVEN = new Float32Array([1, 1, 1, 1]);
-const GAP_MUSCLE = new Float32Array([1.3, 0.7, 1.15, 0.85]);
+ * 1 is a muscle voice. Rumble is low-frequency amplitude variation, not bass
+ * level: the muscle pattern spans eight firings (two crank turns) with
+ * crossplane-style paired pulses and long gaps, strengths swing 1 to 0.25 so
+ * there are real troughs, and every pulse gets its own timing and amplitude
+ * jitter plus a slow random wander, so the train never fuses into a steady
+ * oscillator. Its exhaust body sits in the 40 to 80 Hz range the player can
+ * actually hear on ordinary speakers. */
+const PATTERN = 8;
+const STRENGTH_EVEN = new Float32Array([
+  1, 0.78, 0.92, 0.7, 1, 0.78, 0.92, 0.7,
+]);
+const STRENGTH_MUSCLE = new Float32Array([
+  1, 0.3, 0.85, 0.5, 0.7, 0.25, 0.45, 0.35,
+]);
+const GAP_EVEN = new Float32Array([1, 1, 1, 1, 1, 1, 1, 1]);
+const GAP_MUSCLE = new Float32Array([
+  1.4, 0.6, 1.25, 0.75, 1.1, 0.9, 1.35, 0.65,
+]);
 
 /** Constant-skirt band-pass biquad; `tune` recomputes coefficients (per block
  * at most, only when the voice character moves). */
@@ -87,6 +97,8 @@ class EngineProcessor extends AudioWorkletProcessor {
   private cylinder = 0;
   private sinceFiring = 0;
   private firingAmp = 1;
+  private nextGap = 1;
+  private wander = 0;
   private seed = 0x9e3779b9;
   private noiseState = 0;
   private lowpassState = 0;
@@ -117,9 +129,9 @@ class EngineProcessor extends AudioWorkletProcessor {
     const load = parameters['load']?.[0] ?? 0;
     const c = parameters['character']?.[0] ?? 0;
     if (c !== this.tuned) {
-      this.sub.tune(lerp(48, 34, c), 1.2);
-      this.exhaust.tune(lerp(96, 58, c), lerp(1.4, 2.6, c));
-      this.body.tune(lerp(340, 150, c), lerp(2.2, 2, c));
+      this.sub.tune(lerp(48, 46, c), lerp(1.2, 1.6, c));
+      this.exhaust.tune(lerp(96, 64, c), lerp(1.4, 2.2, c));
+      this.body.tune(lerp(340, 120, c), lerp(2.2, 1.8, c));
       this.rasp.tune(lerp(1250, 700, c), lerp(3, 2.5, c));
       this.tuned = c;
     }
@@ -127,35 +139,47 @@ class EngineProcessor extends AudioWorkletProcessor {
     const firingHz = (rpm / 60) * FIRINGS_PER_REV;
     // Puff length scales with firing rate so pulses stay distinct at idle and
     // merge into a roar at high RPM; the muscle voice keeps them fatter.
-    const decay = Math.max(lerp(50, 30, c), firingHz * lerp(6, 3, c));
-    const puffGain = lerp(3.2, 2.2, c) * (0.45 + 0.55 * load);
+    // Muscle pulses stay short against their gaps so troughs survive; the
+    // 64 Hz exhaust body, not the pulse length, carries the bass.
+    const decay = Math.max(lerp(50, 60, c), firingHz * lerp(6, 4.5, c));
+    const puffGain = lerp(3.2, 2.4, c) * (0.45 + 0.55 * load);
+    const ampJitter = lerp(0.1, 0.4, c);
+    const timeJitter = lerp(0, 0.08, c);
     const noiseGain =
       lerp(0.03 + 0.12 * load, 0.02 + 0.06 * load, c) * Math.min(1, rpm / 4500);
     const noiseCoefficient = Math.min(0.5, (600 + rpm * 0.25) * dt);
-    const drive = lerp(1.4 + 2.6 * load, 1.1 + 2.4 * load, c);
+    // The muscle voice stays out of the saturator so its troughs survive;
+    // makeup gain after tanh keeps the two voices at matching loudness.
+    const drive = lerp(1.4 + 2.6 * load, 0.6 + 0.9 * load, c);
+    const makeup = lerp(0.5, 0.8, c);
     const lowpassCoefficient = Math.min(
       0.6,
       lerp(2500 + rpm * 0.6, 1400 + rpm * 0.35, c) * dt,
     );
-    const subMix = lerp(0, 0.7, c);
-    const exhaustMix = lerp(1, 1.3, c);
-    const bodyMix = lerp(0.55, 0.7, c);
+    const subMix = lerp(0, 0.8, c);
+    const exhaustMix = lerp(1, 1.4, c);
+    const bodyMix = lerp(0.55, 0.6, c);
     const raspMix = lerp(0.18, 0.08, c);
     const dryMix = lerp(0.12, 0.1, c);
     for (let i = 0; i < out.length; i++) {
       this.phase += firingHz * dt;
-      const gap = lerp(GAP_EVEN[this.cylinder]!, GAP_MUSCLE[this.cylinder]!, c);
-      if (this.phase >= gap) {
-        this.phase -= gap;
-        this.cylinder = (this.cylinder + 1) & 3;
+      if (this.phase >= this.nextGap) {
+        this.phase -= this.nextGap;
+        this.cylinder = (this.cylinder + 1) % PATTERN;
         this.sinceFiring = 0;
+        // Slow wander drifts across pulses so successive cycles differ.
+        this.wander = this.wander * 0.8 + (this.random() - 0.5) * 0.5;
         this.firingAmp =
           lerp(
             STRENGTH_EVEN[this.cylinder]!,
             STRENGTH_MUSCLE[this.cylinder]!,
             c,
           ) *
-          (0.9 + 0.2 * this.random());
+          (1 + ampJitter * (this.random() - 0.5)) *
+          (1 + 0.3 * c * this.wander);
+        this.nextGap =
+          lerp(GAP_EVEN[this.cylinder]!, GAP_MUSCLE[this.cylinder]!, c) *
+          (1 + timeJitter * (this.random() - 0.5) * 2);
       }
       this.sinceFiring += dt;
       const t = this.sinceFiring * decay;
@@ -169,7 +193,7 @@ class EngineProcessor extends AudioWorkletProcessor {
         bodyMix * this.body.run(excitation) +
         raspMix * this.rasp.run(excitation) +
         dryMix * excitation;
-      const saturated = Math.tanh(shaped * drive) * 0.5;
+      const saturated = Math.tanh(shaped * drive) * makeup;
       this.lowpassState += (saturated - this.lowpassState) * lowpassCoefficient;
       out[i] = this.lowpassState;
     }

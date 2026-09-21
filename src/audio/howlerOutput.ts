@@ -18,8 +18,9 @@ const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 const pitch = (value: number): number => Math.max(0.5, Math.min(4, value));
 /** Synthetic RPM from the director's speed/throttle note. The even voice
  * idles at 900 and reaches about 7100 at the note's 2.8 ceiling; the muscle
- * voice idles at 650 and tops out near 4400, so its pulse train stays slow
- * enough to chug. Slow motion scales it like a rate. */
+ * voice idles at 550 and tops out near 3350, so its firing pattern's
+ * half-order beat stays in the felt rumble range. Slow motion scales it
+ * like a rate. */
 const engineRpm = (
   engineRate: number,
   rate: number,
@@ -27,8 +28,8 @@ const engineRpm = (
 ): number =>
   rate *
   (900 -
-    250 * character +
-    Math.max(0, engineRate - 0.65) * (2900 - 1150 * character));
+    350 * character +
+    Math.max(0, engineRate - 0.65) * (2900 - 1600 * character));
 const ENGINE_GAIN = 1.5;
 /** Howler loops plus the engine worklet module. */
 const LOADABLE = 9;
