@@ -5,7 +5,7 @@
     "totalPercent": 5,
     "assetPercent": 10,
     "assetMinimumBytes": {
-      "rawBytes": 2048,
+      "rawBytes": 4096,
       "gzipBytes": 1024
     },
     "newAssetBytes": {
@@ -13,6 +13,7 @@
       "gzipBytes": 32768
     }
   },
+  "allowanceReason": "Post-v0.1 small-asset calibration: the approved WP18 and WP19 interface changes added 4,015 and 3,957 raw CSS bytes respectively. A cumulative 4 KiB raw floor accommodates one measured interface increment without exempting stylesheets from their own gate. The 1 KiB gzip floor, 10 percent per-asset growth, 5 percent total growth and new-asset limits remain unchanged. This policy change records no new asset measurements and never resets accumulated growth. The generic floor also applies to small existing HTML and JavaScript files; their gzip and total limits still apply.",
   "measurement": {
     "revision": "0f3c2d772fc4911bdfbc3a6ae994cab7914382d6",
     "method": {
