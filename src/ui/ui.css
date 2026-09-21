@@ -852,65 +852,295 @@
   }
 }
 
-/* WP16: layout only; surfaces, typography, focus and buttons use the D3 kit. */
+/* WP18: native modal fills the viewfield; no backdrop blur or new palette.
+   Behaviour owns data-view and exactly one data-selected=true control.
+   .sl-pause__entry marks main actions and Back. Direct-child selectors retain
+   the WP16 markup contract while the behaviour commit adds that class. */
 .sl-pause {
   position: fixed;
   inset: 0;
-  margin: auto;
-  width: min(620px, calc(100vw - 2 * var(--sl-safe)));
-  max-height: calc(100dvh - 2 * var(--sl-safe));
-  padding: 20px;
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  padding: clamp(20px, 4vmin, 64px);
   overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 24px;
   color: var(--sl-text);
-  background: var(--sl-panel);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius);
+  background: rgb(18 26 35 / 86%);
+  border: 0;
+  border-radius: 0;
+  font-size: clamp(16px, 1.4vw, 22px);
+}
+.sl-pause[open] {
+  display: flex;
+  flex-direction: column;
 }
 .sl-pause::backdrop {
-  background: rgb(0 0 0 / 60%);
+  background: rgb(0 0 0 / 55%);
 }
 .sl-pause__menu,
 .sl-pause__controls {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
-  gap: var(--sl-gap);
+  gap: clamp(12px, 2vh, 24px);
+  width: 100%;
+  margin-inline: auto;
 }
-.sl-pause__menu > .sl-button {
-  min-height: 44px;
+.sl-pause__menu {
+  max-width: 760px;
+  margin-block: auto;
+}
+.sl-pause__controls {
+  max-width: 1120px;
+}
+.sl-pause .sl-heading {
+  font-size: clamp(32px, 4vw, 64px);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+.sl-pause .sl-caption {
+  font-size: clamp(14px, 1.25vw, 20px);
+  line-height: 1.5;
+}
+.sl-pause
+  :is(
+    .sl-pause__entry,
+    .sl-pause__menu > .sl-button,
+    .sl-pause__controls > .sl-button
+  ) {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: clamp(60px, 8vh, 88px);
+  padding: 14px 24px 14px 64px;
+  border: 2px solid var(--sl-control-border);
+  background: var(--sl-control);
+  color: var(--sl-text);
+  font-size: clamp(24px, 2.8vw, 40px);
+  font-weight: 750;
+  line-height: 1.15;
+  text-align: left;
+}
+.sl-pause .sl-pause__controls > .sl-button {
+  position: sticky;
+  top: 12px;
+  z-index: 3;
+  width: min(420px, 100%);
+}
+.sl-pause
+  :is(
+    .sl-pause__entry,
+    .sl-pause__menu > .sl-button,
+    .sl-pause__controls > .sl-button
+  )::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-left: 13px solid currentColor;
+  transform: translateY(-50%);
+  opacity: 0;
+}
+/* Selection stays visible for controllers even when :focus-visible is false.
+   The initial focused entry must receive data-selected=true from PauseMenu. */
+.sl-pause :is([data-selected='true'], :focus-visible) {
+  outline: 4px solid var(--sl-accent);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 8px var(--sl-panel);
+  scroll-margin: 16px;
+}
+.sl-pause .sl-button:is([data-selected='true'], :focus-visible) {
+  border-color: var(--sl-accent);
+  color: var(--sl-panel);
+  background: var(--sl-accent);
+}
+.sl-pause
+  :is(
+    .sl-pause__entry,
+    .sl-pause__menu > .sl-button,
+    .sl-pause__controls > .sl-button
+  ):is([data-selected='true'], :focus-visible)::before {
+  opacity: 1;
 }
 .sl-pause__mappings {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
+  background: var(--sl-panel-surface);
 }
 .sl-pause__mappings th,
 .sl-pause__mappings td {
-  padding: 6px 4px;
+  padding: 14px 16px;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--sl-border);
   overflow-wrap: anywhere;
 }
 .sl-pause__mappings th {
-  color: var(--sl-muted);
+  position: sticky;
+  /* D-pad scrolls the dialog while Back retains selection above the table. */
+  top: calc(clamp(60px, 8vh, 88px) + 28px);
+  z-index: 1;
+  color: var(--sl-text);
+  background: var(--sl-panel);
 }
+/* Only the reparented pause Options expands; the driving drawer stays 380px. */
 .sl-pause[data-view='options'] {
-  width: min(var(--sl-panel-width), 100vw);
-  height: 100dvh;
-  max-height: 100dvh;
-  margin: 0 0 0 auto;
-  padding: 0;
+  overflow: hidden;
 }
 .sl-pause[data-view='options'] > .sl-options {
-  position: static;
-  height: 100%;
+  position: relative;
+  inset: auto;
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 20px;
   width: 100%;
+  max-width: 1680px;
+  height: 100%;
+  margin-inline: auto;
+  background: transparent;
   border: 0;
+  transform: none;
+  transition: none;
 }
-@media (max-width: 420px) {
+.sl-pause .sl-options__header,
+.sl-pause .sl-options__body,
+.sl-pause .sl-options__footer {
+  min-width: 0;
+  background: var(--sl-panel-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius);
+}
+.sl-pause .sl-options__header {
+  min-height: 0;
+  align-content: start;
+  gap: 16px;
+  padding: 20px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.sl-pause .sl-options__footer {
+  grid-column: 1 / -1;
+  padding: 16px 20px;
+}
+.sl-pause .sl-options .sl-heading {
+  font-size: clamp(28px, 3vw, 44px);
+}
+.sl-pause .sl-options :is(.sl-button, .sl-input, .sl-select) {
+  min-height: 44px;
+  font-size: inherit;
+}
+.sl-pause .sl-options .sl-button--icon {
+  width: 44px;
+  flex-basis: 44px;
+}
+.sl-pause .sl-options :is(.sl-caption, .sl-tooltip, .sl-field__error) {
+  font-size: 15px;
+}
+.sl-pause .sl-options__quick {
+  max-height: 42%;
+  padding-inline: 20px;
+}
+.sl-pause .sl-options__groups {
+  padding: 12px 20px 20px;
+}
+.sl-pause .sl-field {
+  grid-template-columns: minmax(0, 1fr) 88px 44px 44px;
+  gap: 10px;
+  padding-block: 16px;
+}
+.sl-pause .sl-field__label {
+  font-size: inherit;
+}
+.sl-pause .sl-field__unit {
+  font-size: 14px;
+}
+.sl-pause .sl-field__number {
+  width: 88px;
+}
+.sl-pause .sl-field__range {
+  height: 36px;
+}
+@media (min-width: 1400px) and (min-height: 601px) {
+  .sl-pause .sl-options__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .sl-pause .sl-options__quick {
+    max-height: none;
+    border-bottom: 0;
+    border-right: 1px solid var(--sl-border);
+  }
+  .sl-pause .sl-options__quick[hidden] ~ .sl-options__groups {
+    grid-column: 1 / -1;
+  }
+}
+/* A single scroll owner keeps every control reachable on small/short screens. */
+@media (max-width: 900px), (max-height: 600px) {
+  .sl-pause[data-view='options'] {
+    overflow: auto;
+  }
+  .sl-pause[data-view='options'] > .sl-options {
+    display: flex;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 100%;
+  }
+  .sl-pause .sl-options__header,
+  .sl-pause .sl-options__body,
+  .sl-pause .sl-options__footer {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+  .sl-pause .sl-options__body {
+    display: block;
+  }
+  .sl-pause .sl-options__quick,
+  .sl-pause .sl-options__groups {
+    max-height: none;
+    overflow: visible;
+  }
+  .sl-pause .sl-options__quick > summary {
+    position: static;
+  }
+}
+@media (max-width: 480px) {
   .sl-pause {
+    padding: 16px;
+  }
+  .sl-pause .sl-options__header,
+  .sl-pause .sl-options__footer,
+  .sl-pause .sl-options__groups {
     padding: 12px;
   }
+  .sl-pause .sl-options__quick {
+    padding-inline: 12px;
+  }
+  .sl-pause .sl-field {
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
+    gap: 6px;
+  }
+  .sl-pause .sl-field__label {
+    grid-column: 1 / -1;
+  }
+  .sl-pause .sl-field__number {
+    width: 100%;
+  }
+  .sl-pause__mappings th,
+  .sl-pause__mappings td {
+    padding: 10px 6px;
+  }
   .sl-pause__mappings {
-    font-size: 12px;
+    font-size: 14px;
   }
 }
