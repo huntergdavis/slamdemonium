@@ -112,8 +112,8 @@ window.__pauseTest = {
   input,
   loop,
   state,
-  setPad(buttons, x = 0, y = 0) {
-    pad = makePad({ buttons, axis: x, verticalAxis: y });
+  setPad(buttons, x = 0, y = 0, throttle = 0, brake = 0) {
+    pad = makePad({ buttons, axis: x, verticalAxis: y, throttle, brake });
   },
   async tapPad(button) {
     const waitForPoll = () =>
@@ -153,7 +153,13 @@ declare global {
       input: typeof input;
       loop: typeof loop;
       state: typeof state;
-      setPad(buttons: number[], x?: number, y?: number): void;
+      setPad(
+        buttons: number[],
+        x?: number,
+        y?: number,
+        throttle?: number,
+        brake?: number,
+      ): void;
       tapPad(button: number): Promise<void>;
       setExternalPaused(value: boolean): void;
       dispose(): void;
