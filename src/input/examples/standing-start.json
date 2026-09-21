@@ -86,7 +86,8 @@
     "camShake": 0.3,
     "camRollGain": 3,
     "speedLinesStrength": 0.5,
-    "vignetteStrength": 0.5
+    "vignetteStrength": 0.5,
+    "hapticsIntensity": 0.35
   },
   "durationSteps": 240,
   "frames": [

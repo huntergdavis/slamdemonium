@@ -14,7 +14,8 @@ export interface ParamDef {
     | 'Suspension'
     | 'Boost & Drift'
     | 'Collision'
-    | 'Camera';
+    | 'Camera'
+    | 'Input';
   label: string;
   unit: string;
   default: number;
@@ -29,6 +30,17 @@ export interface ParamDef {
 }
 
 const definitions = [
+  {
+    key: 'hapticsIntensity',
+    group: 'Input',
+    label: 'Controller vibration',
+    unit: '',
+    default: 0.35,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    help: 'Controller vibration from impacts, kerbs and wheelspin. Zero stops all vibration. Requires a supported controller and browser.',
+  },
   {
     key: 'gravity',
     group: 'World',

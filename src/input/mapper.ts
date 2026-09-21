@@ -22,15 +22,28 @@ export class InputMapper {
     actions: createActionCounts(),
   };
   private readonly previousKeys = createActionCounts();
-  private previousPadRespawn = 0;
-  private previousPadPauseMenu = 0;
+  private readonly previousPad = createActionCounts();
+  private readUiCapture: (() => boolean) | undefined;
   private scriptProcessor: ((sample: StepInput) => void) | undefined;
 
   constructor(
     readonly keyboard: KeyboardInput,
     readonly gamepad: GamepadInput = new GamepadInput(),
     readonly latency: LatencyProbe = new LatencyProbe(keyboard.state),
-  ) {}
+  ) {
+    this.latency.attachPolledSource(gamepad.state);
+  }
+
+  /** One UI coordinator gates pad driving and chords. Keyboard focus guards
+   * remain event-owned; scripts still process the real per-step sample. */
+  attachUiCapture(read: () => boolean): () => void {
+    if (this.readUiCapture)
+      throw new Error('An input UI owner is already attached.');
+    this.readUiCapture = read;
+    return () => {
+      if (this.readUiCapture === read) this.readUiCapture = undefined;
+    };
+  }
 
   /** One replay/recording controller per mapper; processing still occurs inside sampleForStep. */
   attachScriptProcessor(processor: (sample: StepInput) => void): () => void {
@@ -45,7 +58,10 @@ export class InputMapper {
   sampleForStep(): Readonly<StepInput> {
     const keyboard = this.keyboard.state;
     const keys = keyboard.held;
-    const pad = this.gamepad.sampleForStep(); // exactly one browser poll per physics step
+    const captured = this.readUiCapture?.() ?? false;
+    const pad = this.gamepad.sampleForStep(captured); // one browser poll per step
+    this.consumeActions(pad);
+    const captureDriving = captured || this.state.actions.options > 0;
     const throttle = keys.KeyW || keys.ArrowUp;
     const brake = keys.KeyS || keys.ArrowDown;
     const left = keys.KeyA || keys.ArrowLeft;
@@ -61,13 +77,12 @@ export class InputMapper {
       this.state.boost = keys.ShiftLeft;
     } else {
       this.state.source = 'gamepad';
-      this.state.throttle = pad.throttle;
-      this.state.brake = pad.brake;
-      this.state.steer = pad.steer;
-      this.state.handbrake = pad.handbrake;
-      this.state.boost = pad.boost;
+      this.state.throttle = captureDriving ? 0 : pad.throttle;
+      this.state.brake = captureDriving ? 0 : pad.brake;
+      this.state.steer = captureDriving ? 0 : pad.steer;
+      this.state.handbrake = !captureDriving && pad.handbrake;
+      this.state.boost = !captureDriving && pad.boost;
     }
-    this.consumeActions(pad);
     this.latency.sampleForStep();
     this.scriptProcessor?.(this.state);
     return this.state;
@@ -76,7 +91,9 @@ export class InputMapper {
   /** UI-only polling while physics is paused. Shares edge bookkeeping with steps;
    * does not advance driving samples, latency measurements, or script state. */
   sampleActions(): Readonly<ActionCounts> {
-    this.consumeActions(this.gamepad.sampleForStep());
+    this.consumeActions(
+      this.gamepad.sampleForStep(this.readUiCapture?.() ?? false),
+    );
     return this.state.actions;
   }
 
@@ -87,12 +104,10 @@ export class InputMapper {
       const count = this.keyboard.state.presses[action];
       this.state.actions[action] = count - this.previousKeys[action];
       this.previousKeys[action] = count;
+      const padCount = pad.presses[action];
+      this.state.actions[action] += padCount - this.previousPad[action];
+      this.previousPad[action] = padCount;
     }
-    this.state.actions.respawn += pad.respawnPresses - this.previousPadRespawn;
-    this.state.actions.pauseMenu +=
-      pad.pauseMenuPresses - this.previousPadPauseMenu;
-    this.previousPadRespawn = pad.respawnPresses;
-    this.previousPadPauseMenu = pad.pauseMenuPresses;
   }
 
   /** Call after drawing the resulting state, using that frame's rAF timestamp. */
