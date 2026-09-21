@@ -148,6 +148,106 @@ describe('production import reachability', () => {
   });
 });
 
+describe('authored audio and licence assets', () => {
+  it('tracks literal asset queries through reachable static and dynamic modules', () => {
+    const root = fixture({
+      'src/main.ts': "import './audio'; void import('./credits');",
+      'src/audio.ts':
+        "import sound from '../assets/audio/engine.ogg?url&no-inline';",
+      'src/credits.ts':
+        "export {default as notice} from '/assets/audio/HOWLER-LICENSE.txt?url&no-inline';",
+      'assets/audio/engine.ogg': 'sound bytes',
+      'assets/audio/HOWLER-LICENSE.txt': 'full notice',
+    });
+    const result = checkReachability(root);
+    expect(result.errors).toEqual([]);
+    expect(result.unreachable).toEqual([]);
+    expect(result.unreachableAssets).toEqual([]);
+    expect(result.reachableAssets).toEqual([
+      'assets/audio/HOWLER-LICENSE.txt',
+      'assets/audio/engine.ogg',
+    ]);
+    expect(formatReachability(result)).toContain(
+      '2/2 authored .ogg/.txt assets reachable',
+    );
+  });
+
+  it('rejects missing audio and notice files with their import source location', () => {
+    const root = fixture({
+      'src/main.ts': [
+        "import missing from '../assets/audio/missing.ogg?url&no-inline';",
+        "import notice from '../assets/audio/MISSING-LICENSE.txt?url&no-inline';",
+      ].join('\n'),
+    });
+    const result = checkReachability(root);
+    expect(result.errors).toHaveLength(2);
+    expect(result.errors[0]).toContain(
+      'src/main.ts:1:1: cannot resolve runtime asset import',
+    );
+    expect(result.errors[1]).toContain(
+      'src/main.ts:2:1: cannot resolve runtime asset import',
+    );
+    expect(result.errors.join(' ')).toContain(
+      'MISSING-LICENSE.txt?url&no-inline',
+    );
+    expect(formatReachability(result)).toContain('FAIL');
+  });
+
+  it('reports unreferenced sounds and notices even when an unwired module imports them', () => {
+    const root = fixture({
+      'src/main.ts': "import type { AudioState } from './audio';",
+      'src/audio.ts':
+        "import sound from '../assets/audio/unused.ogg?url&no-inline'; export interface AudioState {}",
+      'assets/audio/unused.ogg': 'sound bytes',
+      'assets/audio/UNUSED-LICENSE.txt': 'full notice',
+      'src/orphan.ogg': 'another sound',
+    });
+    const result = checkReachability(root);
+    expect(result.unreachable).toEqual(['src/audio.ts']);
+    expect(result.reachableAssets).toEqual([]);
+    expect(result.unreachableAssets).toEqual([
+      'assets/audio/UNUSED-LICENSE.txt',
+      'assets/audio/unused.ogg',
+      'src/orphan.ogg',
+    ]);
+    const message = formatReachability(result);
+    expect(message).toContain('FAIL');
+    expect(message).toContain('assets/audio/unused.ogg');
+    expect(message).toContain('unavailable to players');
+  });
+
+  it('does not count type-only, commented, or nonliteral asset imports', () => {
+    const root = fixture({
+      'src/main.ts': [
+        "import type sound from '../assets/audio/engine.ogg?url';",
+        "// import '../assets/audio/NOTICE.txt?raw';",
+        "const target = '../assets/audio/engine.ogg?url'; import(target);",
+      ].join('\n'),
+      'assets/audio/engine.ogg': 'sound bytes',
+      'assets/audio/NOTICE.txt': 'notice',
+    });
+    const result = checkReachability(root);
+    expect(result.errors[0]).toContain('nonliteral import()');
+    expect(result.unreachableAssets).toHaveLength(2);
+    expect(result.reachableAssets).toEqual([]);
+  });
+
+  it('does not permit asset allowlist exceptions', () => {
+    const root = fixture({ 'assets/audio/unwired.ogg': 'sound bytes' }, [
+      {
+        path: 'assets/audio/unwired.ogg',
+        reason: 'Would hide absent boot wiring.',
+      },
+    ]);
+    const result = checkReachability(root);
+    expect(result.errors[0]).toContain(
+      'path must name one existing src/**/*.ts',
+    );
+    expect(result.unreachableAssets).toEqual(['assets/audio/unwired.ogg']);
+    expect(formatReachability(result)).toContain('FAIL');
+  });
+});
+
 describe('reviewable exact-path allowlist', () => {
   it('permits a reasoned type contract without allowing its entire dependency subtree', () => {
     const root = fixture(

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
@@ -8,18 +8,23 @@ export interface ReachabilityResult {
   reachable: string[];
   allowed: string[];
   unreachable: string[];
+  assets: string[];
+  reachableAssets: string[];
+  unreachableAssets: string[];
   errors: string[];
 }
 const ALLOWLIST = 'scripts/reachability-allowlist.json';
 const codeFile = /\.(?:[cm]?[jt]sx?)$/;
 const assetFile =
-  /\.(?:css|json|md|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|wasm)$/;
+  /\.(?:css|json|md|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|wasm|ogg|txt)$/;
+/** F1 shipped sounds/notices must have a runtime import, never an exception. */
+const trackedAssetFile = /\.(?:ogg|txt)$/;
 
 function display(root: string, path: string): string {
   return relative(root, path).split(sep).join('/');
 }
 
-function sourceModules(directory: string): string[] {
+function sourceFiles(directory: string, pattern: RegExp): string[] {
   const paths: string[] = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = resolve(directory, entry.name);
@@ -27,8 +32,8 @@ function sourceModules(directory: string): string[] {
       throw new Error(
         'Source symlinks are not supported by the guard: ' + path,
       );
-    if (entry.isDirectory()) paths.push(...sourceModules(path));
-    else if (entry.isFile() && entry.name.endsWith('.ts')) paths.push(path);
+    if (entry.isDirectory()) paths.push(...sourceFiles(path, pattern));
+    else if (entry.isFile() && pattern.test(entry.name)) paths.push(path);
   }
   return paths.sort();
 }
@@ -109,9 +114,18 @@ function runtimeExport(node: ts.ExportDeclaration): boolean {
 export function checkReachability(projectRoot: string): ReachabilityResult {
   const root = resolve(projectRoot);
   const errors: string[] = [];
-  const modules = sourceModules(resolve(root, 'src')).map((path) =>
+  const modules = sourceFiles(resolve(root, 'src'), /\.ts$/).map((path) =>
     display(root, path),
   );
+  // Inventory authored content, not third-party packages or documentation files.
+  const assets = ['src', 'assets']
+    .flatMap((directory) => {
+      const path = resolve(root, directory);
+      return existsSync(path)
+        ? sourceFiles(path, trackedAssetFile).map((file) => display(root, file))
+        : [];
+    })
+    .sort();
   const allowed = readAllowlist(root, new Set(modules), errors);
   const configPath = resolve(root, 'tsconfig.json');
   const config = ts.readConfigFile(configPath, ts.sys.readFile);
@@ -134,6 +148,7 @@ export function checkReachability(projectRoot: string): ReachabilityResult {
     parsed.options,
   );
   const visited = new Set<string>();
+  const visitedAssets = new Set<string>();
   const pending = [resolve(root, 'src/main.ts')];
   while (pending.length) {
     const file = pending.pop()!;
@@ -158,6 +173,23 @@ export function checkReachability(projectRoot: string): ReachabilityResult {
     const follow = (specifier: string, node: ts.Node): void => {
       // Vite asset queries do not turn the referenced WASM/CSS/image into TS code.
       const assetPath = specifier.split(/[?#]/, 1)[0]!;
+      if (trackedAssetFile.test(assetPath)) {
+        // Literal relative/root-relative Vite asset imports; unsupported aliases
+        // fail closed rather than silently counting an unproven asset edge.
+        const target = assetPath.startsWith('.')
+          ? resolve(dirname(file), assetPath)
+          : assetPath.startsWith('/')
+            ? resolve(root, '.' + assetPath)
+            : undefined;
+        if (!target || !ts.sys.fileExists(target)) {
+          errors.push(
+            location(node) +
+              ': cannot resolve runtime asset import ' +
+              JSON.stringify(specifier),
+          );
+        } else visitedAssets.add(display(root, target));
+        return;
+      }
       if (assetFile.test(assetPath) || specifier.startsWith('node:')) return;
       const result = ts.resolveModuleName(
         specifier,
@@ -254,12 +286,18 @@ export function checkReachability(projectRoot: string): ReachabilityResult {
     unreachable: modules.filter(
       (path) => !reachable.has(path) && !allowed.has(path),
     ),
+    assets,
+    reachableAssets: assets.filter((path) => visitedAssets.has(path)),
+    unreachableAssets: assets.filter((path) => !visitedAssets.has(path)),
     errors,
   };
 }
 
 export function formatReachability(result: ReachabilityResult): string {
-  const ok = !result.errors.length && !result.unreachable.length;
+  const ok =
+    !result.errors.length &&
+    !result.unreachable.length &&
+    !result.unreachableAssets.length;
   const lines = [
     (ok ? 'PASS' : 'FAIL') + ': src/main.ts runtime module reachability',
     result.reachable.length +
@@ -269,6 +307,13 @@ export function formatReachability(result: ReachabilityResult): string {
       result.allowed.length +
       ' explicit exceptions.',
   ];
+  if (result.assets.length)
+    lines.push(
+      result.reachableAssets.length +
+        '/' +
+        result.assets.length +
+        ' authored .ogg/.txt assets reachable (src/ and assets/).',
+    );
   if (result.unreachable.length) {
     lines.push(
       '',
@@ -281,6 +326,14 @@ export function formatReachability(result: ReachabilityResult): string {
       'require an exact path and one-line reason in ' + ALLOWLIST + '.',
     );
   }
+  if (result.unreachableAssets.length)
+    lines.push(
+      '',
+      'These audio/licence assets have no runtime import from src/main.ts.',
+      'They ship in no entry-point bundle: sound or required notices will be unavailable to players.',
+      ...result.unreachableAssets.map((path) => '  - ' + path),
+      'Wire literal asset imports into the runtime graph; asset exceptions are not supported.',
+    );
   if (result.errors.length)
     lines.push(
       '',
@@ -298,7 +351,12 @@ if (
     const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
     const result = checkReachability(root);
     console.log(formatReachability(result));
-    if (result.errors.length || result.unreachable.length) process.exitCode = 1;
+    if (
+      result.errors.length ||
+      result.unreachable.length ||
+      result.unreachableAssets.length
+    )
+      process.exitCode = 1;
   } catch (error) {
     console.error(
       'FAIL: reachability graph could not be checked: ' +
