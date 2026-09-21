@@ -18,7 +18,8 @@ full-viewfield console pause menu (WP18).
 Caveat per [slice review](docs/research/slice-review.md): experimental, Chrome
 verified; human feel and reference-hardware checks remain open.
 
-### v0.2 — First-class controller
+### v0.2.0 — First-class controller — SHIPPED 2026-09-21
+Tag `v0.2.0` at `a5e904e`. Production: https://hunterdavis.com/slamdemonium/
 - [x] WP19 (PR #65) | developer 2 + designer | First-class controller: every action on the pad, Options fully adjustable by pad, live glyph prompts, haptics with a zeroable intensity, hot-plug. | dev2/wp19-controller
 
 ### v0.3 — It makes noise
