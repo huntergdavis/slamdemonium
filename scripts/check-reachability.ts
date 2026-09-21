@@ -191,10 +191,12 @@ export function checkReachability(projectRoot: string): ReachabilityResult {
         return;
       }
       if (assetFile.test(assetPath) || specifier.startsWith('node:')) return;
-      // A Vite query on a code module (`?worker&url` for an AudioWorklet
-      // script) still names TS code the runtime executes; follow it.
+      // A Vite worker query (`?worker`, `?worker&url`, `?sharedworker`) on a
+      // code module still names TS code the runtime executes, so follow it.
+      // Other queries such as `?raw` turn code into text and keep failing closed.
+      const query = specifier.slice(assetPath.length);
       const result = ts.resolveModuleName(
-        assetPath,
+        /[?&](shared)?worker(&|$)/.test(query) ? assetPath : specifier,
         file,
         parsed.options,
         ts.sys,
