@@ -354,7 +354,6 @@ async function boot(): Promise<void> {
     pauseMenu,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
-    isOnKerb: track.isOnKerb,
   });
   // Release controller capture/navigation before disposing their UI owners.
   // Menu disposal restores the shared Options element before Options removes it.
