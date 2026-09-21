@@ -178,7 +178,7 @@ describe('F0 preserves shipped kerb haptics on the current ground', () => {
         r.haptics.update(0);
         expect(r.play.mock.calls.length > 0).toBe(legacyKerb);
         if (legacyKerb)
-          expect(r.play.mock.calls[0]![1].weakMagnitude).toBeCloseTo(
+          expect(r.play.mock.calls[0]![1]!.weakMagnitude).toBeCloseTo(
             previousPulse,
             12,
           );
