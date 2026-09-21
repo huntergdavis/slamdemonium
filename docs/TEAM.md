@@ -17,13 +17,15 @@ contracts must be readable to both people and agents.
   UI observes state. One pause decision combines independent requests, and each
   caller releases only its own; [WP12 rebuilt mass twice](DECISIONS.md#one-owner-for-mass-rebuilds)
   and [WP16 exposed overlapping menu/Options pause requests](https://github.com/huntergdavis/slamdemonium/pull/56).
-- **Store sample values, not borrowed references.** For recordings and history,
-  copy scalars immediately into storage you own, including nested vectors and
-  wheel fields. Never queue reused input, telemetry or engine objects as snapshots;
+- **Distinguish live views from owned snapshots.** Read-only live views are valid
+  for immediate synchronous reads. For immutable history, exports or recordings,
+  copy scalars into storage you own, including nested vectors and wheel fields.
+  Never retain a reused live object as a past sample;
   [R1 found Jolt returns sharing scratch storage across bodies](research/jolt-integration.md#ownership-distinguish-owned-objects-from-borrowed-returns).
-- **Consume each action once.** Step sampling and paused command polling share
-  one counter history. Command polling must not sample scripts, advance physics
-  or record input latency; [WP14 could not unpause when P was sampled only inside physics steps](DECISIONS.md#2026-09-20--wp14-mount-the-tuning-laboratory-and-share-command-consumption).
+- **Consume each action once per logical consumer.** That consumer's step and
+  paused-command paths share one counter history; independent observers and
+  fixtures keep separate histories. Command polling must not sample scripts,
+  advance physics or record input latency; [WP14 could not unpause when P was sampled only inside physics steps](DECISIONS.md#2026-09-20--wp14-mount-the-tuning-laboratory-and-share-command-consumption).
 - **Wire a feature before calling it shipped.** Mount it from boot and connect
   its live store, commands and disposal. Run `npm run check:reachable` and verify
   the behavior through the built boot path, not just an isolated component;
@@ -40,6 +42,10 @@ contracts must be readable to both people and agents.
   browser/host and actual outcome. Distinguish simulated time from wall time;
   disclose failed or timed-out runs and establish their cause before changing a
   budget. Do not turn attribution into proof; [WP13 demonstrated repaired shader reuse and bounded retained heap, not zero transient allocation or a proven tire-allocation cause](DECISIONS.md#2026-09-20--wp13-stable-material-programs-and-heap-regression).
+- **Clean up cherry-pick handoffs.** The handoff author deletes the remote branch
+  once its change is confirmed in `main`. Verify the patch, not just ancestry;
+  [WP16's menu mount landed through a cherry-pick](https://github.com/huntergdavis/slamdemonium/pull/56)
+  and its branch survived ancestry-based cleanup.
 
 ## Roles and ownership
 
