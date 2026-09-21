@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import handbrakeTurn from '../src/input/examples/handbrake-turn.json';
+import handbrakeTurn from '../src/input/examples/handbrake-turn.json' with { type: 'json' };
 
 test('mounted pause menu shares live pause, respawn and Options wiring', async ({
   page,
