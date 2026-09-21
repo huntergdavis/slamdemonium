@@ -22,7 +22,8 @@ verified; human feel and reference-hardware checks remain open.
 Tag `v0.2.0` at `a5e904e`. Production: https://hunterdavis.com/slamdemonium/
 - [x] WP19 (PR #65) | developer 2 + designer | First-class controller: every action on the pad, Options fully adjustable by pad, live glyph prompts, haptics with a zeroable intensity, hot-plug. | dev2/wp19-controller
 
-### v0.3 — It makes noise
+### v0.3.0 — It makes noise — SHIPPED 2026-09-21
+Tag `v0.3.0` at `0665b52`. Shared surface definitions + full sound effects engine.
 - [x] F0 (PR #68) | designer + developer 1 + developer 2 | Shared surface definitions. Ray hits carry `surfaceId` but grip uses one global `surfaceGrip`; resolve through ONE definition in content data before any grass/gravel. Do WITH F1.
 - [x] F1 (PR #69) | developer 2 + designer + developer 1 | Sound effects: `AudioDirector` consuming telemetry after simulation, synthetic engine note from speed/throttle, screech from real slip/load, boost layers, impact layer ready for breakables.
 
