@@ -1,5 +1,9 @@
 import { Quaternion, Vector3 } from 'three';
 import type { RayHit } from '../physics/adapter';
+import type {
+  SurfaceId,
+  SurfaceResolverDiagnostics,
+} from '../content/surfaces';
 
 export class WheelState {
   readonly mount = new Vector3();
@@ -19,6 +23,10 @@ export class WheelState {
   readonly right = new Vector3();
   readonly applyPoint = new Vector3();
   grounded = false;
+  /** Canonical world classification; RayHit retains the raw collider metadata. */
+  surfaceId: SurfaceId | null = null;
+  /** Null means no tyre surface; zero is a valid ground grip multiplier. */
+  surfaceGripMultiplier: number | null = null;
   compression = 0;
   suspensionLength = 0;
   springForce = 0;
@@ -38,6 +46,12 @@ export class WheelState {
   vy = 0;
 }
 export class VehicleTelemetry {
+  /** Live resolver-owned diagnostics. Copy for snapshots; a rebuilt world owns
+   * a new record and the old resolver reports disposed. Vehicle respawn keeps it. */
+  constructor(
+    readonly surfaceDiagnostics: SurfaceResolverDiagnostics | null = null,
+  ) {}
+
   readonly position = new Vector3();
   readonly rotation = new Quaternion();
   readonly velocity = new Vector3();

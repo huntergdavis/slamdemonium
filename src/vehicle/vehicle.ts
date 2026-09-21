@@ -1,5 +1,9 @@
 import { Quaternion, Vector3 } from 'three';
 import type { GameInput } from '../core/gameApi';
+import {
+  getKnownSurfaceDefinition,
+  type SurfaceResolver,
+} from '../content/surfaces';
 import type {
   BodyId,
   BodyProperties,
@@ -36,7 +40,7 @@ import {
 /** One rigid body, four suspension rays; no engine-owned vehicle/controller types. */
 export class Vehicle {
   readonly body: BodyId;
-  readonly telemetry = new VehicleTelemetry();
+  readonly telemetry: VehicleTelemetry;
   readonly controls = new VehicleControls();
   readonly drift = new DriftAssist();
   suspensionEnabled = true;
@@ -73,8 +77,10 @@ export class Vehicle {
   constructor(
     readonly world: IPhysicsWorld,
     readonly tuning: TuningStore,
-    spawn: V3 = { x: 0, y: 1, z: 0 },
+    spawn: V3,
+    private readonly resolveSurface: SurfaceResolver,
   ) {
+    this.telemetry = new VehicleTelemetry(resolveSurface.diagnostics);
     this.spawn.copy(spawn);
     this.readMassSettings();
     this.readBodySettings();
@@ -175,7 +181,21 @@ export class Vehicle {
         wheel.hit,
         this.body,
       );
-      wheel.springForce = wheel.Fz = wheel.Fx = wheel.Fy = wheel.gripUsage = 0;
+      // Physical contact remains grounded even when content cannot classify it.
+      // The resolver gates misses before reading the reused hit's stale fields.
+      wheel.surfaceId = this.resolveSurface(wheel.grounded, wheel.hit);
+      const surface =
+        wheel.surfaceId === null
+          ? null
+          : getKnownSurfaceDefinition(wheel.surfaceId);
+      wheel.surfaceGripMultiplier = surface?.gripMultiplier ?? null;
+      wheel.springForce =
+        wheel.Fz =
+        wheel.Fx =
+        wheel.Fy =
+        wheel.mu =
+        wheel.gripUsage =
+          0;
       wheel.spinning = wheel.locked = false;
       wheel.tireForceWorld.set(0, 0, 0);
       if (!wheel.grounded) {
@@ -345,9 +365,10 @@ export class Vehicle {
         dt,
         t.get('tireRelaxationLength'),
       );
+      if (wheel.surfaceGripMultiplier === null) continue;
       wheel.mu = effectiveFriction(
         t.get(front ? 'gripFront' : 'gripRear'),
-        t.get('surfaceGrip'),
+        t.get('surfaceGrip') * wheel.surfaceGripMultiplier,
         front ? 1 : c.rearGrip,
         wheel.Fz,
         referenceLoad,
@@ -600,6 +621,7 @@ export class Vehicle {
     for (let i = 0; i < 4; i++) {
       const wheel = this.telemetry.wheels[i]!;
       wheel.grounded = wheel.spinning = wheel.locked = false;
+      wheel.surfaceId = wheel.surfaceGripMultiplier = null;
       wheel.spinDelta = wheel.compression = wheel.springForce = wheel.Fz = 0;
       wheel.Fx = wheel.Fy = wheel.mu = wheel.gripUsage = wheel.steerAngle = 0;
       wheel.alpha = wheel.rawAlpha = wheel.vx = wheel.vy = wheel.spinAngle = 0;

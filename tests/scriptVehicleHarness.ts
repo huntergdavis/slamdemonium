@@ -8,8 +8,15 @@ import { KeyboardInput } from '../src/input/keyboard';
 import { GamepadInput } from '../src/input/gamepad';
 import { ScriptController, type ScriptInput } from '../src/input/script';
 import { DEFAULT_TRACK_CONFIG } from '../src/world/trackConfig';
-import { installTrackColliders } from '../src/world/trackPhysics';
+import {
+  createGroundDescriptor,
+  installTrackColliders,
+} from '../src/world/trackPhysics';
 import { makePad } from './input-helpers';
+import { createTrackSurfaceResolver } from '../src/world/trackSurfaces';
+import { createTrackLayout } from '../src/world/trackLayout';
+import { createKerbFootprintQuery } from '../src/world/kerbFootprint';
+import { SURFACE_IDS, type SurfaceResolver } from '../src/content/surfaces';
 
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
@@ -34,14 +41,37 @@ export async function scriptVehicleHarness(
   } = {},
 ) {
   const world = await createPhysicsWorld({ wasmPath });
+  let surfaceResolver: SurfaceResolver;
   if (options.flatPlane) {
-    world.createStaticBox(
-      { x: 0, y: -0.5, z: 0 },
-      { x: 5000, y: 0.5, z: 5000 },
-    );
-  } else installTrackColliders(world, DEFAULT_TRACK_CONFIG);
+    const ground = {
+      center: { x: 0, y: -0.5, z: 0 },
+      halfExtents: { x: 5000, y: 0.5, z: 5000 },
+      rotY: 0,
+    };
+    const groundBody = world.createStaticBox(ground.center, ground.halfExtents);
+    surfaceResolver = createTrackSurfaceResolver({
+      bodies: { ground: groundBody, barriers: [] },
+      groundSurfaceId: SURFACE_IDS.asphalt,
+      ground,
+      kerbFootprint: () => false,
+    });
+  } else {
+    const config = DEFAULT_TRACK_CONFIG;
+    const bodies = installTrackColliders(world, config);
+    surfaceResolver = createTrackSurfaceResolver({
+      bodies,
+      groundSurfaceId: config.surfaceId,
+      ground: createGroundDescriptor(config),
+      kerbFootprint: createKerbFootprintQuery(createTrackLayout(config).curbs),
+    });
+  }
   const store = new TuningStore();
-  const vehicle = new Vehicle(world, store, ringSpawn.position);
+  const vehicle = new Vehicle(
+    world,
+    store,
+    ringSpawn.position,
+    surfaceResolver,
+  );
   const keyboard = new KeyboardInput(new EventTarget(), {
     visibilityTarget: null,
   });
@@ -109,6 +139,7 @@ export async function scriptVehicleHarness(
     dispose: () => {
       scripts.dispose();
       keyboard.dispose();
+      surfaceResolver.dispose();
       world.dispose();
     },
   };
