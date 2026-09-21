@@ -121,6 +121,12 @@ test('controller focus and prompts survive unplugging, and Options cannot leak d
   await tap(page, [13]);
   await expect(hints.first()).toHaveAttribute('data-input-device', 'gamepad');
   await expect(page.locator('.sl-options [data-selected=true]')).toHaveCount(1);
+  await page.getByLabel('Driving view').click({ position: { x: 400, y: 280 } });
+  await expect(hints.first()).toHaveAttribute('data-input-device', 'keyboard');
+  await expect(page.locator('.sl-options [data-selected=true]')).toHaveCount(0);
+  await tap(page, [13]);
+  await expect(hints.first()).toHaveAttribute('data-input-device', 'gamepad');
+  await expect(page.locator('.sl-options [data-selected=true]')).toHaveCount(1);
   const result = await page.evaluate(() => {
     const game = window.__game;
     const run = (buttons: number[], axis: number) => {

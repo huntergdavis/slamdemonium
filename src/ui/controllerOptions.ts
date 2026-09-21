@@ -31,6 +31,7 @@ export class ControllerOptions {
   ) {
     this.keyboard = new ControllerKeyboard(options.element);
     options.element.addEventListener('focusin', this.focusin);
+    options.element.addEventListener('focusout', this.focusout);
     options.element.addEventListener('keydown', this.keydown);
   }
 
@@ -104,6 +105,7 @@ export class ControllerOptions {
 
   dispose(): void {
     this.options.element.removeEventListener('focusin', this.focusin);
+    this.options.element.removeEventListener('focusout', this.focusout);
     this.options.element.removeEventListener('keydown', this.keydown);
     this.selected?.removeAttribute('data-selected');
     this.keyboard.dispose();
@@ -211,6 +213,16 @@ export class ControllerOptions {
       this.options.element.ownerDocument.defaultView!.HTMLElement
     )
       this.select(target);
+  };
+  private readonly focusout = (event: FocusEvent): void => {
+    const next = event.relatedTarget;
+    if (
+      next instanceof this.options.element.ownerDocument.defaultView!.Node &&
+      this.options.element.contains(next)
+    )
+      return;
+    this.selected?.removeAttribute('data-selected');
+    this.selected = null;
   };
   private readonly keydown = (event: KeyboardEvent): void => {
     // The text-entry section is a focus scope in both drawer and modal layouts.
