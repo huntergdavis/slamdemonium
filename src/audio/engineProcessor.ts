@@ -19,14 +19,16 @@ const ENGINE_PROCESSOR = 'slamdemonium-engine';
 /** Firing events per crank revolution for a four-stroke four. */
 const FIRINGS_PER_REV = 2;
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
-/** Two voices, blended by `character`: 0 is an even small four-cylinder,
- * 1 is a muscle voice. Rumble is low-frequency amplitude variation, not bass
- * level: the muscle pattern spans eight firings (two crank turns) with
- * crossplane-style paired pulses and long gaps, strengths swing 1 to 0.25 so
- * there are real troughs, and every pulse gets its own timing and amplitude
- * jitter plus a slow random wander, so the train never fuses into a steady
- * oscillator. Its exhaust body sits in the 40 to 80 Hz range the player can
- * actually hear on ordinary speakers. */
+/** Two voices, blended by `character`. 0 is the even four-cylinder through
+ * resonant band-pass filters. 1 is the muscle voice through an exhaust PIPE:
+ * a delay-line waveguide with inverting reflection at the open tailpipe and
+ * lowpass radiation loss, plus a shorter muffler section. Each pulse then
+ * interferes with reflections of the pulses before it, and that interference
+ * shifts as the firing spacing sweeps against the fixed pipe delay, which is
+ * the chug a bank of filters cannot make: filters ring the same bells for
+ * every pulse. The muscle pattern spans eight firings (two crank turns) with
+ * crossplane-style paired pulses and long gaps; strengths swing 1 to 0.25 and
+ * every pulse gets its own timing and amplitude jitter plus a slow wander. */
 const PATTERN = 8;
 const STRENGTH_EVEN = new Float32Array([
   1, 0.78, 0.92, 0.7, 1, 0.78, 0.92, 0.7,
@@ -38,9 +40,19 @@ const GAP_EVEN = new Float32Array([1, 1, 1, 1, 1, 1, 1, 1]);
 const GAP_MUSCLE = new Float32Array([
   1.4, 0.6, 1.25, 0.75, 1.1, 0.9, 1.35, 0.65,
 ]);
+/** Exhaust round trip: about 1.5 m of pipe at 343 m/s, there and back. With
+ * the inverting open end this resonates at odd multiples of 56 Hz. */
+const PIPE_SECONDS = 0.009;
+const PIPE_FEEDBACK = 0.72;
+const PIPE_LOSS_HZ = 1400;
+/** Muffler section: shorter, non-inverting, lossier. */
+const MUFFLER_SECONDS = 0.0031;
+const MUFFLER_FEEDBACK = 0.42;
+const MUFFLER_LOSS_HZ = 900;
+const MAX_DELAY_SECONDS = 0.02;
 
 /** Constant-skirt band-pass biquad; `tune` recomputes coefficients (per block
- * at most, only when the voice character moves). */
+ * at most, only when rpm or the voice character moves). */
 class Resonator {
   private x1 = 0;
   private x2 = 0;
@@ -64,6 +76,40 @@ class Resonator {
     this.y2 = this.y1;
     this.y1 = y;
     return y;
+  }
+}
+
+/** Feedback delay-line waveguide with a one-pole lowpass in the loop. The
+ * buffer is allocated once at construction; `run` allocates nothing. */
+class Pipe {
+  private readonly buffer: Float32Array;
+  private write = 0;
+  private loss = 0;
+  private readonly delay: number;
+  private readonly lossCoefficient: number;
+  constructor(
+    seconds: number,
+    private readonly feedback: number,
+    lossHz: number,
+  ) {
+    this.buffer = new Float32Array(Math.ceil(MAX_DELAY_SECONDS * sampleRate));
+    this.delay = Math.min(this.buffer.length - 2, seconds * sampleRate);
+    this.lossCoefficient = Math.min(0.99, (2 * Math.PI * lossHz) / sampleRate);
+  }
+  /** Returns the wave arriving at the far end, which is what radiates. */
+  run(input: number): number {
+    const length = this.buffer.length;
+    let position = this.write - this.delay;
+    if (position < 0) position += length;
+    const index = Math.floor(position);
+    const fraction = position - index;
+    const next = index + 1 < length ? index + 1 : 0;
+    const delayed =
+      this.buffer[index]! * (1 - fraction) + this.buffer[next]! * fraction;
+    this.loss += (delayed - this.loss) * this.lossCoefficient;
+    this.buffer[this.write] = input + this.feedback * this.loss;
+    this.write = this.write + 1 < length ? this.write + 1 : 0;
+    return this.loss;
   }
 }
 
@@ -102,12 +148,20 @@ class EngineProcessor extends AudioWorkletProcessor {
   private seed = 0x9e3779b9;
   private noiseState = 0;
   private lowpassState = 0;
+  private blockIn = 0;
+  private blockOut = 0;
   private tunedCharacter = -1;
   private tunedRpm = -1;
   private readonly sub = new Resonator();
   private readonly exhaust = new Resonator();
   private readonly body = new Resonator();
   private readonly rasp = new Resonator();
+  private readonly pipe = new Pipe(PIPE_SECONDS, -PIPE_FEEDBACK, PIPE_LOSS_HZ);
+  private readonly muffler = new Pipe(
+    MUFFLER_SECONDS,
+    MUFFLER_FEEDBACK,
+    MUFFLER_LOSS_HZ,
+  );
 
   private random(): number {
     // xorshift32: deterministic, allocation free.
@@ -131,53 +185,50 @@ class EngineProcessor extends AudioWorkletProcessor {
     const c = parameters['character']?.[0] ?? 0;
     const dt = 1 / sampleRate;
     const firingHz = (rpm / 60) * FIRINGS_PER_REV;
-    if (c !== this.tunedCharacter || rpm !== this.tunedRpm) {
-      // The muscle exhaust and body ride up with the firing rate once revs
-      // climb, so the 64 Hz body gives rumble at idle without dragging the
-      // perceived pitch down when the throttle is pushed.
-      const muscleExhaust = Math.max(64, firingHz);
-      const muscleBody = Math.max(120, firingHz * 2.2);
-      this.sub.tune(lerp(48, 46, c), lerp(1.2, 1.6, c));
-      this.exhaust.tune(lerp(96, muscleExhaust, c), lerp(1.4, 2, c));
-      this.body.tune(lerp(340, muscleBody, c), lerp(2.2, 1.8, c));
-      this.rasp.tune(lerp(1250, 900, c), lerp(3, 2.5, c));
+    const useFilters = c < 1;
+    const usePipe = c > 0;
+    if (useFilters && (c !== this.tunedCharacter || rpm !== this.tunedRpm)) {
+      this.sub.tune(48, 1.2);
+      this.exhaust.tune(96, 1.4);
+      this.body.tune(340, 2.2);
+      this.rasp.tune(1250, 3);
       this.tunedCharacter = c;
       this.tunedRpm = rpm;
     }
-    // The sub body fades out above idle; it is rumble at rest, mud at revs.
-    const subWeight = Math.max(0, Math.min(1, (2600 - rpm) / 1400));
     // Puff length scales with firing rate so pulses stay distinct at idle and
-    // merge into a roar at high RPM; the muscle voice keeps them fatter.
-    // Muscle pulses stay short against their gaps so troughs survive; the
-    // 64 Hz exhaust body, not the pulse length, carries the bass.
+    // merge into a roar at high RPM.
     const decay = Math.max(lerp(50, 60, c), firingHz * lerp(6, 4.5, c));
-    const puffGain = lerp(3.2, 2.8, c) * (0.45 + 0.55 * load);
-    const ampJitter = lerp(0.1, 0.4, c);
-    const timeJitter = lerp(0, 0.08, c);
+    const puffGain = lerp(3.2, 1.6, c) * (0.45 + 0.55 * load);
+    // Jitter that is texture at idle becomes hash at four times the pulse
+    // rate, so it thins out as revs rise.
+    const revWeight = Math.max(0.2, Math.min(1, 1 - (rpm - 1500) / 4500));
+    const ampJitter = lerp(0.1, 0.4 * revWeight, c);
+    const timeJitter = lerp(0, 0.08 * revWeight, c);
     const noiseGain =
-      lerp(0.03 + 0.12 * load, 0.02 + 0.06 * load, c) * Math.min(1, rpm / 4500);
-    const noiseCoefficient = Math.min(0.5, (600 + rpm * 0.25) * dt);
-    // The muscle voice stays out of the saturator so its troughs survive;
-    // makeup gain after tanh keeps the two voices at matching loudness.
-    const drive = lerp(1.4 + 2.6 * load, 0.6 + 0.9 * load, c);
-    const makeup = lerp(0.5, 0.9, c);
+      lerp(0.03 + 0.12 * load, 0.02 + 0.05 * load, c) * Math.min(1, rpm / 4500);
+    const noiseCoefficient = Math.min(
+      0.5,
+      lerp(600 + rpm * 0.25, 350 + rpm * 0.08, c) * dt,
+    );
+    const drive = lerp(1.4 + 2.6 * load, 0.7 + 0.8 * load, c);
+    const makeup = lerp(0.5, 0.8, c);
     const lowpassCoefficient = Math.min(
       0.6,
-      lerp(2500 + rpm * 0.6, 1400 + rpm * 0.35, c) * dt,
+      lerp(2500 + rpm * 0.6, 1100 + rpm * 0.3, c) * dt,
     );
-    const subMix = lerp(0, 0.8 * subWeight, c);
-    const exhaustMix = lerp(1, 1.3, c);
-    const bodyMix = lerp(0.55, 0.7, c);
-    const raspMix = lerp(0.18, 0.2, c);
-    const dryMix = lerp(0.12, 0.2, c);
+    const pulseStep = firingHz * dt;
     for (let i = 0; i < out.length; i++) {
-      this.phase += firingHz * dt;
+      this.phase += pulseStep;
       if (this.phase >= this.nextGap) {
-        this.phase -= this.nextGap;
+        // Sub-sample onset: a pulse that starts on the sample grid carries
+        // timing quantisation noise once pulses are milliseconds apart.
+        const overshoot = this.phase - this.nextGap;
+        this.phase = overshoot;
         this.cylinder = (this.cylinder + 1) % PATTERN;
-        this.sinceFiring = 0;
+        this.sinceFiring = (overshoot / pulseStep) * dt;
         // Slow wander drifts across pulses so successive cycles differ.
-        this.wander = this.wander * 0.8 + (this.random() - 0.5) * 0.5;
+        this.wander =
+          this.wander * 0.8 + (this.random() - 0.5) * 0.5 * revWeight;
         this.firingAmp =
           lerp(
             STRENGTH_EVEN[this.cylinder]!,
@@ -192,16 +243,34 @@ class EngineProcessor extends AudioWorkletProcessor {
       }
       this.sinceFiring += dt;
       const t = this.sinceFiring * decay;
-      const puff = this.firingAmp * (Math.exp(-t) - Math.exp(-4 * t));
+      // The even voice keeps its cornered puff; the pipe gets a puff with a
+      // continuous slope at onset, so its harmonics fall off faster and the
+      // feedback loop has no edge hash to amplify. Both peak near 1.
+      const puffEven = Math.exp(-t) - Math.exp(-4 * t);
+      const puffSmooth = 0.87 * t * t * Math.exp(-t);
+      const puff = this.firingAmp * lerp(puffEven, puffSmooth, c);
       this.noiseState +=
         (this.random() * 2 - 1 - this.noiseState) * noiseCoefficient;
       const excitation = puff * puffGain + this.noiseState * noiseGain;
-      const shaped =
-        subMix * this.sub.run(excitation) +
-        exhaustMix * this.exhaust.run(excitation) +
-        bodyMix * this.body.run(excitation) +
-        raspMix * this.rasp.run(excitation) +
-        dryMix * excitation;
+      let shaped = 0;
+      if (useFilters)
+        shaped +=
+          (1 - c) *
+          (this.exhaust.run(excitation) +
+            0.55 * this.body.run(excitation) +
+            0.18 * this.rasp.run(excitation) +
+            0.12 * excitation);
+      if (usePipe) {
+        // A pressure puff is one-sided; block its DC before the feedback
+        // loops, or the muffler section pumps a bias into the saturator.
+        const blocked = excitation - this.blockIn + 0.995 * this.blockOut;
+        this.blockIn = excitation;
+        this.blockOut = blocked;
+        const radiated = this.pipe.run(blocked);
+        shaped +=
+          c *
+          (1.2 * this.muffler.run(radiated) + 0.6 * radiated + 0.15 * blocked);
+      }
       const saturated = Math.tanh(shaped * drive) * makeup;
       this.lowpassState += (saturated - this.lowpassState) * lowpassCoefficient;
       out[i] = this.lowpassState;
