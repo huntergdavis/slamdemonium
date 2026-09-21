@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "reason": "Initial O6 production payload after the driving-feel slice; records the design section 16 physics WASM risk before models, audio, radio and larger maps.",
+  "allowance": {
+    "totalPercent": 5,
+    "assetPercent": 10,
+    "assetMinimumBytes": {
+      "rawBytes": 2048,
+      "gzipBytes": 1024
+    },
+    "newAssetBytes": {
+      "rawBytes": 65536,
+      "gzipBytes": 32768
+    }
+  },
+  "measurement": {
+    "revision": "0f3c2d772fc4911bdfbc3a6ae994cab7914382d6",
+    "method": {
+      "basePath": "/slamdemonium/",
+      "compression": "gzip",
+      "level": 6,
+      "mtime": 0,
+      "aggregation": "sum of independently compressed files",
+      "excludedInstrumentation": [".vite/manifest.json"]
+    },
+    "toolchain": {
+      "node": "v22.22.1",
+      "vite": "8.3.0",
+      "python": "3.14.4",
+      "zlib": "1.3.1"
+    },
+    "assets": {
+      "source:__vite-browser-external": {
+        "file": "assets/__vite-browser-external-mUJeyHvI.js",
+        "rawBytes": 96,
+        "gzipBytes": 109,
+        "sha256": "3c95f6d625564b67f2369c9e6a9324e58d83ee43447b7bf68bd9a5a790839946"
+      },
+      "generated:assets/index.css": {
+        "file": "assets/index-DCu5PPIz.css",
+        "rawBytes": 14697,
+        "gzipBytes": 3984,
+        "sha256": "9462a968f224ad3de2936ae38010c2518e7a22e8240ecb017d5c1c88705dd54a"
+      },
+      "source:index.html": {
+        "file": "assets/index-DEw5cg8l.js",
+        "rawBytes": 706878,
+        "gzipBytes": 187033,
+        "sha256": "e89a7a8e568c3da8728b4f269077760da023ce2f36da7de33326f92505ee0b0d"
+      },
+      "source:node_modules/jolt-physics/dist/jolt-physics.wasm.wasm": {
+        "file": "assets/jolt-physics.wasm-CvlHROwB.wasm",
+        "rawBytes": 2021569,
+        "gzipBytes": 742907,
+        "sha256": "65f044b2ec57be2bbf0f84828f3948d6f3f9e17942ad80aa98923b94dd292f90"
+      },
+      "source:src/physics/joltWorld.ts": {
+        "file": "assets/joltWorld-B4TnL42R.js",
+        "rawBytes": 938502,
+        "gzipBytes": 135288,
+        "sha256": "6b9e64f23c0fbb1131b65f63a522ef3017598488edd926b67a0c6481af1f5d4b"
+      },
+      "file:index.html": {
+        "file": "index.html",
+        "rawBytes": 460,
+        "gzipBytes": 297,
+        "sha256": "fb9da80b543a1cf7e67e7a43352f41b53014a340dd6e7cf66854f299a48b4b6b"
+      }
+    },
+    "total": {
+      "rawBytes": 3682202,
+      "gzipBytes": 1069618
+    }
+  }
+}
