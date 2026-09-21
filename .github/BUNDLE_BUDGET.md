@@ -4,7 +4,13 @@
 
 The only budget source is [bundle-baseline.json](bundle-baseline.json): the reviewed production measurement, its source revision, a written reason, and all growth allowances. The check never moves that baseline automatically. Small changes accumulate against it rather than getting a fresh allowance on every commit.
 
-The initial policy permits modest total growth and a separate allowance per asset, with a small byte floor for tiny files. New assets have explicit limits too, and still count toward the total. **A first car model can consume the entire total allowance by itself. A failure there is the intended review point, not a broken budget.** Larger intentional models, music, sound effects or maps belong in a feature PR with a reasoned baseline update. Do not raise limits or rebaseline automatically just to turn a check green.
+The policy permits modest total growth and a separate allowance per asset, with a small byte floor for tiny files. New assets have explicit limits too, and still count toward the total. **A first car model can consume the entire total allowance by itself. A failure there is the intended review point, not a broken budget.** Larger intentional models, music, sound effects or maps belong in a feature PR with a reasoned baseline update. Do not raise limits or rebaseline automatically just to turn a check green.
+
+## Small-asset calibration
+
+An existing asset's limit is its recorded size plus the larger of its percentage allowance and its byte floor, calculated separately for raw and gzip bytes. The raw floor is 4 KiB; the gzip floor remains 1 KiB. The percentage allowance remains 10 percent, so the raw floor affects existing assets recorded below 40 KiB. This is a general small-asset rule, including HTML and small JavaScript files; CSS keeps its own gate alongside the unchanged 5 percent total cap and explicit new-asset limits.
+
+The approved WP18 and WP19 UI changes added 4,015 and 3,957 raw CSS bytes. Both exceeded the original 2 KiB floor while adding little to total downloads. A 4 KiB floor is the smallest whole-KiB allowance that accommodates either measured increment. With the WP18 baseline unchanged, WP19 would leave only 139 raw and 313 gzip CSS bytes of headroom. This is cumulative room from the reviewed baseline, not a fresh allowance per feature or PR: further changes can still require an explained baseline update. The allowance rationale lives beside its values in `bundle-baseline.json`; calibrating policy does not refresh recorded measurements.
 
 ## What the numbers mean
 
