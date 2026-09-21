@@ -189,6 +189,49 @@ describe('F0 preserves shipped kerb haptics on the current ground', () => {
     track.dispose();
   });
 
+  it('removes false kerb rumble for a registered wall hit over the same X/Z footprint', () => {
+    const r = setup();
+    const config = resolveTrackConfig();
+    const track = createTestTrack(new Scene(), {
+      maxAnisotropy: 1,
+      asphalt: { size: 128 },
+    });
+    const resolver = track.createSurfaceResolver({
+      ground: 11,
+      barriers: Array.from(
+        { length: config.barrierSegments },
+        (_, index) => index + 12,
+      ),
+    });
+    const center = createTrackLayout(config).curbs[0]!.center;
+    const hit = {
+      bodyId: 11,
+      surfaceId: 0,
+      distance: 1,
+      point: { x: center.x, y: 0, z: center.z },
+      normal: { x: 0, y: 1, z: 0 },
+    };
+    expect(track.isOnKerb(center.x, center.z)).toBe(true); // v0.2.0 only checked X/Z.
+    const wheel = r.telemetry.wheels[0];
+    wheel.grounded = true;
+    r.telemetry.speed = 20;
+    wheel.surfaceId = resolver(true, hit);
+    r.haptics.afterStep(1 / 120);
+    r.haptics.update(0);
+    expect(r.play).toHaveBeenCalledOnce();
+    r.haptics.reset();
+    r.play.mockClear();
+    hit.bodyId = 12;
+    hit.normal.x = 1;
+    hit.normal.y = 0;
+    wheel.surfaceId = resolver(true, hit);
+    expect(wheel.surfaceId).toBe(SURFACE_IDS.concrete);
+    r.haptics.afterStep(1 / 120);
+    r.haptics.update(60);
+    expect(r.play).not.toHaveBeenCalled();
+    track.dispose();
+  });
+
   it('never turns stale, unknown or contact-only canonical IDs into kerb feedback', () => {
     const r = setup();
     r.telemetry.speed = 20;
