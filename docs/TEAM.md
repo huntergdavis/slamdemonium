@@ -159,3 +159,29 @@ Owner: technical writer. Do this the day the scaffold lands.
 5. Delete the "still landing" note. Check that every command in the block is copy-pasteable.
 6. Take the first screenshot once the scene renders, store it under `docs/screenshots/` following the naming rules there, and reference it from README.md.
 7. Open the PR and ping the PM.
+
+## Team size and roles (from 2026-09-21)
+
+The project ran its first three releases with six agents in specialised roles.
+It now runs with **two developers**, one Claude and one Codex, who each cover
+research, design and coding, plus the PM. This was a cost decision, not a
+process failure: the earlier specialisation produced the documentation,
+standards and automated gates that make a smaller team viable.
+
+What the six-agent structure left behind, and what a two-person team relies on:
+
+| Concern | Where it lives now |
+|---|---|
+| Engineering rules and their incidents | this document |
+| Cutting a release, rollback behaviour | `.github/RELEASING.md` |
+| Bundle budget policy and content additions | `.github/BUNDLE_BUDGET.md` |
+| Technical decisions and spike results | `docs/DECISIONS.md` |
+| Research findings and the next-features plan | `docs/research/` |
+| Visual direction, UI kit, asset generators | `docs/design/` |
+| Controller bindings, scripted input, audio | `src/input/`, `src/audio/` READMEs |
+
+**Formal ownership boundaries and cherry-pick handoffs are no longer required.**
+They existed because six agents shared one repository and collided. With two
+developers, coordinate directly. What still applies: the engineering standards
+above, the required CI, Reachability and Bundle size checks, and the rule that
+only the PM merges to `main`.
