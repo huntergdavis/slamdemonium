@@ -55,7 +55,7 @@ class ArchiveTests(unittest.TestCase):
                 pages.archive_files(data)
 
     def test_reserves_preview_namespace_and_state_for_publisher(self):
-        for name in ("pr/7/index.html", pages.STATE_FILE):
+        for name in ("pr/7/index.html", "main/index.html", "release-candidate/index.html", pages.STATE_FILE):
             with zipfile.ZipFile(io.BytesIO(archive({"index.html": "ok", name: "bad"}))) as data:
                 with self.assertRaises(ValueError):
                     pages.archive_files(data, production=True)
@@ -70,6 +70,21 @@ class ArchiveTests(unittest.TestCase):
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_staging_warms_hashed_assets_for_rollback_without_replacing_production(self):
+        with tempfile.TemporaryDirectory() as directory:
+            site = Path(directory)
+            (site / 'index.html').write_text('stable')
+            candidate = archive({'index.html': 'candidate', 'build-info.json': 'candidate identity',
+                                 'assets/new-12345678.js': 'new asset', 'assets/unversioned.js': 'unversioned'})
+            pages.add_hashed_assets(site, candidate)
+            self.assertEqual((site / 'index.html').read_text(), 'stable')
+            self.assertFalse((site / 'build-info.json').exists())
+            self.assertFalse((site / 'assets/unversioned.js').exists())
+            self.assertEqual((site / 'assets/new-12345678.js').read_text(), 'new asset')
+            (site / 'assets/new-12345678.js').write_text('collision')
+            with self.assertRaisesRegex(ValueError, 'collision'):
+                pages.add_hashed_assets(site, candidate)
+
     def test_real_git_open_update_close_keeps_live_root_identical(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
