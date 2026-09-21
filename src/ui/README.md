@@ -27,7 +27,15 @@ All schema fields are present once in groups, with 14 additional Quick Tune view
 
 The browser tests compile `tests/options/index.html` with Vite and serve its built JS/CSS. This isolated consumer exercises the same exported component without touching boot or shipping its test driver. `e2e/options.spec.ts` covers controls, native focus behavior, A/B, persistence, import/export/share, externally reported rebuild states, 30 Hz read limits, and narrow viewports. The boot controller's tests own debounce/flush/cancel behavior.
 
-## Pause menu (WP16)
+## Pause menu (WP16 / WP18)
+
+The native dialog covers the full viewport in its menu, Controls and Options
+views. The designer's `.sl-pause` kit supplies strong dimming with no backdrop
+blur. `.sl-pause__entry` labels are large enough to read at a distance. Resume
+receives focus on opening; `data-selected="true"` follows actual focus rather
+than leaving Resume permanently styled as the primary action. Keyboard and
+controller vertical navigation both wrap, and background clicks recover the
+last selection. Options keeps its existing controls and scrolling regions.
 
 `mountPauseMenu` from `./pauseMenu` consumes the existing Options instance and
 boot's existing pause coordinator:
@@ -56,9 +64,14 @@ Start now opens the pause menu, where Options is reachable, instead of directly
 opening Options. O and the gear keep their direct Options behavior.
 
 Call `pauseMenu.update(nowMs)` once per RAF **after** action polling, including
-paused frames. Continue WP14's `input.sampleActions()` on paused frames; never
+paused frames, including an active replay. Continue WP14's
+`input.sampleActions()` on paused frames; never
 sample a script's driving state without its matching completed physics step.
 The menu reads preallocated gamepad state and never adds a Gamepad API poll.
+While the menu is open or opening/closing, boot routes the command batch to the
+menu and suppresses gameplay commands such as pad Y respawn. Only the explicit
+Restart entry invokes the respawn callback. The existing loop pause transition
+resets its wall clock; elapsed menu time never becomes physics catch-up work.
 D-pad/left stick navigates, A selects, B returns, and left/right adjusts existing
 Options sliders/numbers/selects. Text entry and native file dialogs still use the
 keyboard/browser UI. A held stick repeats after 350 ms, then every 110 ms.
@@ -81,6 +94,12 @@ and [Fullscreen UI](https://fullscreen.spec.whatwg.org/#ui).
 mapper/loop/Options/menu. It tests keyboard and gamepad use, stable stopped
 physics/script-sample counts, preserved external pause reasons, Options DOM
 identity, native fullscreen/pointer-lock exit and a 320×480 viewport.
+WP18 also checks a 1920×1080 view, exactly one visible selection, full viewport
+coverage in each view, no driving/script sampling while paused, and resuming
+after a synthetic five-minute gap without a time jump. The built-game test in
+`e2e/pauseRuntime.spec.ts` holds steering, triggers and Y behind the menu, then
+pauses a real scripted handbrake turn mid-slide and requires its completed
+replay result to equal an uninterrupted run exactly.
 
 For a native browser-exit check on Linux with Xvfb and xdotool installed, run:
 

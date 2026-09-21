@@ -1,6 +1,11 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { expect, test as base, type Page } from '@playwright/test';
+import {
+  expect,
+  test as base,
+  type Page,
+  type Locator,
+} from '@playwright/test';
 import { serveOptionsBuild } from '../tests/options/server';
 
 const test = base.extend<
@@ -40,6 +45,166 @@ async function frames(page: Page, count = 3): Promise<void> {
 async function pressPad(page: Page, button: number): Promise<void> {
   await page.evaluate((b) => window.__pauseTest.tapPad(b), button);
 }
+
+async function expectSelection(dialog: Locator, name: string): Promise<void> {
+  const selected = dialog.locator('[data-selected="true"]');
+  await expect(selected).toHaveCount(1);
+  await expect(selected).toHaveAccessibleName(name);
+  await expect(selected).toBeFocused();
+  await expect(selected).toBeInViewport({ ratio: 1 });
+}
+
+async function expectFullViewport(dialog: Locator): Promise<void> {
+  const geometry = await dialog.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    const style = getComputedStyle(node);
+    const backdrop = getComputedStyle(node, '::backdrop');
+    return {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      blur: style.backdropFilter,
+      backdropBlur: backdrop.backdropFilter,
+    };
+  });
+  expect(geometry.x).toBeCloseTo(0);
+  expect(geometry.y).toBeCloseTo(0);
+  expect(geometry.width).toBeCloseTo(geometry.viewportWidth);
+  expect(geometry.height).toBeCloseTo(geometry.viewportHeight);
+  expect(geometry.blur).toBe('none');
+  expect(geometry.backdropBlur).toBe('none');
+}
+
+for (const size of [
+  { width: 1920, height: 1080 },
+  { width: 320, height: 480 },
+]) {
+  test(
+    'full viewfield and one visible selection at ' + size.width + 'px',
+    async ({ menuPage: page }, testInfo) => {
+      await page.setViewportSize(size);
+      await page.keyboard.press('Escape');
+      const dialog = page.locator('.sl-pause');
+      await expectFullViewport(dialog);
+      await expectSelection(dialog, 'Resume');
+      await page.screenshot({
+        path: testInfo.outputPath('console-pause-menu.png'),
+      });
+      const entry = page.getByRole('button', { name: 'Resume', exact: true });
+      const typography = await entry.evaluate((button) => ({
+        fontSize: parseFloat(getComputedStyle(button).fontSize),
+        height: button.getBoundingClientRect().height,
+      }));
+      expect(typography.fontSize).toBeGreaterThanOrEqual(
+        size.width > 1000 ? 28 : 20,
+      );
+      expect(typography.height).toBeGreaterThanOrEqual(48);
+      await page.keyboard.press('ArrowUp');
+      await expectSelection(dialog, 'Controls');
+      await page.keyboard.press('ArrowDown');
+      await expectSelection(dialog, 'Resume');
+      await page.keyboard.press('Shift+Tab');
+      await expectSelection(dialog, 'Controls');
+      await page.keyboard.press('Tab');
+      await expectSelection(dialog, 'Resume');
+      await pressPad(page, 12);
+      await expectSelection(dialog, 'Controls');
+      await pressPad(page, 13);
+      await expectSelection(dialog, 'Resume');
+      // Losing focus to the native dialog background cannot leave pad A inert.
+      expect(
+        await dialog.evaluate((node) => {
+          node.focus();
+          node.dispatchEvent(
+            new KeyboardEvent('keydown', { code: 'KeyW', bubbles: true }),
+          );
+          const blocked = !window.__pauseTest.input.keyboard.state.held.KeyW;
+          node.dispatchEvent(
+            new KeyboardEvent('keyup', { code: 'KeyW', bubbles: true }),
+          );
+          return blocked;
+        }),
+      ).toBe(true);
+      await frames(page);
+      await expectSelection(dialog, 'Resume');
+      await page.getByRole('button', { name: 'Controls', exact: true }).click();
+      await expectFullViewport(dialog);
+      await expectSelection(dialog, 'Back');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await pressPad(page, 13);
+      await expectSelection(dialog, 'Back');
+      await page.screenshot({
+        path: testInfo.outputPath('console-pause-controls.png'),
+      });
+      await page.getByRole('button', { name: 'Back', exact: true }).click();
+      await page.getByRole('button', { name: 'Options', exact: true }).click();
+      await expectFullViewport(dialog);
+      await expectSelection(dialog, 'Close Options');
+      await page.screenshot({
+        path: testInfo.outputPath('console-pause-options.png'),
+      });
+      await page.getByRole('button', { name: 'Close Options' }).click();
+      await expectSelection(dialog, 'Resume');
+      // Pointer selection gets the same persistent styling as pad/keyboard focus.
+      await page.getByRole('button', { name: 'Restart', exact: true }).focus();
+      await expectSelection(dialog, 'Restart');
+      expect(await entry.getAttribute('data-selected')).not.toBe('true');
+    },
+  );
+}
+
+test('menu pause stops driving samples and resumes at the same physics time after a long clock gap', async ({
+  menuPage: page,
+}) => {
+  const result = await page.evaluate(() => {
+    const { loop, menu, input, state } = window.__pauseTest;
+    // Run the complete pause/clock sequence synchronously, between real RAFs.
+    loop.resetClock();
+    loop.frame(0);
+    loop.frame(1000 / 60);
+    menu.setOpen(true);
+    const before = {
+      steps: loop.totalSteps,
+      samples: state.scriptSamples,
+      time: loop.simulationSeconds,
+      driving: { ...input.state },
+    };
+    window.__pauseTest.setPad([0, 2], 1, 0, 1, 1);
+    input.sampleActions();
+    loop.frame(300_000);
+    const paused = {
+      steps: loop.totalSteps,
+      samples: state.scriptSamples,
+      time: loop.simulationSeconds,
+      throttle: input.state.throttle,
+      steer: input.state.steer,
+    };
+    window.__pauseTest.setPad([]);
+    menu.setOpen(false);
+    loop.frame(600_000);
+    const resumed = { steps: loop.totalSteps, time: loop.simulationSeconds };
+    loop.frame(600_000 + 1000 / 120);
+    const next = { steps: loop.totalSteps, time: loop.simulationSeconds };
+    return { before, paused, resumed, next };
+  });
+  expect(result.paused).toMatchObject({
+    steps: result.before.steps,
+    samples: result.before.samples,
+    time: result.before.time,
+    throttle: result.before.driving.throttle,
+    steer: result.before.driving.steer,
+  });
+  expect(result.resumed).toEqual({
+    steps: result.before.steps,
+    time: result.before.time,
+  });
+  expect(result.next.steps).toBe(result.before.steps + 1);
+  expect(result.next.time - result.before.time).toBeCloseTo(1 / 120);
+});
 
 test('Escape menu pauses the real loop, traps focus, shows Controls and resumes without tuning changes', async ({
   menuPage: page,

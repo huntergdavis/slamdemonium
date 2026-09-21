@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reason": "Initial O6 production payload after the driving-feel slice; records the design section 16 physics WASM risk before models, audio, radio and larger maps.",
+  "reason": "WP18 CSS-only update from 1676bda9301a8be239e7af68b997d66949dcf8fd: the CTO-requested, design-approved full-viewport pause menu, Controls and Options presentation adds 4,015 raw / 728 gzip CSS bytes. The PM approved this intentional player-facing growth. The complete feature adds 4,921 raw / 930 gzip bytes; the remaining 906 raw / 202 gzip bytes still count against the original budget. Only the CSS asset and its contribution to aggregate totals are refreshed; all other assets, the original O6 source revision and every allowance remain unchanged. The original O6 baseline records the design section 16 physics WASM risk before models, audio, radio and larger maps.",
   "allowance": {
     "totalPercent": 5,
     "assetPercent": 10,
@@ -37,10 +37,10 @@
         "sha256": "3c95f6d625564b67f2369c9e6a9324e58d83ee43447b7bf68bd9a5a790839946"
       },
       "generated:assets/index.css": {
-        "file": "assets/index-DCu5PPIz.css",
-        "rawBytes": 14697,
-        "gzipBytes": 3984,
-        "sha256": "9462a968f224ad3de2936ae38010c2518e7a22e8240ecb017d5c1c88705dd54a"
+        "file": "assets/index-BN4C0q5a.css",
+        "rawBytes": 18712,
+        "gzipBytes": 4712,
+        "sha256": "538e55950a218cad4bb19e4e358ca5277793ecd5b1ca76ce1f06b182e34d1c39"
       },
       "source:index.html": {
         "file": "assets/index-DEw5cg8l.js",
@@ -68,8 +68,8 @@
       }
     },
     "total": {
-      "rawBytes": 3682202,
-      "gzipBytes": 1069618
+      "rawBytes": 3686217,
+      "gzipBytes": 1070346
     }
   }
 }

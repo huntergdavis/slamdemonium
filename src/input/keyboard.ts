@@ -65,7 +65,7 @@ export function isEditingTarget(target: EventTarget | null): boolean {
 export function isOptionsTarget(target: EventTarget | null): boolean {
   return closest(
     target,
-    '[data-options-panel], [role="dialog"], input, textarea, select, button, a[href], [contenteditable]:not([contenteditable="false"])',
+    '[data-options-panel], dialog, [role="dialog"], input, textarea, select, button, a[href], [contenteditable]:not([contenteditable="false"])',
   );
 }
 

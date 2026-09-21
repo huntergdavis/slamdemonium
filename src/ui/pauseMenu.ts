@@ -43,6 +43,7 @@ export class PauseMenu {
   private readonly controls: HTMLDivElement;
   private readonly resume: HTMLButtonElement;
   private readonly message: Text;
+  private selected: HTMLElement | null = null;
   private opened = false;
   private view: 'menu' | 'controls' | 'options' = 'menu';
   private optionsParent: Node | null = null;
@@ -57,7 +58,7 @@ export class PauseMenu {
   constructor(private readonly deps: PauseMenuOptions) {
     const doc = deps.host.ownerDocument;
     this.root = node(doc, 'div', 'sl-ui');
-    this.element = node(doc, 'dialog', 'sl-card sl-pause');
+    this.element = node(doc, 'dialog', 'sl-pause');
     this.element.setAttribute('aria-label', 'Pause menu');
     this.element.dataset.view = 'menu';
     this.root.append(this.element);
@@ -69,7 +70,6 @@ export class PauseMenu {
     this.message = doc.createTextNode('');
     status.append(this.message);
     this.resume = this.button('Resume', () => this.setOpen(false));
-    this.resume.classList.add('sl-button--primary');
     this.menu.append(
       title,
       status,
@@ -134,6 +134,7 @@ export class PauseMenu {
       ),
     );
     this.element.append(this.menu, this.controls);
+    this.element.addEventListener('focusin', this.focusin);
     this.element.addEventListener('keydown', this.keydown);
     this.element.addEventListener('cancel', this.cancel);
   }
@@ -166,6 +167,8 @@ export class PauseMenu {
         this.view = 'menu';
       }
       this.element.close();
+      this.selected?.removeAttribute('data-selected');
+      this.selected = null;
       this.deps.onPauseChange(false);
       this.deps.drivingSurface.focus({ preventScroll: true });
     }
@@ -176,6 +179,7 @@ export class PauseMenu {
     if (!this.opened) return;
     if (this.view === 'options' && !this.deps.options.isOpen)
       this.showView('menu');
+    this.ensureSelection();
     const pad = this.deps.readGamepad();
     if (pad.index !== this.padIndex || !pad.connected) {
       this.resetPad();
@@ -206,17 +210,66 @@ export class PauseMenu {
 
   dispose(): void {
     this.setOpen(false);
+    this.element.removeEventListener('focusin', this.focusin);
     this.element.removeEventListener('keydown', this.keydown);
     this.element.removeEventListener('cancel', this.cancel);
     this.root.remove();
   }
 
   private button(label: string, action: () => void): HTMLButtonElement {
-    const button = node(this.root.ownerDocument, 'button', 'sl-button', label);
+    const button = node(
+      this.root.ownerDocument,
+      'button',
+      'sl-button sl-pause__entry',
+      label,
+    );
     button.type = 'button';
     button.addEventListener('click', action);
     return button;
   }
+
+  private select(control: HTMLElement): void {
+    if (control === this.selected) return;
+    this.selected?.removeAttribute('data-selected');
+    this.selected = control;
+    control.dataset.selected = 'true';
+    control.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  /** Native dialogs can focus their background after a pointer click. Keep the
+   * next keyboard/pad activation on the visible selection, never on the dialog. */
+  private ensureSelection(): void {
+    const root = this.navigationRoot();
+    const active = root.ownerDocument.activeElement;
+    if (
+      active instanceof root.ownerDocument.defaultView!.HTMLElement &&
+      active !== root &&
+      root.contains(active) &&
+      !active.closest('[hidden], [inert]')
+    ) {
+      this.select(active);
+      return;
+    }
+    if (
+      this.selected &&
+      root.contains(this.selected) &&
+      !this.selected.matches(':disabled') &&
+      !this.selected.closest('[hidden], [inert]')
+    )
+      this.selected.focus();
+    else moveFocus(root, 1);
+  }
+
+  private readonly focusin = (event: FocusEvent): void => {
+    const target = event.target;
+    const root = this.navigationRoot();
+    if (
+      target instanceof root.ownerDocument.defaultView!.HTMLElement &&
+      target !== root &&
+      root.contains(target)
+    )
+      this.select(target);
+  };
 
   private resetPad(): void {
     const pad = this.deps.readGamepad();
