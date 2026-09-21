@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('mounted pause menu shares live pause, respawn and Options wiring', async ({
   page,
-}) => {
+}, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('./');
@@ -21,6 +21,9 @@ test('mounted pause menu shares live pause, respawn and Options wiring', async (
   await page.keyboard.press('Escape');
   const menu = page.getByRole('dialog', { name: 'Pause menu', exact: true });
   await expect(menu).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('console-pause-live-game.png'),
+  });
   const steps = await page.evaluate(
     () => window.__game.getTelemetry().totalSteps,
   );

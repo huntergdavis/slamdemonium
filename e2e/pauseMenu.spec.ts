@@ -84,12 +84,15 @@ for (const size of [
 ]) {
   test(
     'full viewfield and one visible selection at ' + size.width + 'px',
-    async ({ menuPage: page }) => {
+    async ({ menuPage: page }, testInfo) => {
       await page.setViewportSize(size);
       await page.keyboard.press('Escape');
       const dialog = page.locator('.sl-pause');
       await expectFullViewport(dialog);
       await expectSelection(dialog, 'Resume');
+      await page.screenshot({
+        path: testInfo.outputPath('console-pause-menu.png'),
+      });
       const entry = page.getByRole('button', { name: 'Resume', exact: true });
       const typography = await entry.evaluate((button) => ({
         fontSize: parseFloat(getComputedStyle(button).fontSize),
@@ -130,10 +133,16 @@ for (const size of [
       await page.getByRole('button', { name: 'Controls', exact: true }).click();
       await expectFullViewport(dialog);
       await expectSelection(dialog, 'Back');
+      await page.screenshot({
+        path: testInfo.outputPath('console-pause-controls.png'),
+      });
       await page.getByRole('button', { name: 'Back', exact: true }).click();
       await page.getByRole('button', { name: 'Options', exact: true }).click();
       await expectFullViewport(dialog);
       await expectSelection(dialog, 'Close Options');
+      await page.screenshot({
+        path: testInfo.outputPath('console-pause-options.png'),
+      });
       await page.getByRole('button', { name: 'Close Options' }).click();
       await expectSelection(dialog, 'Resume');
       // Pointer selection gets the same persistent styling as pad/keyboard focus.
