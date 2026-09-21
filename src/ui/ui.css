@@ -1380,3 +1380,67 @@
   overflow: auto;
   overscroll-behavior: contain;
 }
+
+/* F1: direct flow child before the held legend; hidden after audio unlock.
+   Never reserve HUD space or change its scroll owner for this transient prompt. */
+.sl-audio-unlock {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.sl-audio-unlock > .sl-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 4px 10px;
+  text-align: left;
+}
+.sl-audio-unlock__label {
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.1;
+}
+.sl-audio-unlock__hint {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+@media (max-width: 1100px), (max-height: 820px) {
+  .sl-controller-overlay > .sl-audio-unlock {
+    margin-right: 96px;
+  }
+  .sl-controller-overlay:has(> .sl-audio-unlock:not([hidden]))
+    > .sl-input-prompts {
+    padding-top: 8px;
+  }
+  /* Share only the redundant legend heading's space, keeping every command.
+     The hidden heading retains layout; the button is a real, focusable sibling. */
+  .sl-controller-overlay:has(> .sl-audio-unlock:not([hidden])):has(
+      > .sl-controller-legend:not([hidden])
+    ) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .sl-controller-overlay:has(> .sl-audio-unlock:not([hidden]))
+    > .sl-controller-legend {
+    grid-area: 1 / 1;
+    padding: 6px;
+  }
+  .sl-controller-overlay:has(> .sl-audio-unlock:not([hidden]))
+    .sl-controller-legend__title {
+    visibility: hidden;
+    min-height: 44px;
+    margin-bottom: 4px;
+  }
+  .sl-controller-overlay:has(> .sl-controller-legend:not([hidden]))
+    > .sl-audio-unlock {
+    grid-area: 1 / 1;
+    align-self: start;
+    z-index: 1;
+    margin: 6px 102px 0 6px;
+  }
+}
