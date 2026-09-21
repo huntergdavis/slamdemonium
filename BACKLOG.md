@@ -7,6 +7,7 @@ Format: `- [ ] ID | owner | description | branch`. Status moves Now -> Done. Age
 ## Now (phase 1: unblock everything)
 
 - [ ] WP18 | developer 2 | **Console-style pause menu (CTO, TOP PRIORITY).** Full viewfield, game dimmed behind, large clearly-focused entries, keyboard + pad navigable, genuinely pauses gameplay and resumes with no time jump. Reuse existing pause ownership and the `.sl-` kit. | dev2/wp18-console-pause
+- [ ] O6 | devops | Bundle size budget in CI before asset-heavy features land: raw + gzip, per-asset, baseline file, trend summary, names what grew. Report current WASM payload size (design 16 asked for it at WP1; never recorded). | devops/bundle-budget
 - [ ] F1 | unassigned | **Sound effects engine (CTO).** Engine note mapped to speed and vehicle size, realistic tyre screech tied to slip, boost, and a crash layer ready for breakables and future multi-car impacts. Research's R3 found audio is cheap and changes perceived speed dramatically.
 - [ ] F2 | unassigned | **Radio / music (CTO).** Play local mp3s the player selects from a folder, low CPU. Stations and other sources later.
 - [ ] F3 | unassigned | **Real car models (CTO).** Cel-shaded, multiple colours and styles, sourced from an existing asset library rather than modelled from scratch.
