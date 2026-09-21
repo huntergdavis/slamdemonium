@@ -87,7 +87,8 @@
     "camRollGain": 3,
     "speedLinesStrength": 0.5,
     "vignetteStrength": 0.5,
-    "hapticsIntensity": 0.35
+    "hapticsIntensity": 0.35,
+    "sfxVolume": 0.7
   },
   "durationSteps": 240,
   "frames": [

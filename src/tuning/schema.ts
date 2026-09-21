@@ -15,7 +15,8 @@ export interface ParamDef {
     | 'Boost & Drift'
     | 'Collision'
     | 'Camera'
-    | 'Input';
+    | 'Input'
+    | 'Audio';
   label: string;
   unit: string;
   default: number;
@@ -844,6 +845,17 @@ const definitions = [
     max: 1,
     step: 0.05,
     help: 'Subtle edge darkening that increases with speed. Zero disables it; the center remains unchanged.',
+  },
+  {
+    key: 'sfxVolume',
+    group: 'Audio',
+    label: 'Sound effects volume',
+    unit: '',
+    default: 0.7,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    help: 'Engine, tyres, boost and impact volume. Zero is silent. Master mute in the pause menu silences all audio without changing this value.',
   },
 ] as const satisfies readonly ParamDef[];
 

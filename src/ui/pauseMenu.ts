@@ -1,7 +1,9 @@
+import type { AudioStatus } from '../audio/types';
 import type { GamepadState } from '../input/gamepad';
 import type { OptionsPanel } from './optionsPanel';
 import { activateFocused, adjustFocused, moveFocus } from './menuNavigation';
 import { node } from './paramControl';
+import { createAudioCredits } from './audioCredits';
 import './ui.css';
 
 export interface PauseMenuOptions {
@@ -16,6 +18,9 @@ export interface PauseMenuOptions {
   readGamepad: () => Readonly<GamepadState>;
   /** Preformatted immutable build identity; no frame-loop work or focus target. */
   buildLabel?: string;
+  readAudioState?: () =>
+    Readonly<{ masterMuted: boolean; status: AudioStatus }> | undefined;
+  onToggleAudioMute?: () => void;
 }
 
 export function mountPauseMenu(options: PauseMenuOptions): PauseMenu {
@@ -30,6 +35,11 @@ const MAPPINGS: readonly (readonly [string, string, string])[] = [
   ['Boost', 'Left Shift', 'X / left face button'],
   ['Restart / respawn', 'R', 'Y / top face button'],
   ['Pause menu', 'Escape', 'Start / Menu'],
+  [
+    'Mute all audio',
+    'M (outside text editing)',
+    'Hold LB + fresh Right bumper',
+  ],
   ['Pause toggle', 'P (press again to clear)', '—'],
   ['Options', 'O / gear', 'View / Back, or Pause menu → Options'],
   ['HUD / debug gizmos', 'H / G', 'LB + D-pad Up / LB + X'],
@@ -44,6 +54,7 @@ export class PauseMenu {
   private readonly menu: HTMLDivElement;
   private readonly controls: HTMLDivElement;
   private readonly resume: HTMLButtonElement;
+  private readonly muteAudio: HTMLButtonElement;
   private readonly message: Text;
   private selected: HTMLElement | null = null;
   private opened = false;
@@ -73,6 +84,12 @@ export class PauseMenu {
     this.message = doc.createTextNode('');
     status.append(this.message);
     this.resume = this.button('Resume', () => this.setOpen(false));
+    this.muteAudio = this.button('Mute all audio', () => {
+      this.deps.onToggleAudioMute?.();
+      this.updateAudio();
+    });
+    this.muteAudio.hidden = !deps.onToggleAudioMute;
+    this.muteAudio.setAttribute('aria-pressed', 'false');
     const navigationHint = node(
       doc,
       'p',
@@ -94,6 +111,7 @@ export class PauseMenu {
         }
       }),
       this.button('Options', () => this.showOptions()),
+      this.muteAudio,
       this.button('Controls', () => this.showView('controls')),
       navigationHint,
     );
@@ -142,6 +160,7 @@ export class PauseMenu {
         'sl-caption',
         'Escape exits fullscreen or releases pointer lock first; press it again for the pause menu. P is a separate pause toggle and stays active until pressed again.',
       ),
+      createAudioCredits(doc),
     );
     this.element.append(this.menu, this.controls);
     this.element.addEventListener('focusin', this.focusin);
@@ -198,6 +217,7 @@ export class PauseMenu {
 
   /** Call once per RAF, also while paused; no physics sample or extra Gamepad API poll. */
   update(nowMs: number): void {
+    this.updateAudio();
     if (!this.opened) return;
     if (this.view === 'options' && !this.deps.options.isOpen)
       this.showView('menu');
@@ -237,6 +257,16 @@ export class PauseMenu {
     this.element.removeEventListener('keydown', this.keydown);
     this.element.removeEventListener('cancel', this.cancel);
     this.root.remove();
+  }
+
+  private updateAudio(): void {
+    const state = this.deps.readAudioState?.();
+    const muted = state?.masterMuted === true;
+    const label = muted ? 'Unmute audio' : 'Mute all audio';
+    if (this.muteAudio.textContent !== label) {
+      this.muteAudio.firstChild!.nodeValue = label;
+      this.muteAudio.setAttribute('aria-pressed', String(muted));
+    }
   }
 
   private button(label: string, action: () => void): HTMLButtonElement {

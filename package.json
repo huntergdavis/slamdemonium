@@ -22,12 +22,14 @@
     "check:reachable": "tsx scripts/check-reachability.ts"
   },
   "dependencies": {
+    "howler": "2.2.4",
     "jolt-physics": "1.1.0",
     "three": "0.186.0"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
+    "@types/howler": "2.2.13",
     "@types/node": "22.20.4",
     "@types/three": "0.186.0",
     "eslint": "10.11.0",
