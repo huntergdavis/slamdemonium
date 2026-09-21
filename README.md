@@ -4,6 +4,8 @@
 
 A fast, loud, crash-happy arcade racer that runs in a browser tab.
 
+![The car at speed on the painted ring, seen from the chase camera, with posts and fog along the barrier](docs/screenshots/lab-overview-clean.png)
+
 ## What this is right now
 
 Slamdemonium Racing is not a game yet. The first milestone is a **driving-feel laboratory**:
@@ -20,6 +22,12 @@ The lab is built around six design pillars:
 4. **Assists are dials, not walls.** Every arcade assist is a slider that goes to zero.
 5. **Tunability beats correctness.** Any physical shortcut is fine if it feels better and has a slider.
 6. **Latency is a feature.** Input-to-motion delay is measured and minimized.
+
+![The Options page open over the running game, with the Quick Tune sliders at the top](docs/screenshots/options-quick-tune.png)
+
+Every slider applies while you drive. Press **O**, drag, feel the difference, drag it back. The full HUD shows what the physics is doing underneath: a G-G diagram, grip usage on each wheel, slide angle, and ten seconds of graphs.
+
+![The full HUD: G-G diagram, per-wheel grip bars, pedals, slide angle gauge and scrolling graphs over the ring](docs/screenshots/hud-full.png)
 
 When you are tuning and something feels wrong, start with [docs/TUNING_PLAYBOOK.md](docs/TUNING_PLAYBOOK.md). The full design brief is [docs/vertical-slice-design.md](docs/vertical-slice-design.md).
 
@@ -47,8 +55,6 @@ npm run build
 ```
 
 The result lands in `dist/`. Nothing on the server side is required.
-
-Screenshots will live in `docs/screenshots/` once there is something to look at.
 
 ## Controls
 

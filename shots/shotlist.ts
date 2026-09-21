@@ -1,85 +1,147 @@
 import type { BuiltinPresetName } from '../src/tuning/presets';
+import type { CameraPreset } from '../src/render/cameraRig';
+import type { HudMode } from '../src/ui/hud';
 
-/** Fixed capture size for every documentation screenshot. */
+/** Default capture size. A shot may override it when the full HUD needs more height. */
 export const VIEWPORT = { width: 1280, height: 720 } as const;
+export const TALL_VIEWPORT = { width: 1280, height: 1000 } as const;
 
-/** Simulated seconds the scene settles after respawn before a 'rest' capture. */
-export const SETTLE_SECONDS = 3;
-
-export type ScenarioName =
-  | 'rest' // respawn, let the body settle, capture with the current camera
-  | 'ring-chase' // pending: WP3 ring + WP6 chase camera preset
-  | 'drift-hold' // pending: WP5 vehicle model + scripted drift input
-  | 'options-open' // pending: WP7 options panel hook
-  | 'hud-full' // pending: WP8 HUD hook
-  | 'tire-curve'; // pending: WP7 tire-curve plot
+/**
+ * Every scenario runs with the simulation paused and advances physics only through
+ * window.__game.stepMany, so the state at capture time depends on the build alone.
+ */
+export type Scenario =
+  | {
+      /** Respawn, hold a fixed input for a fixed number of physics steps. */
+      kind: 'drive';
+      steps: number;
+      input: {
+        throttle: number;
+        brake?: number;
+        steer: number;
+        handbrake?: boolean;
+        boost?: boolean;
+      };
+    }
+  | {
+      /** Replay a shipped input script (src/input/examples) up to a given step. */
+      kind: 'replay';
+      script: 'standing-start' | 'handbrake-turn' | 'ring-lap';
+      steps: number;
+    };
 
 export interface Shot {
   /** Stable filename under docs/screenshots/. Never rename without updating the docs that embed it. */
   file: string;
   /** What the picture is meant to show, one sentence. Mirrored in docs/screenshots/README.md. */
   shows: string;
+  /** Applied via window.__game.tuning.applyPreset before the scenario. A replay's header overrides it. */
   preset: BuiltinPresetName;
-  scenario: ScenarioName;
+  scenario: Scenario;
+  camera: CameraPreset;
+  hud: HudMode;
+  optionsOpen: boolean;
+  /** Capture size; defaults to VIEWPORT. */
+  viewport?: { readonly width: number; readonly height: number };
+  /** <details> summaries inside the Options panel to click shut before scrolling (as a user would). */
+  collapse?: readonly string[];
+  /** CSS selector inside the Options panel to scroll into view (centred) before capture. */
+  scrollTo?: string;
   /** 'live' captures now; 'pending' is skipped and reported until its dependency lands. */
   status: 'live' | 'pending';
   /** What has to exist before a pending shot can go live. */
   needs?: string;
 }
 
+const RING_DRIVE: Scenario = {
+  kind: 'drive',
+  steps: 540, // 4.5 s at 120 Hz: about 46 m/s, still on the 130 m centre line (r = 130.5 m)
+  input: { throttle: 1, steer: 0.11 },
+};
+
 export const SHOTS: readonly Shot[] = [
-  {
-    file: 'scene-boot.png',
-    shows:
-      'The WP1 proof scene: the orange chassis box at rest on the grey pad with the thin CCD test wall behind it.',
-    preset: 'Default',
-    scenario: 'rest',
-    status: 'live',
-  },
   {
     file: 'lab-overview.png',
     shows:
-      'The driving-feel lab from the chase camera: car on the painted ring, posts, fog, full HUD. The README hero image.',
+      'The driving-feel lab from the chase camera: car at speed on the painted ring, posts and fog, minimal HUD.',
     preset: 'Default',
-    scenario: 'ring-chase',
-    status: 'pending',
-    needs: 'WP3 ring and WP6 camera preset hook on window.__game',
+    scenario: RING_DRIVE,
+    camera: 'chase',
+    hud: 'minimal',
+    optionsOpen: false,
+    status: 'live',
   },
   {
-    file: 'drift-hold.png',
+    file: 'lab-overview-clean.png',
     shows:
-      'The car held mid-drift on the ring with skid marks, slide angle gauge out and drift meter charging.',
-    preset: 'Drifty',
-    scenario: 'drift-hold',
-    status: 'pending',
-    needs:
-      'WP5 vehicle model, WP6 skid marks, scripted input via setInput/stepMany',
+      'Same moment as lab-overview.png with the HUD off: the car, the ring, posts and fog with nothing over them. The README hero image.',
+    preset: 'Default',
+    scenario: RING_DRIVE,
+    camera: 'chase',
+    hud: 'off',
+    optionsOpen: false,
+    status: 'live',
   },
   {
     file: 'options-quick-tune.png',
     shows:
       'The Options page open over the running game, Quick Tune section at the top.',
     preset: 'Default',
-    scenario: 'options-open',
-    status: 'pending',
-    needs: 'WP7 options panel and a hook to open it from the test surface',
-  },
-  {
-    file: 'tire-curve-plot.png',
-    shows:
-      'The live tire-curve plot in the Tires group with the front and rear operating dots.',
-    preset: 'Drifty',
-    scenario: 'tire-curve',
-    status: 'pending',
-    needs: 'WP7 tire-curve plot and a hook to scroll the panel to it',
+    scenario: RING_DRIVE,
+    camera: 'chase',
+    hud: 'minimal',
+    optionsOpen: true,
+    status: 'live',
   },
   {
     file: 'hud-full.png',
     shows:
-      'The full HUD at speed: speedometer, slide angle gauge, G-G diagram, per-wheel bars, graphs.',
+      'The full HUD at speed: speedometer, slide angle gauge, G-G diagram, per-wheel grip bars, scrolling graphs.',
     preset: 'Default',
-    scenario: 'hud-full',
+    scenario: RING_DRIVE,
+    camera: 'chase',
+    hud: 'full',
+    optionsOpen: false,
+    viewport: TALL_VIEWPORT,
+    status: 'live',
+  },
+  {
+    file: 'drift-hold.png',
+    shows:
+      'The car mid-slide after a handbrake turn, skid marks behind it, slide angle gauge out. Replays the shipped handbrake-turn script to step 372.',
+    preset: 'Default',
+    scenario: { kind: 'replay', script: 'handbrake-turn', steps: 372 },
+    camera: 'chase',
+    hud: 'full',
+    optionsOpen: false,
+    viewport: TALL_VIEWPORT,
+    status: 'live',
+  },
+  {
+    file: 'tire-curve-plot.png',
+    shows:
+      'The live tire-curve plot in the Tires group of the Options page, with the front and rear operating dots.',
+    preset: 'Drifty',
+    scenario: RING_DRIVE,
+    camera: 'chase',
+    hud: 'minimal',
+    optionsOpen: true,
+    viewport: TALL_VIEWPORT,
+    collapse: ['.sl-options__quick > summary'],
+    scrollTo: '.sl-graph--tire',
+    status: 'live',
+  },
+  {
+    file: 'scene-boot.png',
+    shows:
+      'Historical: the WP1 proof scene before the track and car existed. Kept for the changelog; not embedded.',
+    preset: 'Default',
+    scenario: { kind: 'drive', steps: 360, input: { throttle: 0, steer: 0 } },
+    camera: 'chase',
+    hud: 'off',
+    optionsOpen: false,
     status: 'pending',
-    needs: 'WP8 HUD and a hook to set HUD mode from the test surface',
+    needs:
+      'nothing; retired. The proof scene no longer exists on main, so this file is frozen as captured.',
   },
 ];

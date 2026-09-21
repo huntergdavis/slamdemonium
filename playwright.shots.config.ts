@@ -17,7 +17,7 @@ export default defineConfig({
   use: {
     baseURL,
     viewport: { width: 1280, height: 720 },
-    deviceScaleFactor: 1,
+    deviceScaleFactor: 1.5, // dynamic resolution floors at 0.6 under software WebGL; 1.5 keeps the 3D view sharp
     trace: 'off',
   },
   projects: [
@@ -26,7 +26,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
-        deviceScaleFactor: 1,
+        deviceScaleFactor: 1.5, // dynamic resolution floors at 0.6 under software WebGL; 1.5 keeps the 3D view sharp
         launchOptions: { args: ['--enable-unsafe-swiftshader'] },
       },
     },
@@ -35,7 +35,8 @@ export default defineConfig({
     command:
       'npm run build && npm run preview -- --port ' + port + ' --strictPort',
     url: baseURL,
-    reuseExistingServer: false,
-    timeout: 120_000,
+    // SHOTS_REUSE=1 skips the build and uses a preview server you started yourself (iteration only).
+    reuseExistingServer: process.env.SHOTS_REUSE === '1',
+    timeout: 300_000, // tsc + vite build takes 75 s alone on a busy host
   },
 });

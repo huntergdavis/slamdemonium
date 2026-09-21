@@ -44,6 +44,8 @@ Below Quick Tune, one collapsible section per group holds everything else. The s
 
 ### Read the tire curve
 
+![The Tires group of the Options page with the live tire-curve plot: grip rises to a peak at 11 degrees then falls, with front and rear operating dots](screenshots/tire-curve-plot.png)
+
 At the top of the Tires group a small plot draws the grip curve for the front and rear tires, with a moving dot for where each axle is operating right now (slip angle across, grip usage up). Watch it while you drag `slipFalloffRate`, `slideGripRatio` and `peakSlipAngle`. It is the fastest way to understand what those three do.
 
 ### Compare with A/B slots
@@ -88,6 +90,8 @@ Find the row that matches what you feel. Try the knobs in the order listed; each
 | Body rocks like a boat | Raise `suspDampingRatio`, raise `suspAntiRoll`, raise `tireForceHeight`, lower `comHeightOffset`. |
 
 ### How drift control behaves
+
+![The car mid-slide after a handbrake turn, slide angle 37 degrees, drift meter charging](screenshots/drift-hold.png)
 
 The drift rows above assume the shipped drift angle control, which differs from the formula printed in design 6.8 C. What to expect:
 
