@@ -48,3 +48,23 @@ export async function installAudioProbe(page: Page): Promise<void> {
     };
   });
 }
+
+export interface AudioSnapshot {
+  status: string;
+  masterMuted: boolean;
+  paused: boolean;
+  output: {
+    status: string;
+    activeVoices: number;
+    peakVoices: number;
+    error: string | null;
+  };
+}
+export async function readAudioState(page: Page): Promise<AudioSnapshot> {
+  return page.evaluate(
+    () => window.__game.getTelemetry().audio as AudioSnapshot,
+  );
+}
+export async function readAudioRms(page: Page): Promise<number> {
+  return page.evaluate(() => window.__audioProbe?.rms() ?? 0);
+}
