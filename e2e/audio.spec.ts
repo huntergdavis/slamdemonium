@@ -165,6 +165,12 @@ test('master mute works by pad inside the pause menu, persists separately, and M
   await page.keyboard.press('m'); // Text-entry grid buttons also count as editing.
   expect((await state(page)).masterMuted).toBe(true);
   await tap(page, [1]);
+  await page.getByRole('searchbox').fill('sfxVolume');
+  await page.locator('#group-sfxVolume-range').focus();
+  await page.keyboard.press('m'); // A slider is adjustable, not a text editor.
+  await expect.poll(async () => (await state(page)).masterMuted).toBe(false);
+  await page.keyboard.press('m');
+  await expect.poll(async () => (await state(page)).masterMuted).toBe(true);
   await tap(page, [1]);
   await tap(page, [9]);
   await page.keyboard.press('m'); // Ordinary menu button, outside text editing.

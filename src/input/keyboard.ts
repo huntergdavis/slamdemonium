@@ -63,6 +63,13 @@ export function isEditingTarget(target: EventTarget | null): boolean {
   );
 }
 
+function isTextEditingTarget(target: EventTarget | null): boolean {
+  return closest(
+    target,
+    'input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="color"]):not([type="file"]), textarea, select, [data-input-editing], [contenteditable]:not([contenteditable="false"])',
+  );
+}
+
 export function isOptionsTarget(target: EventTarget | null): boolean {
   return closest(
     target,
@@ -84,6 +91,7 @@ export class KeyboardInput {
     lastEventTime: 0,
   };
   private readonly editingTarget: (target: EventTarget | null) => boolean;
+  private readonly muteEditingTarget: (target: EventTarget | null) => boolean;
   private readonly optionsTarget: (target: EventTarget | null) => boolean;
   private readonly visibilityTarget: Document | null;
   private browserModeActive = false;
@@ -97,6 +105,7 @@ export class KeyboardInput {
     options: KeyboardOptions = {},
   ) {
     this.editingTarget = options.isEditingTarget ?? isEditingTarget;
+    this.muteEditingTarget = options.isEditingTarget ?? isTextEditingTarget;
     this.optionsTarget = options.isOptionsTarget ?? isOptionsTarget;
     this.visibilityTarget =
       options.visibilityTarget === undefined
@@ -160,7 +169,9 @@ export class KeyboardInput {
     if (code === 'Escape' && event.defaultPrevented) return;
     if (
       (code !== 'Escape' &&
-        (this.editingTarget(event.target) ||
+        ((code === 'KeyM'
+          ? this.muteEditingTarget(event.target)
+          : this.editingTarget(event.target)) ||
           (code !== 'KeyM' && this.optionsTarget(event.target)))) ||
       event.isComposing
     )
