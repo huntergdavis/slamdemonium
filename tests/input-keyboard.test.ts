@@ -286,3 +286,24 @@ it('leaves locally handled Escape with the Options/help handler', () => {
   expect(keyboard.state.presses.pauseMenu).toBe(0);
   keyboard.dispose();
 });
+
+it('M remains global on menu buttons, never captures text editing, and preserves independent readers', () => {
+  const target = new EventTarget();
+  let editing = false;
+  const options = {
+    isOptionsTarget: () => true,
+    isEditingTarget: () => editing,
+    visibilityTarget: null,
+  };
+  const first = new KeyboardInput(target, options);
+  const second = new KeyboardInput(target, options);
+  keyEvent(target, 'keydown', 'KeyM');
+  keyEvent(target, 'keyup', 'KeyM');
+  expect(first.state.presses.muteAudio).toBe(1);
+  expect(second.state.presses.muteAudio).toBe(1);
+  editing = true;
+  expect(keyEvent(target, 'keydown', 'KeyM').defaultPrevented).toBe(false);
+  expect(first.state.presses.muteAudio).toBe(1);
+  first.dispose();
+  second.dispose();
+});

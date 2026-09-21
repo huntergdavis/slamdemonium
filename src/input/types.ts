@@ -12,6 +12,7 @@ export const INPUT_ACTIONS = [
   'latencyProbe',
   'swapAB',
   'recordTelemetry',
+  'muteAudio',
 ] as const;
 export type InputAction = (typeof INPUT_ACTIONS)[number];
 /** Counts this step, rather than held flags: a short press between steps is retained. */
@@ -33,5 +34,6 @@ export function createActionCounts(): ActionCounts {
     latencyProbe: 0,
     swapAB: 0,
     recordTelemetry: 0,
+    muteAudio: 0,
   };
 }

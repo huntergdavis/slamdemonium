@@ -1,6 +1,6 @@
 # WP15 production-entry reachability guard
 
-Run **npm run check:reachable** from the project. It exits 0 only when every .ts file under src/ is reachable through runtime imports from src/main.ts or has a reviewed exact-path exception. Missing/unprovable edges and invalid exceptions exit 1. The script resolves the repository from its own location; the shell working directory cannot accidentally change the entry point.
+Run **npm run check:reachable** from the project. It exits 0 only when every .ts file under src/ is reachable through runtime imports from src/main.ts or has a reviewed exact-path exception. Every authored .ogg/.txt asset under src/ or assets/ must also have a runtime import. Missing/unprovable edges, unreachable assets and invalid exceptions exit 1. The script resolves the repository from its own location; the shell working directory cannot accidentally change the entry point.
 
 This guards against the incident where Options, HUD, persistence and scripted input passed isolated tests but never reached the player entry. The failure names each file and explicitly says it ships in no bundle reachable from main and its feature is unreachable to a player. The correct fix for a gameplay module is runtime wiring, not importing its type or suppressing the diagnostic.
 
@@ -10,6 +10,21 @@ This guards against the incident where Options, HUD, persistence and scripted in
 - Literal dynamic imports are followed, including template literals without substitutions and conditional calls. This covers physics/joltWorld and input/testFixture. Literal CommonJS import assignments/require calls are also followed. Computed imports/require calls and import.meta.glob fail closed with the importer line/column; extend the analyzer rather than hiding their modules.
 - Type-only imports/re-exports and import-type expressions do not establish runtime wiring. Mixed type/value clauses count. Clauses containing only inline type specifiers also do not count: with verbatimModuleSyntax TypeScript may retain an empty side-effect clause, but depending on that as feature wiring is not accepted. Write an explicit side-effect import when runtime initialization is intended.
 - Resolved external packages, Node builtins and non-code assets are not traversed, including Vite WASM ?url and Markdown ?raw imports. Unresolved runtime code imports fail; a query on a code module cannot disguise it as a non-code asset. This is a conservative source graph: conditional imports count even if a particular build flag erases that branch. It does not prove that an imported factory was mounted, that a control works, or that every reachable export survives tree shaking. Browser integration tests remain necessary.
+
+## Audio and licence assets
+
+Literal relative or project-root-relative imports of .ogg and .txt files are
+validated as asset leaves, including ?url&no-inline and ?raw queries. The checker
+requires the file to exist and inventories these two extensions under src/ and
+assets/. A file imported only by an unreachable module, a type-only import,
+comment, or string remains unreachable. Unreferenced sounds and notices fail
+with their paths and the player-facing consequence. These assets cannot enter
+the module allowlist.
+
+This is a narrow F1 content inventory, not an inventory of every image, provenance
+file, documentation tree or installed dependency. Asset aliases/package paths
+for these extensions fail closed until deliberately supported. Other existing
+non-code asset handling and all runtime-module rules remain unchanged.
 
 ## Exceptions
 

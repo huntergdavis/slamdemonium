@@ -17,7 +17,7 @@ test('controller command legend drives the real HUD, camera, slow motion, A/B, g
   await expect(
     page.getByRole('region', { name: 'Controller commands' }),
   ).toBeVisible();
-  await expect(page.locator('.sl-controller-legend__item')).toHaveCount(7);
+  await expect(page.locator('.sl-controller-legend__item')).toHaveCount(8);
   await tap(page, [4, 12]);
   await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'minimal');
   await tap(page, [4, 15]);
@@ -161,7 +161,9 @@ test('controller alone saves a named preset through the on-screen keyboard', asy
     page.getByRole('button', { name: 'Export', exact: true }),
   ).toBeFocused();
   await tap(page, [7]);
-  await expect(page.getByRole('button', { name: 'Close Options' })).toBeFocused();
+  await expect(
+    page.getByRole('button', { name: 'Close Options' }),
+  ).toBeFocused();
   await padFocus(page, '[data-controller-text=preset]');
   await tap(page, [0]);
   await keyboardKey(page, 'Clear');

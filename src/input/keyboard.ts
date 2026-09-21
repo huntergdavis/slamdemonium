@@ -26,6 +26,7 @@ const KEY_ACTIONS = {
   KeyL: 'latencyProbe',
   Tab: 'swapAB',
   F9: 'recordTelemetry',
+  KeyM: 'muteAudio',
 } as const satisfies Record<string, InputAction | null>;
 export type InputKeyCode = keyof typeof KEY_ACTIONS;
 export const PROBE_QUEUE_CAPACITY = 128;
@@ -58,7 +59,14 @@ function closest(target: EventTarget | null, selector: string): boolean {
 export function isEditingTarget(target: EventTarget | null): boolean {
   return closest(
     target,
-    'input, textarea, select, [contenteditable]:not([contenteditable="false"])',
+    'input, textarea, select, [data-input-editing], [contenteditable]:not([contenteditable="false"])',
+  );
+}
+
+function isTextEditingTarget(target: EventTarget | null): boolean {
+  return closest(
+    target,
+    'input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="color"]):not([type="file"]), textarea, select, [data-input-editing], [contenteditable]:not([contenteditable="false"])',
   );
 }
 
@@ -83,6 +91,7 @@ export class KeyboardInput {
     lastEventTime: 0,
   };
   private readonly editingTarget: (target: EventTarget | null) => boolean;
+  private readonly muteEditingTarget: (target: EventTarget | null) => boolean;
   private readonly optionsTarget: (target: EventTarget | null) => boolean;
   private readonly visibilityTarget: Document | null;
   private browserModeActive = false;
@@ -96,6 +105,7 @@ export class KeyboardInput {
     options: KeyboardOptions = {},
   ) {
     this.editingTarget = options.isEditingTarget ?? isEditingTarget;
+    this.muteEditingTarget = options.isEditingTarget ?? isTextEditingTarget;
     this.optionsTarget = options.isOptionsTarget ?? isOptionsTarget;
     this.visibilityTarget =
       options.visibilityTarget === undefined
@@ -159,8 +169,10 @@ export class KeyboardInput {
     if (code === 'Escape' && event.defaultPrevented) return;
     if (
       (code !== 'Escape' &&
-        (this.editingTarget(event.target) ||
-          this.optionsTarget(event.target))) ||
+        ((code === 'KeyM'
+          ? this.muteEditingTarget(event.target)
+          : this.editingTarget(event.target)) ||
+          (code !== 'KeyM' && this.optionsTarget(event.target)))) ||
       event.isComposing
     )
       return;

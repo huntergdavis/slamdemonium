@@ -17,6 +17,7 @@ export class ControllerKeyboard {
   constructor(private readonly options: HTMLElement) {
     const doc = options.ownerDocument;
     this.element = node(doc, 'section', 'sl-controller-keyboard');
+    this.element.dataset.inputEditing = '';
     this.element.hidden = true;
     this.element.setAttribute('role', 'dialog');
     this.element.setAttribute('aria-label', 'Controller text entry');

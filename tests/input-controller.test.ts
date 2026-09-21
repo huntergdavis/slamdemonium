@@ -99,14 +99,16 @@ describe('controller command ownership', () => {
       handbrake: false,
       boost: false,
     });
-    expect(Object.values(sample.actions).every((value) => value === 0)).toBe(
-      true,
-    );
+    expect(
+      Object.entries(sample.actions).every(
+        ([action, value]) => value === (action === 'muteAudio' ? 1 : 0),
+      ),
+    ).toBe(true);
     expect(input.gamepad.state).toMatchObject({
       confirmPresses: 1,
       resetPresses: 1,
       searchPresses: 1,
-      coarse: true,
+      coarse: false,
       previousSectionPresses: 1,
       nextSectionPresses: 1,
     });
@@ -163,4 +165,28 @@ describe('controller command ownership', () => {
     input.framePresented(116);
     expect(input.latency.stats).toMatchObject({ count: 1, lastMs: 16 });
   });
+});
+
+it('LB plus fresh RB mutes through menus exactly once without coarse adjustment or release-order leakage', () => {
+  let pad = makePad({ buttons: [5] });
+  const input = new InputMapper(
+    new KeyboardInput(null),
+    new GamepadInput(() => [pad]),
+  );
+  input.attachUiCapture(() => true);
+  input.sampleActions();
+  pad = makePad({ buttons: [4, 5] });
+  expect(input.sampleActions().muteAudio).toBe(0); // RB was already held.
+  pad = makePad({ buttons: [4] });
+  input.sampleActions();
+  pad = makePad({ buttons: [4, 5] });
+  expect(input.sampleActions().muteAudio).toBe(1);
+  expect(input.gamepad.state.coarse).toBe(false);
+  expect(input.sampleForStep().actions.muteAudio).toBe(0);
+  pad = makePad({ buttons: [5] });
+  expect(input.sampleActions().muteAudio).toBe(0);
+  pad = makePad();
+  input.sampleActions();
+  pad = makePad({ buttons: [4, 5] });
+  expect(input.sampleActions().muteAudio).toBe(1);
 });

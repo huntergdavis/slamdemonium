@@ -34,6 +34,16 @@ contracts must be readable to both people and agents.
   base path. Browser tests must not import raw `/src` modules. Gate bundled test
   fixtures and check that default production excludes them;
   [WP1's input tests broke when preview replaced the dev server](https://github.com/huntergdavis/slamdemonium/pull/21).
+- **Test instrumentation can change behavior.** Activation-gate tests must assert
+  native `navigator.userActivation.hasBeenActive === false` and zero protected
+  resource requests before trusted input. Use raw CDP with `userGesture:false`.
+  Playwright 1.63 evaluation and trace HAR title/timing collection use
+  `userGesture:true`; an observer can activate the page being tested. Any test
+  asserting absence of activation must run without trace recording. Isolate it
+  in its own spec, attach native state and
+  network evidence explicitly, and retain traces for other journeys. Do not
+  re-enable tracing as a debugging convenience without rechecking that invariant;
+  [F1 exposed this observer effect](https://github.com/huntergdavis/slamdemonium/pull/69).
 - **Cancel browser defaults without silencing other readers.** `defaultPrevented`
   is not a general input-consumption flag. Preserve explicit editing and
   Escape/browser-exit guards, and test independent readers together;

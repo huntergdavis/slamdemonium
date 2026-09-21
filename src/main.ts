@@ -5,6 +5,9 @@ import { DebouncedMassRebuild } from './core/massRebuild';
 import { FixedStepLoop } from './core/loop';
 import { PerformanceRecorder } from './core/performance';
 import { TransformHistory } from './core/transforms';
+import { mountAudioDirector } from './audio/mount';
+import type { AudioDirector } from './audio/director';
+import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, V3 } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
 import { createRenderer } from './render/renderer';
@@ -70,11 +73,12 @@ async function boot(): Promise<void> {
     track.config,
     track.barrierBoxes,
   );
+  const surfaceResolver = track.createSurfaceResolver(trackBodies);
   const vehicle = new Vehicle(
     physics,
     tuning,
     track.spawn.position,
-    track.createSurfaceResolver(trackBodies),
+    surfaceResolver,
   );
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
@@ -195,6 +199,7 @@ async function boot(): Promise<void> {
         skids.sample(vehicle.telemetry.wheels, loop.simulationSeconds + dt);
         hud.recordStep(vehicle.telemetry, dt, renderTelemetry);
         controllerSupport.afterStep(dt);
+        audio.afterStep(dt);
         scripts.afterStep();
         if (respawnRequested) respawn();
       },
@@ -239,6 +244,7 @@ async function boot(): Promise<void> {
     cameraRig.reset();
     skids.breakStrips();
     controllerSupport.reset();
+    audio.reset();
     loop.resetClock();
   }
   function requestRespawn(): void {
@@ -300,6 +306,9 @@ async function boot(): Promise<void> {
   // Options restores persistence through the same store; apply any mass change
   // before the first step, after the live body/visual subscriptions are installed.
   massRebuild.flush();
+  // The menu precedes the shared controller overlay; its audio callbacks become
+  // live after the director mounts on that overlay below.
+  let menuAudio: AudioDirector | undefined = undefined;
   const pauseMenu = mountPauseMenu({
     host: host!,
     buildLabel: import.meta.env.VITE_BUILD_LABEL,
@@ -313,6 +322,8 @@ async function boot(): Promise<void> {
     onRespawn: respawn,
     options,
     readGamepad: () => input.gamepad.state,
+    readAudioState: () => menuAudio?.state,
+    onToggleAudioMute: () => menuAudio?.toggleMasterMute(),
   });
   const hud = mountHud({
     host: options.root,
@@ -355,11 +366,20 @@ async function boot(): Promise<void> {
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
   });
+  const audio = mountAudioDirector({
+    host: host!,
+    tuning,
+    readTelemetry: () => vehicle.telemetry,
+    readPaused: isPaused,
+    resolveGroundedSurface,
+  });
+  menuAudio = audio;
+  // Remove audio's prompt/listeners before the controller overlay they share.
   // Release controller capture/navigation before disposing their UI owners.
   // Menu disposal restores the shared Options element before Options removes it.
-  resources.push(controllerSupport, pauseMenu, options, hud, scripts);
+  resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
-  // One subscriber serves camera and controller feedback. Jolt's normal separates
+  // One subscriber serves camera, controller and audio. Jolt's normal separates
   // body B; orient our reused record out of the other surface into the vehicle.
   physics.onContact((a, b, impulse, _point, normal) => {
     if (a !== vehicle.body && b !== vehicle.body) return;
@@ -368,12 +388,24 @@ async function boot(): Promise<void> {
     impactNormal.y = normal.y * direction;
     impactNormal.z = normal.z * direction;
     cameraRig.addImpact(impulse, vehicle.currentMass);
-    // Consume borrowed scalars synchronously. The haptic fallback uses pre-step
+    // Consume borrowed scalars synchronously. Haptic/audio fallbacks use pre-step
     // velocity against a static obstacle: estimated approach speed, not a measured
     // solved contact impulse. Never retain this normal or telemetry as a snapshot.
     controllerSupport.onImpact(impulse, impactNormal, vehicle.currentMass);
+    const otherBody = a === vehicle.body ? b : a;
+    // This callback runs inside physics.step: audio only queues fixed scalars.
+    // Audio output runs after simulation in update(), never in this callback.
+    audio.onImpact(
+      otherBody,
+      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null,
+      impulse,
+      impactNormal,
+      vehicle.currentMass,
+    );
   });
   function dispatchActions(actions: Readonly<ActionCounts>): void {
+    // Master mute remains available while the pause menu owns gameplay input.
+    if (actions.muteAudio % 2) audio.toggleMasterMute();
     // Consume gameplay edges on menu transitions too; Y must not leak into the
     // opening or resume frame. Only the menu command acts on an owned batch.
     const menuOwnsBatch = pauseMenu.isOpen || actions.pauseMenu > 0;
@@ -471,6 +503,7 @@ async function boot(): Promise<void> {
       surfaceDiagnostics: s.surfaceDiagnostics
         ? { ...s.surfaceDiagnostics }
         : null,
+      audio: { ...audio.state, output: { ...audio.outputState } },
       cameraPreset: cameraRig.preset,
       gizmosVisible: view.scene.getObjectByName('car.gizmos')?.visible ?? false,
       renderScale: view.resolution.scale,
@@ -570,6 +603,8 @@ async function boot(): Promise<void> {
   visibilityChanged = () => {
     syncPause();
     view.resolution.resetClock();
+    // Hidden tabs may stop RAF before it can schedule the audio-clock fade.
+    audio.update(performance.now());
   };
   document.addEventListener('visibilitychange', visibilityChanged);
   visibilityChanged();
@@ -586,6 +621,7 @@ async function boot(): Promise<void> {
       loop.frame(nowMs);
       pauseMenu.update(nowMs);
       controllerSupport.update(nowMs);
+      audio.update(nowMs);
     } catch (error) {
       replayStopped = true;
       syncPause();

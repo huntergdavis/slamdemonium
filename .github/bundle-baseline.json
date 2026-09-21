@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reason": "WP19 CSS-only update from 803392a67e6acfa377385598d6faaad2cd5fb606: PM-approved controller and Options presentation adds 3,957 raw / 711 gzip CSS bytes. The initial 3,200 raw-byte estimate grew by 757 bytes for the narrow seven-command legend and Options-launcher fit, direct-header scrolling that prevents a zero-height parameter body at 320x480, and root hidden semantics. The final canonical production build records 22,669 raw / 5,423 gzip CSS bytes. Only that CSS entry and its contribution to aggregate totals are refreshed; every allowance, every non-CSS asset and the original O6 source revision remain unchanged. Other accumulated payload growth still counts against the reviewed baseline; this is an approved feature-size update, not the separate post-release allowance calibration. The original O6 baseline records the design section 16 physics WASM risk.",
+  "reason": "F1 normal feature-only content addition, PM-approved after an independent clean production build of 76ac6de2e781088138cb38899d4a0da51bfcda92 matched all 19 canonical asset records by raw bytes, gzip bytes and SHA-256. The ten newly recorded audio entries add 117,086 raw / 82,749 gzip bytes: seven OGG sounds (engine, tyre, boost attack/loop and asphalt/concrete/kerb impacts) total 74,921 raw / 70,761 gzip; the Howler backend is 40,469 raw / 10,984 gzip; the Howler and Kenney notices total 1,696 raw / 1,004 gzip. Player benefit: telemetry-driven engine, tyre, boost and surface-impact feedback makes grip, acceleration and collisions audible, with independent master mute and shipped licence notices. The backend and bank are gated behind genuine browser activation plus two animation frames, giving the driving view a paint opportunity before their requests. An independent Chromium probe used raw CDP Runtime.evaluate with userGesture:false for all pre-unlock observation and explicitly verified navigator.userActivation.hasBeenActive=false: the game was ready with 288 physics steps and zero backend/bank requests; synthetic click/key/pointer events also requested nothing. A genuine keypress was followed by two observed frame boundaries before the backend request, then all seven OGG files returned 200 and audio became ready with no page errors. This verifies the gate against actual browser activation state, avoiding Playwright evaluation silently granting activation. The accepted bank/backend cost is shipped bytes and post-activation loading, with no audio network competition during unactivated startup; it does not prove the still-unverified five-second broadband time-to-drive criterion or zero CPU cost for boot-side audio wiring. Only these ten new entries and their exact aggregate contribution are added. Every prior asset measurement, every allowance and allowance rationale, and the original O6 revision/method/toolchain remain unchanged; the source revision above identifies this scoped addition. Other accumulated growth remains charged: 45,314 raw / 13,649 gzip bytes against the resulting 3,807,260 raw / 1,153,806 gzip baseline. The 5 percent cumulative total cap remains an unreviewed-growth guard, with per-asset and new-asset gates intact. This records a planned measured inventory and its player benefit through the normal review path; it does not raise policy limits or refresh unrelated growth.",
   "allowance": {
     "totalPercent": 5,
     "assetPercent": 10,
@@ -66,11 +66,71 @@
         "rawBytes": 460,
         "gzipBytes": 297,
         "sha256": "fb9da80b543a1cf7e67e7a43352f41b53014a340dd6e7cf66854f299a48b4b6b"
+      },
+      "source:assets/audio/HOWLER-LICENSE.txt": {
+        "file": "assets/HOWLER-LICENSE-CxKhf4N9.txt",
+        "rawBytes": 1088,
+        "gzipBytes": 659,
+        "sha256": "0ad5aef7beeb552832fe01db1c46933f948dfe5da35017bd0efa0006ffd2ced9"
+      },
+      "source:assets/audio/KENNEY-LICENSE.txt": {
+        "file": "assets/KENNEY-LICENSE-CG20oLPS.txt",
+        "rawBytes": 608,
+        "gzipBytes": 345,
+        "sha256": "b49aa9c56b04528b95913de13e506a0f7c5e807b9925db9bfef86af1f91120db"
+      },
+      "source:assets/audio/boost-attack.ogg": {
+        "file": "assets/boost-attack-HTG7tSi0.ogg",
+        "rawBytes": 5823,
+        "gzipBytes": 5252,
+        "sha256": "05ea8263561a2cd6db482f62992634c3d36e88169e23d3d6a228552a3fe83760"
+      },
+      "source:assets/audio/boost-loop.ogg": {
+        "file": "assets/boost-loop-Ddc_iUfi.ogg",
+        "rawBytes": 11357,
+        "gzipBytes": 10704,
+        "sha256": "2edd0735643927c5dcbc2fd73204a9d32a51e4eef053411f15f8ad7f4b125834"
+      },
+      "source:assets/audio/engine.ogg": {
+        "file": "assets/engine-BdFgHKgd.ogg",
+        "rawBytes": 10476,
+        "gzipBytes": 9935,
+        "sha256": "27964e981af604399b12a092e5137d99b4fff6fbbfcdc01b9bee4ab81fe65c81"
+      },
+      "source:src/audio/howlerOutput.ts": {
+        "file": "assets/howlerOutput-BzxrZa2w.js",
+        "rawBytes": 40469,
+        "gzipBytes": 10984,
+        "sha256": "77bf7327df0843f13c9100800e1c994430387421214db691e7b70fd155628ce2"
+      },
+      "source:assets/audio/impact-asphalt.ogg": {
+        "file": "assets/impact-asphalt-CrqN7L9H.ogg",
+        "rawBytes": 4229,
+        "gzipBytes": 3618,
+        "sha256": "69642b213e0cbf8ed990a2c2292960e58271cfa5ca7d2d67e87e87035b058359"
+      },
+      "source:assets/audio/impact-concrete.ogg": {
+        "file": "assets/impact-concrete-CW2MzPao.ogg",
+        "rawBytes": 8439,
+        "gzipBytes": 7918,
+        "sha256": "5aaf7079a9c5dd0366521cd67ac424ae77b987acb1ab25993cbd856998f9a335"
+      },
+      "source:assets/audio/impact-kerb.ogg": {
+        "file": "assets/impact-kerb-q69ZOenc.ogg",
+        "rawBytes": 4654,
+        "gzipBytes": 3871,
+        "sha256": "e48ded9e75e4e0c869b761c7d226cb57a0436b60e1ca6a63d3fed52e3cb16e64"
+      },
+      "source:assets/audio/tyre.ogg": {
+        "file": "assets/tyre-DrcTQHvZ.ogg",
+        "rawBytes": 29943,
+        "gzipBytes": 29463,
+        "sha256": "23a9805441a9653c90cb38c8fb3c6df46dac3ad56c386cdf25d5c589432044a8"
       }
     },
     "total": {
-      "rawBytes": 3690174,
-      "gzipBytes": 1071057
+      "rawBytes": 3807260,
+      "gzipBytes": 1153806
     }
   }
 }
