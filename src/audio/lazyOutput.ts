@@ -5,11 +5,11 @@ import type {
   AudioProfile,
 } from './types';
 
-/** Loading the sound bank never blocks boot or a physics step. Browser policy
- * still decides whether a recorded genuine activation permits context.resume. */
+/** Neither the backend nor its bank is requested before genuine activation
+ * and a paint opportunity. Browser policy still decides whether resume succeeds. */
 export class LazyAudioOutput implements AudioOutput {
   private readonly pending: AudioOutputState = {
-    status: 'loading',
+    status: 'locked',
     activeVoices: 0,
     peakVoices: 0,
     droppedVoices: 0,
@@ -17,16 +17,17 @@ export class LazyAudioOutput implements AudioOutput {
   };
   private output: AudioOutput | null = null;
   private disposed = false;
-  private activated = false;
+  private frame: number | null = null;
+  private loading = false;
   private muted = false;
 
-  constructor() {
+  private load(): void {
     void import('./howlerOutput')
       .then(({ HowlerOutput }) => {
         if (this.disposed) return;
         this.output = new HowlerOutput();
         this.output.setMasterMuted(this.muted);
-        if (this.activated) this.output.unlock();
+        this.output.unlock();
       })
       .catch(() => {
         if (this.disposed) return;
@@ -38,8 +39,22 @@ export class LazyAudioOutput implements AudioOutput {
     return this.output?.state ?? this.pending;
   }
   unlock(): void {
-    this.activated = true;
-    this.output?.unlock();
+    if (this.disposed) return;
+    if (this.output) {
+      this.output.unlock();
+      return;
+    }
+    if (this.loading) return;
+    this.loading = true;
+    this.pending.status = 'loading';
+    // A focus gesture can precede async boot. Give the driving view a paint
+    // opportunity before requesting any audio, even for that earlier gesture.
+    this.frame = requestAnimationFrame(() => {
+      this.frame = requestAnimationFrame(() => {
+        this.frame = null;
+        if (!this.disposed) this.load();
+      });
+    });
   }
   apply(mix: Readonly<AudioMix>): void {
     this.output?.apply(mix);
@@ -62,6 +77,8 @@ export class LazyAudioOutput implements AudioOutput {
   }
   dispose(): void {
     this.disposed = true;
+    if (this.frame !== null) cancelAnimationFrame(this.frame);
+    this.frame = null;
     this.output?.dispose();
   }
 }

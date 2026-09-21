@@ -8,7 +8,7 @@ The existing contact callback calls `onImpact(otherBodyId,profile,impulse,normal
 
 ## Timing, surfaces and voices
 
-Physics callbacks only aggregate existing telemetry into fixed arrays/scalars. They do not call Howler, create audio nodes, promises, timers or event objects. Browser audio work and transient scheduling happen after simulation in update. Loading is asynchronous and never delays physics boot.
+Physics callbacks only aggregate existing telemetry into fixed arrays/scalars. They do not call Howler, create audio nodes, promises, timers or event objects. Browser audio work and transient scheduling happen after simulation in update. Neither the Howler backend chunk nor any sound-bank file is requested during boot. A genuine browser activation schedules loading after two animation frames, giving the driving view a paint opportunity first. Controller polling cannot initiate these requests. A later genuine gesture retries context resume if browser policy rejects it after loading. This removes audio network competition from unactivated boot; it does not establish the design's still-unverified five-second broadband time-to-drive criterion.
 
 Six continuous voices (idle/load engine, three tyre profiles, boost sustain) reserve six of a hard sixteen-voice total. Impacts and boost attacks share ten explicit slots. Excess transients are dropped and counted. Howler's pool size is an inactive-object recycling setting, not the voice limit.
 

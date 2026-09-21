@@ -38,6 +38,11 @@ test('controller-only play visibly explains locked sound; only a real click or k
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 480 });
+  const audioRequests: string[] = [];
+  page.on('request', (request) => {
+    if (/\.ogg(?:\?|$)|howlerOutput[^/]*\.js/.test(request.url()))
+      audioRequests.push(request.url());
+  });
   const decodedFiles = new Set<string>();
   page.on('response', (response) => {
     if (/\.ogg(?:\?|$)/.test(response.url()) && response.ok())
@@ -79,6 +84,15 @@ test('controller-only play visibly explains locked sound; only a real click or k
   await tap(page, [9]);
   await tap(page, [1]); // Opening/selecting menu via pad is not activation.
   expect((await state(page)).output.status).toBe('locked');
+  const beforeDrive = await page.evaluate(
+    () => window.__game.getTelemetry().totalSteps as number,
+  );
+  await page.evaluate(() => window.__controllerPad.hold([7]));
+  await expect
+    .poll(() => page.evaluate(() => window.__game.getTelemetry().totalSteps))
+    .toBeGreaterThan(beforeDrive + 10);
+  await page.evaluate(() => window.__controllerPad.hold([]));
+  expect(audioRequests).toEqual([]); // Async eager loading still steals boot bandwidth.
   await page.getByRole('button', { name: /Enable sound/ }).click();
   await expect
     .poll(async () => (await state(page)).output.status)
