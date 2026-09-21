@@ -70,7 +70,12 @@ async function boot(): Promise<void> {
     track.config,
     track.barrierBoxes,
   );
-  const vehicle = new Vehicle(physics, tuning, track.spawn.position);
+  const vehicle = new Vehicle(
+    physics,
+    tuning,
+    track.spawn.position,
+    track.createSurfaceResolver(trackBodies),
+  );
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
   const carVisual = createCarVisual(view.scene);
@@ -349,7 +354,6 @@ async function boot(): Promise<void> {
     pauseMenu,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
-    isOnKerb: track.isOnKerb,
   });
   // Release controller capture/navigation before disposing their UI owners.
   // Menu disposal restores the shared Options element before Options removes it.
@@ -464,9 +468,11 @@ async function boot(): Promise<void> {
     return {
       ...s,
       ...cameraRig.telemetry,
+      surfaceDiagnostics: s.surfaceDiagnostics
+        ? { ...s.surfaceDiagnostics }
+        : null,
       cameraPreset: cameraRig.preset,
-      gizmosVisible:
-        view.scene.getObjectByName('car.gizmos')?.visible ?? false,
+      gizmosVisible: view.scene.getObjectByName('car.gizmos')?.visible ?? false,
       renderScale: view.resolution.scale,
       smoothedFrameMs: view.resolution.smoothedFrameMs,
       skidSegments: skids.strips.reduce(
@@ -499,6 +505,8 @@ async function boot(): Promise<void> {
         z: view.camera.position.z,
       },
       wheels: s.wheels.map((wheel) => ({
+        surfaceId: wheel.surfaceId,
+        surfaceGripMultiplier: wheel.surfaceGripMultiplier,
         Fx: wheel.Fx,
         Fy: wheel.Fy,
         mu: wheel.mu,

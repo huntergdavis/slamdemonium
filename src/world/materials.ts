@@ -12,6 +12,8 @@ import {
 import { createAsphaltTexture } from '../../assets/procedural/asphalt';
 import type { AsphaltOptions } from '../../assets/procedural/asphalt';
 import type { TrackConfig } from './trackConfig';
+import { getKnownSurfaceDefinition } from '../content/surfaces';
+import type { SurfaceId } from '../content/surfaces';
 
 export const WORLD_COLORS = Object.freeze({
   paint: 0xf2f4ec,
@@ -82,10 +84,19 @@ export function createTrackMaterials(
       roughness: 0.95,
     }),
   };
+  const surfaceMaterials = {
+    asphalt: materials.asphalt,
+    kerb: materials.curb,
+    concrete: materials.barrier,
+  };
   let disposed = false;
   return {
     ...materials,
     map,
+    /** Shared content selects a renderer-owned object, never the reverse. */
+    forSurface(id: SurfaceId): MeshStandardMaterial {
+      return surfaceMaterials[getKnownSurfaceDefinition(id).visual.materialKey];
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

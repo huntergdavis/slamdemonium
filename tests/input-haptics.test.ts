@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { ControllerHaptics } from '../src/input/haptics';
 import { VehicleTelemetry } from '../src/vehicle/telemetry';
 import { makePad } from './input-helpers';
+import { Scene } from 'three';
+import { SURFACE_IDS } from '../src/content/surfaces';
+import { createTestTrack, resolveTrackConfig } from '../src/world/track';
+import { createTrackLayout } from '../src/world/trackLayout';
 
 function setup() {
   const telemetry = new VehicleTelemetry();
@@ -19,32 +23,28 @@ function setup() {
     paused: false,
     actuator: actuator as GamepadHapticActuator | null,
   };
-  const query = vi.fn((x: number, z: number) => x === 42 && z === 17);
   const haptics = new ControllerHaptics({
     readTelemetry: () => telemetry,
     readActuator: () => state.actuator,
     readIntensity: () => state.intensity,
     readPaused: () => state.paused,
-    isOnKerb: query,
   });
-  return { telemetry, play, stop, state, query, haptics };
+  return { telemetry, play, stop, state, haptics };
 }
 
 describe('controller feedback stays outside physics', () => {
   it('uses only grounded wheel contacts for kerbs, supports wheelspin, and rate limits browser calls', () => {
     const r = setup();
     r.telemetry.speed = 20;
-    r.telemetry.wheels[0].contactPoint.set(42, 0, 17);
+    r.telemetry.wheels[0].surfaceId = SURFACE_IDS.kerb;
     r.haptics.afterStep(1 / 120);
     r.haptics.update(0);
-    expect(r.query).not.toHaveBeenCalled();
     expect(r.play).not.toHaveBeenCalled();
     r.telemetry.wheels[0].grounded = true;
     r.haptics.afterStep(1 / 120);
     expect(r.play).not.toHaveBeenCalled();
     r.haptics.update(10);
     expect(r.play).toHaveBeenCalledTimes(1);
-    expect(r.query).toHaveBeenCalledWith(42, 17);
     const first = { ...r.play.mock.calls[0]?.[1] };
     expect(first).toMatchObject({
       duration: 80,
@@ -55,7 +55,7 @@ describe('controller feedback stays outside physics', () => {
     expect(first.weakMagnitude).toBeLessThanOrEqual(0.35);
     r.haptics.update(30);
     expect(r.play).toHaveBeenCalledTimes(1);
-    r.telemetry.wheels[0].contactPoint.set(0, 0, 0);
+    r.telemetry.wheels[0].surfaceId = SURFACE_IDS.asphalt;
     r.telemetry.wheels[0].spinning = true;
     r.haptics.afterStep(1 / 120);
     r.haptics.update(60);
@@ -126,5 +126,132 @@ describe('controller feedback stays outside physics', () => {
     r.state.actuator = null;
     r.haptics.update(200);
     expect(r.haptics.state.status).toBe('unavailable');
+  });
+});
+
+describe('F0 preserves shipped kerb haptics on the current ground', () => {
+  it('matches the old footprint and pulse at every rendered segment, inclusive corner, seam and just-outside edge', () => {
+    const r = setup();
+    const config = resolveTrackConfig();
+    const track = createTestTrack(new Scene(), {
+      maxAnisotropy: 1,
+      asphalt: { size: 128 },
+    });
+    const resolver = track.createSurfaceResolver({
+      ground: 11,
+      barriers: Array.from(
+        { length: config.barrierSegments },
+        (_, index) => index + 12,
+      ),
+    });
+    const wheel = r.telemetry.wheels[0];
+    const hit = {
+      bodyId: 11,
+      surfaceId: 0,
+      distance: 1,
+      point: { x: 0, y: 0, z: 0 },
+      normal: { x: 0, y: 1, z: 0 },
+    };
+    r.telemetry.speed = 20;
+    wheel.grounded = true;
+    const dt = 1 / 120;
+    const previousPulse =
+      (0.25 + 0.2 * Math.sin(dt * 24 * Math.PI * 2) ** 2) * 0.35;
+    let checked = 0;
+    for (const box of createTrackLayout(config).curbs) {
+      for (const [dx, dz] of [
+        [0, 0],
+        [-box.size.x / 2, -box.size.z / 2],
+        [box.size.x / 2, box.size.z / 2],
+        [box.size.x / 2 + 0.001, 0],
+        [0, box.size.z / 2 + 0.001],
+      ]) {
+        hit.point.x =
+          box.center.x + Math.cos(box.rotY) * dx! + Math.sin(box.rotY) * dz!;
+        hit.point.z =
+          box.center.z - Math.sin(box.rotY) * dx! + Math.cos(box.rotY) * dz!;
+        const legacyKerb = track.isOnKerb(hit.point.x, hit.point.z);
+        wheel.surfaceId = resolver(true, hit);
+        r.haptics.reset();
+        r.play.mockClear();
+        r.haptics.afterStep(dt);
+        r.haptics.update(0);
+        expect(r.play.mock.calls.length > 0).toBe(legacyKerb);
+        if (legacyKerb)
+          expect(r.play.mock.calls[0]![1]!.weakMagnitude).toBeCloseTo(
+            previousPulse,
+            12,
+          );
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(4000);
+    track.dispose();
+  });
+
+  it('removes false kerb rumble for a registered wall hit over the same X/Z footprint', () => {
+    const r = setup();
+    const config = resolveTrackConfig();
+    const track = createTestTrack(new Scene(), {
+      maxAnisotropy: 1,
+      asphalt: { size: 128 },
+    });
+    const resolver = track.createSurfaceResolver({
+      ground: 11,
+      barriers: Array.from(
+        { length: config.barrierSegments },
+        (_, index) => index + 12,
+      ),
+    });
+    const center = createTrackLayout(config).curbs[0]!.center;
+    const hit = {
+      bodyId: 11,
+      surfaceId: 0,
+      distance: 1,
+      point: { x: center.x, y: 0, z: center.z },
+      normal: { x: 0, y: 1, z: 0 },
+    };
+    expect(track.isOnKerb(center.x, center.z)).toBe(true); // v0.2.0 only checked X/Z.
+    const wheel = r.telemetry.wheels[0];
+    wheel.grounded = true;
+    r.telemetry.speed = 20;
+    wheel.surfaceId = resolver(true, hit);
+    r.haptics.afterStep(1 / 120);
+    r.haptics.update(0);
+    expect(r.play).toHaveBeenCalledOnce();
+    r.haptics.reset();
+    r.play.mockClear();
+    hit.bodyId = 12;
+    hit.normal.x = 1;
+    hit.normal.y = 0;
+    wheel.surfaceId = resolver(true, hit);
+    expect(wheel.surfaceId).toBe(SURFACE_IDS.concrete);
+    r.haptics.afterStep(1 / 120);
+    r.haptics.update(60);
+    expect(r.play).not.toHaveBeenCalled();
+    track.dispose();
+  });
+
+  it('never turns stale, unknown or contact-only canonical IDs into kerb feedback', () => {
+    const r = setup();
+    r.telemetry.speed = 20;
+    const wheel = r.telemetry.wheels[0];
+    wheel.grounded = false;
+    wheel.surfaceId = SURFACE_IDS.kerb;
+    r.haptics.afterStep(1 / 120);
+    r.haptics.update(0);
+    expect(r.play).not.toHaveBeenCalled();
+    wheel.grounded = true;
+    for (const surfaceId of [null, SURFACE_IDS.concrete, SURFACE_IDS.asphalt]) {
+      wheel.surfaceId = surfaceId;
+      r.haptics.afterStep(1 / 120);
+      r.haptics.update(60);
+      expect(r.play).not.toHaveBeenCalled();
+    }
+    wheel.surfaceId = SURFACE_IDS.kerb;
+    r.telemetry.speed = 0.5;
+    r.haptics.afterStep(1 / 120);
+    r.haptics.update(120);
+    expect(r.play).not.toHaveBeenCalled();
   });
 });

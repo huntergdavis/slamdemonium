@@ -1,3 +1,9 @@
+import {
+  getSurfaceDefinition,
+  SURFACE_IDS,
+  SURFACE_UV_REFERENCES,
+} from '../content/surfaces';
+
 /** World defaults from design 9 and docs/design/visual-direction.md. SI units. */
 export interface TrackConfig {
   pavedRadius: number;
@@ -68,11 +74,11 @@ export const DEFAULT_TRACK_CONFIG: Readonly<TrackConfig> = Object.freeze({
   barrierSegments: 128,
   wallFriction: 0.05,
   restitution: 0.25,
-  surfaceId: 0,
+  surfaceId: SURFACE_IDS.asphalt,
   skidpadRadii: Object.freeze([15, 30]),
   skidpadWidth: 0.12,
   paintHeight: 0.005,
-  tileMeters: 8,
+  tileMeters: SURFACE_UV_REFERENCES['asphalt-world'].tileMeters,
   fogDensity: 0.0025,
   killY: -50,
   spawnHeight: 0.86,
@@ -177,8 +183,8 @@ export function resolveTrackConfig(
       config.barrierInnerRadius
   )
     throw new RangeError('Curbs must fit beside ring edges');
-  if (!Number.isInteger(config.surfaceId) || config.surfaceId < 0)
-    throw new RangeError('surfaceId must be a nonnegative integer');
+  if (getSurfaceDefinition(config.surfaceId).context !== 'ground')
+    throw new RangeError('Track surfaceId must identify a ground surface');
   return Object.freeze({
     ...config,
     skidpadRadii: Object.freeze([...config.skidpadRadii]),

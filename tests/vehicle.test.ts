@@ -6,11 +6,14 @@ import type { IPhysicsWorld } from '../src/physics/adapter';
 import type { GameInput } from '../src/core/gameApi';
 import { TuningStore } from '../src/tuning/store';
 import { Vehicle } from '../src/vehicle/vehicle';
+import { createTrackSurfaceResolver } from '../src/world/trackSurfaces';
+import { SURFACE_IDS, type SurfaceResolver } from '../src/content/surfaces';
 
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
 );
 const worlds: IPhysicsWorld[] = [];
+const surfaceResolvers: SurfaceResolver[] = [];
 const idle: GameInput = {
   throttle: 0,
   brake: 0,
@@ -21,10 +24,27 @@ const idle: GameInput = {
 async function setup(hz = 120) {
   const world = await createPhysicsWorld({ wasmPath });
   worlds.push(world);
-  world.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 5000, y: 0.5, z: 5000 });
+  const ground = {
+    center: { x: 0, y: -0.5, z: 0 },
+    halfExtents: { x: 5000, y: 0.5, z: 5000 },
+    rotY: 0,
+  };
+  const groundBody = world.createStaticBox(ground.center, ground.halfExtents);
+  const surfaceResolver = createTrackSurfaceResolver({
+    bodies: { ground: groundBody, barriers: [] },
+    groundSurfaceId: SURFACE_IDS.asphalt,
+    ground,
+    kerbFootprint: () => false,
+  });
+  surfaceResolvers.push(surfaceResolver);
   const tuning = new TuningStore();
   tuning.set('physicsHz', hz);
-  const vehicle = new Vehicle(world, tuning);
+  const vehicle = new Vehicle(
+    world,
+    tuning,
+    { x: 0, y: 1, z: 0 },
+    surfaceResolver,
+  );
   const dt = 1 / hz;
   function step(input = idle, count = 1) {
     for (let i = 0; i < count; i++) {
@@ -37,6 +57,8 @@ async function setup(hz = 120) {
   return { world, tuning, vehicle, step };
 }
 afterEach(() => {
+  for (const resolver of surfaceResolvers) resolver.dispose();
+  surfaceResolvers.length = 0;
   for (const world of worlds) world.dispose();
   worlds.length = 0;
 });

@@ -16,8 +16,6 @@ export interface ControllerSupportOptions {
   pauseMenu: PauseMenu;
   readTelemetry: () => Readonly<VehicleTelemetry>;
   readPaused: () => boolean;
-  /** World X/Z meters. Grounded-wheel gating belongs to the haptic consumer. */
-  isOnKerb: (x: number, z: number) => boolean;
 }
 
 export function mountControllerSupport(
@@ -51,7 +49,6 @@ export class ControllerSupport {
       readActuator: () => deps.input.gamepad.state.actuator,
       readIntensity: () => deps.tuning.get('hapticsIntensity'),
       readPaused: () => deps.readPaused() || this.captured(),
-      isOnKerb: deps.isOnKerb,
     });
     this.prompts = new ControllerPrompts(
       deps.host,

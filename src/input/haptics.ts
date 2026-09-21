@@ -1,3 +1,4 @@
+import { resolveGroundedSurface } from '../content/surfaces';
 import type { V3 } from '../physics/adapter';
 import type { VehicleTelemetry } from '../vehicle/telemetry';
 
@@ -6,7 +7,6 @@ export interface HapticsOptions {
   readActuator: () => GamepadHapticActuator | null;
   readIntensity: () => number;
   readPaused: () => boolean;
-  isOnKerb: (x: number, z: number) => boolean;
 }
 export interface HapticsState {
   status: 'unavailable' | 'ready' | 'active' | 'off' | 'error';
@@ -51,7 +51,8 @@ export class ControllerHaptics {
       if (wheel.spinning) this.wheelspin = 0.3;
       if (
         telemetry.speed > 0.5 &&
-        this.deps.isOnKerb(wheel.contactPoint.x, wheel.contactPoint.z)
+        resolveGroundedSurface(wheel.grounded, wheel.surfaceId)
+          ?.hapticProfile === 'kerb'
       )
         this.kerb = 0.25 + 0.2 * Math.sin(this.phase * Math.PI * 2) ** 2;
     }

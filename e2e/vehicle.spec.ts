@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { SURFACE_IDS } from '../src/content/surfaces';
 
 test.setTimeout(90_000);
 test.use({ viewport: { width: 800, height: 450 } });
@@ -104,4 +105,60 @@ test('the tuning-lab API refills boost without requiring a drift first', async (
   expect(result.appliedMass.mass).toBe(1500);
   expect(Number(result.after.boostMeter)).toBeCloseTo(0.75, 1);
   expect(Number(result.after.boostEnvelope)).toBeGreaterThan(0.9);
+});
+
+test('built boot exposes canonical surfaces and copies diagnostic snapshots', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.waitForFunction(() => window.__game?.ready);
+  const result = await page.evaluate(() => {
+    const game = window.__game;
+    game.perf!.pauseSimulation(true);
+    game.respawn();
+    game.tuning.set('loadSensitivity', 0);
+    game.tuning.set('surfaceGrip', 1);
+    game.stepMany(360);
+    const before = game.getTelemetry();
+    game.tuning.set('surfaceGrip', 0.5);
+    game.stepMany(1);
+    const after = game.getTelemetry();
+    return {
+      before,
+      after,
+      ownsDiagnostics: before.surfaceDiagnostics !== after.surfaceDiagnostics,
+    };
+  });
+  type WheelSnapshot = {
+    grounded: boolean;
+    surfaceId: number | null;
+    surfaceGripMultiplier: number | null;
+    mu: number;
+  };
+  const before = result.before.wheels as WheelSnapshot[];
+  const after = result.after.wheels as WheelSnapshot[];
+  expect(before).toHaveLength(4);
+  for (let i = 0; i < before.length; i++) {
+    expect(before[i]).toMatchObject({
+      grounded: true,
+      surfaceId: SURFACE_IDS.asphalt,
+      surfaceGripMultiplier: 1,
+    });
+    expect(after[i]).toMatchObject({
+      grounded: true,
+      surfaceId: SURFACE_IDS.asphalt,
+      surfaceGripMultiplier: 1,
+    });
+    expect(after[i]!.mu).toBeCloseTo(before[i]!.mu * 0.5, 12);
+  }
+  expect(result.before.surfaceDiagnostics).toMatchObject({
+    lastStatus: 'resolved',
+    unknownBodySeen: false,
+    firstUnknownBodyId: null,
+    invalidHitSeen: false,
+  });
+  expect(result.after.surfaceDiagnostics).toEqual(
+    result.before.surfaceDiagnostics,
+  );
+  expect(result.ownsDiagnostics).toBe(true);
 });

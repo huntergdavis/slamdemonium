@@ -16,6 +16,8 @@ Running log of technical decisions, spike results and changed defaults. New entr
 
 | 2026-09-20 | [WP13: stable material programs and heap regression](#2026-09-20--wp13-stable-material-programs-and-heap-regression) | Prepare material variants once, render planar skids in one pass, and gate retained heap growth without treating function-level allocation attribution as proof of new objects. |
 
+| 2026-09-20 | [F0: canonical tyre surfaces and diagnostic lifetime](#2026-09-20--f0-canonical-tyre-surfaces-and-diagnostic-lifetime) | Resolve registered contacts once, preserve physical grounding and global grip, and keep disposed-world diagnostics visibly invalid. |
+
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
 ## 2026-09-20 — WP0: minimal browser scaffold and reproducible tooling
@@ -405,3 +407,56 @@ remained 121,256,280 bytes. The warmed fixed view made zero parameter builds;
 restoring shared materials produced 24. This demonstrates the repaired render
 call pattern and bounded retained memory, without resolving the separate
 vehicle/suspension allocation attributions discussed above.
+
+## 2026-09-20 — F0: canonical tyre surfaces and diagnostic lifetime
+
+The content catalog is the shared authority for material identity and grip.
+Validate its dense IDs, authored materials and body registrations during world
+construction. The world resolver refines its registered ground by the existing
+kerb footprint and maps registered barriers to concrete. It does not trust a raw
+ray's numeric surface metadata or project wall contacts onto a floor layout.
+Every Vehicle constructor requires the resolver explicitly; the flat-plane and
+ring test harnesses use the same pure world factory as the track wrapper.
+
+Keep RayHit as raw physics data and publish the result in nullable
+wheel.surfaceId. Grounded remains the physical ray-hit fact. An unregistered
+body therefore retains suspension and rigid-body contact while its canonical ID
+and tyre grip are null. This matters for future debris: an unknown material must
+not remove the springs supporting the car. Known impact-only concrete similarly
+has null tyre grip. Neither case applies tyre forces; a ground coefficient of
+zero remains a valid, different case that can still report driven wheelspin.
+
+Strict numeric catalog validation belongs before simulation. The tyre path uses
+getKnownSurfaceDefinition with the resolver-proven ID and caches only its scalar
+grip multiplier. It multiplies the existing live surfaceGrip tuning control;
+tire.ts, load sensitivity, slip, combined-slip coupling and braking formulas are
+unchanged. Both initially authored ground coefficients are 1. New lookups and
+cached wheel fields reuse construction-time data and existing ray records.
+
+The resolver owns one diagnostic record. Unknown-body evidence latches once and
+does not disappear on ordinary respawn or mass rebuild. VehicleTelemetry exposes
+that readonly live reference; window.__game.getTelemetry copies it for an owned
+automation snapshot. Disposing a track immediately marks every issued resolver
+record disposed, even without another ray query. Rebuilding creates a fresh
+resolver and Vehicle with clean diagnostics. An old reference remains disposed
+and can never become the new world's apparently healthy record. Tests check
+both the clean replacement and the retained old reference, plus a second unknown
+body not overwriting the first diagnostic.
+
+Reuse the [scripted flat-plane experiment](../tests/integration/README.md):
+stock Jolt 1.1.0, Node 22.22.1 on Linux x64, default tuning, actual suspended
+vehicle and scripted input at 120 Hz. Before and after this change, all recorded
+simulation results (including final poses) match exactly: 100 km/h after
+265 steps, **2.2083333333333335 simulated seconds**; 55 m/s after **6.75 seconds**;
+and braking from a 59.999519 m/s scripted approach reaches the first forward stop
+after **72.3990478515625 metres** and **2.5166666666666666 seconds**. The regression
+pins the acceleration step and braking distance to sub-millimetre rounding,
+alongside the original broader design acceptance bands. These are simulated
+workload results, not host wall-time or cross-platform determinism claims.
+
+The focused real-Jolt tests also exercise a test-only lower-grip definition,
+live global grip changes, concrete and unregistered-body suspension, zero grip,
+stale airborne hit gating and stable reused wheel/ray records. The added
+production-preview browser spec checks canonical surface telemetry, live global
+grip and independent diagnostic snapshots; hosted CI owns browser validation.
+The existing 36,000-step heap regression retains its workload and thresholds.
