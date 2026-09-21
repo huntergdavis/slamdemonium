@@ -20,6 +20,7 @@ const SYMBOLS: Record<number, readonly [string, string]> = {
   0: ['button-bottom', 'Bottom (A)'],
   2: ['button-left', 'Left (X)'],
   3: ['button-top', 'Top (Y)'],
+  5: ['rb', 'Right bumper'],
 };
 
 /** Build once; activity changes only update text/visibility, never replace DOM. */

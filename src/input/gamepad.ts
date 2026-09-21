@@ -45,6 +45,7 @@ export const PAD_COMMANDS: readonly {
   { button: 0, action: 'recordTelemetry', label: 'Telemetry CSV', glyph: 'A' },
   { button: 2, action: 'gizmos', label: 'Gizmos', glyph: 'X' },
   { button: 3, action: 'latencyProbe', label: 'Latency probe', glyph: 'Y' },
+  { button: 5, action: 'muteAudio', label: 'Mute', glyph: 'RB' },
 ];
 const FACE_DRIVING = (1 << 0) | (1 << 2) | (1 << 3);
 const NO_GAMEPADS: readonly (Gamepad | null)[] = [];
@@ -174,7 +175,7 @@ export class GamepadInput {
     state.index = pad.index;
     state.actuator = pad.vibrationActuator ?? null;
     state.modifier = modifier;
-    state.coarse = (held & (1 << 5)) !== 0;
+    state.coarse = !modifier && (held & (1 << 5)) !== 0;
     state.throttle = trigger(pad.buttons[7]);
     state.brake = trigger(pad.buttons[6]);
     const horizontal = finiteAxis(pad.axes[0]);
@@ -196,10 +197,17 @@ export class GamepadInput {
     if (pressed & (1 << 7)) state.nextSectionPresses++;
     if (pressed & (1 << 9)) state.presses.pauseMenu++;
     if (pressed & (1 << 8)) state.presses.options++;
+    // Room mute is global, including menus. Fresh RB edges only: holding RB
+    // then pressing LB cannot toggle, and releasing LB never replays the edge.
+    if (modifier && pressed & (1 << 5)) state.presses.muteAudio++;
     if (!uiCaptured && !transition) {
       if (modifier) {
         for (const command of PAD_COMMANDS) {
-          if (!(pressed & (1 << command.button))) continue;
+          if (
+            command.action === 'muteAudio' ||
+            !(pressed & (1 << command.button))
+          )
+            continue;
           state.presses[command.action]++;
           if (command.action === 'latencyProbe') {
             state.probeTimes[state.probeSequence % PROBE_QUEUE_CAPACITY] =

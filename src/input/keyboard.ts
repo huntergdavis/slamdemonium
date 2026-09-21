@@ -26,6 +26,7 @@ const KEY_ACTIONS = {
   KeyL: 'latencyProbe',
   Tab: 'swapAB',
   F9: 'recordTelemetry',
+  KeyM: 'muteAudio',
 } as const satisfies Record<string, InputAction | null>;
 export type InputKeyCode = keyof typeof KEY_ACTIONS;
 export const PROBE_QUEUE_CAPACITY = 128;
@@ -160,7 +161,7 @@ export class KeyboardInput {
     if (
       (code !== 'Escape' &&
         (this.editingTarget(event.target) ||
-          this.optionsTarget(event.target))) ||
+          (code !== 'KeyM' && this.optionsTarget(event.target)))) ||
       event.isComposing
     )
       return;
