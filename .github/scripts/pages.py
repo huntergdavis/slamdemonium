@@ -18,15 +18,19 @@ SITE_URL = "https://hunterdavis.com/slamdemonium"
 MAX_BYTES = 250 * 1024 * 1024
 
 
-def api(repo, path, *, method="GET", data=None, raw=False):
+def api(repo, path, *, method="GET", data=None, raw=False, optional=False):
     command = ["gh", "api", "--method", method, f"repos/{repo}/{path}"]
     if data is not None:
         command += ["--input", "-"]
     result = subprocess.run(
         command, input=json.dumps(data).encode() if data is not None else None,
-        stdout=subprocess.PIPE, check=True,
-    ).stdout
-    return result if raw else json.loads(result or b"null")
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    if result.returncode:
+        if optional and b"(HTTP 404)" in result.stderr:
+            return None
+        raise RuntimeError(result.stderr.decode(errors="replace"))
+    return result.stdout if raw else json.loads(result.stdout or b"null")
 
 
 def paginated(repo, path):
@@ -69,7 +73,7 @@ def archive_files(archive, *, production=False):
         mode = stat.S_IFMT(item.external_attr >> 16)
         if mode not in (0, stat.S_IFREG, stat.S_IFDIR):
             raise ValueError(f"Artifact links/special files are forbidden: {name!r}")
-        if production and parts[0] in ("pr", STATE_FILE):
+        if production and parts[0] in ("pr", "main", "release-candidate", STATE_FILE):
             raise ValueError(f"Reserved production path: {name!r}")
         if item.is_dir():
             continue
@@ -89,7 +93,7 @@ def install_artifact(snapshot, data, number=None):
         files = archive_files(archive, production=number is None)
         if number is None:
             for child in snapshot.iterdir():
-                if child.name not in (".git", "pr", STATE_FILE):
+                if child.name not in (".git", "pr", "main", "release-candidate", STATE_FILE):
                     if child.is_dir():
                         shutil.rmtree(child)
                     else:
@@ -128,8 +132,23 @@ def label_preview(snapshot, number):
     index.write_text(html)
 
 
-def assemble_site(snapshot, production, site):
-    """Production comes only from the trusted main build, never the storage branch."""
+def label_channel(directory, label):
+    """Publisher-owned label; never interpolates PR-supplied text."""
+    index = directory / "index.html"
+    html = index.read_text()
+    banner = (
+        '<aside id="build-channel-notice" style="position:fixed;top:8px;right:8px;'
+        'z-index:2147483647;padding:8px 12px;border:2px solid #111;border-radius:6px;'
+        'background:#ffe66d;color:#111;font:600 14px/1.4 system-ui,sans-serif">'
+        f'{label} · <a style="color:#111" href="{SITE_URL}/">Open live game</a></aside>'
+    )
+    html = re.sub(r"(?i)(<title\b[^>]*>)", rf"\1[{label}] ", html, count=1)
+    position = html.lower().rfind("</body>")
+    index.write_text(html[:position] + banner + html[position:] if position >= 0 else html + banner)
+
+
+def assemble_site(snapshot, production, site, main=None, candidate=None):
+    """Root comes from a verified release/bootstrap artifact, never preview storage."""
     site.mkdir()
     install_artifact(site, production)
     previews = snapshot / "pr"
@@ -138,6 +157,27 @@ def assemble_site(snapshot, production, site):
             if not child.is_dir() or not re.fullmatch(r"[1-9][0-9]*", child.name):
                 raise ValueError("Unexpected path in stored preview namespace")
         shutil.copytree(previews, site / "pr")
+    for name, data, label in (("main", main, "UNRELEASED MAIN PREVIEW"),
+                              ("release-candidate", candidate, "UNRELEASED RELEASE CANDIDATE")):
+        if data is not None:
+            target = site / name
+            target.mkdir()
+            install_artifact(target, data)
+            label_channel(target, label)
+
+
+def add_hashed_assets(site, data):
+    """Warm release URLs before promotion, so rollback can serve either cached HTML."""
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        for name, item in archive_files(archive, production=True).items():
+            if not name.startswith("assets/") or not re.search(r"-[A-Za-z0-9_-]{8}\.[^/]+$", name):
+                continue
+            target = site / name
+            content = archive.read(item)
+            if target.exists() and target.read_bytes() != content:
+                raise ValueError(f"Content-hashed asset collision: {name}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
 
 
 def git(snapshot, *args, check=True):
@@ -185,6 +225,11 @@ def output(name, value):
         stream.write(f"{name}={value}\n")
 
 
+def require_current_workflow():
+    if not re.fullmatch(r"[a-f0-9]{40}", os.environ.get("MAIN_SHA", "")):
+        raise ValueError("Obsolete Pages workflow lacks MAIN_SHA; dispatch the current main workflow. Production was not modified.")
+
+
 def prepare(repo, temporary):
     output("publish", "false")
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
@@ -194,8 +239,9 @@ def prepare(repo, temporary):
     production_sha = os.environ["PRODUCTION_SHA"]
     if not re.fullmatch(r"[0-9a-f]{40}", production_sha):
         raise ValueError("Invalid trusted production SHA")
-    if event_name == "push":
-        if event["ref"] != "refs/heads/main":
+    if event_name in ("push", "workflow_dispatch"):
+        if (event.get("ref", os.environ.get("GITHUB_REF")) != "refs/heads/main"
+                and event.get("ref") != "main"):
             raise ValueError("Production builds must originate from main")
         mode = "production"
         sha = production_sha
@@ -239,7 +285,12 @@ def prepare(repo, temporary):
         label_preview(snapshot, number)
 
     # Validate and assemble the complete site before writing any durable state.
-    assemble_site(snapshot, production, temporary / "pages-site")
+    current_run = int(os.environ["GITHUB_RUN_ID"])
+    main = artifact(repo, current_run, "pages-main") if os.environ.get("MAIN_SHA") else None
+    candidate = artifact(repo, current_run, "release-candidate") if os.environ.get("CUT_RELEASE") == "true" else None
+    assemble_site(snapshot, production, temporary / "pages-site", main, candidate)
+    if candidate is not None:
+        add_hashed_assets(temporary / "pages-site", artifact(repo, current_run, "release-production"))
     state["production_sha"] = production_sha
 
     (snapshot / STATE_FILE).write_text(json.dumps(state, indent=2) + "\n")
@@ -252,6 +303,14 @@ def prepare(repo, temporary):
         raise RuntimeError("Cannot compare Pages snapshot changes")
     # Even an unchanged snapshot is uploaded: reruns must recover failed deployments.
     (temporary / "pages-context.json").write_text(json.dumps({"mode": mode, "number": number, "sha": sha}))
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+            summary.write(f"## Pages publication\n\nProduction source: `{production_sha}`.\n\n")
+            if main is not None:
+                summary.write(f"[UNRELEASED main preview]({SITE_URL}/main/) · `{os.environ['MAIN_SHA']}`\n\n")
+            if candidate is not None:
+                summary.write(f"[Release candidate]({SITE_URL}/release-candidate/) is staged alongside unchanged production. "
+                              "Promotion requires served-byte verification.\n")
     output("publish", "true")
 
 
@@ -286,4 +345,6 @@ def comment(repo, temporary):
 if __name__ == "__main__":
     repository = os.environ["GITHUB_REPOSITORY"]
     temporary_path = Path(os.environ["RUNNER_TEMP"])
+    if sys.argv[1] == "prepare":
+        require_current_workflow()
     {"prepare": prepare, "comment": comment}[sys.argv[1]](repository, temporary_path)

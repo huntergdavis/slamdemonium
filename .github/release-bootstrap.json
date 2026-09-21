@@ -1,0 +1,4 @@
+{
+  "revision": "aee9fde461cd601eea0d9d82e46138d977c614d4",
+  "reason": "WP18 main merge, verified against all six live production files byte-for-byte on 2026-09-20. This fixed reviewed source preserves the existing public build during rollout of release-based deployment, until the first stable release is deployed and verified. It is never advanced automatically."
+}

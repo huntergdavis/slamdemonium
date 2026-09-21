@@ -41,6 +41,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Deployment tooling tests
+        run: env -u GITHUB_STEP_SUMMARY python3 -m unittest discover -s .github/tests -v
+
       - name: Production build
         run: npm run build
 

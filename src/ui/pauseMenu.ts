@@ -14,6 +14,8 @@ export interface PauseMenuOptions {
   options: Pick<OptionsPanel, 'element' | 'isOpen' | 'setOpen'>;
   /** Already sampled by InputMapper. This component never polls the browser. */
   readGamepad: () => Readonly<GamepadState>;
+  /** Preformatted immutable build identity; no frame-loop work or focus target. */
+  buildLabel?: string;
 }
 
 export function mountPauseMenu(options: PauseMenuOptions): PauseMenu {
@@ -92,6 +94,11 @@ export class PauseMenu {
         '↑ / ↓ or D-pad / stick: move · Enter / A: select · Escape / Start: resume · B: back',
       ),
     );
+    if (deps.buildLabel) {
+      this.menu.append(
+        node(doc, 'p', 'sl-caption sl-pause__build', deps.buildLabel),
+      );
+    }
     this.controls = node(doc, 'div', 'sl-pause__controls');
     this.controls.hidden = true;
     const table = node(doc, 'table', 'sl-pause__mappings');

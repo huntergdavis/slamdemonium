@@ -298,6 +298,7 @@ async function boot(): Promise<void> {
   massRebuild.flush();
   const pauseMenu = mountPauseMenu({
     host: host!,
+    buildLabel: import.meta.env.VITE_BUILD_LABEL,
     drivingSurface: view.renderer.domElement,
     readPaused: isPaused,
     onPauseChange(paused) {

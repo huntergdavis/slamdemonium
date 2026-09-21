@@ -3,10 +3,15 @@ name: Deploy Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Cut the package.json version from this reviewed main commit
+        type: boolean
+        default: false
   workflow_run:
     workflows: [Build PR Preview]
     types: [completed]
-  # This privileged event only removes static files; it never checks out PR code.
   pull_request_target:
     branches: [main]
     types: [closed]
@@ -22,24 +27,30 @@ concurrency:
 jobs:
   build:
     name: Build Pages
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     outputs:
       sha: ${{ steps.source.outputs.sha }}
+      tag: ${{ steps.source.outputs.tag }}
+      production_sha: ${{ steps.source.outputs.production_sha }}
     permissions:
       contents: read
+      checks: read
       pages: read
     steps:
-      - name: Check out source
+      - name: Check out reviewed main source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || 'main' }}
           persist-credentials: false
 
-      - name: Record production source
+      - name: Select stable production and validate a requested release
         id: source
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: python3 .github/scripts/releases.py select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CUT_RELEASE: ${{ inputs.release && 'true' || 'false' }}
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -54,26 +65,85 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build project site
-        run: npm run build
+      - name: Build explicitly unreleased main preview
+        run: npm run build -- --outDir "$RUNNER_TEMP/pages-main"
+        env:
+          VITE_BASE_PATH: /slamdemonium/main/
+
+      - name: Upload main preview
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pages-main
+          path: ${{ runner.temp }}/pages-main/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build release and isolated staging candidate
+        if: inputs.release
+        run: |
+          VITE_BASE_PATH=/slamdemonium/ npm run build -- --outDir "$RUNNER_TEMP/release-production"
+          RELEASE_CANDIDATE=true VITE_BASE_PATH=/slamdemonium/release-candidate/ npm run build -- --outDir "$RUNNER_TEMP/release-candidate"
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+
+      - name: Upload release production files
+        if: inputs.release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-production
+          path: ${{ runner.temp }}/release-production/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload isolated release candidate
+        if: inputs.release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-candidate
+          path: ${{ runner.temp }}/release-candidate/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Fetch retained stable release bytes
+        if: steps.source.outputs.production_tag != ''
+        run: python3 .github/scripts/releases.py fetch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCTION_TAG: ${{ steps.source.outputs.production_tag }}
+          PRODUCTION_SHA: ${{ steps.source.outputs.production_sha }}
+
+      # This fixed reviewed source is used only before the first successful release.
+      - name: Check out bootstrap production
+        if: steps.source.outputs.production_tag == ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.source.outputs.production_sha }}
+          path: bootstrap-source
+          persist-credentials: false
+
+      - name: Build unchanged bootstrap production
+        if: steps.source.outputs.production_tag == ''
+        working-directory: bootstrap-source
+        run: |
+          npm ci
+          npm run build -- --outDir "$RUNNER_TEMP/pages-production"
         env:
           VITE_BASE_PATH: /slamdemonium/
 
-      - name: Upload production files
+      - name: Upload stable production files
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pages-production
-          path: dist/
+          path: ${{ runner.temp }}/pages-production/
           if-no-files-found: error
           retention-days: 7
 
   deploy:
     name: Deploy Pages
     needs: build
-    if: >-
-      !cancelled() && needs.build.result == 'success'
+    if: "!cancelled() && needs.build.result == 'success'"
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: write
       actions: read
@@ -83,36 +153,86 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      MAIN_SHA: ${{ needs.build.outputs.sha }}
+      PRODUCTION_SHA: ${{ needs.build.outputs.production_sha }}
+      CUT_TAG: ${{ needs.build.outputs.tag }}
+      CUT_RELEASE: ${{ inputs.release && 'true' || 'false' }}
     steps:
-      - name: Check out trusted publisher from main
+      - name: Check out publisher from the captured trusted main commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ needs.build.outputs.sha }}
           persist-credentials: false
 
-      # Artifacts are validated and copied as bytes. No PR scripts, npm installs,
-      # actions, or executables run in this job. gh-pages is storage, not a Pages source.
-      - name: Prepare production and preview snapshot
+      # Every application artifact is static data. No npm, application script,
+      # action or executable from a PR/release artifact runs in this privileged job.
+      - name: Prepare stable production and previews
         id: snapshot
         run: python3 .github/scripts/pages.py prepare
         env:
           GH_TOKEN: ${{ github.token }}
           GIT_TERMINAL_PROMPT: '0'
-          PRODUCTION_SHA: ${{ needs.build.outputs.sha }}
 
-      - name: Upload complete Pages site
+      - name: Upload complete site with unchanged production
         if: steps.snapshot.outputs.publish == 'true'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ${{ runner.temp }}/pages-site
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy previews and optional release staging
         if: steps.snapshot.outputs.publish == 'true'
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
-      - name: Update sticky preview comment after deployment
+      - name: Update sticky PR comment
         if: steps.snapshot.outputs.publish == 'true'
         run: python3 .github/scripts/pages.py comment
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Verify candidate bytes and unchanged production
+        if: inputs.release
+        run: python3 .github/scripts/releases.py verify-stage
+
+      - name: Preserve tag and draft release artifact, then prepare promotion
+        if: inputs.release
+        run: python3 .github/scripts/releases.py stage-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload verified release site
+        if: inputs.release
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          name: github-pages-release
+          path: ${{ runner.temp }}/pages-release
+
+      - name: Promote production last
+        if: inputs.release
+        id: promotion
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: github-pages-release
+
+      - name: Verify live production release bytes
+        if: inputs.release
+        run: python3 .github/scripts/releases.py verify-production
+
+      - name: Publish release notes and mark this release latest
+        if: inputs.release
+        id: release
+        run: python3 .github/scripts/releases.py publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Restore previous production after failed promotion
+        if: failure() && steps.promotion.outcome != 'skipped' && steps.release.outcome != 'success'
+        id: rollback
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: github-pages
+
+      - name: Verify restored production and staging
+        if: failure() && steps.rollback.outcome == 'success'
+        run: python3 .github/scripts/releases.py verify-stage

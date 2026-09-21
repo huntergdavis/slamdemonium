@@ -50,5 +50,18 @@ test('renders the physics scene and exposes the ready automation surface', async
   await expectCanvasSize(page, 1280, 720);
   await page.setViewportSize({ width: 800, height: 600 });
   await expectCanvasSize(page, 800, 600);
+  const identityResponse = await page.request.get('./build-info.json');
+  expect(identityResponse.ok()).toBe(true);
+  const identity = await identityResponse.json();
+  expect(identity.commit).toMatch(/^[a-f0-9]{40}$/);
+  expect(identity.shortCommit).toBe(identity.commit.slice(0, 7));
+  expect(identity.channel).toBe('unreleased');
+  expect(identity.label).toContain('UNRELEASED');
+  await canvas.focus();
+  await page.keyboard.press('Escape');
+  const buildLabel = page.locator('.sl-pause__build');
+  await expect(buildLabel).toHaveText(identity.label);
+  await expect(buildLabel).toBeVisible();
+  expect(await buildLabel.evaluate((element) => element.tabIndex)).toBe(-1);
   expect(errors).toEqual([]);
 });
