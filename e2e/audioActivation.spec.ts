@@ -7,10 +7,10 @@ import {
   type AudioSnapshot,
 } from './audioProbe';
 
-// Isolate automatic trace observers for this activation-sensitive journey.
-// Playwright's HAR lifecycle collector evaluates page title/timing through the
-// userGesture:true evaluator. Native activation evidence is attached explicitly;
-// all other audio journeys retain their normal traces in audio.spec.ts.
+// Tracing is OFF because Playwright 1.63 HAR title/timing collection calls the
+// userGesture:true evaluator at DOMContentLoaded/load, activating an untouched
+// page. Keep this test untraced and assert native hasBeenActive=false below.
+// Native evidence replaces tracing here; other audio journeys retain traces.
 test.use({
   trace: 'off',
   launchOptions: {
