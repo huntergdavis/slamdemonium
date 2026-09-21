@@ -56,9 +56,9 @@ test('controller command legend drives the real HUD, camera, slow motion, A/B, g
   expect(errors).toEqual([]);
 });
 
-test('controller alone edits logarithmic tuning with fine/coarse steps, resets it, searches and saves a named preset', async ({
+test('controller alone searches and filters tuning controls with visible wrapping focus', async ({
   page,
-}, info) => {
+}) => {
   await tap(page, [8]);
   const options = page.locator('.sl-options');
   await expect(options).toHaveAttribute('data-open', 'true');
@@ -77,23 +77,91 @@ test('controller alone edits logarithmic tuning with fine/coarse steps, resets i
   for (const key of 'mass') await keyboardKey(page, key);
   await keyboardKey(page, 'Done');
   await expect(page.getByRole('searchbox')).toHaveValue('mass');
-  await padFocus(page, '#group-mass-range');
-  await tap(page, [15]);
-  expect(await page.evaluate(() => window.__game.tuning.get('mass'))).toBe(
-    1310,
-  );
-  await tap(page, [5, 15]);
-  expect(await page.evaluate(() => window.__game.tuning.get('mass'))).toBe(
-    1410,
-  );
-  await tap(page, [2]);
+  await expect(page.locator('#group-mass-range')).toBeVisible();
+  await expect(page.locator('#group-gripRear-range')).not.toBeVisible();
+  await expect(options.locator('[data-selected=true]')).toHaveCount(1);
   expect(await page.evaluate(() => window.__game.tuning.get('mass'))).toBe(
     1300,
   );
-  await expect(options.locator('[data-selected=true]')).toHaveCount(1);
-  await expect(page.locator('#group-mass-range')).toBeInViewport({ ratio: 1 });
-  // Triggers jump sections without steering or changing the tuning control.
+  await tap(page, [1]);
+  await expect(options).toHaveAttribute('data-open', 'false');
+});
+
+// Each mapping is its own pad-only journey: a failure identifies the encoding,
+// rather than inheriting the duration/state of text entry or preset persistence.
+for (const scenario of [
+  {
+    key: 'mass',
+    encoding: 'logarithmic',
+    group: 'Chassis',
+    sectionSteps: 3,
+    advanced: false,
+    rangeMax: '1000',
+    initial: 1300,
+    fine: 1310,
+    coarse: 1410,
+  },
+  {
+    key: 'physicsHz',
+    encoding: 'discrete',
+    group: 'World',
+    sectionSteps: 2,
+    advanced: true,
+    rangeMax: '4',
+    initial: 120,
+    fine: 180,
+    coarse: 240,
+  },
+] as const) {
+  test(`controller alone edits and resets ${scenario.encoding} ${scenario.key} in schema units`, async ({
+    page,
+  }) => {
+    await tap(page, [8]);
+    const options = page.locator('.sl-options');
+    const groupSelector = `.sl-options__groups > [data-group="${scenario.group}"]`;
+    for (let step = 0; step < scenario.sectionSteps; step++)
+      await tap(page, [7]);
+    await expect(page.locator(groupSelector + ' > summary')).toBeFocused();
+    await tap(page, [0]);
+    if (scenario.advanced) {
+      await padFocus(page, groupSelector + ' [data-advanced=true] > summary');
+      await tap(page, [0]);
+    }
+    const range = `#group-${scenario.key}-range`;
+    await padFocus(page, range);
+    // These DOM coordinates differ from parameter units; do not add DOM steps.
+    await expect(page.locator(range)).toHaveAttribute('max', scenario.rangeMax);
+    await tap(page, [15]);
+    expect(
+      await page.evaluate((key) => window.__game.tuning.get(key), scenario.key),
+    ).toBe(scenario.fine);
+    await tap(page, [5, 15]);
+    expect(
+      await page.evaluate((key) => window.__game.tuning.get(key), scenario.key),
+    ).toBe(scenario.coarse);
+    await tap(page, [2]);
+    expect(
+      await page.evaluate((key) => window.__game.tuning.get(key), scenario.key),
+    ).toBe(scenario.initial);
+    await expect(options.locator('[data-selected=true]')).toHaveCount(1);
+    await expect(page.locator(range)).toBeInViewport({ ratio: 1 });
+    await tap(page, [1]);
+    await expect(options).toHaveAttribute('data-open', 'false');
+  });
+}
+
+test('controller alone saves a named preset through the on-screen keyboard', async ({
+  page,
+}, info) => {
+  await tap(page, [8]);
+  const options = page.locator('.sl-options');
+  // Both triggers navigate sections, including wrapping footer to header.
   await tap(page, [6]);
+  await expect(
+    page.getByRole('button', { name: 'Export', exact: true }),
+  ).toBeFocused();
+  await tap(page, [7]);
+  await expect(page.getByRole('button', { name: 'Close Options' })).toBeFocused();
   await padFocus(page, '[data-controller-text=preset]');
   await tap(page, [0]);
   await keyboardKey(page, 'Clear');
