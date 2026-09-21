@@ -133,6 +133,10 @@ for (const size of [
       await page.getByRole('button', { name: 'Controls', exact: true }).click();
       await expectFullViewport(dialog);
       await expectSelection(dialog, 'Back');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await pressPad(page, 13);
+      await expectSelection(dialog, 'Back');
       await page.screenshot({
         path: testInfo.outputPath('console-pause-controls.png'),
       });
