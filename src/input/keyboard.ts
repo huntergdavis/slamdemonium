@@ -59,7 +59,7 @@ function closest(target: EventTarget | null, selector: string): boolean {
 export function isEditingTarget(target: EventTarget | null): boolean {
   return closest(
     target,
-    'input, textarea, select, [contenteditable]:not([contenteditable="false"])',
+    'input, textarea, select, [data-input-editing], [contenteditable]:not([contenteditable="false"])',
   );
 }
 

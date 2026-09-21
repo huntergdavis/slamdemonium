@@ -1,4 +1,5 @@
 import { node } from './paramControl';
+import kenneyLicenseUrl from '../../assets/audio/KENNEY-LICENSE.txt?url&no-inline';
 import howlerLicenseUrl from '../../assets/audio/HOWLER-LICENSE.txt?url&no-inline';
 
 /** Player-visible attribution ships with the audio, inside the pad-scrollable
@@ -51,6 +52,11 @@ export function createAudioCredits(doc: Document): HTMLElement {
     'https://creativecommons.org/publicdomain/zero/1.0/',
     'Selected impacts are resampled to mono 48 kHz and encoded as Ogg Vorbis.',
   );
+  const kenneyNotice = node(doc, 'p');
+  kenneyNotice.append(
+    link(doc, 'Full Kenney licence notice', kenneyLicenseUrl),
+  );
+  section.append(kenneyNotice);
   entry(
     'Howler.js 2.2.4',
     'Copyright 2013–2020 James Simpson and GoldFire Studios, Inc.',
