@@ -16,20 +16,12 @@ import type {
 
 const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 const pitch = (value: number): number => Math.max(0.5, Math.min(4, value));
-/** Synthetic RPM from the director's speed/throttle note. The even voice
- * idles at 900 and reaches about 7100 at the note's 2.8 ceiling; the muscle
- * voice idles at 550 and tops out near 3350, so its firing pattern's
- * half-order beat stays in the felt rumble range. Slow motion scales it
- * like a rate. */
-const engineRpm = (
-  engineRate: number,
-  rate: number,
-  character: number,
-): number =>
-  rate *
-  (900 -
-    350 * character +
-    Math.max(0, engineRate - 0.65) * (2900 - 1600 * character));
+/** Synthetic RPM from the director's speed/throttle/boost note: idle 900,
+ * about 7100 at the throttle ceiling of 2.8 and about 8600 at the boost
+ * ceiling of 3.3. Both voices share it; rumble comes from unevenness at
+ * speed, not from a slower cycle. Slow motion scales it like a rate. */
+const engineRpm = (engineRate: number, rate: number): number =>
+  rate * (900 + Math.max(0, engineRate - 0.65) * 2900);
 const ENGINE_GAIN = 1.5;
 /** Howler loops plus the engine worklet module. */
 const LOADABLE = 9;
@@ -114,7 +106,7 @@ export class HowlerOutput implements AudioOutput {
     if (mix.volume === 0) this.stopTransients();
     this.engine?.apply(
       clamp((mix.engineIdle + mix.engineLoad) * mix.volume * ENGINE_GAIN),
-      engineRpm(mix.engineRate, mix.rate, mix.engineCharacter),
+      engineRpm(mix.engineRate, mix.rate),
       clamp(mix.engineLoad / 0.34),
       clamp(mix.engineCharacter),
     );

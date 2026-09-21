@@ -225,9 +225,14 @@ export class AudioDirector {
     );
     mix.rate = approach(mix.rate, targetRate, dt, 0.1, 0.1);
     // A synthetic speed/load note, not engine RPM: the vehicle has no gearbox.
+    // Boost spins the note up beyond the throttle ceiling and adds load, so
+    // nitrous reads as the engine working harder, not only a whoosh on top.
     mix.engineRate = approach(
       mix.engineRate,
-      Math.min(2.8, 0.65 + this.speed / 45 + this.throttle * 0.35),
+      Math.min(
+        3.3,
+        0.65 + this.speed / 45 + this.throttle * 0.35 + this.boost * 0.5,
+      ),
       dt,
       0.08,
       0.16,
@@ -241,7 +246,7 @@ export class AudioDirector {
     );
     mix.engineLoad = approach(
       mix.engineLoad,
-      0.34 * this.throttle,
+      0.34 * Math.min(1.45, this.throttle + this.boost * 0.6),
       dt,
       0.05,
       0.12,

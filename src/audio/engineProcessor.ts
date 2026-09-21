@@ -102,7 +102,8 @@ class EngineProcessor extends AudioWorkletProcessor {
   private seed = 0x9e3779b9;
   private noiseState = 0;
   private lowpassState = 0;
-  private tuned = -1;
+  private tunedCharacter = -1;
+  private tunedRpm = -1;
   private readonly sub = new Resonator();
   private readonly exhaust = new Resonator();
   private readonly body = new Resonator();
@@ -128,21 +129,29 @@ class EngineProcessor extends AudioWorkletProcessor {
     const rpm = parameters['rpm']?.[0] ?? 900;
     const load = parameters['load']?.[0] ?? 0;
     const c = parameters['character']?.[0] ?? 0;
-    if (c !== this.tuned) {
-      this.sub.tune(lerp(48, 46, c), lerp(1.2, 1.6, c));
-      this.exhaust.tune(lerp(96, 64, c), lerp(1.4, 2.2, c));
-      this.body.tune(lerp(340, 120, c), lerp(2.2, 1.8, c));
-      this.rasp.tune(lerp(1250, 700, c), lerp(3, 2.5, c));
-      this.tuned = c;
-    }
     const dt = 1 / sampleRate;
     const firingHz = (rpm / 60) * FIRINGS_PER_REV;
+    if (c !== this.tunedCharacter || rpm !== this.tunedRpm) {
+      // The muscle exhaust and body ride up with the firing rate once revs
+      // climb, so the 64 Hz body gives rumble at idle without dragging the
+      // perceived pitch down when the throttle is pushed.
+      const muscleExhaust = Math.max(64, firingHz);
+      const muscleBody = Math.max(120, firingHz * 2.2);
+      this.sub.tune(lerp(48, 46, c), lerp(1.2, 1.6, c));
+      this.exhaust.tune(lerp(96, muscleExhaust, c), lerp(1.4, 2, c));
+      this.body.tune(lerp(340, muscleBody, c), lerp(2.2, 1.8, c));
+      this.rasp.tune(lerp(1250, 900, c), lerp(3, 2.5, c));
+      this.tunedCharacter = c;
+      this.tunedRpm = rpm;
+    }
+    // The sub body fades out above idle; it is rumble at rest, mud at revs.
+    const subWeight = Math.max(0, Math.min(1, (2600 - rpm) / 1400));
     // Puff length scales with firing rate so pulses stay distinct at idle and
     // merge into a roar at high RPM; the muscle voice keeps them fatter.
     // Muscle pulses stay short against their gaps so troughs survive; the
     // 64 Hz exhaust body, not the pulse length, carries the bass.
     const decay = Math.max(lerp(50, 60, c), firingHz * lerp(6, 4.5, c));
-    const puffGain = lerp(3.2, 2.4, c) * (0.45 + 0.55 * load);
+    const puffGain = lerp(3.2, 2.8, c) * (0.45 + 0.55 * load);
     const ampJitter = lerp(0.1, 0.4, c);
     const timeJitter = lerp(0, 0.08, c);
     const noiseGain =
@@ -151,16 +160,16 @@ class EngineProcessor extends AudioWorkletProcessor {
     // The muscle voice stays out of the saturator so its troughs survive;
     // makeup gain after tanh keeps the two voices at matching loudness.
     const drive = lerp(1.4 + 2.6 * load, 0.6 + 0.9 * load, c);
-    const makeup = lerp(0.5, 0.8, c);
+    const makeup = lerp(0.5, 0.9, c);
     const lowpassCoefficient = Math.min(
       0.6,
       lerp(2500 + rpm * 0.6, 1400 + rpm * 0.35, c) * dt,
     );
-    const subMix = lerp(0, 0.8, c);
-    const exhaustMix = lerp(1, 1.4, c);
-    const bodyMix = lerp(0.55, 0.6, c);
-    const raspMix = lerp(0.18, 0.08, c);
-    const dryMix = lerp(0.12, 0.1, c);
+    const subMix = lerp(0, 0.8 * subWeight, c);
+    const exhaustMix = lerp(1, 1.3, c);
+    const bodyMix = lerp(0.55, 0.7, c);
+    const raspMix = lerp(0.18, 0.2, c);
+    const dryMix = lerp(0.12, 0.2, c);
     for (let i = 0; i < out.length; i++) {
       this.phase += firingHz * dt;
       if (this.phase >= this.nextGap) {

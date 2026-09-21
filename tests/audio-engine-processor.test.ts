@@ -103,16 +103,26 @@ describe('procedural engine voice', () => {
       highShare(render(3000, 0.8, 1).subarray(-16384), 300),
     ).toBeGreaterThan(0.1);
   });
-  it('gives the muscle voice more low-band energy and an audible idle chug', () => {
-    const even = render(2000, 0.8, 1, 0).subarray(-24000);
-    const muscle = render(2000, 0.8, 1, 1).subarray(-24000);
-    // Makeup gain after the saturator bounds the muscle voice at 0.8.
+  /** Envelope modulation index: std over mean of 2 ms window levels. */
+  function modulation(x: Float32Array): number {
+    const levels: number[] = [];
+    for (let i = 0; i + 96 <= x.length; i += 96)
+      levels.push(rms(x.subarray(i, i + 96)));
+    const mean = levels.reduce((a, b) => a + b, 0) / levels.length;
+    const variance =
+      levels.reduce((a, b) => a + (b - mean) ** 2, 0) / levels.length;
+    return Math.sqrt(variance) / mean;
+  }
+  it('gives the muscle voice unevenness at speed, an idle chug and a note that rises with revs', () => {
+    const even = render(2500, 0.8, 1, 0).subarray(-24000);
+    const muscle = render(2500, 0.8, 1, 1).subarray(-24000);
+    // Makeup gain after the saturator bounds the muscle voice at 0.9.
     for (const sample of muscle)
-      expect(Math.abs(sample)).toBeLessThanOrEqual(0.8);
-    expect(highShare(muscle, 200)).toBeLessThan(highShare(even, 200) * 0.75);
-    // Envelope depth at idle: loudest to quietest 5 ms window. Separate
-    // firing pulses read as a chug rather than a tone.
-    const idle = render(700, 0.3, 1, 1).subarray(-24000);
+      expect(Math.abs(sample)).toBeLessThanOrEqual(0.9);
+    // Rumble is amplitude unevenness riding on the same fast note.
+    expect(modulation(muscle)).toBeGreaterThan(modulation(even) * 1.2);
+    // Envelope depth at idle: loudest to quietest 5 ms window.
+    const idle = render(900, 0.3, 1, 1).subarray(-24000);
     let max = 0;
     let min = Infinity;
     for (let i = 0; i + 240 <= idle.length; i += 240) {
@@ -121,5 +131,12 @@ describe('procedural engine voice', () => {
       min = Math.min(min, r);
     }
     expect(max / Math.max(min, 1e-9)).toBeGreaterThan(20);
+    // Pressing the throttle must read as rotation rate, not a slower thump:
+    // the high-band share climbs steeply between cruise and the redline.
+    expect(
+      highShare(render(7000, 1, 1, 1).subarray(-24000), 200),
+    ).toBeGreaterThan(
+      highShare(render(1500, 0.8, 1, 1).subarray(-24000), 200) * 2,
+    );
   });
 });
