@@ -1,6 +1,7 @@
 import {
   SURFACE_IDS,
   getSurfaceDefinition,
+  getKnownSurfaceDefinition,
   validateSurfaceCatalog,
 } from '../content/surfaces';
 import type {
@@ -8,6 +9,8 @@ import type {
   SurfaceHit,
   SurfaceResolver,
   SurfaceResolutionStatus,
+  ContactSurfaceDefinition,
+  ContactSurfaceResolutionStatus,
 } from '../content/surfaces';
 import type { InstalledTrackBodies, StaticBoxDescriptor } from './trackPhysics';
 
@@ -75,10 +78,17 @@ export function createTrackSurfaceResolver(
   let disposed = false;
   const diagnostics = {
     lastStatus: 'airborne' as SurfaceResolutionStatus,
+    lastContactStatus: null as ContactSurfaceResolutionStatus | null,
     unknownBodySeen: false,
     firstUnknownBodyId: null as number | null,
     invalidHitSeen: false,
   };
+  function noteUnknown(bodyId: number): void {
+    if (!diagnostics.unknownBodySeen) {
+      diagnostics.unknownBodySeen = true;
+      diagnostics.firstUnknownBodyId = bodyId;
+    }
+  }
   function invalid(): null {
     diagnostics.lastStatus = 'invalid-hit';
     diagnostics.invalidHitSeen = true;
@@ -117,10 +127,7 @@ export function createTrackSurfaceResolver(
     const surface = registry.get(hit.bodyId);
     if (surface === undefined) {
       diagnostics.lastStatus = 'unknown-body';
-      if (!diagnostics.unknownBodySeen) {
-        diagnostics.unknownBodySeen = true;
-        diagnostics.firstUnknownBodyId = hit.bodyId;
-      }
+      noteUnknown(hit.bodyId);
       return null;
     }
     if (hit.bodyId !== groundBody) {
@@ -149,9 +156,33 @@ export function createTrackSurfaceResolver(
   }
   // New resolver/world => new zeroed latches. Respawn does not reset evidence.
   resolve.diagnostics = diagnostics;
+  resolve.resolveContactSurface = (
+    bodyId: number,
+  ): ContactSurfaceDefinition | null => {
+    if (disposed) return null;
+    if (!Number.isSafeInteger(bodyId) || bodyId < 0) {
+      diagnostics.lastContactStatus = 'invalid-hit';
+      diagnostics.invalidHitSeen = true;
+      return null;
+    }
+    const id = registry.get(bodyId);
+    if (id === undefined) {
+      diagnostics.lastContactStatus = 'unknown-body';
+      noteUnknown(bodyId);
+      return null;
+    }
+    const definition = getKnownSurfaceDefinition(id);
+    if (definition.context !== 'contact') {
+      diagnostics.lastContactStatus = 'not-contact';
+      return null;
+    }
+    diagnostics.lastContactStatus = 'resolved';
+    return definition;
+  };
   resolve.dispose = (): void => {
     disposed = true;
     diagnostics.lastStatus = 'disposed';
+    diagnostics.lastContactStatus = 'disposed';
   };
   return resolve;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Scene } from 'three';
 import type { SurfaceHit } from '../src/content/surfaces';
+import { getSurfaceDefinition } from '../src/content/surfaces';
 import {
   createTestTrack,
   installTrackColliders,
@@ -37,6 +38,29 @@ function makeResolver(kerb = createKerbFootprintQuery(layout.curbs)) {
 }
 
 describe('registered world surface resolution', () => {
+  it('resolves impact materials from the same registry with independent context diagnostics', () => {
+    const resolve = makeResolver();
+    expect(resolve.diagnostics.lastContactStatus).toBeNull();
+    expect(resolve(true, hit())).toBe(0);
+    expect(resolve.resolveContactSurface(5)).toBe(getSurfaceDefinition(2));
+    expect(resolve.diagnostics.lastContactStatus).toBe('resolved');
+    expect(resolve.resolveContactSurface(0)).toBeNull();
+    expect(resolve.diagnostics.lastContactStatus).toBe('not-contact');
+    expect(resolve.diagnostics.unknownBodySeen).toBe(false);
+    expect(resolve.resolveContactSurface(987)).toBeNull();
+    expect(resolve.diagnostics.lastContactStatus).toBe('unknown-body');
+    expect(resolve.diagnostics.lastStatus).toBe('resolved');
+    expect(resolve(true, hit(0, 0, 999))).toBeNull();
+    expect(resolve.diagnostics.firstUnknownBodyId).toBe(987);
+    expect(resolve.resolveContactSurface(NaN)).toBeNull();
+    expect(resolve.diagnostics.lastContactStatus).toBe('invalid-hit');
+    expect(resolve.diagnostics.lastStatus).toBe('unknown-body');
+    resolve.dispose();
+    expect(resolve.diagnostics.lastStatus).toBe('disposed');
+    expect(resolve.diagnostics.lastContactStatus).toBe('disposed');
+    expect(resolve.resolveContactSurface(5)).toBeNull();
+    expect(resolve.diagnostics.lastContactStatus).toBe('disposed');
+  });
   it('uses authored kerb geometry for both colours/seams, keeps paint on its substrate, and leaves RayHit raw', () => {
     const resolve = makeResolver();
     const ray = hit();

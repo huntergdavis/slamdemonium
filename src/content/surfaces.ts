@@ -146,10 +146,14 @@ export interface SurfaceHit {
 }
 export type SurfaceResolutionStatus =
   'resolved' | 'airborne' | 'unknown-body' | 'invalid-hit' | 'disposed';
+export type ContactSurfaceResolutionStatus =
+  'resolved' | 'not-contact' | 'unknown-body' | 'invalid-hit' | 'disposed';
 /** Readonly LIVE record, reused by the resolver; copy scalars for history. */
 export interface SurfaceResolverDiagnostics {
-  /** MOST RECENT synchronous call across ALL wheels, not a per-wheel status. */
+  /** MOST RECENT wheel resolution across ALL wheels; contact calls cannot overwrite it. */
   readonly lastStatus: SurfaceResolutionStatus;
+  /** MOST RECENT contact lookup, independent of wheels; null until first lookup. */
+  readonly lastContactStatus: ContactSurfaceResolutionStatus | null;
   /** Latched only on the first unknown body, never overwritten per step. */
   readonly unknownBodySeen: boolean;
   readonly firstUnknownBodyId: number | null;
@@ -158,6 +162,8 @@ export interface SurfaceResolverDiagnostics {
 export interface SurfaceResolver {
   (grounded: boolean, hit: Readonly<SurfaceHit>): SurfaceId | null;
   readonly diagnostics: SurfaceResolverDiagnostics;
+  /** HOT PATH: registered contact material, or null for ground/unknown/disposed. */
+  resolveContactSurface(bodyId: number): ContactSurfaceDefinition | null;
   /** Immediately marks retained diagnostic references disposed; idempotent. */
   dispose(): void;
 }
