@@ -857,6 +857,17 @@ const definitions = [
     step: 0.05,
     help: 'Engine, tyres, boost and impact volume. Zero is silent. Master mute in the pause menu silences all audio without changing this value.',
   },
+  {
+    key: 'engineCharacter',
+    group: 'Audio',
+    label: 'Engine character',
+    unit: '0 to 1',
+    default: 1,
+    min: 0,
+    max: 1,
+    step: 0.05,
+    help: 'Engine voice blend. 0 is an even, higher-revving four-cylinder; 1 is a slower, bassier muscle voice with uneven firing. Values between blend the two.',
+  },
 ] as const satisfies readonly ParamDef[];
 
 export type ParamKey = (typeof definitions)[number]['key'];

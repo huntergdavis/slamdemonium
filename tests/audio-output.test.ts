@@ -63,6 +63,7 @@ const mix: AudioMix = {
   engineIdle: 0.2,
   engineLoad: 0.3,
   engineRate: 1,
+  engineCharacter: 1,
   tyres: new Float64Array([0.2, 0, 0]),
   boost: 0,
   rate: 1,

@@ -46,6 +46,7 @@ export class AudioDirector {
     engineIdle: 0,
     engineLoad: 0,
     engineRate: 0.65,
+    engineCharacter: 1,
     tyres: new Float64Array(3),
     boost: 0,
     rate: 1,
@@ -217,6 +218,7 @@ export class AudioDirector {
     this.paused = false;
     const mix = this.mix;
     mix.volume = this.deps.tuning.get('sfxVolume');
+    mix.engineCharacter = this.deps.tuning.get('engineCharacter');
     const targetRate = Math.max(
       0.5,
       Math.min(Math.SQRT2, Math.sqrt(this.deps.tuning.get('timeScale'))),

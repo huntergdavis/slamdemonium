@@ -42,6 +42,8 @@ export interface AudioMix {
   engineIdle: number;
   engineLoad: number;
   engineRate: number;
+  /** Voice blend from the engineCharacter tuning: 0 even four, 1 muscle. */
+  engineCharacter: number;
   readonly tyres: Float64Array;
   boost: number;
   rate: number;

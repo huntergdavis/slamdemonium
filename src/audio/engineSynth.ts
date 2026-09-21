@@ -14,6 +14,7 @@ export class EngineSynth {
   private level = -1;
   private rpm = -1;
   private load = -1;
+  private character = -1;
   private disposed = false;
 
   constructor(
@@ -49,8 +50,9 @@ export class EngineSynth {
   }
 
   /** level 0..1 (already includes sfxVolume), rpm in revolutions per minute
-   * (already includes the slow-motion rate), load 0..1. */
-  apply(level: number, rpm: number, load: number): void {
+   * (already includes the slow-motion rate), load 0..1, character 0..1
+   * (0 even four-cylinder, 1 muscle voice). */
+  apply(level: number, rpm: number, load: number, character: number): void {
     if (!this.node || !this.gain) return;
     const now = this.ctx.currentTime;
     if (level !== this.level) {
@@ -65,6 +67,10 @@ export class EngineSynth {
     if (load !== this.load) {
       this.param('load').setTargetAtTime(load, now, RPM_SMOOTHING);
       this.load = load;
+    }
+    if (character !== this.character) {
+      this.param('character').setTargetAtTime(character, now, RPM_SMOOTHING);
+      this.character = character;
     }
   }
 
@@ -91,7 +97,7 @@ export class EngineSynth {
     this.node = null;
     this.gain = null;
   }
-  private param(name: 'rpm' | 'load'): AudioParam {
+  private param(name: 'rpm' | 'load' | 'character'): AudioParam {
     const param = this.node!.parameters.get(name);
     if (!param) throw new Error('Engine parameter missing: ' + name);
     return param;

@@ -16,10 +16,19 @@ import type {
 
 const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 const pitch = (value: number): number => Math.max(0.5, Math.min(4, value));
-/** Synthetic RPM from the director's speed/throttle note: idle 900, redline
- * near 7100 at the note's 2.8 ceiling. Slow motion scales it like a rate. */
-const engineRpm = (engineRate: number, rate: number): number =>
-  rate * (900 + Math.max(0, engineRate - 0.65) * 2900);
+/** Synthetic RPM from the director's speed/throttle note. The even voice
+ * idles at 900 and reaches about 7100 at the note's 2.8 ceiling; the muscle
+ * voice idles at 650 and tops out near 4400, so its pulse train stays slow
+ * enough to chug. Slow motion scales it like a rate. */
+const engineRpm = (
+  engineRate: number,
+  rate: number,
+  character: number,
+): number =>
+  rate *
+  (900 -
+    250 * character +
+    Math.max(0, engineRate - 0.65) * (2900 - 1150 * character));
 const ENGINE_GAIN = 1.5;
 /** Howler loops plus the engine worklet module. */
 const LOADABLE = 9;
@@ -104,8 +113,9 @@ export class HowlerOutput implements AudioOutput {
     if (mix.volume === 0) this.stopTransients();
     this.engine?.apply(
       clamp((mix.engineIdle + mix.engineLoad) * mix.volume * ENGINE_GAIN),
-      engineRpm(mix.engineRate, mix.rate),
+      engineRpm(mix.engineRate, mix.rate, mix.engineCharacter),
       clamp(mix.engineLoad / 0.34),
+      clamp(mix.engineCharacter),
     );
     for (let index = 0; index < LOOP_VOICES; index++) {
       const howl = this.loops[index]!;

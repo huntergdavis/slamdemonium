@@ -10,13 +10,19 @@ type Processor = {
 let Engine: new () => Processor;
 const SAMPLE_RATE = 48000;
 
-function render(rpm: number, load: number, seconds: number): Float32Array {
+function render(
+  rpm: number,
+  load: number,
+  seconds: number,
+  character = 0,
+): Float32Array {
   const engine = new Engine();
   const out = new Float32Array(Math.round(seconds * SAMPLE_RATE));
   const block = new Float32Array(128);
   const params = {
     rpm: new Float32Array([rpm]),
     load: new Float32Array([load]),
+    character: new Float32Array([character]),
   };
   for (let offset = 0; offset < out.length; offset += 128) {
     expect(engine.process([], [[block]], params)).toBe(true);
@@ -79,10 +85,9 @@ describe('procedural engine voice', () => {
       expect(Math.abs(measured / nearest - 1)).toBeLessThan(0.06);
     }
   });
-  it('has energy above the sub-bass band, unlike the removed sample', () => {
-    const x = render(3000, 0.8, 1).subarray(-16384);
-    // One-pole high-pass at ~300 Hz, compare energies.
-    const k = Math.exp((-2 * Math.PI * 300) / SAMPLE_RATE);
+  /** Share of energy above a one-pole high-pass corner. */
+  function highShare(x: Float32Array, hz: number): number {
+    const k = Math.exp((-2 * Math.PI * hz) / SAMPLE_RATE);
     let lp = 0;
     let high = 0;
     let total = 0;
@@ -91,6 +96,29 @@ describe('procedural engine voice', () => {
       high += (v - lp) ** 2;
       total += v * v;
     }
-    expect(high / total).toBeGreaterThan(0.1);
+    return high / total;
+  }
+  it('has energy above the sub-bass band, unlike the removed sample', () => {
+    expect(
+      highShare(render(3000, 0.8, 1).subarray(-16384), 300),
+    ).toBeGreaterThan(0.1);
+  });
+  it('gives the muscle voice more low-band energy and an audible idle chug', () => {
+    const even = render(2000, 0.8, 1, 0).subarray(-24000);
+    const muscle = render(2000, 0.8, 1, 1).subarray(-24000);
+    for (const sample of muscle)
+      expect(Math.abs(sample)).toBeLessThanOrEqual(0.5);
+    expect(highShare(muscle, 200)).toBeLessThan(highShare(even, 200) * 0.75);
+    // Envelope depth at idle: loudest to quietest 5 ms window. Separate
+    // firing pulses read as a chug rather than a tone.
+    const idle = render(700, 0.3, 1, 1).subarray(-24000);
+    let max = 0;
+    let min = Infinity;
+    for (let i = 0; i + 240 <= idle.length; i += 240) {
+      const r = rms(idle.subarray(i, i + 240));
+      max = Math.max(max, r);
+      min = Math.min(min, r);
+    }
+    expect(max / Math.max(min, 1e-9)).toBeGreaterThan(20);
   });
 });
