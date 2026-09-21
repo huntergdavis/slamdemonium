@@ -42,6 +42,7 @@
 .sl-ui *::after {
   box-sizing: border-box;
 }
+.sl-ui[hidden],
 .sl-ui [hidden] {
   display: none !important;
 }
@@ -951,17 +952,6 @@
 }
 /* Selection stays visible for controllers even when :focus-visible is false.
    The initial focused entry must receive data-selected=true from PauseMenu. */
-.sl-pause :is([data-selected='true'], :focus-visible) {
-  outline: 4px solid var(--sl-accent);
-  outline-offset: 4px;
-  box-shadow: 0 0 0 8px var(--sl-panel);
-  scroll-margin: 16px;
-}
-.sl-pause .sl-button:is([data-selected='true'], :focus-visible) {
-  border-color: var(--sl-accent);
-  color: var(--sl-panel);
-  background: var(--sl-accent);
-}
 .sl-pause
   :is(
     .sl-pause__entry,
@@ -1143,4 +1133,250 @@
   .sl-pause__mappings {
     font-size: 14px;
   }
+}
+
+/* WP19: the focus owner supplies one persistent selected control in each active
+   view. Direct Options, controller keyboard and pause share the same treatment. */
+.sl-ui :is([data-selected='true'], :focus-visible) {
+  outline: 4px solid var(--sl-accent);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 8px var(--sl-panel);
+  scroll-margin: 16px;
+}
+.sl-ui .sl-button:is([data-selected='true'], :focus-visible) {
+  color: var(--sl-panel);
+  background: var(--sl-accent);
+  border-color: var(--sl-accent);
+}
+
+/* Desktop center lane clears the 204px G-G and 260px wheel columns.
+   Compact HUD is a bottom dock capped at 55vh; keep this wrapper above it.
+   Components themselves remain in flow when reused by Options/pause. */
+.sl-controller-overlay {
+  position: fixed;
+  z-index: 12;
+  top: 152px;
+  left: calc(var(--sl-safe) + 216px);
+  right: calc(var(--sl-safe) + 272px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 760px;
+  max-height: calc(100dvh - 520px);
+  margin-inline: auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+@media (max-width: 1100px), (max-height: 820px) {
+  .sl-controller-overlay {
+    top: var(--sl-safe);
+    left: var(--sl-safe);
+    right: var(--sl-safe);
+    max-height: calc(45dvh - 2 * var(--sl-safe));
+  }
+}
+
+/* Flow components: the input owner chooses the active driving/menu host.
+   Face-button prompts must name position; A/B/X/Y are secondary references. */
+.sl-controller-glyph {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 2.5em;
+  height: 2.5em;
+  vertical-align: middle;
+  color: inherit;
+}
+.sl-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-bottom-width: 3px;
+  border-radius: 5px;
+  font: 600 0.9em/1.2 var(--sl-mono);
+  white-space: nowrap;
+}
+.sl-controller-legend {
+  max-width: 100%;
+  padding: 16px;
+  color: var(--sl-text);
+  background: var(--sl-panel-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius);
+  font-size: clamp(16px, 1.2vw, 20px);
+}
+.sl-controller-legend__title {
+  margin: 0 0 12px;
+  font-size: 1em;
+  font-weight: 750;
+  color: var(--sl-accent);
+}
+.sl-controller-legend__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sl-controller-legend__item {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sl-input-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  color: var(--sl-text);
+  background: var(--sl-hud-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius);
+  font-size: clamp(14px, 1.1vw, 18px);
+}
+.sl-input-prompts__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sl-input-prompts__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The keyboard remains inside the same Options focus owner. Container queries
+   prevent a 380px driving drawer from inheriting a desktop-width key count. */
+.sl-options {
+  container: sl-options / inline-size;
+}
+.sl-options > .sl-controller-keyboard {
+  --sl-keyboard-columns: 10;
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  max-height: 100dvh;
+  padding: 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 16px;
+  color: var(--sl-text);
+  background: var(--sl-panel);
+  font-size: 18px;
+}
+.sl-controller-keyboard > * {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+}
+.sl-ui .sl-controller-keyboard .sl-controller-keyboard__title {
+  margin-block: 0;
+  font-size: 26px;
+  line-height: 1.2;
+}
+.sl-ui .sl-controller-keyboard .sl-controller-keyboard__value {
+  min-height: 48px;
+  padding: 8px;
+  font: 20px/1.3 var(--sl-mono);
+}
+.sl-controller-keyboard__keys {
+  display: grid;
+  grid-template-columns: repeat(var(--sl-keyboard-columns), minmax(0, 1fr));
+  gap: 8px;
+}
+.sl-ui .sl-controller-keyboard .sl-controller-keyboard__key {
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 4px;
+  font-size: 22px;
+  font-weight: 700;
+}
+.sl-controller-keyboard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sl-controller-keyboard__actions > .sl-button {
+  flex: 1 1 auto;
+  min-height: 44px;
+}
+.sl-controller-keyboard__hint {
+  margin-block: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--sl-muted);
+}
+@container sl-options (max-width: 640px) {
+  .sl-options > .sl-controller-keyboard {
+    --sl-keyboard-columns: 6;
+  }
+}
+@container sl-options (max-width: 420px) {
+  .sl-options > .sl-controller-keyboard {
+    --sl-keyboard-columns: 5;
+    padding: 12px;
+  }
+  .sl-controller-keyboard__keys {
+    gap: 6px;
+  }
+}
+
+/* Held commands replace their redundant driving hints in this wrapper only. */
+.sl-controller-overlay:has(.sl-controller-legend:not([hidden]))
+  > .sl-input-prompts {
+  display: none;
+}
+@media (max-width: 500px) {
+  .sl-controller-overlay .sl-controller-legend {
+    padding: 8px;
+    font-size: 12px;
+  }
+  .sl-controller-overlay .sl-controller-legend__title {
+    margin-bottom: 6px;
+  }
+  .sl-controller-overlay .sl-controller-legend__items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
+  }
+  /* Text still names every physical position; save the glyph space here. */
+  .sl-controller-overlay .sl-controller-legend .sl-controller-glyph {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  /* The existing Options launcher occupies the top-right 90 by 34px. */
+  .sl-controller-overlay .sl-controller-legend__title {
+    min-height: 34px;
+    padding-right: 96px;
+  }
+  .sl-controller-overlay > .sl-input-prompts {
+    padding-top: 42px;
+  }
+}
+/* Long device hints must not consume the direct drawer's parameter area.
+   Pause already owns its desktop header/narrow dialog scrolling separately. */
+.sl-ui:not(.sl-pause) > .sl-options > .sl-options__header {
+  max-height: 45%;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
