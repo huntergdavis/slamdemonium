@@ -326,6 +326,21 @@ def render(report, prior, warnings):
         for failure in report['failures']:
             lines.append('- ' + safe(failure_message(failure)))
             lines += ['  - ' + safe(message) for message in contributors(failure, measurement, baseline)]
+    new_assets = sorted(
+        ((identity, asset['file'], asset) for identity, asset in measurement['assets'].items()
+         if identity not in old['assets']),
+        key=lambda item: (-item[2]['gzipBytes'], item[1]),
+    )
+    if new_assets:
+        lines += ['', '### New assets in this measurement', '',
+                  'Every new file has its own limit; review this complete list when a feature adds a batch of content.',
+                  '', '| New file | Raw | Raw limit | Gzip | Gzip limit |',
+                  '|---|---:|---:|---:|---:|']
+        for identity, file, asset in new_assets:
+            lines.append('| ' + ' | '.join((safe(file), f"{asset['rawBytes']:,} B",
+                                             f"{asset_limit(identity, 'rawBytes', baseline):,} B",
+                                             f"{asset['gzipBytes']:,} B",
+                                             f"{asset_limit(identity, 'gzipBytes', baseline):,} B")) + ' |')
     lines += ['', '### Recent main trend', '',
               'Size columns remain useful across budget updates; verdicts use each run’s recorded budget.', '',
               '| Run / revision | Raw total | Gzip total | Budget | Result |',

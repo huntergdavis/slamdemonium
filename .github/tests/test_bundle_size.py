@@ -187,6 +187,20 @@ class BundleTests(unittest.TestCase):
             self.assertIn(text, summary)
         self.assertIn('&lt;script&gt;&#124;', bundle.safe('<script>|'))
 
+    def test_summary_lists_every_new_asset_with_both_limits(self):
+        measured = copy.deepcopy(self.measurement)
+        measured['assets']['file:car.glb'] = {
+            'file': 'assets/car.glb', 'rawBytes': 70000, 'gzipBytes': 35000, 'sha256': 'c' * 64,
+        }
+        measured['assets']['file:debris.glb'] = {
+            'file': 'assets/debris.glb', 'rawBytes': 12000, 'gzipBytes': 6000, 'sha256': 'd' * 64,
+        }
+        report = self.report(self.totals(measured))
+        summary = bundle.render(report, [], [])
+        for text in ('New assets in this measurement', 'Every new file has its own limit',
+                     'assets/car.glb', 'assets/debris.glb', '65,536 B', '32,768 B'):
+            self.assertIn(text, summary)
+
     def archive(self, report, name='bundle-size.json'):
         value = io.BytesIO()
         with zipfile.ZipFile(value, 'w') as archive:
