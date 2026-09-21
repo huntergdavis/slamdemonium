@@ -1,4 +1,6 @@
 import type { TrackConfig } from './trackConfig';
+import { resolveTrackConfig } from './trackConfig';
+import { getSurfaceDefinition, SURFACE_IDS } from '../content/surfaces';
 
 export interface WorldPoint {
   x: number;
@@ -9,6 +11,24 @@ export interface StaticBoxDescriptor {
   center: WorldPoint;
   halfExtents: WorldPoint;
   rotY: number;
+}
+export interface InstalledTrackBodies {
+  readonly ground: number;
+  readonly barriers: readonly number[];
+}
+
+/** Shared by collider construction and surface-hit boundary validation. */
+export function createGroundDescriptor(
+  config: Readonly<TrackConfig>,
+): StaticBoxDescriptor {
+  const extent =
+    (config.barrierInnerRadius + config.barrierThickness) /
+    Math.cos(Math.PI / config.barrierSegments);
+  return {
+    center: { x: 0, y: -config.groundThickness / 2, z: 0 },
+    halfExtents: { x: extent, y: config.groundThickness / 2, z: extent },
+    rotY: 0,
+  };
 }
 /** Structural subset of WP1 IPhysicsWorld, confirmed with its owner.
  * Replace proof-scene ground/wall setup with installTrackColliders(world, config).
@@ -57,13 +77,13 @@ export function installTrackColliders(
   config: Readonly<TrackConfig>,
   barriers = createBarrierDescriptors(config),
 ): { ground: number; barriers: number[] } {
+  resolveTrackConfig(config); // Reject authored invalid IDs/geometry before any body creation.
+  getSurfaceDefinition(SURFACE_IDS.concrete);
   // Covers the paved disc and wall footprint, including polygon corners.
-  const extent =
-    (config.barrierInnerRadius + config.barrierThickness) /
-    Math.cos(Math.PI / config.barrierSegments);
+  const groundBox = createGroundDescriptor(config);
   const ground = world.createStaticBox(
-    { x: 0, y: -config.groundThickness / 2, z: 0 },
-    { x: extent, y: config.groundThickness / 2, z: extent },
+    groundBox.center,
+    groundBox.halfExtents,
     0,
     0.5,
     0,
@@ -76,7 +96,7 @@ export function installTrackColliders(
       box.rotY,
       config.wallFriction,
       config.restitution,
-      config.surfaceId,
+      SURFACE_IDS.concrete,
     ),
   );
   return { ground, barriers: ids };

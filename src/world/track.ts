@@ -19,8 +19,12 @@ import { resolveTrackConfig } from './trackConfig';
 import type { TrackConfig } from './trackConfig';
 import { createTrackLayout } from './trackLayout';
 import type { TrackInstance } from './trackLayout';
-import type { WorldPoint } from './trackPhysics';
+import { createGroundDescriptor } from './trackPhysics';
+import type { WorldPoint, InstalledTrackBodies } from './trackPhysics';
 import { createKerbFootprintQuery } from './kerbFootprint';
+import { createTrackSurfaceResolver } from './trackSurfaces';
+import type { SurfaceResolver } from '../content/surfaces';
+import { getSurfaceDefinition, SURFACE_IDS } from '../content/surfaces';
 export { DEFAULT_TRACK_CONFIG, resolveTrackConfig } from './trackConfig';
 export { installTrackColliders } from './trackPhysics';
 
@@ -115,7 +119,7 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
     new CircleGeometry(config.pavedRadius, config.circleSegments).rotateX(
       -Math.PI / 2,
     ),
-    materials.asphalt,
+    materials.forSurface(getSurfaceDefinition(config.surfaceId).id),
     0,
   );
   for (const radius of [config.ringInnerRadius, config.pavedRadius]) {
@@ -144,9 +148,21 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
   }
   batch('track.dashes', horizontalQuad, materials.paint, layout.dashes, false);
   batch('track.ticks', horizontalQuad, materials.paint, layout.ticks, false);
-  batch('track.curbs', unitBox, materials.curb, layout.curbs, true);
+  batch(
+    'track.curbs',
+    unitBox,
+    materials.forSurface(SURFACE_IDS.kerb),
+    layout.curbs,
+    true,
+  );
   batch('track.posts', unitBox, materials.post, layout.posts, true);
-  batch('track.barriers', unitBox, materials.barrier, layout.barriers, true);
+  batch(
+    'track.barriers',
+    unitBox,
+    materials.forSurface(SURFACE_IDS.concrete),
+    layout.barriers,
+    true,
+  );
 
   const previousFog = scene.fog,
     previousBackground = scene.background;
@@ -178,6 +194,26 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
     rotation: Object.freeze({ x: 0, y: 0, z: 0, w: 1 }),
   });
   let disposed = false;
+  const surfaceResolvers = new Set<SurfaceResolver>();
+  /** Bind only bodies installed from this track/config in the current physics world. */
+  function createSurfaceResolver(
+    bodies: InstalledTrackBodies,
+  ): SurfaceResolver {
+    if (disposed)
+      throw new Error('Cannot create a surface resolver for a disposed track');
+    if (bodies.barriers.length !== config.barrierSegments)
+      throw new RangeError(
+        'Surface registry must include every installed track barrier',
+      );
+    const resolver = createTrackSurfaceResolver({
+      bodies,
+      groundSurfaceId: config.surfaceId,
+      ground: createGroundDescriptor(config),
+      kerbFootprint,
+    });
+    surfaceResolvers.add(resolver);
+    return resolver;
+  }
   /** World X/Z metres; visual footprint only, independent of contact/grip. */
   function isOnKerb(x: number, z: number): boolean {
     return !disposed && kerbFootprint(x, z);
@@ -204,6 +240,7 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
     config,
     spawn,
     isOnKerb,
+    createSurfaceResolver,
     barrierBoxes: layout.barrierBoxes,
     materials,
     updateLighting,
@@ -211,6 +248,8 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
     dispose(): void {
       if (disposed) return;
       disposed = true;
+      for (const resolver of surfaceResolvers) resolver.dispose();
+      surfaceResolvers.clear();
       root.removeFromParent();
       for (const object of batches) object.dispose();
       for (const geometry of geometries) geometry.dispose();
