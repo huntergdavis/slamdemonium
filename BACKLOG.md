@@ -19,7 +19,7 @@ Caveat per [slice review](docs/research/slice-review.md): experimental, Chrome
 verified; human feel and reference-hardware checks remain open.
 
 ### v0.2 — First-class controller
-- [ ] WP19 | developer 2 + designer | First-class controller: every action on the pad, Options fully adjustable by pad, live glyph prompts, haptics with a zeroable intensity, hot-plug. | dev2/wp19-controller
+- [x] WP19 (PR #65) | developer 2 + designer | First-class controller: every action on the pad, Options fully adjustable by pad, live glyph prompts, haptics with a zeroable intensity, hot-plug. | dev2/wp19-controller
 
 ### v0.3 — It makes noise
 - [ ] F0 | unassigned | Shared surface definitions. Ray hits carry `surfaceId` but grip uses one global `surfaceGrip`; resolve through ONE definition in content data before any grass/gravel. Do WITH F1.
