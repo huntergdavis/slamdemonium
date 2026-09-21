@@ -39,9 +39,13 @@ contracts must be readable to both people and agents.
   Escape/browser-exit guards, and test independent readers together;
   [WP16's blanket early return silenced the input fixture after the live handler prevented defaults](https://github.com/huntergdavis/slamdemonium/pull/56).
 - **Report demonstrated results and their limits.** Record the commit, workload,
-  browser/host and actual outcome. Distinguish simulated time from wall time;
-  disclose failed or timed-out runs and establish their cause before changing a
-  budget. Do not turn attribution into proof; [WP13 demonstrated repaired shader reuse and bounded retained heap, not zero transient allocation or a proven tire-allocation cause](DECISIONS.md#2026-09-20--wp13-stable-material-programs-and-heap-regression).
+  and actual outcome. Say what remains unproven. Do not turn attribution into
+  proof; [WP13 demonstrated repaired shader reuse and bounded retained heap, not zero transient allocation or a proven tire-allocation cause](DECISIONS.md#2026-09-20--wp13-stable-material-programs-and-heap-regression).
+- **Use a credible timing environment.** State the browser/host and distinguish
+  wall time from simulated time. Treat contended local timing runs as inconclusive,
+  never an acceptance pass; prefer hosted CI for timing-sensitive verdicts.
+  Disclose timeouts, do not retry until green, and establish the cause before
+  increasing a budget; [WP14 disclosed 90-second local timeouts separately from its green hosted run](https://github.com/huntergdavis/slamdemonium/pull/50).
 - **Clean up cherry-pick handoffs.** The handoff author deletes the remote branch
   once its change is confirmed in `main`. Verify the patch, not just ancestry;
   [WP16's menu mount landed through a cherry-pick](https://github.com/huntergdavis/slamdemonium/pull/56)
