@@ -2,6 +2,45 @@
 
 How the Slamdemonium Racing team works. This page is for the people and agents building the game. Players never need it; the public face of the project is [README.md](../README.md), and it stays about the game only.
 
+## Engineering standards
+
+Apply these on every PR, including follow-on features. Responsibilities and data
+contracts must be readable to both people and agents.
+
+- **Compose through named contracts.** Keep boot wiring separate from feature
+  logic; compose focused modules rather than adding unrelated responsibilities to
+  an existing class. Name operations for what they do, and document units,
+  ownership and unavailable values at boundaries; the [WP1 adapter](DECISIONS.md#2026-09-20--wp1--g0-go-with-the-separate-single-thread-jolt-wasm-build)
+  contained Jolt lifetime rules and represented missing solved impulse as `null`.
+- **One owner, many callers.** When a second feature needs a mechanism, extract
+  or reuse it instead of copying it. Boot owns mass debounce and its `flush`/`cancel`;
+  UI observes state. One pause decision combines independent requests, and each
+  caller releases only its own; [WP12 rebuilt mass twice](DECISIONS.md#one-owner-for-mass-rebuilds)
+  and [WP16 exposed overlapping menu/Options pause requests](https://github.com/huntergdavis/slamdemonium/pull/56).
+- **Store sample values, not borrowed references.** For recordings and history,
+  copy scalars immediately into storage you own, including nested vectors and
+  wheel fields. Never queue reused input, telemetry or engine objects as snapshots;
+  [R1 found Jolt returns sharing scratch storage across bodies](research/jolt-integration.md#ownership-distinguish-owned-objects-from-borrowed-returns).
+- **Consume each action once.** Step sampling and paused command polling share
+  one counter history. Command polling must not sample scripts, advance physics
+  or record input latency; [WP14 could not unpause when P was sampled only inside physics steps](DECISIONS.md#2026-09-20--wp14-mount-the-tuning-laboratory-and-share-command-consumption).
+- **Wire a feature before calling it shipped.** Mount it from boot and connect
+  its live store, commands and disposal. Run `npm run check:reachable` and verify
+  the behavior through the built boot path, not just an isolated component;
+  [WP14 left Options, HUD, scripts and persistence unreachable](https://github.com/huntergdavis/slamdemonium/pull/50).
+- **Test the built artifact.** Exercise the production preview under the deployment
+  base path. Browser tests must not import raw `/src` modules. Gate bundled test
+  fixtures and check that default production excludes them;
+  [WP1's input tests broke when preview replaced the dev server](https://github.com/huntergdavis/slamdemonium/pull/21).
+- **Cancel browser defaults without silencing other readers.** `defaultPrevented`
+  is not a general input-consumption flag. Preserve explicit editing and
+  Escape/browser-exit guards, and test independent readers together;
+  [WP16's blanket early return silenced the input fixture after the live handler prevented defaults](https://github.com/huntergdavis/slamdemonium/pull/56).
+- **Report demonstrated results and their limits.** Record the commit, workload,
+  browser/host and actual outcome. Distinguish simulated time from wall time;
+  disclose failed or timed-out runs and establish their cause before changing a
+  budget. Do not turn attribution into proof; [WP13 demonstrated repaired shader reuse and bounded retained heap, not zero transient allocation or a proven tire-allocation cause](DECISIONS.md#2026-09-20--wp13-stable-material-programs-and-heap-regression).
+
 ## Roles and ownership
 
 | Role | Agent | Owns | Working copy |
