@@ -225,6 +225,11 @@ def output(name, value):
         stream.write(f"{name}={value}\n")
 
 
+def require_current_workflow():
+    if not re.fullmatch(r"[a-f0-9]{40}", os.environ.get("MAIN_SHA", "")):
+        raise ValueError("Obsolete Pages workflow lacks MAIN_SHA; dispatch the current main workflow. Production was not modified.")
+
+
 def prepare(repo, temporary):
     output("publish", "false")
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
@@ -340,4 +345,6 @@ def comment(repo, temporary):
 if __name__ == "__main__":
     repository = os.environ["GITHUB_REPOSITORY"]
     temporary_path = Path(os.environ["RUNNER_TEMP"])
+    if sys.argv[1] == "prepare":
+        require_current_workflow()
     {"prepare": prepare, "comment": comment}[sys.argv[1]](repository, temporary_path)

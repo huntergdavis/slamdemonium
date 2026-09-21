@@ -43,6 +43,8 @@ The menu receives a preformatted optional `buildLabel`, renders it once as text,
 
 Before promotion, any failure leaves production unchanged. A failed cut may leave a matching tag and draft release; **rerun that same workflow run at the same captured commit** after investigating the failure. The workflow accepts an identical draft asset and refuses a different one. Do not dispatch a changed main commit at an already-created version: commit a new version instead. A published version is not recut.
 
+Drain the Pages queue before merging this mechanism. An obsolete queued/rerun workflow that lacks the new captured-main context fails before publication; dispatch the current main Pages workflow to recover. It cannot replace production with an unreleased main build.
+
 If automatic rollback also fails, the run is red and production must be checked directly; the workflow never reports a successful release in that state. An ordinary main publication restores the last published stable release. Fix or revert through a reviewed PR and cut a new semantic version; tags remain immutable. The candidate URL is temporary and may disappear on the next ordinary publication. Main and PR previews remain available independently of release success.
 
 Release mechanics have deterministic tests under `.github/tests`, run by existing CI; they introduce no new required check or branch-protection change. Local checks:

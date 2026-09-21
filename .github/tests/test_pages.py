@@ -189,6 +189,13 @@ class LifecycleTests(unittest.TestCase):
 
 
 class ProvenanceTests(unittest.TestCase):
+    def test_obsolete_workflow_cannot_publish_new_main_as_production(self):
+        for sha in ('', 'main', 'abc'):
+            with patch.dict(os.environ, {'MAIN_SHA': sha}), self.assertRaisesRegex(ValueError, 'Obsolete Pages workflow'):
+                pages.require_current_workflow()
+        with patch.dict(os.environ, {'MAIN_SHA': 'a' * 40}):
+            pages.require_current_workflow()
+
     def test_production_event_must_originate_from_main(self):
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
