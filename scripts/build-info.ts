@@ -5,11 +5,12 @@ export interface BuildIdentityInput {
   commit: string;
   dirty: boolean;
   releaseTag?: string;
+  releaseCandidate?: boolean;
 }
 
 /** No clock or host data: identical source and release intent produce the same identity. */
 export function buildIdentity(input: BuildIdentityInput) {
-  const { version, commit, dirty, releaseTag } = input;
+  const { version, commit, dirty, releaseTag, releaseCandidate } = input;
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
     throw new Error(
       'package.json version must be a stable semantic version X.Y.Z',
@@ -28,9 +29,23 @@ export function buildIdentity(input: BuildIdentityInput) {
       'Release builds require a clean checkout and matching vX.Y.Z tag',
     );
   }
-  const channel = releaseTag ? 'release' : 'unreleased';
+  if (releaseCandidate && !releaseTag) {
+    throw new Error(
+      'A release candidate requires the intended matching release tag',
+    );
+  }
+  const channel = releaseCandidate
+    ? 'candidate'
+    : releaseTag
+      ? 'release'
+      : 'unreleased';
   const shortCommit = commit.slice(0, 7);
-  const label = `${releaseTag ? 'RELEASE ' : 'UNRELEASED · '}v${version} · ${shortCommit}${dirty ? '-dirty' : ''}`;
+  const prefix = releaseCandidate
+    ? 'UNRELEASED CANDIDATE · '
+    : releaseTag
+      ? 'RELEASE '
+      : 'UNRELEASED · ';
+  const label = `${prefix}v${version} · ${shortCommit}${dirty ? '-dirty' : ''}`;
   return {
     version,
     commit,

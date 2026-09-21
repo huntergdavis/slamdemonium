@@ -45,10 +45,12 @@ def tag_commit(repo, tag, optional=False):
     raise ValueError("Release tag does not resolve to a commit")
 
 
-def check_info(info, tag, sha):
+def check_info(info, tag, sha, *, candidate=False):
     version_tuple(tag)
+    prefix = "UNRELEASED CANDIDATE · " if candidate else "RELEASE "
     expected = {"version": tag[1:], "tag": tag, "commit": sha, "shortCommit": sha[:7],
-                "channel": "release", "dirty": False, "label": f"RELEASE {tag} · {sha[:7]}"}
+                "channel": "candidate" if candidate else "release", "dirty": False,
+                "label": f"{prefix}{tag} · {sha[:7]}"}
     if info != expected:
         raise ValueError("Release artifact identity disagrees with its tag/source")
     return info
@@ -71,12 +73,12 @@ def check_base(html, base, files):
         raise ValueError(f"Release HTML does not resolve its assets within {base}")
 
 
-def identity(data, tag, sha, base="/slamdemonium/"):
+def identity(data, tag, sha, base="/slamdemonium/", *, candidate=False):
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         files = archive_files(archive, production=True)
         if "build-info.json" not in files or files["build-info.json"].file_size > 4096:
             raise ValueError("Release artifact lacks bounded build identity")
-        info = check_info(json.loads(archive.read(files["build-info.json"])), tag, sha)
+        info = check_info(json.loads(archive.read(files["build-info.json"])), tag, sha, candidate=candidate)
         check_base(archive.read(files["index.html"]).decode(), base, files)
     return info
 
@@ -195,7 +197,7 @@ def verify_directory(directory, url, *, root=False, timeout=300):
 
 def verify_stage(repo, temporary):
     candidate = temporary / "pages-site/release-candidate"
-    check_info(json.loads((candidate / "build-info.json").read_text()), os.environ["CUT_TAG"], os.environ["MAIN_SHA"])
+    check_info(json.loads((candidate / "build-info.json").read_text()), os.environ["CUT_TAG"], os.environ["MAIN_SHA"], candidate=True)
     check_base((candidate / "index.html").read_text(), "/slamdemonium/release-candidate/",
                {path.relative_to(candidate).as_posix() for path in candidate.rglob("*") if path.is_file()})
     verify_directory(candidate, SITE_URL + "/release-candidate/")

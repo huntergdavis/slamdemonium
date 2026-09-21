@@ -24,6 +24,22 @@ describe('player build identity', () => {
       commit: source.commit,
     });
   });
+  it('keeps staged candidates visibly unreleased inside the pause menu', () => {
+    expect(
+      buildIdentity({
+        ...source,
+        releaseTag: 'v0.1.0',
+        releaseCandidate: true,
+      }),
+    ).toMatchObject({
+      channel: 'candidate',
+      tag: 'v0.1.0',
+      label: 'UNRELEASED CANDIDATE · v0.1.0 · aaaaaaa',
+    });
+    expect(() =>
+      buildIdentity({ ...source, releaseCandidate: true }),
+    ).toThrow();
+  });
   it('rejects mismatched tags, lockfiles, dirty releases and invalid source identity', () => {
     for (const change of [
       { releaseTag: 'v0.2.0' },

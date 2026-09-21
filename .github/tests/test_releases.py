@@ -49,10 +49,13 @@ class IdentityTests(unittest.TestCase):
                 releases.identity(build(**change), TAG, SHA)
 
     def test_staging_has_its_own_real_asset_base(self):
-        candidate = build('/slamdemonium/release-candidate/')
+        candidate = build('/slamdemonium/release-candidate/', channel='candidate',
+                          label=f'UNRELEASED CANDIDATE · {TAG} · {SHA[:7]}')
         with self.assertRaisesRegex(ValueError, 'resolve its assets'):
-            releases.identity(candidate, TAG, SHA)
-        releases.identity(candidate, TAG, SHA, '/slamdemonium/release-candidate/')
+            releases.identity(candidate, TAG, SHA, candidate=True)
+        releases.identity(candidate, TAG, SHA, '/slamdemonium/release-candidate/', candidate=True)
+        with self.assertRaisesRegex(ValueError, 'identity'):
+            releases.identity(candidate, TAG, SHA, '/slamdemonium/release-candidate/')
         with self.assertRaises(ValueError):
             releases.check_base('<script src="/slamdemonium/missing.js"></script>', '/slamdemonium/', {'index.html'})
 

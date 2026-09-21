@@ -37,7 +37,7 @@ Commit both package files. Cutting again without a version increase fails. Do no
 
 Every build emits deterministic `build-info.json` containing the version, full and short source commit, channel and label. The pause menu shows that same label: **RELEASE v0.1.0 · shortSHA** or **UNRELEASED · v0.1.0 · shortSHA**. Ordinary main, PR and local builds always say **UNRELEASED**, even on an otherwise tagged commit; modified local checkouts also say `-dirty`. Only the explicit clean release build receives the stable label. PR builds identify their tested merge commit; the sticky comment separately identifies the proposed branch head.
 
-The menu receives a preformatted optional `buildLabel`, renders it once as text, and adds no focus target or work to the frame loop. The visible identity and JSON are checked together in the production-build browser smoke.
+The staging build's footer explicitly says **UNRELEASED CANDIDATE**, including while the pause dialog covers its banner. The menu receives a preformatted optional `buildLabel`, renders it once as text, and adds no focus target or work to the frame loop. The visible identity and JSON are checked together in the production-build browser smoke.
 
 ## Failed cuts and recovery
 

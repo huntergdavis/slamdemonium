@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
       }).trim(),
     ),
     ...(process.env.RELEASE_TAG ? { releaseTag: process.env.RELEASE_TAG } : {}),
+    releaseCandidate: process.env.RELEASE_CANDIDATE === 'true',
   });
   return {
     base: env.VITE_BASE_PATH || '/',

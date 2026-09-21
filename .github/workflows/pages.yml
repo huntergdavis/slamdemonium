@@ -82,7 +82,7 @@ jobs:
         if: inputs.release
         run: |
           VITE_BASE_PATH=/slamdemonium/ npm run build -- --outDir "$RUNNER_TEMP/release-production"
-          VITE_BASE_PATH=/slamdemonium/release-candidate/ npm run build -- --outDir "$RUNNER_TEMP/release-candidate"
+          RELEASE_CANDIDATE=true VITE_BASE_PATH=/slamdemonium/release-candidate/ npm run build -- --outDir "$RUNNER_TEMP/release-candidate"
         env:
           RELEASE_TAG: ${{ steps.source.outputs.tag }}
 
