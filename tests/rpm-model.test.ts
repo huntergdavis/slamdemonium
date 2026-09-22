@@ -32,6 +32,23 @@ describe('derived rpm model', () => {
       downshiftCount: 0,
     });
   });
+  it('publishes identity on the very first step without a reset', () => {
+    const model = new RpmModel(DEFAULT_ENGINE);
+    const state: EngineState = {
+      rpm: 0,
+      gear: 0,
+      gearCount: 0,
+      idleRpm: 0,
+      redlineRpm: 0,
+      upshiftCount: 0,
+      downshiftCount: 0,
+    };
+    model.step(DT, 0, 0, 0, LIFT, state);
+    expect(state.gearCount).toBe(DEFAULT_ENGINE.gearCount);
+    expect(state.idleRpm).toBe(DEFAULT_ENGINE.idleRpm);
+    expect(state.redlineRpm).toBe(DEFAULT_ENGINE.redlineRpm);
+    expect(state.gear).toBe(1);
+  });
   it('shifts up through every gear on a speed ramp, counts each shift once, and never exceeds the redline without boost', () => {
     const { model, state } = fresh();
     let peak = 0;
