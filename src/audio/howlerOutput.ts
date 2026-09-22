@@ -17,7 +17,10 @@ import type {
 
 const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 const pitch = (value: number): number => Math.max(0.5, Math.min(4, value));
-const ENGINE_GAIN = 1.5;
+/** The engine is the dominant continuous voice: at full throttle it sits at
+ * the layer ceiling (sfxVolume), about 3.6 dB above a full four-wheel screech
+ * whose own level is unchanged. */
+const ENGINE_GAIN = 3;
 /** Howler loops plus the engine worklet module. */
 const LOADABLE = 9;
 const LOOP_VOICES = CONTINUOUS_VOICES - 1;

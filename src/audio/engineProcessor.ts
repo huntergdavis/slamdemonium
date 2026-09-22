@@ -278,7 +278,7 @@ class EngineProcessor extends AudioWorkletProcessor {
       lerp(600 + rpm * 0.25, 350 + rpm * 0.08, c) * dt,
     );
     const drive = lerp(1.4 + 2.6 * load, 0.7 + 0.8 * load, c);
-    const makeup = lerp(0.5, 0.8, c);
+    const makeup = lerp(0.6, 0.9, c);
     const lowpassCoefficient = Math.min(
       0.6,
       lerp(2500 + rpm * 0.6, 1100 + rpm * 0.3, c) * dt,
