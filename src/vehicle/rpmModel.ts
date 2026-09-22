@@ -106,6 +106,11 @@ export class RpmModel {
     this.rpm = approach(this.rpm, target, dt, p.rpmAttack, p.rpmRelease);
     state.rpm = this.rpm;
     state.gear = this.gear + 1;
+    // Identity is republished every step so a consumer never reads zeros
+    // before the first respawn.
+    state.gearCount = p.gearCount;
+    state.idleRpm = p.idleRpm;
+    state.redlineRpm = p.redlineRpm;
   }
 
   private beginShift(): void {
