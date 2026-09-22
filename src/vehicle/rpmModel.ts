@@ -37,13 +37,14 @@ export class RpmModel {
   private shiftCooldown = 0;
   private revLift = 0;
   private rpm: number;
-  private readonly upSpeeds: Float64Array;
 
   constructor(readonly profile: EngineProfile) {
     this.rpm = profile.idleRpm;
-    this.upSpeeds = new Float64Array(profile.gearCount - 1);
-    for (let gear = 0; gear < this.upSpeeds.length; gear++)
-      this.upSpeeds[gear] = profile.firstGearSpeed * profile.gearRatio ** gear;
+  }
+
+  /** Speed at which the 0-based gear shifts up; the top gear never does. */
+  private upSpeed(gear: number, ratio: number): number {
+    return this.profile.firstGearSpeed * ratio ** gear;
   }
 
   reset(state: EngineState): void {
@@ -58,7 +59,8 @@ export class RpmModel {
   }
 
   /** speed in m/s (sign ignored: reverse keeps first gear), throttle and
-   * boost 0..1, revLiftRpm the tunable throttle lift in rpm. */
+   * boost 0..1, revLiftRpm the tunable throttle lift in rpm, gearRatio the
+   * tunable spacing between virtual gears (falls back to the profile). */
   step(
     dt: number,
     speed: number,
@@ -66,20 +68,22 @@ export class RpmModel {
     boost: number,
     revLiftRpm: number,
     state: EngineState,
+    gearRatio = this.profile.gearRatio,
   ): void {
     const p = this.profile;
+    const ratio = Math.max(1.01, gearRatio);
     const v = Math.abs(speed);
     this.shiftCut = Math.max(0, this.shiftCut - dt);
     this.shiftCooldown = Math.max(0, this.shiftCooldown - dt);
     if (this.shiftCooldown === 0) {
-      const up = this.upSpeeds[this.gear];
-      if (up !== undefined && v > up) {
+      const top = p.gearCount - 1;
+      if (this.gear < top && v > this.upSpeed(this.gear, ratio)) {
         this.gear++;
         state.upshiftCount++;
         this.beginShift();
       } else if (
         this.gear > 0 &&
-        v < this.upSpeeds[this.gear - 1]! * p.downshiftHysteresis
+        v < this.upSpeed(this.gear - 1, ratio) * p.downshiftHysteresis
       ) {
         this.gear--;
         state.downshiftCount++;
@@ -89,8 +93,7 @@ export class RpmModel {
     const pedal = this.shiftCut > 0 ? 0 : Math.max(0, Math.min(1, throttle));
     const gearRpm =
       p.idleRpm +
-      (v * (p.shiftRpm - p.idleRpm)) /
-        (p.firstGearSpeed * p.gearRatio ** this.gear);
+      (v * (p.shiftRpm - p.idleRpm)) / (p.firstGearSpeed * ratio ** this.gear);
     this.revLift = approach(
       this.revLift,
       pedal * revLiftRpm,

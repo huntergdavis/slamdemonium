@@ -93,7 +93,9 @@
     "engineRevLift": 1740,
     "exhaustLength": 1.54,
     "exhaustFeedback": 0.72,
-    "firingUnevenness": 1
+    "firingUnevenness": 1,
+    "engineLevel": 1,
+    "gearSpacing": 1.8
   },
   "durationSteps": 5169,
   "frames": [

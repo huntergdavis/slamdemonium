@@ -64,6 +64,7 @@ const mix: AudioMix = {
   engineIdle: 0.2,
   engineLoad: 0.3,
   engineRpm: 3000,
+  engineLevel: 1,
   engineCharacter: 1,
   exhaustSeconds: 0.009,
   exhaustFeedback: 0.72,

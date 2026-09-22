@@ -555,6 +555,7 @@ export class Vehicle {
       s.boostEnvelope,
       t.get('engineRevLift'),
       s,
+      t.get('gearSpacing'),
     );
   }
   postStep(dt: number): void {

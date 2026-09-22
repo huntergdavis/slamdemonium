@@ -912,6 +912,28 @@ const definitions = [
     step: 0.05,
     help: 'How uneven the muscle voice fires. Zero is a perfectly regular pulse train; one is the full crossplane lope with deep troughs.',
   },
+  {
+    key: 'engineLevel',
+    group: 'Audio',
+    label: 'Engine level',
+    unit: 'x',
+    default: 1,
+    min: 0,
+    max: 2,
+    step: 0.05,
+    help: 'Engine loudness relative to tyres, boost and impacts. One is the shipped mix, zero is silent, two is clearly dominant. Presentation only: it changes the mix, never acceleration.',
+  },
+  {
+    key: 'gearSpacing',
+    group: 'Audio',
+    label: 'Gear spacing',
+    unit: 'ratio',
+    default: 1.8,
+    min: 1.3,
+    max: 2.5,
+    step: 0.05,
+    help: 'How much longer each virtual gear is than the one below. Lower shifts sooner and more often; higher makes each gear last longer. Presentation only: it changes the note and the tachometer, never acceleration.',
+  },
 ] as const satisfies readonly ParamDef[];
 
 export type ParamKey = (typeof definitions)[number]['key'];

@@ -16,7 +16,8 @@ export interface EngineProfile {
   readonly boostRpm: number;
   /** Speed (m/s) at which first gear reaches shiftRpm. */
   readonly firstGearSpeed: number;
-  /** Each higher gear is this much longer than the one below. */
+  /** Each higher gear is this much longer than the one below; the default
+   * for the live `gearSpacing` tuning. */
   readonly gearRatio: number;
   readonly gearCount: number;
   /** Downshift below this fraction of the lower gear's upshift speed. */
