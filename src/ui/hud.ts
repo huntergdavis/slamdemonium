@@ -66,6 +66,8 @@ export class Hud {
   private readonly steering: HTMLElement;
   private readonly camera: HTMLElement;
   private readonly charging: HTMLElement;
+  private readonly tachometer: HTMLElement;
+  private readonly tachTrack: HTMLElement;
   private readonly notice: HTMLElement;
   private readonly plots: HudPlots;
   private readonly unsubscribe: () => void;
@@ -78,6 +80,8 @@ export class Hud {
   private disposed = false;
   private downloadURL: string | null = null;
   private exportMessage = 'CSV pending';
+  private lastUpshiftCount = NaN;
+  private lastDownshiftCount = NaN;
 
   constructor(private readonly options: HudOptions) {
     const doc = options.host.ownerDocument;
@@ -187,6 +191,36 @@ export class Hud {
     slide.append(track, axis);
     reading(slide, 'driftThreshold', '—', 'sl-caption');
     const speed = node(doc, 'section', 'sl-card sl-meter-stack');
+    this.tachometer = node(doc, 'div', 'sl-tachometer');
+    this.tachometer.setAttribute('role', 'meter');
+    this.tachometer.setAttribute('aria-label', 'Engine tachometer');
+    const tachHeader = node(doc, 'div', 'sl-tachometer__header');
+    const tachGear = node(doc, 'span', 'sl-tachometer__gear', '—');
+    tachHeader.append(
+      node(doc, 'span', 'sl-tachometer__label', 'TACH'),
+      tachGear,
+    );
+    tachGear.dataset.reading = 'tachGear';
+    this.readings.set('tachGear', tachGear.firstChild as Text);
+    const tachRpm = node(doc, 'span', 'sl-tachometer__rpm');
+    tachRpm.dataset.reading = 'tachRpm';
+    tachRpm.append(doc.createTextNode('— rpm'));
+    this.readings.set('tachRpm', tachRpm.firstChild as Text);
+    this.tachTrack = node(doc, 'div', 'sl-tachometer__track');
+    this.tachTrack.setAttribute('aria-hidden', 'true');
+    this.tachTrack.append(
+      node(doc, 'span', 'sl-tachometer__redline'),
+      node(doc, 'span', 'sl-tachometer__needle'),
+    );
+    const tachMarks = node(doc, 'div', 'sl-tachometer__marks');
+    for (const position of [0, 25, 50, 75, 100]) {
+      const mark = node(doc, 'span', 'sl-tachometer__mark');
+      mark.style.left = position + '%';
+      tachMarks.append(mark);
+    }
+    this.tachometer.append(tachHeader, tachRpm, this.tachTrack);
+    this.tachometer.append(tachMarks);
+    speed.append(this.tachometer);
     const number = node(doc, 'div', 'sl-speed');
     reading(number, 'speed', '—', 'sl-speed__value');
     number.append(node(doc, 'span', 'sl-speed__unit', 'km/h'));
@@ -336,6 +370,7 @@ export class Hud {
       'speedMs',
       fixed(telemetry.speed) + ' m/s' + (telemetry.vLong < -0.1 ? ' · R' : ''),
     );
+    this.updateTachometer(telemetry);
     this.set('beta', 'Slide β ' + fixed(telemetry.beta * RAD_TO_DEG) + '°');
     const threshold = store.get('driftMinAngle');
     this.set('driftThreshold', 'Drift ticks ±' + fixed(threshold) + '°');
@@ -438,6 +473,54 @@ export class Hud {
 
   private set(key: string, value: string): void {
     write(this.readings.get(key)!, value);
+  }
+
+  private updateTachometer(telemetry: HudTelemetry): void {
+    const reverse = telemetry.vLong < -0.1;
+    this.set(
+      'tachGear',
+      reverse ? 'R' : 'G' + Math.max(1, Math.round(telemetry.gear)),
+    );
+    this.set('tachRpm', fixed(telemetry.rpm, 0) + ' rpm');
+    const maxRpm = telemetry.redlineRpm > 0 ? telemetry.redlineRpm * 1.15 : NaN;
+    const position = Number.isFinite(maxRpm)
+      ? Math.max(0, Math.min(1, telemetry.rpm / maxRpm))
+      : 0;
+    const redline = Number.isFinite(maxRpm)
+      ? Math.max(0, Math.min(1, telemetry.redlineRpm / maxRpm))
+      : 1;
+    this.tachTrack.style.setProperty(
+      '--sl-tach-position',
+      position * 100 + '%',
+    );
+    this.tachTrack.style.setProperty('--sl-tach-redline', redline * 100 + '%');
+    this.tachometer.dataset.state =
+      telemetry.rpm >= telemetry.redlineRpm ? 'redline' : 'normal';
+    this.tachometer.setAttribute('aria-valuemin', fixed(telemetry.idleRpm, 0));
+    this.tachometer.setAttribute(
+      'aria-valuemax',
+      fixed(telemetry.redlineRpm, 0),
+    );
+    this.tachometer.setAttribute('aria-valuenow', fixed(telemetry.rpm, 0));
+    this.tachometer.setAttribute(
+      'aria-valuetext',
+      fixed(telemetry.rpm, 0) +
+        ' rpm, ' +
+        (reverse ? 'reverse' : 'gear ' + telemetry.gear),
+    );
+    const upshift =
+      Number.isFinite(this.lastUpshiftCount) &&
+      telemetry.upshiftCount > this.lastUpshiftCount;
+    const downshift =
+      Number.isFinite(this.lastDownshiftCount) &&
+      telemetry.downshiftCount > this.lastDownshiftCount;
+    this.tachometer.dataset.shift = upshift
+      ? 'up'
+      : downshift
+        ? 'down'
+        : 'none';
+    this.lastUpshiftCount = telemetry.upshiftCount;
+    this.lastDownshiftCount = telemetry.downshiftCount;
   }
 
   private readonly syncSession = (): void => {

@@ -396,6 +396,87 @@
   gap: 8px;
   line-height: 1;
 }
+.sl-tachometer {
+  --sl-tach-position: 0%;
+  --sl-tach-redline: 87%;
+  margin-bottom: 12px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--sl-border);
+  font-family: var(--sl-mono);
+}
+.sl-tachometer__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--sl-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.sl-tachometer__gear {
+  color: var(--sl-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+.sl-tachometer__rpm {
+  display: block;
+  margin-top: 2px;
+  color: var(--sl-text);
+  font-size: 13px;
+}
+.sl-tachometer__track {
+  position: relative;
+  height: 9px;
+  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid var(--sl-control-border);
+  border-radius: 2px;
+  background: var(--sl-control);
+}
+.sl-tachometer__track::before,
+.sl-tachometer__redline,
+.sl-tachometer__needle {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+}
+.sl-tachometer__track::before {
+  content: '';
+  left: var(--sl-tach-redline);
+  right: 0;
+  background: rgb(255 119 133 / 25%);
+}
+.sl-tachometer__redline {
+  left: var(--sl-tach-redline);
+  width: 1px;
+  background: var(--sl-over-limit);
+}
+.sl-tachometer__marks {
+  position: relative;
+  height: 5px;
+  margin-top: 2px;
+}
+.sl-tachometer__mark {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 4px;
+  background: var(--sl-muted);
+  transform: translateX(-50%);
+}
+.sl-tachometer__needle {
+  left: clamp(0%, var(--sl-tach-position), 100%);
+  width: 3px;
+  transform: translateX(-50%);
+  background: var(--sl-text);
+  transition: left 80ms linear;
+}
+.sl-tachometer[data-state='redline'] .sl-tachometer__needle {
+  background: var(--sl-over-limit);
+}
+.sl-tachometer[data-shift='up'] .sl-tachometer__needle {
+  transition-duration: 140ms;
+}
 .sl-speed__value {
   font: 600 48px/1 var(--sl-mono);
   letter-spacing: -0.06em;
