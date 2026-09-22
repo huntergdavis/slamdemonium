@@ -28,7 +28,7 @@ class MountedAudioDirector extends AudioDirector {
     } catch {
       /* Muting still works in memory. */
     }
-    const output = new LazyAudioOutput();
+    const output = new LazyAudioOutput(deps.engine);
     super({ ...deps, output, settings: new AudioSettings(storage) });
     this.prompt = new AudioPrompt(deps.host, this);
     this.releaseTuning = deps.tuning.onChange((change) => {

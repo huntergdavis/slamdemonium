@@ -6,6 +6,7 @@ import { FixedStepLoop } from './core/loop';
 import { PerformanceRecorder } from './core/performance';
 import { TransformHistory } from './core/transforms';
 import { mountAudioDirector } from './audio/mount';
+import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, V3 } from './physics/adapter';
@@ -369,6 +370,7 @@ async function boot(): Promise<void> {
   const audio = mountAudioDirector({
     host: host!,
     tuning,
+    engine: DEFAULT_ENGINE,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
     resolveGroundedSurface,

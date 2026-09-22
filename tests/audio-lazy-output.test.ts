@@ -22,6 +22,7 @@ vi.mock('../src/audio/howlerOutput', () => ({
     dispose = backend.dispose;
   },
 }));
+import { DEFAULT_ENGINE } from '../src/vehicle/engineProfile';
 import { LazyAudioOutput } from '../src/audio/lazyOutput';
 let nextFrame = 0;
 const frames = new Map<number, FrameRequestCallback>();
@@ -42,7 +43,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 describe('audio activation fetch boundary', () => {
   it('leaves boot idle and loads once after activation and a paint opportunity, preserving room mute', async () => {
-    const output = new LazyAudioOutput();
+    const output = new LazyAudioOutput(DEFAULT_ENGINE);
     output.setMasterMuted(true);
     await vi.dynamicImportSettled();
     expect(output.state.status).toBe('locked');
@@ -67,7 +68,7 @@ describe('audio activation fetch boundary', () => {
   it.each([0, 1])(
     'cancels pending loading when disposed after %i frames',
     async (count) => {
-      const output = new LazyAudioOutput();
+      const output = new LazyAudioOutput(DEFAULT_ENGINE);
       output.unlock();
       for (let i = 0; i < count; i++) paintFrame();
       output.dispose();

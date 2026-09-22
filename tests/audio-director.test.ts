@@ -7,6 +7,7 @@ import type {
   AudioOutputState,
 } from '../src/audio/types';
 import { TuningStore } from '../src/tuning/store';
+import { DEFAULT_ENGINE } from '../src/vehicle/engineProfile';
 
 function setup() {
   const tuning = new TuningStore();
@@ -14,6 +15,9 @@ function setup() {
     speed: 20,
     throttle: 1,
     boostEnvelope: 0,
+    rpm: 3000,
+    upshiftCount: 0,
+    downshiftCount: 0,
     velocity: { x: 0, y: 0, z: -20 },
     wheels: Array.from({ length: 4 }, () => ({
       grounded: false,
@@ -60,6 +64,7 @@ function setup() {
   ] as const;
   const director = new AudioDirector({
     tuning,
+    engine: DEFAULT_ENGINE,
     output,
     settings,
     readTelemetry: () => telemetry,
@@ -226,54 +231,28 @@ describe('audio stays outside simulation', () => {
     expect(settings.masterMuted).toBe(false);
   });
 
-  it('shifts an audio-only virtual gearbox: the note drops on upshifts while accelerating, stays under the ceiling without boost, and blips on downshift', () => {
+  it('passes shared rpm through unchanged and cuts the level briefly when a shift counter advances', () => {
     const r = setup();
-    r.telemetry.speed = 0;
-    r.telemetry.throttle = 1;
+    r.telemetry.rpm = 4321;
+    r.director.afterStep(1 / 120);
     r.director.update(0);
-    let drops = 0;
-    let previous = 0;
-    let peak = 0;
-    for (let frame = 1; frame <= 600; frame++) {
-      r.telemetry.speed = (frame / 600) * 60; // 0 to 60 m/s in ten seconds
-      r.director.afterStep(1 / 60);
-      r.director.update(frame * (1000 / 60));
-      const note = r.mixes.at(-1)!.engineRate;
-      if (previous - note > 0.02) drops++;
-      previous = note;
-      peak = Math.max(peak, note);
+    for (let frame = 1; frame < 30; frame++) {
+      r.director.afterStep(1 / 120);
+      r.director.update(frame * 16);
     }
-    // Four upshifts, each a run of falling frames while speed only rises.
-    expect(drops).toBeGreaterThanOrEqual(12);
-    expect(peak).toBeLessThanOrEqual(2.8 + 1e-9);
-    expect(previous).toBeGreaterThan(2.6); // Fifth gear near the ceiling.
-    let rises = 0;
-    for (let frame = 601; frame <= 1200; frame++) {
-      r.telemetry.speed = ((1200 - frame) / 600) * 60;
-      r.telemetry.throttle = 0;
-      r.director.afterStep(1 / 60);
-      r.director.update(frame * (1000 / 60));
-      const note = r.mixes.at(-1)!.engineRate;
-      if (note - previous > 0.02) rises++;
-      previous = note;
+    const before = r.mixes.at(-1)!;
+    expect(before.engineRpm).toBe(4321);
+    expect(before.engineLoad).toBeGreaterThan(0.3);
+    r.telemetry.upshiftCount = 1; // Seen even if it happened between frames.
+    for (let frame = 30; frame < 36; frame++) {
+      r.director.afterStep(1 / 120);
+      r.director.update(frame * 16);
     }
-    expect(rises).toBeGreaterThanOrEqual(4); // Downshift blips while slowing.
-    r.director.reset();
-    // Stamping the throttle at a standstill lifts note and level within 50 ms.
-    r.telemetry.speed = 0;
-    r.telemetry.throttle = 0;
-    for (let frame = 0; frame < 30; frame++) {
-      r.director.afterStep(1 / 60);
-      r.director.update(30000 + frame * (1000 / 60));
+    expect(r.mixes.at(-1)!.engineLoad).toBeLessThan(before.engineLoad * 0.5);
+    for (let frame = 36; frame < 80; frame++) {
+      r.director.afterStep(1 / 120);
+      r.director.update(frame * 16);
     }
-    const idle = r.mixes.at(-1)!;
-    r.telemetry.throttle = 1;
-    for (let frame = 30; frame < 33; frame++) {
-      r.director.afterStep(1 / 60);
-      r.director.update(30000 + frame * (1000 / 60));
-    }
-    const stamped = r.mixes.at(-1)!;
-    expect(stamped.engineRate - idle.engineRate).toBeGreaterThan(0.15);
-    expect(stamped.engineLoad).toBeGreaterThan(idle.engineLoad + 0.2);
+    expect(r.mixes.at(-1)!.engineLoad).toBeGreaterThan(0.3); // Recovered.
   });
 });

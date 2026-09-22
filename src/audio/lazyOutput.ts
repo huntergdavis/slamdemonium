@@ -1,3 +1,4 @@
+import type { EngineProfile } from '../vehicle/engineProfile';
 import type {
   AudioMix,
   AudioOutput,
@@ -21,11 +22,13 @@ export class LazyAudioOutput implements AudioOutput {
   private loading = false;
   private muted = false;
 
+  constructor(private readonly engine: EngineProfile) {}
+
   private load(): void {
     void import('./howlerOutput')
       .then(({ HowlerOutput }) => {
         if (this.disposed) return;
-        this.output = new HowlerOutput();
+        this.output = new HowlerOutput(this.engine);
         this.output.setMasterMuted(this.muted);
         this.output.unlock();
       })

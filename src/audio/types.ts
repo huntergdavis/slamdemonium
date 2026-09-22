@@ -13,6 +13,10 @@ export interface AudioTelemetry {
   readonly speed: number;
   readonly throttle: number;
   readonly boostEnvelope: number;
+  /** Shared derived engine state from the vehicle rpm model. */
+  readonly rpm: number;
+  readonly upshiftCount: number;
+  readonly downshiftCount: number;
   readonly velocity: Readonly<{ x: number; y: number; z: number }>;
   readonly wheels: readonly AudioWheel[];
 }
@@ -41,9 +45,15 @@ export const MAX_AUDIO_VOICES = CONTINUOUS_VOICES + TRANSIENT_VOICES;
 export interface AudioMix {
   engineIdle: number;
   engineLoad: number;
-  engineRate: number;
+  /** Shared rpm from telemetry; audio no longer derives its own. */
+  engineRpm: number;
   /** Voice blend from the engineCharacter tuning: 0 even four, 1 muscle. */
   engineCharacter: number;
+  /** Live exhaust shape from tuning: pipe round trip (s), feedback 0..1,
+   * firing unevenness 0..1. */
+  exhaustSeconds: number;
+  exhaustFeedback: number;
+  firingUnevenness: number;
   readonly tyres: Float64Array;
   boost: number;
   rate: number;

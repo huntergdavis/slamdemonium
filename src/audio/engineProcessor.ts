@@ -4,6 +4,7 @@
 declare const sampleRate: number;
 declare abstract class AudioWorkletProcessor {
   readonly port: MessagePort;
+  constructor(options?: { processorOptions?: unknown });
   abstract process(
     inputs: Float32Array[][],
     outputs: Float32Array[][],
@@ -12,43 +13,48 @@ declare abstract class AudioWorkletProcessor {
 }
 declare function registerProcessor(
   name: string,
-  processor: new () => AudioWorkletProcessor,
+  processor: new (options?: {
+    processorOptions?: unknown;
+  }) => AudioWorkletProcessor,
 ): void;
+/** Engine identity handed over once at construction; see
+ * vehicle/engineProfile.ts, which this module cannot import because it runs
+ * in the worklet scope. Missing fields fall back to the default engine. */
+interface EngineOptions {
+  firingsPerRevolution?: number;
+  firingStrength?: readonly number[];
+  firingGap?: readonly number[];
+  pipeLossHz?: number;
+  mufflerSeconds?: number;
+  mufflerFeedback?: number;
+  mufflerLossHz?: number;
+}
 
 const ENGINE_PROCESSOR = 'slamdemonium-engine';
-/** Firing events per crank revolution for a four-stroke four. */
-const FIRINGS_PER_REV = 2;
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 /** Two voices, blended by `character`. 0 is the even four-cylinder through
  * resonant band-pass filters. 1 is the muscle voice through an exhaust PIPE:
  * a delay-line waveguide with inverting reflection at the open tailpipe and
  * lowpass radiation loss, plus a shorter muffler section. Each pulse then
  * interferes with reflections of the pulses before it, and that interference
- * shifts as the firing spacing sweeps against the fixed pipe delay, which is
- * the chug a bank of filters cannot make: filters ring the same bells for
- * every pulse. The muscle pattern spans eight firings (two crank turns) with
- * crossplane-style paired pulses and long gaps; strengths swing 1 to 0.25 and
- * every pulse gets its own timing and amplitude jitter plus a slow wander. */
+ * shifts as the firing spacing sweeps against the pipe delay, which is the
+ * chug a bank of filters cannot make: filters ring the same bells for every
+ * pulse. The muscle firing pattern comes from the engine profile; the even
+ * voice is the fixed reference. */
 const PATTERN = 8;
 const STRENGTH_EVEN = new Float32Array([
   1, 0.78, 0.92, 0.7, 1, 0.78, 0.92, 0.7,
 ]);
-const STRENGTH_MUSCLE = new Float32Array([
-  1, 0.3, 0.85, 0.5, 0.7, 0.25, 0.45, 0.35,
-]);
 const GAP_EVEN = new Float32Array([1, 1, 1, 1, 1, 1, 1, 1]);
-const GAP_MUSCLE = new Float32Array([
-  1.4, 0.6, 1.25, 0.75, 1.1, 0.9, 1.35, 0.65,
-]);
-/** Exhaust round trip: about 1.5 m of pipe at 343 m/s, there and back. With
- * the inverting open end this resonates at odd multiples of 56 Hz. */
-const PIPE_SECONDS = 0.009;
-const PIPE_FEEDBACK = 0.72;
-const PIPE_LOSS_HZ = 1400;
-/** Muffler section: shorter, non-inverting, lossier. */
-const MUFFLER_SECONDS = 0.0031;
-const MUFFLER_FEEDBACK = 0.42;
-const MUFFLER_LOSS_HZ = 900;
+const DEFAULT_STRENGTH = [1, 0.3, 0.85, 0.5, 0.7, 0.25, 0.45, 0.35];
+const DEFAULT_GAP = [1.4, 0.6, 1.25, 0.75, 1.1, 0.9, 1.35, 0.65];
+const DEFAULT_FIRINGS_PER_REV = 2;
+const DEFAULT_PIPE_SECONDS = 0.009;
+const DEFAULT_PIPE_FEEDBACK = 0.72;
+const DEFAULT_PIPE_LOSS_HZ = 1400;
+const DEFAULT_MUFFLER_SECONDS = 0.0031;
+const DEFAULT_MUFFLER_FEEDBACK = 0.42;
+const DEFAULT_MUFFLER_LOSS_HZ = 900;
 const MAX_DELAY_SECONDS = 0.02;
 
 /** Constant-skirt band-pass biquad; `tune` recomputes coefficients (per block
@@ -80,21 +86,26 @@ class Resonator {
 }
 
 /** Feedback delay-line waveguide with a one-pole lowpass in the loop. The
- * buffer is allocated once at construction; `run` allocates nothing. */
+ * buffer is allocated once at construction; `run` allocates nothing and
+ * `tune` only rewrites two numbers. */
 class Pipe {
   private readonly buffer: Float32Array;
   private write = 0;
   private loss = 0;
-  private readonly delay: number;
+  private delay = 1;
+  private feedback = 0;
   private readonly lossCoefficient: number;
-  constructor(
-    seconds: number,
-    private readonly feedback: number,
-    lossHz: number,
-  ) {
+  constructor(seconds: number, feedback: number, lossHz: number) {
     this.buffer = new Float32Array(Math.ceil(MAX_DELAY_SECONDS * sampleRate));
-    this.delay = Math.min(this.buffer.length - 2, seconds * sampleRate);
     this.lossCoefficient = Math.min(0.99, (2 * Math.PI * lossHz) / sampleRate);
+    this.tune(seconds, feedback);
+  }
+  tune(seconds: number, feedback: number): void {
+    this.delay = Math.max(
+      1,
+      Math.min(this.buffer.length - 2, seconds * sampleRate),
+    );
+    this.feedback = feedback;
   }
   /** Returns the wave arriving at the far end, which is what radiates. */
   run(input: number): number {
@@ -137,6 +148,27 @@ class EngineProcessor extends AudioWorkletProcessor {
         maxValue: 1,
         automationRate: 'k-rate',
       },
+      {
+        name: 'pipeSeconds',
+        defaultValue: DEFAULT_PIPE_SECONDS,
+        minValue: 0.002,
+        maxValue: MAX_DELAY_SECONDS,
+        automationRate: 'k-rate',
+      },
+      {
+        name: 'pipeFeedback',
+        defaultValue: DEFAULT_PIPE_FEEDBACK,
+        minValue: 0,
+        maxValue: 0.95,
+        automationRate: 'k-rate',
+      },
+      {
+        name: 'unevenness',
+        defaultValue: 1,
+        minValue: 0,
+        maxValue: 1,
+        automationRate: 'k-rate',
+      },
     ] as const;
   }
   private phase = 0;
@@ -156,12 +188,35 @@ class EngineProcessor extends AudioWorkletProcessor {
   private readonly exhaust = new Resonator();
   private readonly body = new Resonator();
   private readonly rasp = new Resonator();
-  private readonly pipe = new Pipe(PIPE_SECONDS, -PIPE_FEEDBACK, PIPE_LOSS_HZ);
-  private readonly muffler = new Pipe(
-    MUFFLER_SECONDS,
-    MUFFLER_FEEDBACK,
-    MUFFLER_LOSS_HZ,
-  );
+  private readonly firingsPerRev: number;
+  private readonly strengthMuscle = new Float32Array(PATTERN);
+  private readonly gapMuscle = new Float32Array(PATTERN);
+  private readonly pipe: Pipe;
+  private readonly muffler: Pipe;
+  private pipeSeconds = -1;
+  private pipeFeedback = -1;
+
+  constructor(options?: { processorOptions?: unknown }) {
+    super(options);
+    const engine = (options?.processorOptions ?? {}) as EngineOptions;
+    this.firingsPerRev = engine.firingsPerRevolution ?? DEFAULT_FIRINGS_PER_REV;
+    const strength = engine.firingStrength ?? DEFAULT_STRENGTH;
+    const gap = engine.firingGap ?? DEFAULT_GAP;
+    for (let i = 0; i < PATTERN; i++) {
+      this.strengthMuscle[i] = strength[i % strength.length] ?? 1;
+      this.gapMuscle[i] = gap[i % gap.length] ?? 1;
+    }
+    this.pipe = new Pipe(
+      DEFAULT_PIPE_SECONDS,
+      -DEFAULT_PIPE_FEEDBACK,
+      engine.pipeLossHz ?? DEFAULT_PIPE_LOSS_HZ,
+    );
+    this.muffler = new Pipe(
+      engine.mufflerSeconds ?? DEFAULT_MUFFLER_SECONDS,
+      engine.mufflerFeedback ?? DEFAULT_MUFFLER_FEEDBACK,
+      engine.mufflerLossHz ?? DEFAULT_MUFFLER_LOSS_HZ,
+    );
+  }
 
   private random(): number {
     // xorshift32: deterministic, allocation free.
@@ -183,8 +238,20 @@ class EngineProcessor extends AudioWorkletProcessor {
     const rpm = parameters['rpm']?.[0] ?? 900;
     const load = parameters['load']?.[0] ?? 0;
     const c = parameters['character']?.[0] ?? 0;
+    const pipeSeconds = parameters['pipeSeconds']?.[0] ?? DEFAULT_PIPE_SECONDS;
+    const pipeFeedback =
+      parameters['pipeFeedback']?.[0] ?? DEFAULT_PIPE_FEEDBACK;
+    const u = parameters['unevenness']?.[0] ?? 1;
+    if (
+      pipeSeconds !== this.pipeSeconds ||
+      pipeFeedback !== this.pipeFeedback
+    ) {
+      this.pipe.tune(pipeSeconds, -pipeFeedback);
+      this.pipeSeconds = pipeSeconds;
+      this.pipeFeedback = pipeFeedback;
+    }
     const dt = 1 / sampleRate;
-    const firingHz = (rpm / 60) * FIRINGS_PER_REV;
+    const firingHz = (rpm / 60) * this.firingsPerRev;
     const useFilters = c < 1;
     const usePipe = c > 0;
     if (useFilters && (c !== this.tunedCharacter || rpm !== this.tunedRpm)) {
@@ -229,16 +296,17 @@ class EngineProcessor extends AudioWorkletProcessor {
         // Slow wander drifts across pulses so successive cycles differ.
         this.wander =
           this.wander * 0.8 + (this.random() - 0.5) * 0.5 * revWeight;
+        // Unevenness scales the muscle pattern's deviation from a regular
+        // train; zero is a perfectly even pulse train through the pipe.
+        const strengthMuscle =
+          1 + (this.strengthMuscle[this.cylinder]! - 1) * u;
+        const gapMuscle = 1 + (this.gapMuscle[this.cylinder]! - 1) * u;
         this.firingAmp =
-          lerp(
-            STRENGTH_EVEN[this.cylinder]!,
-            STRENGTH_MUSCLE[this.cylinder]!,
-            c,
-          ) *
+          lerp(STRENGTH_EVEN[this.cylinder]!, strengthMuscle, c) *
           (1 + ampJitter * (this.random() - 0.5)) *
           (1 + 0.3 * c * this.wander);
         this.nextGap =
-          lerp(GAP_EVEN[this.cylinder]!, GAP_MUSCLE[this.cylinder]!, c) *
+          lerp(GAP_EVEN[this.cylinder]!, gapMuscle, c) *
           (1 + timeJitter * (this.random() - 0.5) * 2);
       }
       this.sinceFiring += dt;
