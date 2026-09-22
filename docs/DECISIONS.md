@@ -18,6 +18,8 @@ Running log of technical decisions, spike results and changed defaults. New entr
 
 | 2026-09-20 | [F0: canonical tyre surfaces and diagnostic lifetime](#2026-09-20--f0-canonical-tyre-surfaces-and-diagnostic-lifetime) | Resolve registered contacts once, preserve physical grounding and global grip, and keep disposed-world diagnostics visibly invalid. |
 
+| 2026-09-22 | [Five virtual gears and presentation-only gear count](#2026-09-22--five-virtual-gears-and-presentation-only-gear-count) | Ship five derived gears with 1.6 spacing; expose integer 3–8 gear count tuning without changing acceleration or braking. |
+
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
 ## 2026-09-20 — WP0: minimal browser scaffold and reproducible tooling
@@ -463,4 +465,23 @@ The existing 36,000-step heap regression retains its workload and thresholds.
 
 ## Derived rpm and virtual gears are presentation state (2026-09-21)
 
-The engine note, and now the tachometer, need rpm and gears, but design 6.7.1 keeps a single automatic gear and the tuned acceleration and braking figures are the CTO's baseline. Decision: `src/vehicle/rpmModel.ts` computes rpm, a five-speed virtual gear and monotonic shift counters at the end of `Vehicle.postStep` from speed, throttle and boost, and writes them to telemetry (`rpm`, `gear`, `gearCount`, `idleRpm`, `redlineRpm`, `upshiftCount`, `downshiftCount`). The drivetrain, controls and forces never read them. Engine identity is data in `src/vehicle/engineProfile.ts` (`DEFAULT_ENGINE`): idle, redline and boost rpm, gear count and spacing, shift thresholds, firing pattern and exhaust pipe constants, so another car is another profile consumed by the same model, worklet and gauge. Shape a tuner adjusts by ear is in the tuning schema instead: `engineCharacter`, `engineRevLift`, `exhaustLength`, `exhaustFeedback`, `firingUnevenness`, and since 2026-09-22 `engineLevel` (engine layer multiplier) and `gearSpacing` (ratio between virtual gears; gear count stays profile data because ratio alone sets how long a gear lasts). Gear spacing crossed the identity line deliberately: the CTO tunes gearing by ear the way he tuned the voice, and a PR per adjustment was the expensive option. Shift events are counters, not one-step flags, so a 30 Hz HUD misses none of them. The vehicle integration regressions (100 km/h in 2.2083 s, 55 m/s in 6.75 s, 72.399 m stop, seeded state hash) are the proof that the car drives exactly as before.
+The engine note, and now the tachometer, need rpm and gears, but design 6.7.1 keeps a single automatic physical gear and the tuned acceleration and braking figures are the CTO's baseline. Decision: `src/vehicle/rpmModel.ts` computes rpm, virtual gears and monotonic shift counters at the end of `Vehicle.postStep` from speed, throttle and boost, and writes them to telemetry (`rpm`, `gear`, `gearCount`, `idleRpm`, `redlineRpm`, `upshiftCount`, `downshiftCount`). The drivetrain, controls and forces never read them. Engine identity is data in `src/vehicle/engineProfile.ts` (`DEFAULT_ENGINE`): idle, redline and boost rpm, gear count and spacing, shift thresholds, firing pattern and exhaust pipe constants, so another car is another profile consumed by the same model, worklet and gauge. Shape a tuner adjusts by ear is in the tuning schema instead: `engineCharacter`, `engineRevLift`, `exhaustLength`, `exhaustFeedback`, `firingUnevenness`, `engineLevel` (engine layer multiplier), `gearSpacing` (ratio between virtual gears) and `gearCount` (number of virtual gears). Gear spacing and count are presentation controls: the CTO tunes gearing by ear the way he tuned the voice, and the physical force model never reads them. Shift events are counters, not one-step flags, so a 30 Hz HUD misses none of them. The vehicle integration regressions (100 km/h in 2.2083 s, 55 m/s in 6.75 s, 72.399 m stop, seeded state hash) are the proof that the car drives exactly as before.
+
+## 2026-09-22 — Five virtual gears and presentation-only gear count
+
+On 2026-09-22 the CTO tuned the deployed audio by ear and supplied these new
+defaults: `engineRevLift` 2800 rpm, `exhaustLength` 1.3 m,
+`exhaustFeedback` 0.76, `firingUnevenness` 0.7, and `engineLevel` 1.45.
+Ship those values verbatim. His `gearSpacing` export was 2.5, the slider
+maximum, but that makes the upper gears unreachable; do not ship it. The
+four-gear presentation was too sparse, so ship five derived virtual gears,
+`firstGearSpeed` 12 m/s and `gearSpacing` 1.6. The thresholds are approximately
+12, 19.2, 30.7 and 49.2 m/s, so fifth gear covers 49.2–60 m/s without boost
+and remains useful through 85 m/s with boost. Expose `gearCount` in the Audio group as an integer 3–8
+presentation slider alongside `gearSpacing`, `engineRevLift` and the other
+audio controls. Both sliders are consumed only by `RpmModel`; the physical
+drivetrain, acceleration and braking do not read them. Clamp the effective
+spacing from `gearCount`, `firstGearSpeed` and top speed so every slider position
+has a reachable top gear; the usable spacing range depends on gear count and
+top speed and is derived rather than hard-coded. The existing integration baselines remain the guard:
+2.2083 s to 100 km/h and 72.399 m braking distance.

@@ -556,6 +556,8 @@ export class Vehicle {
       t.get('engineRevLift'),
       s,
       t.get('gearSpacing'),
+      t.get('gearCount'),
+      t.get('topSpeed'),
     );
   }
   postStep(dt: number): void {

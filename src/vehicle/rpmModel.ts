@@ -1,4 +1,4 @@
-import type { EngineProfile } from './engineProfile';
+import { GEAR_TOP_SPEED_HEADROOM, type EngineProfile } from './engineProfile';
 
 /** The authoritative engine state every consumer reads. Derived after
  * physics from speed, throttle and boost; nothing here feeds back into the
@@ -60,7 +60,8 @@ export class RpmModel {
 
   /** speed in m/s (sign ignored: reverse keeps first gear), throttle and
    * boost 0..1, revLiftRpm the tunable throttle lift in rpm, gearRatio the
-   * tunable spacing between virtual gears (falls back to the profile). */
+   * tunable spacing between virtual gears and gearCount the presentation-only
+   * virtual gear count (both fall back to the profile). */
   step(
     dt: number,
     speed: number,
@@ -69,15 +70,31 @@ export class RpmModel {
     revLiftRpm: number,
     state: EngineState,
     gearRatio = this.profile.gearRatio,
+    gearCount = this.profile.gearCount,
+    topSpeed = Infinity,
   ): void {
     const p = this.profile;
-    const ratio = Math.max(1.01, gearRatio);
+    const count = Number.isFinite(gearCount)
+      ? Math.max(3, Math.min(8, Math.trunc(gearCount)))
+      : p.gearCount;
+    const requestedRatio = Number.isFinite(gearRatio)
+      ? Math.max(1.01, gearRatio)
+      : p.gearRatio;
+    const maxRatio =
+      topSpeed > p.firstGearSpeed
+        ? Math.pow(
+            (topSpeed * GEAR_TOP_SPEED_HEADROOM) / p.firstGearSpeed,
+            1 / Math.max(1, count - 2),
+          ) * (1 - 1e-9)
+        : 1.01;
+    const ratio = Math.min(requestedRatio, Math.max(1.01, maxRatio));
     const v = Math.abs(speed);
+    this.gear = Math.min(this.gear, count - 1);
     this.shiftCut = Math.max(0, this.shiftCut - dt);
     this.shiftCooldown = Math.max(0, this.shiftCooldown - dt);
     if (this.shiftCooldown === 0) {
-      const top = p.gearCount - 1;
-      if (this.gear < top && v > this.upSpeed(this.gear, ratio)) {
+      const top = count - 1;
+      if (this.gear < top && v >= this.upSpeed(this.gear, ratio)) {
         this.gear++;
         state.upshiftCount++;
         this.beginShift();
@@ -111,7 +128,7 @@ export class RpmModel {
     state.gear = this.gear + 1;
     // Identity is republished every step so a consumer never reads zeros
     // before the first respawn.
-    state.gearCount = p.gearCount;
+    state.gearCount = count;
     state.idleRpm = p.idleRpm;
     state.redlineRpm = p.redlineRpm;
   }
