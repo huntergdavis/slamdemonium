@@ -58,12 +58,16 @@ vi.mock('howler', () => ({
   },
 }));
 import { HowlerOutput } from '../src/audio/howlerOutput';
+import { DEFAULT_ENGINE } from '../src/vehicle/engineProfile';
 import type { AudioMix } from '../src/audio/types';
 const mix: AudioMix = {
   engineIdle: 0.2,
   engineLoad: 0.3,
-  engineRate: 1,
+  engineRpm: 3000,
   engineCharacter: 1,
+  exhaustSeconds: 0.009,
+  exhaustFeedback: 0.72,
+  firingUnevenness: 1,
   tyres: new Float64Array([0.2, 0, 0]),
   boost: 0,
   rate: 1,
@@ -73,7 +77,7 @@ async function ready() {
   harness.sounds.length = 0;
   harness.running = false;
   harness.muted = false;
-  const output = new HowlerOutput();
+  const output = new HowlerOutput(DEFAULT_ENGINE);
   for (const sound of harness.sounds) sound.options.onload?.(0);
   output.unlock();
   await Promise.resolve();
@@ -86,7 +90,7 @@ describe('bounded Web Audio output', () => {
   it('does not play before gesture even when browser autoplay policy permits it', () => {
     harness.sounds.length = 0;
     harness.running = true;
-    const output = new HowlerOutput();
+    const output = new HowlerOutput(DEFAULT_ENGINE);
     for (const sound of harness.sounds) sound.options.onload?.(0);
     output.apply(mix);
     expect(output.state.status).toBe('locked');

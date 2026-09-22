@@ -5,6 +5,7 @@ import boostAttack from '../../assets/audio/boost-attack.ogg?url&no-inline';
 import impactAsphalt from '../../assets/audio/impact-asphalt.ogg?url&no-inline';
 import impactKerb from '../../assets/audio/impact-kerb.ogg?url&no-inline';
 import impactConcrete from '../../assets/audio/impact-concrete.ogg?url&no-inline';
+import type { EngineProfile } from '../vehicle/engineProfile';
 import { EngineSynth } from './engineSynth';
 import { CONTINUOUS_VOICES, TRANSIENT_VOICES } from './types';
 import type {
@@ -16,12 +17,6 @@ import type {
 
 const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 const pitch = (value: number): number => Math.max(0.5, Math.min(4, value));
-/** Synthetic RPM from the director's speed/throttle/boost note: idle 900,
- * about 7100 at the throttle ceiling of 2.8 and about 8600 at the boost
- * ceiling of 3.3. Both voices share it; rumble comes from unevenness at
- * speed, not from a slower cycle. Slow motion scales it like a rate. */
-const engineRpm = (engineRate: number, rate: number): number =>
-  rate * (900 + Math.max(0, engineRate - 0.65) * 2900);
 const ENGINE_GAIN = 1.5;
 /** Howler loops plus the engine worklet module. */
 const LOADABLE = 9;
@@ -40,7 +35,7 @@ export class HowlerOutput implements AudioOutput {
   /** Continuous Howl loops: asphalt, kerb, concrete tyre, boost sustain. The
    * engine is the procedural worklet voice, not a sample. */
   private readonly loops: Howl[] = [];
-  private engine: EngineSynth | null = null;
+  private synth: EngineSynth | null = null;
   private readonly effects: Howl[] = [];
   private readonly loopIds = new Float64Array(LOOP_VOICES).fill(-1);
   private readonly slotIds = new Float64Array(TRANSIENT_VOICES).fill(-1);
@@ -58,7 +53,7 @@ export class HowlerOutput implements AudioOutput {
   private muted = false;
   private fadeTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor() {
+  constructor(engine: EngineProfile) {
     for (const url of [tyre, tyre, tyre, boostLoop])
       this.loops.push(this.sound(url, true));
     for (const url of [impactAsphalt, impactKerb, impactConcrete, boostAttack])
@@ -70,7 +65,7 @@ export class HowlerOutput implements AudioOutput {
     }
     Howler.ctx.addEventListener('statechange', this.refresh);
     // Routed through Howler's master gain so master mute covers the engine.
-    this.engine = new EngineSynth(Howler.ctx, Howler.masterGain, () => {
+    this.synth = new EngineSynth(Howler.ctx, Howler.masterGain, engine, () => {
       this.loaded++;
       this.refresh();
     });
@@ -104,11 +99,14 @@ export class HowlerOutput implements AudioOutput {
       this.volumes.fill(-1);
     }
     if (mix.volume === 0) this.stopTransients();
-    this.engine?.apply(
+    this.synth?.apply(
       clamp((mix.engineIdle + mix.engineLoad) * mix.volume * ENGINE_GAIN),
-      engineRpm(mix.engineRate, mix.rate),
-      clamp(mix.engineLoad / 0.34),
+      mix.engineRpm * mix.rate,
+      clamp(mix.engineLoad / 0.4),
       clamp(mix.engineCharacter),
+      mix.exhaustSeconds,
+      clamp(mix.exhaustFeedback),
+      clamp(mix.firingUnevenness),
     );
     for (let index = 0; index < LOOP_VOICES; index++) {
       const howl = this.loops[index]!;
@@ -153,7 +151,7 @@ export class HowlerOutput implements AudioOutput {
     if (this.disposed || this.paused) return;
     this.paused = true;
     const duration = Math.max(0, fadeMs);
-    this.engine?.fade(duration);
+    this.synth?.fade(duration);
     for (let index = 0; index < this.loops.length; index++) {
       const id = this.loopIds[index]!;
       if (id >= 0 && this.volumes[index]! > 0)
@@ -182,7 +180,7 @@ export class HowlerOutput implements AudioOutput {
   reset(): void {
     this.clearFadeTimer();
     this.stopTransients();
-    this.engine?.reset();
+    this.synth?.reset();
     for (let index = 0; index < this.loops.length; index++) {
       if (this.loopIds[index]! >= 0)
         this.loops[index]!.volume(0, this.loopIds[index]!);
@@ -194,8 +192,8 @@ export class HowlerOutput implements AudioOutput {
     this.disposed = true;
     this.reset();
     Howler.ctx?.removeEventListener('statechange', this.refresh);
-    this.engine?.dispose();
-    this.engine = null;
+    this.synth?.dispose();
+    this.synth = null;
     for (const sound of this.loops) sound.unload();
     for (const sound of this.effects) sound.unload();
     this.loopIds.fill(-1);
@@ -290,7 +288,7 @@ export class HowlerOutput implements AudioOutput {
     this.countVoices();
   }
   private countVoices(): void {
-    let count = this.engine?.active && this.state.status === 'ready' ? 1 : 0;
+    let count = this.synth?.active && this.state.status === 'ready' ? 1 : 0;
     for (let index = 0; index < LOOP_VOICES; index++)
       if (this.loopIds[index]! >= 0) count++;
     for (let index = 0; index < TRANSIENT_VOICES; index++)
