@@ -476,6 +476,22 @@ export class Hud {
   }
 
   private updateTachometer(telemetry: HudTelemetry): void {
+    if (
+      telemetry.idleRpm <= 0 ||
+      telemetry.redlineRpm <= 0 ||
+      telemetry.gearCount <= 0
+    ) {
+      this.tachometer.dataset.state = 'unavailable';
+      this.tachometer.dataset.shift = 'none';
+      this.tachTrack.style.setProperty('--sl-tach-position', '0%');
+      this.tachTrack.style.setProperty('--sl-tach-redline', '100%');
+      this.tachometer.removeAttribute('aria-valuenow');
+      this.tachometer.removeAttribute('aria-valuemin');
+      this.tachometer.removeAttribute('aria-valuemax');
+      this.set('tachGear', '—');
+      this.set('tachRpm', '— rpm');
+      return;
+    }
     const reverse = telemetry.vLong < -0.1;
     this.set(
       'tachGear',
