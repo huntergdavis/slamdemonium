@@ -48,18 +48,37 @@ export interface EngineProfile {
   readonly mufflerLossHz: number;
 }
 
+/** Largest spacing whose final upshift can still occur before top speed. */
+export const GEAR_TOP_SPEED_HEADROOM = 0.97;
+
+export function maxGearSpacing(
+  gearCount: number,
+  firstGearSpeed: number,
+  topSpeed: number,
+  step = 0.05,
+): number {
+  const exponent = Math.max(1, Math.trunc(gearCount) - 2);
+  const raw = Math.pow(
+    (Math.max(1.01, topSpeed) * GEAR_TOP_SPEED_HEADROOM) /
+      Math.max(0.01, firstGearSpeed),
+    1 / exponent,
+  );
+  return Number(
+    Math.max(step, Math.floor(raw / step + 1e-9) * step).toFixed(12),
+  );
+}
+
 export const DEFAULT_ENGINE: EngineProfile = {
   idleRpm: 900,
   shiftRpm: 6850,
   redlineRpm: 7135,
   boostRpm: 8585,
-  // Four gears spaced 1.8 apart: upshifts at 12, 21.6 and 38.9 m/s, so each
-  // gear lasts long enough to hear the note climb (about 1, 1, 2 seconds and
-  // then top gear to top speed without pinning). Five gears at 1.5 blurred
-  // past: gear four by 117 km/h within five seconds of a standing start.
+  // Five gears spaced 1.6 apart: upshifts at about 12, 19.2, 30.7 and
+  // 49.2 m/s, leaving fifth gear to cover the rest of the 60 m/s top-speed
+  // range. This keeps the fast-feeling racer from shifting frantically.
   firstGearSpeed: 12,
-  gearRatio: 1.8,
-  gearCount: 4,
+  gearRatio: 1.6,
+  gearCount: 5,
   downshiftHysteresis: 0.8,
   shiftCooldownSeconds: 0.4,
   shiftCutSeconds: 0.15,

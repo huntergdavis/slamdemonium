@@ -106,6 +106,25 @@ describe('derived rpm model', () => {
     const wide = shiftSpeed(2.5);
     expect(tight).toBeLessThan(shipped);
     expect(shipped).toBeLessThan(wide);
-    expect(shipped).toBeCloseTo(12 * DEFAULT_ENGINE.gearRatio, 0);
+    expect(shipped).toBeCloseTo(
+      DEFAULT_ENGINE.firstGearSpeed * DEFAULT_ENGINE.gearRatio,
+      0,
+    );
+  });
+
+  it('clamps gear count and spacing so every virtual top gear is reachable', () => {
+    const { model, state } = fresh();
+    for (let step = 1; step <= 2400; step++)
+      model.step(DT, (step / 2400) * 60, 1, 0, LIFT, state, 2.5, 5, 60);
+    expect(state.gear).toBe(5);
+    expect(state.gearCount).toBe(5);
+    model.reset(state);
+    for (let step = 1; step <= 2400; step++)
+      model.step(DT, (step / 2400) * 60, 1, 0, LIFT, state, 1.4, 3, 60);
+    expect(state.gearCount).toBe(3);
+    expect(state.gear).toBe(3);
+    model.step(DT, 60, 1, 0, LIFT, state, 1.4, 99, 60);
+    expect(state.gearCount).toBe(8);
+    expect(state.gear).toBeLessThanOrEqual(8);
   });
 });

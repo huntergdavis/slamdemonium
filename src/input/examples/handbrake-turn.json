@@ -90,12 +90,13 @@
     "hapticsIntensity": 0.35,
     "sfxVolume": 0.7,
     "engineCharacter": 1,
-    "engineRevLift": 1740,
-    "exhaustLength": 1.54,
-    "exhaustFeedback": 0.72,
-    "firingUnevenness": 1,
-    "engineLevel": 1,
-    "gearSpacing": 1.8
+    "engineRevLift": 2800,
+    "exhaustLength": 1.3,
+    "exhaustFeedback": 0.76,
+    "firingUnevenness": 0.7,
+    "engineLevel": 1.45,
+    "gearSpacing": 1.6,
+    "gearCount": 5
   },
   "durationSteps": 420,
   "frames": [
