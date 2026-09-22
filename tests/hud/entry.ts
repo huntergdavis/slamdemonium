@@ -24,6 +24,13 @@ telemetry.groundedWheels = 3;
 telemetry.charging = true;
 telemetry.physicsStepMs = 0.42;
 telemetry.stepsPerFrame = 2;
+telemetry.rpm = 6200;
+telemetry.gear = 1;
+telemetry.gearCount = 5;
+telemetry.idleRpm = 900;
+telemetry.redlineRpm = 7000;
+telemetry.upshiftCount = 0;
+telemetry.downshiftCount = 0;
 telemetry.lateralAcceleration = 13;
 telemetry.longitudinalAcceleration = 4;
 for (const wheel of telemetry.wheels) {

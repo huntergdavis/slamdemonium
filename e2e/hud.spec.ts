@@ -184,6 +184,56 @@ test('instruments preserve nodes, units, thresholds, state text and the FOV cap'
   await expect(page.locator('[data-reading="slot"]')).toHaveText('B ACTIVE');
 });
 
+test('tachometer reads RPM, marks redline, and reacts to upshifts without rebuilding', async ({
+  hudPage: page,
+}) => {
+  await expect(page.locator('[data-reading="tachGear"]')).toHaveText('G1');
+  await expect(page.locator('[data-reading="tachRpm"]')).toHaveText('6200 rpm');
+  await expect(page.locator('.sl-tachometer')).toHaveAttribute(
+    'data-state',
+    'normal',
+  );
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    api.telemetry.gear = 2;
+    api.telemetry.rpm = 4800;
+    api.telemetry.upshiftCount = 1;
+    api.advance();
+  });
+  await expect(page.locator('[data-reading="tachGear"]')).toHaveText('G2');
+  await expect(page.locator('[data-reading="tachRpm"]')).toHaveText('4800 rpm');
+  await expect(page.locator('.sl-tachometer')).toHaveAttribute(
+    'data-shift',
+    'up',
+  );
+  await expect(page.locator('.sl-tachometer')).toHaveAttribute(
+    'data-state',
+    'normal',
+  );
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    api.telemetry.vLong = -2;
+    api.telemetry.gear = 1;
+    api.telemetry.rpm = 1000;
+    api.advance();
+  });
+  await expect(page.locator('[data-reading="tachGear"]')).toHaveText('R');
+  await expect(page.locator('.sl-tachometer')).toHaveAttribute(
+    'data-state',
+    'normal',
+  );
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    api.telemetry.vLong = 0;
+    api.telemetry.rpm = 7100;
+    api.advance();
+  });
+  await expect(page.locator('.sl-tachometer')).toHaveAttribute(
+    'data-state',
+    'redline',
+  );
+});
+
 test('gates both getters before reading, cycles H, and keeps recording independent of HUD visibility', async ({
   hudPage: page,
 }) => {

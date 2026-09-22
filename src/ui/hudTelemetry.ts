@@ -25,6 +25,13 @@ export type HudTelemetry = Readonly<
     | 'groundedWheels'
     | 'physicsStepMs'
     | 'stepsPerFrame'
+    | 'rpm'
+    | 'gear'
+    | 'gearCount'
+    | 'idleRpm'
+    | 'redlineRpm'
+    | 'upshiftCount'
+    | 'downshiftCount'
   >
 > & {
   readonly wheels: readonly Readonly<
