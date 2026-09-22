@@ -63,6 +63,7 @@ const mix: AudioMix = {
   engineIdle: 0.2,
   engineLoad: 0.3,
   engineRate: 1,
+  engineCharacter: 1,
   tyres: new Float64Array([0.2, 0, 0]),
   boost: 0,
   rate: 1,
@@ -92,27 +93,28 @@ describe('bounded Web Audio output', () => {
     expect(harness.sounds.every((sound) => sound.live.size === 0)).toBe(true);
     output.dispose();
   });
-  it('caps overlapping continuous, impact and boost voices at sixteen and recycles completed slots', async () => {
+  it('caps overlapping continuous, impact and boost voices at the fifteen-voice limit and recycles completed slots', async () => {
     const output = await ready();
-    expect(output.state.activeVoices).toBe(6);
+    // The mocked context has no AudioWorklet, so the engine voice is absent.
+    expect(output.state.activeVoices).toBe(4);
     for (let index = 0; index < 100; index++) {
       if (index % 2) output.playBoostAttack(0.5, 1);
       else output.playImpact('concrete', 0.7, 1);
     }
     expect(output.state).toMatchObject({
-      activeVoices: 16,
-      peakVoices: 16,
+      activeVoices: 14,
+      peakVoices: 14,
       droppedVoices: 90,
     });
     expect(
       harness.sounds.reduce((sum, sound) => sum + sound.live.size, 0),
-    ).toBe(16);
-    const sound = harness.sounds[8]!;
+    ).toBe(14);
+    const sound = harness.sounds[6]!;
     const id = [...sound.live][0]!;
     sound.live.delete(id);
     sound.options.onend?.(id);
     expect(output.playImpact('kerb', 0.4, 1)).toBe(true);
-    expect(output.state.activeVoices).toBe(16);
+    expect(output.state.activeVoices).toBe(14);
     output.dispose();
     expect(harness.sounds.every((item) => item.live.size === 0)).toBe(true);
   });
@@ -128,12 +130,12 @@ describe('bounded Web Audio output', () => {
     ).toBe(true);
     expect(output.playBoostAttack(0.5, 1)).toBe(false);
     output.apply(mix); // Resume before the old fade completion callback.
-    expect(output.state.activeVoices).toBe(6);
+    expect(output.state.activeVoices).toBe(4);
     expect(output.playBoostAttack(0.5, 1)).toBe(true);
     vi.advanceTimersByTime(50);
-    expect(output.state.activeVoices).toBe(7); // Old pause cannot kill the new attack.
+    expect(output.state.activeVoices).toBe(5); // Old pause cannot kill the new attack.
     output.apply({ ...mix, volume: 0 });
-    expect(output.state.activeVoices).toBe(6);
+    expect(output.state.activeVoices).toBe(4);
     output.setMasterMuted(true);
     expect(harness.muted).toBe(true);
     expect(output.playImpact('asphalt', 1, 1)).toBe(false);

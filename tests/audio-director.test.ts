@@ -225,4 +225,55 @@ describe('audio stays outside simulation', () => {
     expect(settings.persistenceAvailable).toBe(true);
     expect(settings.masterMuted).toBe(false);
   });
+
+  it('shifts an audio-only virtual gearbox: the note drops on upshifts while accelerating, stays under the ceiling without boost, and blips on downshift', () => {
+    const r = setup();
+    r.telemetry.speed = 0;
+    r.telemetry.throttle = 1;
+    r.director.update(0);
+    let drops = 0;
+    let previous = 0;
+    let peak = 0;
+    for (let frame = 1; frame <= 600; frame++) {
+      r.telemetry.speed = (frame / 600) * 60; // 0 to 60 m/s in ten seconds
+      r.director.afterStep(1 / 60);
+      r.director.update(frame * (1000 / 60));
+      const note = r.mixes.at(-1)!.engineRate;
+      if (previous - note > 0.02) drops++;
+      previous = note;
+      peak = Math.max(peak, note);
+    }
+    // Four upshifts, each a run of falling frames while speed only rises.
+    expect(drops).toBeGreaterThanOrEqual(12);
+    expect(peak).toBeLessThanOrEqual(2.8 + 1e-9);
+    expect(previous).toBeGreaterThan(2.6); // Fifth gear near the ceiling.
+    let rises = 0;
+    for (let frame = 601; frame <= 1200; frame++) {
+      r.telemetry.speed = ((1200 - frame) / 600) * 60;
+      r.telemetry.throttle = 0;
+      r.director.afterStep(1 / 60);
+      r.director.update(frame * (1000 / 60));
+      const note = r.mixes.at(-1)!.engineRate;
+      if (note - previous > 0.02) rises++;
+      previous = note;
+    }
+    expect(rises).toBeGreaterThanOrEqual(4); // Downshift blips while slowing.
+    r.director.reset();
+    // Stamping the throttle at a standstill lifts note and level within 50 ms.
+    r.telemetry.speed = 0;
+    r.telemetry.throttle = 0;
+    for (let frame = 0; frame < 30; frame++) {
+      r.director.afterStep(1 / 60);
+      r.director.update(30000 + frame * (1000 / 60));
+    }
+    const idle = r.mixes.at(-1)!;
+    r.telemetry.throttle = 1;
+    for (let frame = 30; frame < 33; frame++) {
+      r.director.afterStep(1 / 60);
+      r.director.update(30000 + frame * (1000 / 60));
+    }
+    const stamped = r.mixes.at(-1)!;
+    expect(stamped.engineRate - idle.engineRate).toBeGreaterThan(0.15);
+    expect(stamped.engineLoad).toBeGreaterThan(idle.engineLoad + 0.2);
+  });
 });

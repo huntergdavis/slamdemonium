@@ -125,6 +125,18 @@ describe('production import reachability', () => {
     expect(result.unreachable).toEqual(['src/feature.ts']);
   });
 
+  it('follows Vite worker queries on code modules, such as an AudioWorklet script', () => {
+    const root = fixture({
+      'src/main.ts':
+        "import processorUrl from './processor.ts?worker&url'; import Worker from './worker?worker'; console.log(processorUrl, Worker);",
+      'src/processor.ts': 'export const processor = 1;',
+      'src/worker.ts': 'export const worker = 1;',
+    });
+    const result = checkReachability(root);
+    expect(result.errors).toEqual([]);
+    expect(result.unreachable).toEqual([]);
+  });
+
   it('fails closed with a source location for a computed dynamic import', () => {
     const root = fixture({
       'src/main.ts': "const target = './feature';\nimport(target);",

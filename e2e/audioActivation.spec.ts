@@ -136,7 +136,7 @@ test('controller-only play visibly explains locked sound; only a real click or k
     .toBe('ready');
   await expect(page.locator('.sl-audio-unlock')).toBeHidden();
   await expect.poll(() => rms(page)).toBeGreaterThan(0.0001);
-  expect(decodedFiles.size).toBe(7);
-  expect((await state(page)).output.peakVoices).toBeLessThanOrEqual(16);
+  expect(decodedFiles.size).toBe(6); // No engine sample: the engine is a worklet voice.
+  expect((await state(page)).output.peakVoices).toBeLessThanOrEqual(15);
   await cdp.detach();
 });

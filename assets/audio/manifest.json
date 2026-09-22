@@ -3,13 +3,6 @@
   "conversionTool": "ffmpeg version 8.0.1-3ubuntu2 Copyright (c) 2000-2025 the FFmpeg developers",
   "sources": [
     {
-      "file": "engine.wav",
-      "url": "https://opengameart.org/sites/default/files/loop_0.wav",
-      "fetchedAt": "2026-09-21T05:13:40.130176+00:00",
-      "sha256": "69d74b106509037ce547429e4c3f9ae906b0fffe88d0bb8b3b5a8b0cfc239048",
-      "bytes": 76332
-    },
-    {
       "file": "tyre.wav",
       "url": "https://opengameart.org/sites/default/files/tires_squal_loop.wav",
       "fetchedAt": "2026-09-21T05:13:40.554128+00:00",
@@ -25,34 +18,6 @@
     }
   ],
   "assets": [
-    {
-      "source": "engine.wav",
-      "sourcePage": "https://opengameart.org/content/racing-car-engine-sound-loops",
-      "title": "Racing car engine sound loops \u2014 loop_0",
-      "creators": ["domasx2"],
-      "license": "CC0-1.0",
-      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "file": "engine.ogg",
-      "sha256": "27964e981af604399b12a092e5137d99b4fff6fbbfcdc01b9bee4ab81fe65c81",
-      "bytes": 10476,
-      "durationSeconds": 0.864083,
-      "sampleRate": 48000,
-      "channels": 1,
-      "edits": "Resampled to mono 48 kHz; encoded as Ogg Vorbis quality 3; metadata removed; no trimming or normalization.",
-      "conversionArguments": [
-        "/tmp/slamdemonium-f1-audio/engine.wav",
-        "-map_metadata",
-        "-1",
-        "-ac",
-        "1",
-        "-ar",
-        "48000",
-        "-c:a",
-        "libvorbis",
-        "-q:a",
-        "3"
-      ]
-    },
     {
       "source": "tyre.wav",
       "sourcePage": "https://opengameart.org/content/car-tire-squeal-skid-loop",
@@ -229,5 +194,8 @@
         "3"
       ]
     }
+  ],
+  "notes": [
+    "engine.ogg (domasx2 loop_0) was removed: the engine is now a procedural AudioWorklet voice in src/audio/engineProcessor.ts, so no engine sample ships."
   ]
 }
