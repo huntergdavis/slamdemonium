@@ -234,6 +234,24 @@ test('tachometer reads RPM, marks redline, and reacts to upshifts without rebuil
   );
 });
 
+test('tachometer stays unavailable before engine identity is published', async ({
+  hudPage: page,
+}) => {
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    api.telemetry.idleRpm = 0;
+    api.telemetry.redlineRpm = 0;
+    api.telemetry.gearCount = 0;
+    api.advance();
+  });
+  await expect(page.locator('.sl-tachometer')).toHaveAttribute(
+    'data-state',
+    'unavailable',
+  );
+  await expect(page.locator('[data-reading="tachGear"]')).toHaveText('—');
+  await expect(page.locator('[data-reading="tachRpm"]')).toHaveText('— rpm');
+});
+
 test('gates both getters before reading, cycles H, and keeps recording independent of HUD visibility', async ({
   hudPage: page,
 }) => {

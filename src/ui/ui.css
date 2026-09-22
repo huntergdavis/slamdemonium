@@ -474,6 +474,9 @@
 .sl-tachometer[data-state='redline'] .sl-tachometer__needle {
   background: var(--sl-over-limit);
 }
+.sl-tachometer[data-state='unavailable'] {
+  opacity: 0.65;
+}
 .sl-tachometer[data-shift='up'] .sl-tachometer__needle {
   transition-duration: 140ms;
 }
