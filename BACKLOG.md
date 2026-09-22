@@ -27,10 +27,11 @@ Tag `v0.3.0` at `0665b52`. Shared surface definitions + full sound effects engin
 - [x] F0 (PR #68) | designer + developer 1 + developer 2 | Shared surface definitions. Ray hits carry `surfaceId` but grip uses one global `surfaceGrip`; resolve through ONE definition in content data before any grass/gravel. Do WITH F1.
 - [x] F1 (PR #69) | developer 2 + designer + developer 1 | Sound effects: `AudioDirector` consuming telemetry after simulation, synthetic engine note from speed/throttle, screech from real slip/load, boost layers, impact layer ready for breakables.
 
-### v0.4.0 — Gears and a voice — RELEASING
+### v0.4.0 — Gears and a voice — SHIPPED 2026-09-22
+Tag `v0.4.0` at `8a29b97`. Verified on the deployed build: five gears entered at 13.0, 19.8, 31.2 and 49.3 m/s, all seven audio defaults correct, zero failed requests.
 Virtual gearbox promoted to shared vehicle state feeding both audio and the tachometer, engine rebuilt on a delay-line exhaust waveguide, engine and gearing sliders, defaults tuned by ear on the deployed build.
 - [x] F7 (PRs #71-#79) | developer 1 + developer 2 | RPM system connected car to audio to tachometer. Auto-shift only, no manual gear selection. Gears are derived presentation state: nothing reads them back into the drivetrain.
-- [ ] F8 | developer 1 | Five gears at 1.6 spacing, CTO tuned audio defaults, and a ladder that cannot strand a gear above top speed. At spacing 2.5 with four gears the upshifts land at 12/30/75 m/s against a 60 m/s top speed, so top gear was unreachable and the CTO was driving three. Five at 1.6 from a 12 m/s first gear shifts at 12/19.2/30.7/49.2 m/s, all reachable, with a long top gear. Six at 1.5 was rejected: this is a fast-feeling racer but still a crash racer, so the acceleration curve must not be shift-frantic. Clamp the effective ratio and derive the spacing slider's maximum from the gear count.
+- [x] F8 (PR #81) | developer 1 | Five gears at 1.6 spacing, CTO tuned audio defaults, derived spacing cap and runtime ratio clamp so no gear can be stranded above top speed. `gearCount` is now a 3-8 presentation slider. Fifth gear starts at 49.2 m/s, which needs boost or a long straight on the current ring, so it will be heard far more once the bigger maps land.
 
 ### v0.5 — Something to hit
 - [ ] F5 | unassigned | Crash + retry loop: one smash route, light breakables, bounded debris, impact feel, scoring, instant retry. Contact impulse is nullable on our engine so severity must be estimated explicitly.
