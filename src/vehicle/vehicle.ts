@@ -15,6 +15,8 @@ import type {
 import { TuningStore } from '../tuning/store';
 import { DriftAssist, gripYawTorque } from './assists';
 import { DEG, VEHICLE_GEOMETRY as G } from './constants';
+import { DEFAULT_ENGINE } from './engineProfile';
+import { RpmModel } from './rpmModel';
 import { countersteerAngle, steeringLock, VehicleControls } from './controls';
 import {
   brakeForce,
@@ -73,6 +75,9 @@ export class Vehicle {
   private lock = 0;
   private meter = 0;
   private boostEnvelope = 0;
+  /** Derived rpm and virtual gear for presentation; reads telemetry, writes
+   * telemetry, never touches forces or controls. */
+  private readonly rpmModel = new RpmModel(DEFAULT_ENGINE);
 
   constructor(
     readonly world: IPhysicsWorld,
@@ -542,6 +547,15 @@ export class Vehicle {
     s.throttle = this.controls.throttle;
     s.brake = this.controls.brake;
     s.handbrake = this.controls.handbrake;
+    // Derived after everything physical is final for this step.
+    this.rpmModel.step(
+      dt,
+      s.vLong,
+      s.throttle,
+      s.boostEnvelope,
+      t.get('engineRevLift'),
+      s,
+    );
   }
   postStep(dt: number): void {
     this.readState();
@@ -632,6 +646,7 @@ export class Vehicle {
     }
     this.telemetry.longitudinalAcceleration =
       this.telemetry.lateralAcceleration = 0;
+    this.rpmModel.reset(this.telemetry);
     this.readState();
     this.previousVelocity.copy(this.telemetry.velocity);
   }

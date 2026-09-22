@@ -91,4 +91,14 @@ export class VehicleTelemetry {
   physicsHz = 120;
   timeScale = 1;
   recoveryCount = 0;
+  /** Derived engine state from the rpm model (see vehicle/rpmModel.ts):
+   * presentation only, never an input to the drivetrain. The shift counters
+   * are monotonic so any polling rate detects every shift by diffing. */
+  rpm = 0;
+  gear = 1;
+  gearCount = 1;
+  idleRpm = 0;
+  redlineRpm = 0;
+  upshiftCount = 0;
+  downshiftCount = 0;
 }
