@@ -66,7 +66,7 @@ describe('procedural engine voice', () => {
     const full = render(5000, 1, 1);
     for (const sample of [...idle.subarray(-4800), ...full.subarray(-4800)]) {
       expect(Number.isFinite(sample)).toBe(true);
-      expect(Math.abs(sample)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(sample)).toBeLessThanOrEqual(0.6); // Even-voice makeup gain.
     }
     expect(rms(idle.subarray(-24000))).toBeGreaterThan(0.02);
     expect(rms(full.subarray(-24000))).toBeGreaterThan(

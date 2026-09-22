@@ -52,9 +52,13 @@ export const DEFAULT_ENGINE: EngineProfile = {
   shiftRpm: 6850,
   redlineRpm: 7135,
   boostRpm: 8585,
-  firstGearSpeed: 8,
-  gearRatio: 1.5,
-  gearCount: 5,
+  // Four gears spaced 1.8 apart: upshifts at 12, 21.6 and 38.9 m/s, so each
+  // gear lasts long enough to hear the note climb (about 1, 1, 2 seconds and
+  // then top gear to top speed without pinning). Five gears at 1.5 blurred
+  // past: gear four by 117 km/h within five seconds of a standing start.
+  firstGearSpeed: 12,
+  gearRatio: 1.8,
+  gearCount: 4,
   downshiftHysteresis: 0.8,
   shiftCooldownSeconds: 0.4,
   shiftCutSeconds: 0.15,
