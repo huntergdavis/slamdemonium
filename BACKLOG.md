@@ -27,17 +27,22 @@ Tag `v0.3.0` at `0665b52`. Shared surface definitions + full sound effects engin
 - [x] F0 (PR #68) | designer + developer 1 + developer 2 | Shared surface definitions. Ray hits carry `surfaceId` but grip uses one global `surfaceGrip`; resolve through ONE definition in content data before any grass/gravel. Do WITH F1.
 - [x] F1 (PR #69) | developer 2 + designer + developer 1 | Sound effects: `AudioDirector` consuming telemetry after simulation, synthetic engine note from speed/throttle, screech from real slip/load, boost layers, impact layer ready for breakables.
 
-### v0.4 — Something to hit
+### v0.4.0 — Gears and a voice — RELEASING
+Virtual gearbox promoted to shared vehicle state feeding both audio and the tachometer, engine rebuilt on a delay-line exhaust waveguide, engine and gearing sliders, defaults tuned by ear on the deployed build.
+- [x] F7 (PRs #71-#79) | developer 1 + developer 2 | RPM system connected car to audio to tachometer. Auto-shift only, no manual gear selection. Gears are derived presentation state: nothing reads them back into the drivetrain.
+- [ ] F8 | developer 1 | Six gears, CTO tuned audio defaults, and a ladder that cannot strand a gear above top speed. At gear spacing 2.5 with four gears the upshifts land at 12/30/75 m/s against a 60 m/s top speed, so top gear was unreachable and the CTO was driving three gears. Clamp the effective ratio and derive the spacing slider's maximum from the gear count.
+
+### v0.5 — Something to hit
 - [ ] F5 | unassigned | Crash + retry loop: one smash route, light breakables, bounded debris, impact feel, scoring, instant retry. Contact impulse is nullable on our engine so severity must be estimated explicitly.
 
-### v0.5 — A reason to repeat
+### v0.6 — A reason to repeat
 - [ ] F6 | unassigned | Run loop: start, countdown, checkpoint validity, finish, personal best, retry. Non-colliding pose ghosts (~49 KiB/min), not a second simulated car. Version track/car/tuning/rules identity before trusting saved bests.
 
-### v0.6 — Music and metal
+### v0.7 — Music and metal
 - [ ] F2 | unassigned | Radio: play local mp3s the player selects, one stream at a time, metadata-only preload, independent music volume.
 - [ ] F3 | unassigned | One cel-shaded car from an existing CC0 kit, via a versioned `VehicleDefinition` shared by physics and visuals.
 
-### v0.7 — Bigger worlds
+### v0.8 — Bigger worlds
 - [ ] F4 | unassigned | Maps + in-game editor. HIGHEST ARCHITECTURAL RISK, do last. Versioned `TrackDefinition` with ONE compiler feeding render/collision/lap; quaternion shape descriptors and scoped body removal in the physics adapter; lap timing that does not assume a circle. Do NOT fork a second world builder.
 
 ## Release mechanism
