@@ -103,7 +103,12 @@ export class HowlerOutput implements AudioOutput {
     }
     if (mix.volume === 0) this.stopTransients();
     this.synth?.apply(
-      clamp((mix.engineIdle + mix.engineLoad) * mix.volume * ENGINE_GAIN),
+      clamp(
+        (mix.engineIdle + mix.engineLoad) *
+          mix.volume *
+          ENGINE_GAIN *
+          Math.max(0, mix.engineLevel),
+      ),
       mix.engineRpm * mix.rate,
       clamp(mix.engineLoad / 0.4),
       clamp(mix.engineCharacter),

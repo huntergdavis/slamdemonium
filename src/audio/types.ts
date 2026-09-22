@@ -47,6 +47,8 @@ export interface AudioMix {
   engineLoad: number;
   /** Shared rpm from telemetry; audio no longer derives its own. */
   engineRpm: number;
+  /** Engine layer multiplier from the engineLevel tuning; 1 is the shipped mix. */
+  engineLevel: number;
   /** Voice blend from the engineCharacter tuning: 0 even four, 1 muscle. */
   engineCharacter: number;
   /** Live exhaust shape from tuning: pipe round trip (s), feedback 0..1,

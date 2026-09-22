@@ -90,4 +90,22 @@ describe('derived rpm model', () => {
     expect(state.upshiftCount).toBe(0);
     expect(state.rpm).toBeGreaterThan(DEFAULT_ENGINE.idleRpm + 1000);
   });
+
+  it('shifts sooner with tighter live gear spacing and later with wider, on the same speed ramp', () => {
+    const shiftSpeed = (ratio: number): number => {
+      const { model, state } = fresh();
+      for (let step = 1; step <= 2400; step++) {
+        const speed = (step / 2400) * 60;
+        model.step(DT, speed, 1, 0, LIFT, state, ratio);
+        if (state.upshiftCount === 2) return speed;
+      }
+      return Infinity;
+    };
+    const tight = shiftSpeed(1.3);
+    const shipped = shiftSpeed(DEFAULT_ENGINE.gearRatio);
+    const wide = shiftSpeed(2.5);
+    expect(tight).toBeLessThan(shipped);
+    expect(shipped).toBeLessThan(wide);
+    expect(shipped).toBeCloseTo(12 * DEFAULT_ENGINE.gearRatio, 0);
+  });
 });

@@ -51,6 +51,7 @@ export class AudioDirector {
     engineIdle: 0,
     engineLoad: 0,
     engineRpm: 900,
+    engineLevel: 1,
     engineCharacter: 1,
     exhaustSeconds: 0.009,
     exhaustFeedback: 0.72,
@@ -248,6 +249,7 @@ export class AudioDirector {
     this.shiftCut = Math.max(0, this.shiftCut - dt);
     const throttle = this.shiftCut > 0 ? 0 : this.throttle;
     mix.engineRpm = this.rpm;
+    mix.engineLevel = this.deps.tuning.get('engineLevel');
     mix.exhaustSeconds =
       (2 * this.deps.tuning.get('exhaustLength')) / SPEED_OF_SOUND;
     mix.exhaustFeedback = this.deps.tuning.get('exhaustFeedback');
