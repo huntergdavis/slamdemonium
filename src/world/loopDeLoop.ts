@@ -30,6 +30,20 @@ export interface LoopSpec {
 }
 
 export const LOOP_THICKNESS = 0.3;
+
+/** The loop rule, measured in tests/integration/loop-forgiveness.integration.ts
+ * with the same lane-following test driver at every size. Below 14 m a loop
+ * is unfair, not hard: at 10 and 12 m the tyres sit past their grip limit on
+ * a perfect line (grip usage 1.07 at 18 to 26 times static load), so a
+ * perfect entry at the wrong speed still falls and no surface we can author
+ * rescues it (loopGrip 1.3, 1.6 and 2.0 all measured zero tolerance). At 14 m
+ * a loop is fair: 10 degrees of entry angle, 2 m of offset, a 0.8 lock kick
+ * on the wall, every speed from 24 to 60 m/s. At 18 m it is forgiving: 30
+ * degrees, 10 m, 0.9, and no upper speed failure. No authored loop goes
+ * below MIN_FAIR_LOOP_RADIUS; a loop meant to be fun rather than a challenge
+ * starts at FORGIVING_LOOP_RADIUS. */
+export const MIN_FAIR_LOOP_RADIUS = 14;
+export const FORGIVING_LOOP_RADIUS = 18;
 /** Slabs overlap their neighbours by this fraction so wheel rays never fall
  * through a seam. */
 const SEGMENT_OVERLAP = 1.12;

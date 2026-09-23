@@ -10,7 +10,7 @@ Defaults implement design section 9 and docs/design/visual-direction.md: one 150
 
 ### Loops
 
-`LoopSpec` (loopDeLoop.ts) can carry a `surface` (default asphalt) and a `shoulder` (`{width, bank}`): one banked strip per lane edge, inner edge flush with the lane, outer edge raised by `width * sin(bank)`, so a car drifting off centre climbs and rolls back. Keep the bank gentle: 30 degrees measured as a chassis hit and a fall; 12 degrees over 3 m works. With shoulders the helix `shift` must exceed `width + 2 * shoulder.width` or the descending exit hangs over the entry.
+`LoopSpec` (loopDeLoop.ts) can carry a `surface` (default asphalt) and a `shoulder` (`{width, bank}`): one banked strip per lane edge, inner edge flush with the lane, outer edge raised by `width * sin(bank)`, so a car drifting off centre climbs and rolls back. Keep the bank gentle: 30 degrees measured as a chassis hit and a fall; 12 degrees over 3 m works. With shoulders the helix `shift` must exceed `width + 2 * shoulder.width` or the descending exit hangs over the entry. The loop rule (measured, see docs/DECISIONS.md): no authored loop below `MIN_FAIR_LOOP_RADIUS` (14 m); a loop meant to be fun starts at `FORGIVING_LOOP_RADIUS` (18 m). Grip does not substitute for radius.
 
 ## Bind to the renderer and physics loop
 

@@ -247,8 +247,10 @@ async function widest(
 
 const forgiving = PROVING_GROUND_MAP.loops[1]!;
 export const LOOPS: Record<string, LoopSpec> = {
-  /** The lab loop, the CTO's today, unchanged as the control. */
+  /** The lab loop, 10 m, the control: reads as broken, kept on the lab ring. */
   small: baseSpec(LOOP_LAYOUT[0]!),
+  /** The west loop as authored: 14 m, the measured minimum fair radius. */
+  west: baseSpec(PROVING_GROUND_MAP.loops[0]!),
   /** The east loop as first built: bigger radius only (the "before"). */
   bigPlain: baseSpec({
     x: forgiving.x,
@@ -271,7 +273,7 @@ const SPEEDS_DOWN = [60, 54, 48, 44, 40, 36, 32, 28, 24, 20, 16];
 it('measures entry angle, lateral offset and speed tolerance of both authored loops', async () => {
   const report: Record<string, unknown> = {};
   for (const [name, spec] of Object.entries(LOOPS)) {
-    const good = name === 'small' ? 40 : 50;
+    const good = name === 'small' ? 40 : name === 'west' ? 44 : 50;
     const angles: Record<string, Outcome> = {};
     const offsets: Record<string, Outcome> = {};
     const speeds: Record<string, Outcome> = {};
@@ -332,6 +334,16 @@ it('measures entry angle, lateral offset and speed tolerance of both authored lo
     (report.small as { angles: Record<string, Outcome> }).angles['0']!
       .completed,
   ).toBe(true);
+  // The rule, pinned: the minimum fair loop takes a crooked entry and a
+  // kick; the control takes neither.
+  const west = report.west as {
+    entryAngleToleranceDeg: number;
+    lateralOffsetToleranceM: number;
+    steerKickTolerance: number;
+  };
+  expect(west.entryAngleToleranceDeg).toBeGreaterThanOrEqual(8);
+  expect(west.lateralOffsetToleranceM).toBeGreaterThanOrEqual(2);
+  expect(west.steerKickTolerance).toBeGreaterThanOrEqual(0.6);
   expect(
     (report.big as { angles: Record<string, Outcome> }).angles['0']!.completed,
   ).toBe(true);
