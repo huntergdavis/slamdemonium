@@ -44,12 +44,21 @@ export const LOOP_THICKNESS = 0.3;
  * starts at FORGIVING_LOOP_RADIUS. */
 export const MIN_FAIR_LOOP_RADIUS = 14;
 export const FORGIVING_LOOP_RADIUS = 18;
-/** The helix skew, shift / (2 pi radius), is the second lever. The exit lane
- * must clear the entry lane (shift >= width + 2 * shoulder + 1 m), so a wide
- * lane costs shift, and shift costs tyre grip: at the same radius a 14 m lane
- * with 15 m of shift rides at grip usage 0.3 while a 20 m lane with 27 m of
- * shift rides at 1.07 and fails. Keep the skew at or below the east loop's
- * 0.24 (about 13 degrees); a wider lane therefore needs a bigger radius. */
+/** The helix skew, shift / (2 pi radius), is the second lever, and this is
+ * why the bound exists rather than what it is. A loop is a helix: over one
+ * turn the lane slides sideways by `shift` so the exit lane comes down
+ * beside the entry lane instead of onto it, which forces
+ * shift >= width + 2 * shoulder + 1 m. To follow a lane that slides, the car
+ * must hold a constant sideways component all the way round, and on the
+ * wall the tyres are carrying 13 to 17 times their static load with load
+ * sensitivity already trimming their friction, so that sideways component
+ * is paid for out of the same grip budget the driver needs to correct his
+ * line. Measured: a 14 m lane with 15 m of shift rides at grip usage 0.3,
+ * a 20 m lane with 27 m of shift on the same radius at 1.07 and falls. So
+ * a wider lane buys shift, shift buys skew, skew spends grip: a wider lane
+ * needs a bigger radius to pay for it. The east loop sits at 0.24, which
+ * is why it works; 0.25 is the edge of what was measured to ride with
+ * margin, not a round number. */
 export const MAX_LOOP_SKEW = 0.25;
 
 export function loopSkew(spec: Readonly<LoopSpec>): number {
