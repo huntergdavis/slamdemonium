@@ -1,4 +1,4 @@
-import { GEAR_TOP_SPEED_HEADROOM, type EngineProfile } from './engineProfile';
+import { gearSpacingCap, type EngineProfile } from './engineProfile';
 
 /** The authoritative engine state every consumer reads. Derived after
  * physics from speed, throttle and boost; nothing here feeds back into the
@@ -81,15 +81,10 @@ export class RpmModel {
     const requestedRatio = Number.isFinite(gearRatio)
       ? Math.max(1.01, gearRatio)
       : p.gearRatio;
-    const maxRatio =
-      topSpeed > p.firstGearSpeed
-        ? Math.pow(
-            (topSpeed * GEAR_TOP_SPEED_HEADROOM) / p.firstGearSpeed,
-            1 / Math.max(1, count - 2),
-          ) *
-          (1 - 1e-9)
-        : 1.01;
-    const ratio = Math.min(requestedRatio, Math.max(1.01, maxRatio));
+    const ratio = Math.min(
+      requestedRatio,
+      gearSpacingCap(count, p.firstGearSpeed, topSpeed) * (1 - 1e-9),
+    );
     const v = Math.abs(speed);
     this.gear = Math.min(this.gear, count - 1);
     this.shiftCut = Math.max(0, this.shiftCut - dt);

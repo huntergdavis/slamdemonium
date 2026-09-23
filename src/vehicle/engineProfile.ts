@@ -51,11 +51,11 @@ export interface EngineProfile {
 /** Largest spacing whose final upshift can still occur before top speed. */
 export const GEAR_TOP_SPEED_HEADROOM = 0.97;
 
-export function maxGearSpacing(
+/** Exact unrounded spacing cap shared by runtime and presentation. */
+export function gearSpacingCap(
   gearCount: number,
   firstGearSpeed: number,
   topSpeed: number,
-  step = 0.05,
 ): number {
   const exponent = Math.max(1, Math.trunc(gearCount) - 2);
   const raw = Math.pow(
@@ -63,8 +63,22 @@ export function maxGearSpacing(
       Math.max(0.01, firstGearSpeed),
     1 / exponent,
   );
+  return Math.max(1.01, raw);
+}
+
+export function maxGearSpacing(
+  gearCount: number,
+  firstGearSpeed: number,
+  topSpeed: number,
+  step = 0.05,
+): number {
   return Number(
-    Math.max(step, Math.floor(raw / step + 1e-9) * step).toFixed(12),
+    Math.max(
+      step,
+      Math.floor(
+        gearSpacingCap(gearCount, firstGearSpeed, topSpeed) / step + 1e-9,
+      ) * step,
+    ).toFixed(12),
   );
 }
 

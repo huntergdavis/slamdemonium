@@ -55,6 +55,7 @@ Agreed with the CTO on 2026-09-22: smashing first, timed race elements later, wi
 - [x] O7 (PR #64) | devops | Release process: semver tags, GitHub release with generated notes, version + commit visible in game and in the bundle, and a documented one-command cut. | devops/releases
 
 ## Unscheduled
+- [ ] Honest gear spacing display | Show the effective runtime spacing cap beside the gear-spacing control; keep the range wide because the CTO's verbatim default (1.6) exceeds the six-gear cap (~1.484).
 - [ ] O8 | unassigned | Orion browser audio latency: the CTO reports roughly a second of audio delay in Orion (WebKit) on 2026-09-22, while Chrome on the same machine and build is clean. Not a regression from any of our changes; both the released and preview builds behave the same. Investigate Orion's Web Audio or AudioWorklet output latency before assuming it is ours, and do not tune around it.
 - [ ] O5 | devops | Cross-browser evidence (Firefox + WebKit smoke). Deferred by the CTO after Orion worked well.
 - [ ] WP9 | all | Final QA gate G5: the four acceptance criteria only the CTO can close by driving, plus reference-hardware performance.
