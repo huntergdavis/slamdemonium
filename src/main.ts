@@ -41,6 +41,7 @@ import { VehicleVisualHistory } from './vehicle/visualState';
 import { createTestTrack, installTrackColliders } from './world/track';
 import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
+import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createBreakableProps } from './world/breakableProps';
 import { BREAKABLE_PROP_PLACEMENTS } from './world/breakablePlacements';
 import { createSurfacedBodies } from './world/surfacedBodies';
@@ -101,6 +102,10 @@ async function boot(): Promise<void> {
   installRamps(surfacedBodies);
   const rampVisual = createRampVisual(view.scene, track.materials.asphalt);
   resources.push(rampVisual);
+  // The loop-de-loop: a helix of pitched slabs, data through the same facade.
+  installLoops(surfacedBodies);
+  const loopVisual = createLoopVisual(view.scene, track.materials.asphalt);
+  resources.push(loopVisual);
   // Phase C props and debris are reserved now so that no body is created or
   // destroyed mid-session; see POOL_BUDGET for the arithmetic.
   const propPools = createPropPools(surfacedBodies);
