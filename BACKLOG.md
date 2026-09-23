@@ -42,14 +42,21 @@ Agreed with the CTO on 2026-09-22: smashing first, timed race elements later, wi
 - [x] F13 (PRs #94, #98) | developer 2 | Guard tests: example routes stay clear of authored props, and a real-engine smash-through guard proven to fail against static props. Both caught real problems within an hour of being written.
 - [ ] F12 | unassigned | C3/C4, scoring from severity with chaining, and the run loop: countdown, timed run, score, instant retry. DELIBERATELY UNASSIGNED until the CTO has judged whether the smash route is fun; the score should follow the feel rather than lead it.
 
-### v0.6 — A reason to repeat
+### v0.6 — A world worth crashing in
+Agreed with the CTO on 2026-09-23 after he drove the smash route: "OK that's so much better." He wants the test environment to get far more ambitious, and named a loop-de-loop specifically as a physics stress test.
+- [ ] F14 | developer 1 | DEFECT: props do not read as destroyed. The CTO reports "they actually don't get destroyed they just move around". Establish by measurement what actually happens before fixing: is the break threshold crossed in normal driving, do fragments spawn, and do eight same-sized boxes read as debris or as the original box multiplied. Fragments must look unmistakably different from the intact prop.
+- [ ] F15 | developer 2 | Bigger and more ramps, extending the existing ramp data through the surfaced facade.
+- [ ] F16 | developer 2 | Loop-de-loop. The first thing to ask the car to be inverted while grounded. Assess FIRST whether the vehicle model can do it: raycast suspension along body-down, downforce now gated on ground contact, assists gating on grounded wheel count, and the roll-righting assist which is the last thing you want mid-loop. If it needs vehicle changes rather than geometry, that is a separate decision and the 2.2083 s / 72.399 m figures are not negotiable.
+- [ ] F17 | developer 1 | More things to smash, and smash gates: something you drive through and burst rather than shove aside. Design before building. Pool budget is a deliberate number that can be raised; frame rate matters to the CTO.
+
+### v0.7 — A reason to repeat
 - [ ] F6 | unassigned | Run loop: start, countdown, checkpoint validity, finish, personal best, retry. Non-colliding pose ghosts (~49 KiB/min), not a second simulated car. Version track/car/tuning/rules identity before trusting saved bests.
 
-### v0.7 — Music and metal
+### v0.8 — Music and metal
 - [ ] F2 | unassigned | Radio: play local mp3s the player selects, one stream at a time, metadata-only preload, independent music volume.
 - [ ] F3 | unassigned | One cel-shaded car from an existing CC0 kit, via a versioned `VehicleDefinition` shared by physics and visuals.
 
-### v0.8 — Bigger worlds
+### v0.9 — Bigger worlds
 - [ ] F4 | unassigned | Maps + in-game editor. HIGHEST ARCHITECTURAL RISK, do last. Versioned `TrackDefinition` with ONE compiler feeding render/collision/lap; quaternion shape descriptors and scoped body removal in the physics adapter; lap timing that does not assume a circle. Do NOT fork a second world builder.
 
 ## Release mechanism
