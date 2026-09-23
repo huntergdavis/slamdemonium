@@ -515,3 +515,8 @@ AudioWorklet pulse train. It does not alter shared telemetry RPM, so the
 tachometer remains truthful while the sound can be made slightly quicker. Both
 controls are included in replay/example tuning headers; integration baselines
 remain 2.2083 s to 100 km/h and 72.399 m braking distance.
+
+## Phase B1 and B2: airborne state on telemetry, downforce gated on ground contact (2026-09-23)
+
+- **Airborne state** (`src/vehicle/airState.ts`, written to telemetry after physics): `airborne` (no wheel grounded this step), `airTime` (seconds since every wheel left, 0 while grounded), `lastAirTime` (the most recent counted flight) and `landingCount`, a monotonic counter so a 30 Hz consumer polling 120 Hz physics misses no landing, the same contract as the gearbox shift counters and for the same reason: a one-step flag was the bug we already fixed once. A flight shorter than 0.1 s is a kerb hop: `airborne` still reports it, but it neither counts a landing nor updates `lastAirTime`. Presentation and scoring read this; forces never do.
+- **Downforce** used to be applied along the body's down axis unconditionally, so an airborne car carried a body-relative force and an inverted one was pushed upward in world space. Nothing launched the car, so nobody saw it; ramps would have. Downforce is now zero when no wheel is grounded and unchanged otherwise, which keeps the flat-track acceleration and braking regressions and the determinism digest identical. Scaling it by grounded fraction on two or three wheels is a feel decision left for the CTO, not made here.

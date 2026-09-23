@@ -86,7 +86,8 @@ export class RpmModel {
         ? Math.pow(
             (topSpeed * GEAR_TOP_SPEED_HEADROOM) / p.firstGearSpeed,
             1 / Math.max(1, count - 2),
-          ) * (1 - 1e-9)
+          ) *
+          (1 - 1e-9)
         : 1.01;
     const ratio = Math.min(requestedRatio, Math.max(1.01, maxRatio));
     const v = Math.abs(speed);
@@ -115,8 +116,7 @@ export class RpmModel {
       ? Math.max(0.01, rampExponent)
       : 1;
     const gearRpm =
-      p.idleRpm +
-      Math.pow(normalizedSpeed, curve) * (p.shiftRpm - p.idleRpm);
+      p.idleRpm + Math.pow(normalizedSpeed, curve) * (p.shiftRpm - p.idleRpm);
     this.revLift = approach(
       this.revLift,
       pedal * revLiftRpm,
