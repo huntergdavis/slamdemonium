@@ -48,6 +48,7 @@ const FRAGMENT_TTL_SECONDS = 8;
 const FRAGMENT_SPEED = 4.5;
 const FRAGMENT_SPREAD = 2.4;
 const FRAGMENT_SPACING = 0.25;
+const FRAGMENT_ORIGIN_OFFSET = 0.5;
 const BREAK_APPROACH_SPEED = 3;
 const BREAK_TOTAL_SPEED_FRACTION = 0.5;
 
@@ -151,9 +152,16 @@ export function createBreakableProps(
       const angle = (fragment * Math.PI * 2) / FRAGMENTS_PER_BREAK;
       const sideX = Math.cos(angle) * FRAGMENT_SPREAD;
       const sideZ = Math.sin(angle) * FRAGMENT_SPREAD;
-      fragmentPosition.x = pointX + sideX * FRAGMENT_SPACING;
-      fragmentPosition.y = pointY + 0.12 + (fragment % 2) * 0.08;
-      fragmentPosition.z = pointZ + sideZ * FRAGMENT_SPACING;
+      // Move the burst away from the car along the outward-facing side of the
+      // contacted prop before adding the fan. This keeps fragments from
+      // starting inside the chassis and being ejected by penetration solving.
+      fragmentPosition.x =
+        pointX - normalX * FRAGMENT_ORIGIN_OFFSET + sideX * FRAGMENT_SPACING;
+      fragmentPosition.y =
+        pointY - normalY * FRAGMENT_ORIGIN_OFFSET + 0.12 +
+        (fragment % 2) * 0.08;
+      fragmentPosition.z =
+        pointZ - normalZ * FRAGMENT_ORIGIN_OFFSET + sideZ * FRAGMENT_SPACING;
       fragmentRotation.x = 0;
       fragmentRotation.y = 0;
       fragmentRotation.z = 0;
