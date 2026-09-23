@@ -1,3 +1,7 @@
+import {
+  createImpactSeverity,
+  estimateImpactSeverity,
+} from '../src/core/impactSeverity';
 import { describe, expect, it } from 'vitest';
 import { PerspectiveCamera, Quaternion, Scene, Vector3 } from 'three';
 import {
@@ -92,7 +96,7 @@ describe('camera', () => {
     expect(rig.telemetry.cameraFovCapped).toBe(false);
   });
 
-  it('does not invent an impact from a missing impulse and snaps after respawn', () => {
+  it('kicks from estimated severity, not from a missing impulse alone, and snaps after respawn', () => {
     const tuning = new TuningStore(),
       camera = new PerspectiveCamera();
     const rig = new CameraRig(camera, tuning),
@@ -100,9 +104,35 @@ describe('camera', () => {
     const pose = { position: new Vector3(), rotation: new Quaternion() };
     rig.update(pose, state, 0);
     const before = camera.position.clone();
-    rig.addImpact(null, 1200);
+    // Zero closing speed: an estimated record with nothing behind it.
+    rig.addImpact(
+      estimateImpactSeverity(
+        null,
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 0, z: 1 },
+        1200,
+        createImpactSeverity(),
+      ),
+    );
     rig.update(pose, state, 0.1);
     expect(camera.position.distanceTo(before)).toBe(0);
+    // A real wall hit at 12 m/s kicks even though Jolt reports no impulse.
+    rig.addImpact(
+      estimateImpactSeverity(
+        null,
+        { x: 0, y: 0, z: -12 },
+        { x: 0, y: 0, z: 1 },
+        1200,
+        createImpactSeverity(),
+      ),
+    );
+    rig.update(pose, state, 0.1);
+    expect(camera.position.distanceTo(before)).toBeGreaterThan(0);
+    rig.reset();
+    rig.update(pose, state, 0);
+    const before2 = camera.position.clone();
+    rig.update(pose, state, 0.1);
+    expect(camera.position.distanceTo(before2)).toBe(0); // Reset clears the kick.
     pose.position.set(130, 0.86, 0);
     rig.reset();
     rig.update(pose, state, 0);

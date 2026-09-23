@@ -1,3 +1,4 @@
+import type { ImpactSeverity } from '../core/impactSeverity';
 import { MathUtils, PerspectiveCamera, Vector3 } from 'three';
 import type { TransformState } from '../core/transforms';
 import type { TuningStore } from '../tuning/store';
@@ -111,13 +112,11 @@ export class CameraRig {
     );
   }
 
-  /** Hook for engines with real solved impulses; Jolt's null remains absent. */
-  addImpact(impulse: number | null, mass: number): void {
-    if (impulse !== null && Number.isFinite(impulse) && mass > 0)
-      this.impact = Math.min(
-        0.25,
-        this.impact + (Math.max(0, impulse) / mass) * 0.01,
-      );
+  /** Kick from the shared severity: about a centimetre of shake per m/s of
+   * closing speed, capped. Estimated severity counts, so wall hits and
+   * landings kick on Jolt, which reports no solved impulse. */
+  addImpact(impact: Readonly<ImpactSeverity>): void {
+    this.impact = Math.min(0.25, this.impact + impact.approachSpeed * 0.01);
   }
 
   update(

@@ -1,6 +1,6 @@
+import type { ImpactSeverity } from '../core/impactSeverity';
 import { ControllerHaptics } from '../input/haptics';
 import type { InputMapper } from '../input/mapper';
-import type { V3 } from '../physics/adapter';
 import type { TuningStore } from '../tuning/store';
 import type { VehicleTelemetry } from '../vehicle/telemetry';
 import { ControllerOptions } from './controllerOptions';
@@ -81,13 +81,9 @@ export class ControllerSupport {
   afterStep(dtSeconds: number): void {
     this.haptics.afterStep(dtSeconds);
   }
-  /** Called from boot's existing vehicle-contact callback; normal points into car. */
-  onImpact(
-    impulse: number | null,
-    normalWorld: Readonly<V3>,
-    massKg: number,
-  ): void {
-    this.haptics.onImpact(impulse, normalWorld, massKg);
+  /** Called from boot's existing vehicle-contact callback with the shared severity. */
+  onImpact(impact: Readonly<ImpactSeverity>): void {
+    this.haptics.onImpact(impact);
   }
   /** Ordinary/script respawn clears feedback history. */
   reset(): void {

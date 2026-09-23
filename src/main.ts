@@ -6,6 +6,10 @@ import { FixedStepLoop } from './core/loop';
 import { PerformanceRecorder } from './core/performance';
 import { TransformHistory } from './core/transforms';
 import { mountAudioDirector } from './audio/mount';
+import {
+  createImpactSeverity,
+  estimateImpactSeverity,
+} from './core/impactSeverity';
 import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
@@ -396,28 +400,34 @@ async function boot(): Promise<void> {
   // Menu disposal restores the shared Options element before Options removes it.
   resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
-  // One subscriber serves camera, controller and audio. Jolt's normal separates
-  // body B; orient our reused record out of the other surface into the vehicle.
+  const impact = createImpactSeverity();
+  // One subscriber serves camera, controller and audio, and ONE severity
+  // estimate serves all three (src/core/impactSeverity.ts). Jolt's normal
+  // separates body B; orient our reused record out of the other surface into
+  // the vehicle. Telemetry velocity is pre-step here, which is the approach
+  // speed against a static obstacle; the record says it is estimated.
   physics.onContact((a, b, impulse, _point, normal) => {
     if (a !== vehicle.body && b !== vehicle.body) return;
     const direction = a === vehicle.body ? -1 : 1;
     impactNormal.x = normal.x * direction;
     impactNormal.y = normal.y * direction;
     impactNormal.z = normal.z * direction;
-    cameraRig.addImpact(impulse, vehicle.currentMass);
-    // Consume borrowed scalars synchronously. Haptic/audio fallbacks use pre-step
-    // velocity against a static obstacle: estimated approach speed, not a measured
-    // solved contact impulse. Never retain this normal or telemetry as a snapshot.
-    controllerSupport.onImpact(impulse, impactNormal, vehicle.currentMass);
+    estimateImpactSeverity(
+      impulse,
+      vehicle.telemetry.velocity,
+      impactNormal,
+      vehicle.currentMass,
+      impact,
+    );
+    cameraRig.addImpact(impact);
+    controllerSupport.onImpact(impact);
     const otherBody = a === vehicle.body ? b : a;
     // This callback runs inside physics.step: audio only queues fixed scalars.
     // Audio output runs after simulation in update(), never in this callback.
     audio.onImpact(
       otherBody,
       surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null,
-      impulse,
-      impactNormal,
-      vehicle.currentMass,
+      impact,
     );
   });
   function dispatchActions(actions: Readonly<ActionCounts>): void {

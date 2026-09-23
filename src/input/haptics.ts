@@ -1,5 +1,5 @@
+import type { ImpactSeverity } from '../core/impactSeverity';
 import { resolveGroundedSurface } from '../content/surfaces';
-import type { V3 } from '../physics/adapter';
 import type { VehicleTelemetry } from '../vehicle/telemetry';
 
 export interface HapticsOptions {
@@ -58,31 +58,13 @@ export class ControllerHaptics {
     }
   }
 
-  /** Normal points from the other surface into our vehicle. Borrowed input is
-   * consumed synchronously; no live vector/telemetry reference is retained. */
-  onImpact(
-    impulse: number | null,
-    normalWorld: Readonly<V3>,
-    massKg: number,
-  ): void {
-    if (this.disposed || !(massKg > 0) || !Number.isFinite(massKg)) return;
-    let strength: number;
-    if (impulse !== null && Number.isFinite(impulse))
-      strength = impulse / (massKg * 8);
-    else {
-      const velocity = this.deps.readTelemetry().velocity;
-      // Uses pre-step vehicle velocity against a static obstacle; this is
-      // estimated approach speed, not a measured solved contact impulse.
-      const approach = Math.max(
-        0,
-        -(
-          velocity.x * normalWorld.x +
-          velocity.y * normalWorld.y +
-          velocity.z * normalWorld.z
-        ),
-      );
-      strength = (approach - 0.7) / 12;
-    }
+  /** Shared severity from boot's single contact subscriber; the actuator
+   * response curve below is haptics' own, the severity definition is not. */
+  onImpact(impact: Readonly<ImpactSeverity>): void {
+    if (this.disposed) return;
+    const strength = impact.estimated
+      ? (impact.approachSpeed - 0.7) / 12
+      : impact.approachSpeed / 8;
     this.impact = Math.max(this.impact, clamp01(strength));
   }
 
