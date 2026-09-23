@@ -8,7 +8,10 @@ import {
   RAMP_THICKNESS,
   createRampVisual,
   installRamps,
+  rampBackFace,
   rampBodyDescriptor,
+  rampBodyDescriptors,
+  rampFootprint,
   rampFootprintRadius,
   rampForward,
   rampPitch,
@@ -87,6 +90,49 @@ describe('ramp geometry', () => {
       const outward = { x: d.center.x / radius, z: d.center.z / radius };
       expect(forward.x * outward.x + forward.z * outward.z).toBeLessThan(0);
     }
+  });
+});
+
+describe('triangle ramps', () => {
+  const spec: RampSpec = {
+    x: 10,
+    z: -20,
+    heading: Math.PI / 3,
+    length: 12,
+    width: 6,
+    rise: 3,
+    symmetric: true,
+  };
+  it('adds a mirrored back face whose lip is the front face lip and whose low edge lies two lengths along the heading', () => {
+    const slabs = rampBodyDescriptors(spec);
+    expect(slabs).toHaveLength(2);
+    expect(rampBodyDescriptors({ ...spec, symmetric: false })).toHaveLength(1);
+    const back = rampBackFace(spec);
+    const forward = rampForward(spec, { x: 0, y: 0, z: 0 });
+    const span = 24 - RAMP_THICKNESS * Math.sin(rampPitch(spec));
+    expect(back.x).toBeCloseTo(spec.x + forward.x * span, 9);
+    expect(back.z).toBeCloseTo(spec.z + forward.z * span, 9);
+    expect(rampForward(back, { x: 0, y: 0, z: 0 }).x).toBeCloseTo(
+      -forward.x,
+      9,
+    );
+    // Both lips are the same point in space (top centre of the far edge).
+    const lip = (s: RampSpec) => corner(s, 0, 1, -1); // Top of the far edge.
+    const a = lip(spec);
+    const b = lip(back);
+    expect(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)).toBeLessThan(1e-6);
+    expect(a.y).toBeCloseTo(spec.rise, 6);
+    // The footprint disc sits on the lip and covers both low edges.
+    const fp = rampFootprint(spec);
+    expect(fp.x).toBeCloseTo(spec.x + forward.x * 12, 9);
+    expect(Math.hypot(spec.x - fp.x, spec.z - fp.z)).toBeLessThanOrEqual(
+      fp.radius,
+    );
+    expect(Math.hypot(back.x - fp.x, back.z - fp.z)).toBeLessThanOrEqual(
+      fp.radius,
+    );
+    const single = rampFootprint({ ...spec, symmetric: false });
+    expect(single.radius).toBeCloseTo(rampFootprintRadius(spec), 9);
   });
 });
 

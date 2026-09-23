@@ -22,7 +22,8 @@ import {
 import {
   RAMP_LAYOUT,
   rampBodyDescriptor,
-  rampFootprintRadius,
+  rampBodyDescriptors,
+  rampFootprint,
   rampForward,
 } from '../src/world/ramps';
 import {
@@ -43,21 +44,22 @@ const MIN_LANE_CLEARANCE = 5;
 const pg = PROVING_GROUND_MAP;
 const config = resolveTrackConfig(pg.track);
 
-/** Every structure as ground-plane discs: one per ramp, one per loop slab
- * (a loop's single footprint circle is far too generous once it has
- * shoulders and a wide exit lane). */
+/** Every structure as the ground projections of its slab corners: a loop's
+ * single footprint circle is far too generous once it has shoulders and a
+ * wide exit lane, and a triangle ramp's disc covers mostly air. */
 function footprints(map: typeof pg) {
   return [
-    ...map.ramps.map((spec, index) => {
-      const d = rampBodyDescriptor(spec);
-      return {
-        kind: 'ramp' as const,
-        index,
-        x: d.center.x,
-        z: d.center.z,
-        radius: rampFootprintRadius(spec),
-      };
-    }),
+    ...map.ramps.flatMap((spec, index) =>
+      rampBodyDescriptors(spec).flatMap((slab) =>
+        slabCorners(slab).map((corner) => ({
+          kind: 'ramp' as const,
+          index,
+          x: corner.x,
+          z: corner.z,
+          radius: 0,
+        })),
+      ),
+    ),
     ...map.loops.flatMap((spec, index) =>
       loopSlabDescriptors(spec).flatMap((slab) =>
         slabCorners(slab).map((corner) => ({
@@ -162,6 +164,11 @@ describe('proving ground structures', () => {
     expect(giant!.x).toBe(0);
     expect(giant!.rise).toBeGreaterThanOrEqual(9);
     expect(giant!.length).toBeGreaterThanOrEqual(40);
+    // A triangle: drivable from both directions, both faces inside the lane.
+    expect(giant!.symmetric).toBe(true);
+    const fp = rampFootprint(giant!);
+    expect(fp.z).toBeCloseTo(TARGET_LINE_Z + giant!.length, 9); // Centred on the lip.
+    expect(runwayLaneClearance(pg.runways[0]!, fp.x, fp.z + fp.radius)).toBe(0);
     const [west, east] = pg.loops;
     // West is the hard loop at the measured minimum fair radius; east is the
     // forgiving one. Both carry the tinted surface the loopGrip slider

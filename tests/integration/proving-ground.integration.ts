@@ -8,12 +8,12 @@ import {
   loopSlabDescriptors,
   type LoopSpec,
 } from '../../src/world/loopDeLoop';
-import { PROVING_GROUND_MAP } from '../../src/world/maps';
 import {
-  installRamps,
-  rampBodyDescriptor,
-  rampFootprintRadius,
-} from '../../src/world/ramps';
+  PROVING_GROUND_MAP,
+  PROVING_GROUND_SPAWN_Z,
+  TARGET_LINE_Z,
+} from '../../src/world/maps';
+import { installRamps, rampFootprint } from '../../src/world/ramps';
 import { resolveTrackConfig } from '../../src/world/trackConfig';
 import { scriptVehicleHarness } from '../scriptVehicleHarness';
 import { measurements, runScript } from './runner';
@@ -52,14 +52,7 @@ const PAD = {
  * across the paved infield, so it must clear every structure there. */
 it('keeps every example script route clear of every proving ground structure', async () => {
   const footprints = [
-    ...pg.ramps.map((spec) => {
-      const d = rampBodyDescriptor(spec);
-      return {
-        x: d.center.x,
-        z: d.center.z,
-        radius: rampFootprintRadius(spec),
-      };
-    }),
+    ...pg.ramps.map(rampFootprint),
     ...pg.loops.map(loopFootprint),
   ];
   const clearance: Record<string, number> = {};
@@ -83,19 +76,23 @@ it('keeps every example script route clear of every proving ground structure', a
 
 /** Launches off the giant ramp at the given speed from its real position on
  * a flat plane and reports where the car comes down. */
-async function jump(speed: number, boost: boolean) {
+async function jump(speed: number, boost: boolean, southbound = false) {
   const rig = await scriptVehicleHarness({ flatPlane: true });
   try {
     const { vehicle, loop, setPad, surfacedBodies, world } = rig;
     const s = vehicle.telemetry;
     const [giant] = pg.ramps;
     installRamps(surfacedBodies, [giant!]);
-    // 80 m short of the low edge, facing north (+Z), already at speed.
+    // 80 m short of the low edge, already at speed: northbound up the front
+    // face from the spawn side, or southbound up the back face of the
+    // triangle from the far side, so the run never circles back.
+    const sign = southbound ? -1 : 1;
+    const lowEdgeZ = southbound ? giant!.z + 2 * giant!.length : giant!.z;
     vehicle.respawn(
-      { x: 0, y: 0.86, z: giant!.z - 80 },
-      { x: 0, y: 1, z: 0, w: 0 },
+      { x: 0, y: 0.86, z: lowEdgeZ - sign * 80 },
+      southbound ? { x: 0, y: 0, z: 0, w: 1 } : { x: 0, y: 1, z: 0, w: 0 },
     );
-    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: speed });
+    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: sign * speed });
     setPad({ ...PAD, throttle: 1, boost });
     let takeoffSpeed = 0;
     let apex = 0;
@@ -114,6 +111,7 @@ async function jump(speed: number, boost: boolean) {
       apex,
       airTime,
       landingZ: s.position.z,
+      landingX: s.position.x,
       landingRadius: Math.hypot(s.position.x, s.position.z),
       landed: s.landingCount > 0,
       recoveries: s.recoveryCount,
@@ -123,11 +121,13 @@ async function jump(speed: number, boost: boolean) {
   }
 }
 
-it('lands the giant ramp jump on the map at top speed and at boost top speed', async () => {
+it('lands the giant ramp jump on the map from both faces at top speed and at boost top speed', async () => {
   const cruise = await jump(60, false);
   const boosted = await jump(85, true);
-  measurements.giantRamp = { cruise, boosted };
-  for (const run of [cruise, boosted]) {
+  const southCruise = await jump(60, false, true);
+  const southBoosted = await jump(85, true, true);
+  measurements.giantRamp = { cruise, boosted, southCruise, southBoosted };
+  for (const run of [cruise, boosted, southCruise, southBoosted]) {
     expect(run.landed).toBe(true);
     expect(run.recoveries).toBe(0);
     expect(run.airTime).toBeGreaterThan(2);
@@ -137,6 +137,12 @@ it('lands the giant ramp jump on the map at top speed and at boost top speed', a
   }
   expect(cruise.apex).toBeGreaterThan(12);
   expect(boosted.landingZ).toBeGreaterThan(cruise.landingZ);
+  // Southbound lands on the main runway short of the spawn, never on it.
+  for (const run of [southCruise, southBoosted]) {
+    expect(run.landingZ).toBeLessThan(TARGET_LINE_Z);
+    expect(run.landingZ).toBeGreaterThan(PROVING_GROUND_SPAWN_Z + 40);
+    expect(Math.abs(run.landingX)).toBeLessThan(8);
+  }
 });
 
 /** Same slab generator as the authored east loop without the sideways slide,
