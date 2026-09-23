@@ -37,6 +37,7 @@ const FRAGMENT_SETTLE_SECONDS = 0.75;
 const FRAGMENT_TTL_SECONDS = 8;
 const FRAGMENT_SPEED = 2.5;
 const FRAGMENT_SPREAD = 0.9;
+const FRAGMENT_SPACING = 0.25;
 
 /**
  * Pooled breakables for the smash route. Four authored banks of eight consume
@@ -61,6 +62,19 @@ export function createBreakableProps(
   const fragmentRotation: Quat = { x: 0, y: 0, z: 0, w: 1 };
   const fragmentAngular: V3 = { x: 0, y: 0, z: 0 };
   const observedVelocity: V3 = { x: 0, y: 0, z: 0 };
+  const contactQueueCapacity = pools.breakables.capacity;
+  const contactProp = new Int32Array(contactQueueCapacity);
+  const contactPointX = new Float64Array(contactQueueCapacity);
+  const contactPointY = new Float64Array(contactQueueCapacity);
+  const contactPointZ = new Float64Array(contactQueueCapacity);
+  const contactNormalX = new Float64Array(contactQueueCapacity);
+  const contactNormalY = new Float64Array(contactQueueCapacity);
+  const contactNormalZ = new Float64Array(contactQueueCapacity);
+  const contactSeverity = new Float64Array(contactQueueCapacity);
+  const propQueued = new Uint8Array(pools.breakables.capacity);
+  let contactQueueHead = 0;
+  let contactQueueTail = 0;
+  let contactQueueCount = 0;
   let disposed = false;
 
   function findProp(body: BodyId): number {
@@ -119,9 +133,9 @@ export function createBreakableProps(
       const angle = (fragment * Math.PI * 2) / FRAGMENTS_PER_BREAK;
       const sideX = Math.cos(angle) * FRAGMENT_SPREAD;
       const sideZ = Math.sin(angle) * FRAGMENT_SPREAD;
-      fragmentPosition.x = pointX + sideX * 0.15;
+      fragmentPosition.x = pointX + sideX * FRAGMENT_SPACING;
       fragmentPosition.y = pointY + 0.12 + (fragment % 2) * 0.08;
-      fragmentPosition.z = pointZ + sideZ * 0.15;
+      fragmentPosition.z = pointZ + sideZ * FRAGMENT_SPACING;
       fragmentRotation.x = 0;
       fragmentRotation.y = 0;
       fragmentRotation.z = 0;
@@ -151,6 +165,10 @@ export function createBreakableProps(
     pools.breakables.releaseAll();
     clearFragments();
     propActive.fill(0);
+    propQueued.fill(0);
+    contactQueueHead = 0;
+    contactQueueTail = 0;
+    contactQueueCount = 0;
     activateProps();
   }
 
@@ -167,21 +185,54 @@ export function createBreakableProps(
     if (other < 0) return;
     const prop = findProp(other);
     if (prop < 0) return;
-    // Copy borrowed contact scalars before the pool/physics calls below.
-    const pointX = point.x;
-    const pointY = point.y;
-    const pointZ = point.z;
-    const normalX = normalIntoVehicle.x;
-    const normalY = normalIntoVehicle.y;
-    const normalZ = normalIntoVehicle.z;
-    const severity = impact.severity;
-    propActive[prop] = 0;
-    pools.breakables.release(other);
-    spawnFragments(pointX, pointY, pointZ, normalX, normalY, normalZ, severity);
+    // Jolt invokes this callback during Step; defer all body mutations until
+    // update() after Step has returned. One queued entry per prop also drops
+    // repeated contact points from the same physics step.
+    if (propQueued[prop] !== 0 || contactQueueCount >= contactQueueCapacity)
+      return;
+    const slot = contactQueueTail;
+    contactProp[slot] = prop;
+    contactPointX[slot] = point.x;
+    contactPointY[slot] = point.y;
+    contactPointZ[slot] = point.z;
+    contactNormalX[slot] = normalIntoVehicle.x;
+    contactNormalY[slot] = normalIntoVehicle.y;
+    contactNormalZ[slot] = normalIntoVehicle.z;
+    contactSeverity[slot] = impact.severity;
+    propQueued[prop] = 1;
+    contactQueueTail = (slot + 1) % contactQueueCapacity;
+    contactQueueCount++;
+  }
+
+  function processContacts(): void {
+    while (contactQueueCount > 0) {
+      const slot = contactQueueHead;
+      const prop = contactProp[slot];
+      contactQueueHead = (slot + 1) % contactQueueCapacity;
+      contactQueueCount--;
+      if (prop === undefined) continue;
+      if (prop < 0 || prop >= propActive.length) continue;
+      propQueued[prop] = 0;
+      if (propActive[prop] === 0) continue;
+      const id = propIds[prop];
+      if (id === undefined) continue;
+      propActive[prop] = 0;
+      pools.breakables.release(id);
+      spawnFragments(
+        contactPointX[slot] ?? 0,
+        contactPointY[slot] ?? 0,
+        contactPointZ[slot] ?? 0,
+        contactNormalX[slot] ?? 0,
+        contactNormalY[slot] ?? 0,
+        contactNormalZ[slot] ?? 0,
+        contactSeverity[slot] ?? 0,
+      );
+    }
   }
 
   function update(dtSeconds: number): void {
     if (disposed) return;
+    processContacts();
     const dt = Math.max(0, Number.isFinite(dtSeconds) ? dtSeconds : 0);
     for (let index = 0; index < fragmentActive.length; index++) {
       if (fragmentActive[index] === 0) continue;
@@ -221,6 +272,10 @@ export function createBreakableProps(
       pools.breakables.releaseAll();
       clearFragments();
       propActive.fill(0);
+      propQueued.fill(0);
+      contactQueueHead = 0;
+      contactQueueTail = 0;
+      contactQueueCount = 0;
     },
   };
 }

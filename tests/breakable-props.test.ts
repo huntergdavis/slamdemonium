@@ -76,6 +76,10 @@ describe('breakable props', () => {
     const point = { x: 0, y: 0.5, z: -10 };
     const normal = { x: 0, y: 0, z: 1 };
     props.onContact(1, prop, point, normal, impact);
+    expect(active.get(prop)).toBe(true);
+    expect(pools.debris.liveCount).toBe(0);
+    props.onContact(1, prop, point, normal, impact);
+    props.update(0);
     expect(active.get(prop)).toBe(false);
     expect(pools.debris.liveCount).toBe(8);
     expect(
