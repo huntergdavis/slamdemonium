@@ -38,6 +38,7 @@ import { Vehicle } from './vehicle/vehicle';
 import { VehicleVisualHistory } from './vehicle/visualState';
 import { createTestTrack, installTrackColliders } from './world/track';
 import { createPropPools } from './world/bodyPool';
+import { createBreakableProps } from './world/breakableProps';
 import { createSurfacedBodies } from './world/surfacedBodies';
 import { createSurfaceRegistry } from './world/surfaceRegistry';
 import './style.css';
@@ -93,13 +94,22 @@ async function boot(): Promise<void> {
   // Phase C props and debris are reserved now so that no body is created or
   // destroyed mid-session; see POOL_BUDGET for the arithmetic.
   const propPools = createPropPools(surfacedBodies);
-  resources.push(propPools, surfacedBodies);
   const vehicle = new Vehicle(
     physics,
     tuning,
     track.spawn.position,
     surfaceResolver,
   );
+  // The CTO is still choosing the default-ring smash banks. Keep the pooled
+  // lifecycle live and reachable without inventing a route; the placement-only
+  // follow-up supplies these authored poses and activates the 32 props.
+  const breakableProps = createBreakableProps({
+    physics,
+    pools: propPools,
+    placements: [],
+    vehicleBody: vehicle.body,
+  });
+  resources.push(breakableProps, propPools, surfacedBodies);
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
   const carVisual = createCarVisual(view.scene);
@@ -206,6 +216,7 @@ async function boot(): Promise<void> {
       },
       postStep(dt) {
         vehicle.postStep(dt);
+        breakableProps.update(dt);
         history.afterStep();
         track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
@@ -263,6 +274,7 @@ async function boot(): Promise<void> {
     visualHistory.reset();
     cameraRig.reset();
     skids.breakStrips();
+    breakableProps.reset();
     controllerSupport.reset();
     audio.reset();
     loop.resetClock();
@@ -406,7 +418,7 @@ async function boot(): Promise<void> {
   // separates body B; orient our reused record out of the other surface into
   // the vehicle. Telemetry velocity is pre-step here, which is the approach
   // speed against a static obstacle; the record says it is estimated.
-  physics.onContact((a, b, impulse, _point, normal) => {
+  physics.onContact((a, b, impulse, point, normal) => {
     if (a !== vehicle.body && b !== vehicle.body) return;
     const direction = a === vehicle.body ? -1 : 1;
     impactNormal.x = normal.x * direction;
@@ -419,6 +431,9 @@ async function boot(): Promise<void> {
       vehicle.currentMass,
       impact,
     );
+    // Breakables consume this same record; they never estimate the contact a
+    // second time. Their boundary copies the borrowed point immediately.
+    breakableProps.onContact(a, b, point, impactNormal, impact);
     cameraRig.addImpact(impact);
     controllerSupport.onImpact(impact);
     const otherBody = a === vehicle.body ? b : a;
