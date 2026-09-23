@@ -34,7 +34,9 @@ Virtual gearbox promoted to shared vehicle state feeding both audio and the tach
 - [x] F8 (PR #81) | developer 1 | Five gears at 1.6 spacing, CTO tuned audio defaults, derived spacing cap and runtime ratio clamp so no gear can be stranded above top speed. `gearCount` is now a 3-8 presentation slider. Fifth gear starts at 49.2 m/s, which needs boost or a long straight on the current ring, so it will be heard far more once the bigger maps land.
 
 ### v0.5 — Something to hit
+Agreed with the CTO on 2026-09-22: smashing first, timed race elements later. Ramps and jumping are in scope because air time is a core arcade-racer pleasure and it gives the smash loop its best setups. Slice shape is being specced; the readiness audit covers airborne state, the physics adapter's runtime body add/remove, and how the world is built.
 - [ ] F5 | unassigned | Crash + retry loop: one smash route, light breakables, bounded debris, impact feel, scoring, instant retry. Contact impulse is nullable on our engine so severity must be estimated explicitly.
+- [ ] F9 | unassigned | Ramps and jumping: static ramp geometry, an airborne model with air control and landing behaviour, camera handling off the ground, and landings that feed the same impact severity path as smashing.
 
 ### v0.6 — A reason to repeat
 - [ ] F6 | unassigned | Run loop: start, countdown, checkpoint validity, finish, personal best, retry. Non-colliding pose ghosts (~49 KiB/min), not a second simulated car. Version track/car/tuning/rules identity before trusting saved bests.
