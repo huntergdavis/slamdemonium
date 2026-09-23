@@ -14,7 +14,7 @@ import { ImpactFeedback } from './core/impactFeedback';
 import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
-import type { IPhysicsWorld, V3 } from './physics/adapter';
+import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
 import { createRenderer } from './render/renderer';
 import { CameraRig } from './render/cameraRig';
@@ -140,7 +140,36 @@ async function boot(): Promise<void> {
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
   const carVisual = createCarVisual(view.scene);
-  const cameraRig = new CameraRig(view.camera, tuning);
+  // Line of sight for the camera: static geometry between car and camera
+  // pulls the camera in, so the loop, a bridge or a prop bank never hides
+  // the car. The car's own body is ignored; the ray record is reused.
+  const sightHit: RayHit = {
+    distance: 0,
+    point: { x: 0, y: 0, z: 0 },
+    normal: { x: 0, y: 0, z: 0 },
+    bodyId: 0,
+    surfaceId: 0,
+  };
+  const sightDirection: V3 = { x: 0, y: 0, z: 0 };
+  const cameraRig = new CameraRig(view.camera, tuning, {
+    lineOfSight: (from, to) => {
+      sightDirection.x = to.x - from.x;
+      sightDirection.y = to.y - from.y;
+      sightDirection.z = to.z - from.z;
+      const span = Math.hypot(
+        sightDirection.x,
+        sightDirection.y,
+        sightDirection.z,
+      );
+      if (span < 1e-6) return null;
+      sightDirection.x /= span;
+      sightDirection.y /= span;
+      sightDirection.z /= span;
+      return physics.rayCast(from, sightDirection, span, sightHit, vehicle.body)
+        ? sightHit.distance
+        : null;
+    },
+  });
   const skids = createSkidMarks(view.scene);
   const speedCues = createSpeedCues(host!);
   const cueState = { speed: 0, topSpeed: 1, boostEnvelope: 0 };
