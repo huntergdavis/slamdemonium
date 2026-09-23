@@ -13,6 +13,8 @@ import type {
   ContactSurfaceResolutionStatus,
 } from '../content/surfaces';
 import type { InstalledTrackBodies, StaticBoxDescriptor } from './trackPhysics';
+import { createSurfaceRegistry } from './surfaceRegistry';
+import type { SurfaceRegistry } from './surfaceRegistry';
 
 /** 0.1 mm absorbs float32 ray/plane roundoff, not the visual kerb's 6 cm height. */
 export const GROUND_HIT_EPSILON = 1e-4;
@@ -24,6 +26,9 @@ export interface TrackSurfaceResolverOptions {
   /** Actual installed axis-aligned box; Y-up, metres. No implicit infinite plane. */
   ground: Readonly<StaticBoxDescriptor>;
   kerbFootprint: (x: number, z: number) => boolean;
+  /** Shared with SurfacedBodies so geometry added after boot has grip. A
+   * private registry is created when omitted (tests, standalone use). */
+  registry?: SurfaceRegistry;
 }
 
 /**
@@ -63,17 +68,10 @@ export function createTrackSurfaceResolver(
   const bottom = ground.center.y - ground.halfExtents.y;
   if (!Number.isFinite(top) || !Number.isFinite(bottom))
     throw new RangeError('Ground bounds must be finite');
-  const registry = new Map<number, SurfaceId>();
-  function register(bodyId: number, surfaceId: SurfaceId): void {
-    if (!Number.isSafeInteger(bodyId) || bodyId < 0 || registry.has(bodyId))
-      throw new RangeError(
-        'Track body IDs must be unique nonnegative safe integers',
-      );
-    getSurfaceDefinition(surfaceId); // Strict setup validation, never in resolve().
-    registry.set(bodyId, surfaceId);
-  }
-  register(bodies.ground, base.id);
-  for (const body of bodies.barriers) register(body, SURFACE_IDS.concrete);
+  const registry = options.registry ?? createSurfaceRegistry();
+  registry.register(bodies.ground, base.id);
+  for (const body of bodies.barriers)
+    registry.register(body, SURFACE_IDS.concrete);
   const groundBody = bodies.ground;
   let disposed = false;
   const diagnostics = {

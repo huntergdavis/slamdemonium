@@ -33,6 +33,9 @@ import { LatencyProbeView } from './input/latencyProbe';
 import { Vehicle } from './vehicle/vehicle';
 import { VehicleVisualHistory } from './vehicle/visualState';
 import { createTestTrack, installTrackColliders } from './world/track';
+import { createPropPools } from './world/bodyPool';
+import { createSurfacedBodies } from './world/surfacedBodies';
+import { createSurfaceRegistry } from './world/surfaceRegistry';
 import './style.css';
 
 document.title = GAME_NAME;
@@ -74,7 +77,19 @@ async function boot(): Promise<void> {
     track.config,
     track.barrierBoxes,
   );
-  const surfaceResolver = track.createSurfaceResolver(trackBodies);
+  // One registry for every body: the track registers its ground and
+  // barriers, and everything added later goes through the surfaced facade,
+  // so no body can exist without an authored surface (and therefore grip).
+  const surfaceRegistry = createSurfaceRegistry();
+  const surfaceResolver = track.createSurfaceResolver(
+    trackBodies,
+    surfaceRegistry,
+  );
+  const surfacedBodies = createSurfacedBodies(physics, surfaceRegistry);
+  // Phase C props and debris are reserved now so that no body is created or
+  // destroyed mid-session; see POOL_BUDGET for the arithmetic.
+  const propPools = createPropPools(surfacedBodies);
+  resources.push(propPools, surfacedBodies);
   const vehicle = new Vehicle(
     physics,
     tuning,

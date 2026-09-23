@@ -112,6 +112,8 @@ export async function createPhysicsWorld(
       dynamic: boolean;
       surfaceId: number;
       inertia: V3;
+      /** In the simulation (broadphase). Pooled bodies start false. */
+      added: boolean;
     }
   >();
   let disposed = false;
@@ -168,6 +170,8 @@ export async function createPhysicsWorld(
     return shifted;
   }
   const lastInertia: V3 = { x: 0, y: 0, z: 0 };
+  const origin: V3 = { x: 0, y: 0, z: 0 };
+  const yawQuat: Quat = { x: 0, y: 0, z: 0, w: 1 };
   function setMass(
     body: initJolt.Body,
     bodyShape: initJolt.Shape,
@@ -201,6 +205,7 @@ export async function createPhysicsWorld(
     half: V3,
     dynamic: boolean,
     surfaceId: number,
+    activate = true,
   ): BodyId {
     const id = body.GetID(); // Borrowed until DestroyBody.
     const key = id.GetIndexAndSequenceNumber();
@@ -211,12 +216,82 @@ export async function createPhysicsWorld(
       dynamic,
       surfaceId,
       inertia: { ...lastInertia },
+      added: activate,
     });
-    bodies.AddBody(
-      id,
-      dynamic ? J.EActivation_Activate : J.EActivation_DontActivate,
-    );
+    if (activate)
+      bodies.AddBody(
+        id,
+        dynamic ? J.EActivation_Activate : J.EActivation_DontActivate,
+      );
     return key;
+  }
+  function setRotation(quat: Quat | undefined): void {
+    if (!quat) {
+      rotation.Set(0, 0, 0, 1);
+      return;
+    }
+    const length = Math.hypot(quat.x, quat.y, quat.z, quat.w);
+    if (!Number.isFinite(length) || Math.abs(length - 1) > 1e-3)
+      throw new RangeError('Body rotation must be a unit quaternion.');
+    rotation.Set(quat.x, quat.y, quat.z, quat.w);
+  }
+  function createStatic(
+    center: V3,
+    quat: Quat | undefined,
+    halfExtents: V3,
+    friction: number,
+    restitution: number,
+    surfaceId: number,
+    activate: boolean,
+  ): BodyId {
+    const box = shape(halfExtents);
+    position.Set(center.x, center.y, center.z);
+    setRotation(quat);
+    const creation = new J.BodyCreationSettings(
+      box,
+      position,
+      rotation,
+      J.EMotionType_Static,
+      STATIC,
+    );
+    creation.mFriction = friction;
+    creation.mRestitution = restitution;
+    const body = bodies.CreateBody(creation);
+    J.destroy(creation);
+    box.Release();
+    return add(body, halfExtents, false, surfaceId, activate);
+  }
+  function createDynamic(
+    desc: Omit<DynamicBoxDesc, 'center'>,
+    center: V3,
+    surfaceId: number,
+    activate: boolean,
+  ): BodyId {
+    validateMass(desc);
+    const box = shape(desc.halfExtents, desc.comOffset);
+    position.Set(center.x, center.y, center.z);
+    rotation.Set(0, 0, 0, 1);
+    const creation = new J.BodyCreationSettings(
+      box,
+      position,
+      rotation,
+      J.EMotionType_Dynamic,
+      MOVING,
+    );
+    creation.mFriction = desc.friction;
+    creation.mRestitution = desc.restitution;
+    creation.mMotionQuality = desc.ccd
+      ? J.EMotionQuality_LinearCast
+      : J.EMotionQuality_Discrete;
+    creation.mAngularDamping = desc.angularDamping;
+    creation.mLinearDamping = 0; // The vehicle owns coast drag.
+    creation.mMaxAngularVelocity = desc.maxAngularVelocity;
+    creation.mMaxLinearVelocity = 500;
+    const body = bodies.CreateBody(creation);
+    setMass(body, box, desc);
+    J.destroy(creation);
+    box.Release();
+    return add(body, desc.halfExtents, true, surfaceId, activate);
   }
 
   const api: IPhysicsWorld = {
@@ -241,50 +316,87 @@ export async function createPhysicsWorld(
       surfaceId = 0,
     ) {
       assertAlive();
-      const box = shape(halfExtents);
-      position.Set(center.x, center.y, center.z);
-      rotation.Set(0, Math.sin(rotY / 2), 0, Math.cos(rotY / 2));
-      const creation = new J.BodyCreationSettings(
-        box,
-        position,
-        rotation,
-        J.EMotionType_Static,
-        STATIC,
+      yawQuat.y = Math.sin(rotY / 2);
+      yawQuat.w = Math.cos(rotY / 2);
+      return createStatic(
+        center,
+        yawQuat,
+        halfExtents,
+        friction,
+        restitution,
+        surfaceId,
+        true,
       );
-      creation.mFriction = friction;
-      creation.mRestitution = restitution;
-      const body = bodies.CreateBody(creation);
-      J.destroy(creation);
-      box.Release();
-      return add(body, halfExtents, false, surfaceId);
+    },
+    createStaticBody(desc) {
+      assertAlive();
+      return createStatic(
+        desc.center,
+        desc.rotation,
+        desc.halfExtents,
+        desc.friction ?? 0.5,
+        desc.restitution ?? 0,
+        desc.surfaceId ?? 0,
+        true,
+      );
     },
     createDynamicBox(desc: DynamicBoxDesc) {
       assertAlive();
-      validateMass(desc);
-      const box = shape(desc.halfExtents, desc.comOffset);
-      position.Set(desc.center.x, desc.center.y, desc.center.z);
-      rotation.Set(0, 0, 0, 1);
-      const creation = new J.BodyCreationSettings(
-        box,
+      return createDynamic(desc, desc.center, 0, true);
+    },
+    createPooledBox(desc) {
+      assertAlive();
+      return desc.motion === 'static'
+        ? createStatic(
+            origin,
+            undefined,
+            desc.halfExtents,
+            desc.friction ?? 0.5,
+            desc.restitution ?? 0,
+            desc.surfaceId ?? 0,
+            false,
+          )
+        : createDynamic(desc, origin, desc.surfaceId ?? 0, false);
+    },
+    activateBody(id, pos, quat) {
+      assertAlive();
+      const entry = record(id);
+      position.Set(pos.x, pos.y, pos.z);
+      setRotation(quat);
+      bodies.SetPositionAndRotation(
+        entry.id,
         position,
         rotation,
-        J.EMotionType_Dynamic,
-        MOVING,
+        J.EActivation_DontActivate,
       );
-      creation.mFriction = desc.friction;
-      creation.mRestitution = desc.restitution;
-      creation.mMotionQuality = desc.ccd
-        ? J.EMotionQuality_LinearCast
-        : J.EMotionQuality_Discrete;
-      creation.mAngularDamping = desc.angularDamping;
-      creation.mLinearDamping = 0; // The vehicle owns coast drag.
-      creation.mMaxAngularVelocity = desc.maxAngularVelocity;
-      creation.mMaxLinearVelocity = 500;
-      const body = bodies.CreateBody(creation);
-      setMass(body, box, desc);
-      J.destroy(creation);
-      box.Release();
-      return add(body, desc.halfExtents, true, 0);
+      if (entry.dynamic) {
+        vector.Set(0, 0, 0);
+        bodies.SetLinearAndAngularVelocity(entry.id, vector, vector);
+      }
+      if (!entry.added) {
+        bodies.AddBody(
+          entry.id,
+          entry.dynamic ? J.EActivation_Activate : J.EActivation_DontActivate,
+        );
+        entry.added = true;
+      } else if (entry.dynamic) bodies.ActivateBody(entry.id);
+    },
+    deactivateBody(id) {
+      assertAlive();
+      const entry = record(id);
+      if (!entry.added) return;
+      bodies.RemoveBody(entry.id);
+      entry.added = false;
+    },
+    isBodyActive(id) {
+      return record(id).added;
+    },
+    destroyBody(id) {
+      assertAlive();
+      const entry = record(id);
+      if (entry.added) bodies.RemoveBody(entry.id);
+      bodies.DestroyBody(entry.id);
+      records.delete(id);
     },
     updateMassProperties(id, desc) {
       validateMass(desc);
@@ -430,7 +542,7 @@ export async function createPhysicsWorld(
       if (disposed) return;
       contactCallback = undefined;
       for (const entry of records.values()) {
-        bodies.RemoveBody(entry.id);
+        if (entry.added) bodies.RemoveBody(entry.id);
         bodies.DestroyBody(entry.id);
       }
       records.clear();

@@ -23,6 +23,7 @@ import { createGroundDescriptor } from './trackPhysics';
 import type { WorldPoint, InstalledTrackBodies } from './trackPhysics';
 import { createKerbFootprintQuery } from './kerbFootprint';
 import { createTrackSurfaceResolver } from './trackSurfaces';
+import type { SurfaceRegistry } from './surfaceRegistry';
 import type { SurfaceResolver } from '../content/surfaces';
 import { getSurfaceDefinition, SURFACE_IDS } from '../content/surfaces';
 export { DEFAULT_TRACK_CONFIG, resolveTrackConfig } from './trackConfig';
@@ -198,6 +199,7 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
   /** Bind only bodies installed from this track/config in the current physics world. */
   function createSurfaceResolver(
     bodies: InstalledTrackBodies,
+    registry?: SurfaceRegistry,
   ): SurfaceResolver {
     if (disposed)
       throw new Error('Cannot create a surface resolver for a disposed track');
@@ -210,6 +212,7 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
       groundSurfaceId: config.surfaceId,
       ground: createGroundDescriptor(config),
       kerbFootprint,
+      ...(registry ? { registry } : {}),
     });
     surfaceResolvers.add(resolver);
     return resolver;
