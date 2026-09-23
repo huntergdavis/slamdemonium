@@ -44,6 +44,17 @@ export const LOOP_THICKNESS = 0.3;
  * starts at FORGIVING_LOOP_RADIUS. */
 export const MIN_FAIR_LOOP_RADIUS = 14;
 export const FORGIVING_LOOP_RADIUS = 18;
+/** The helix skew, shift / (2 pi radius), is the second lever. The exit lane
+ * must clear the entry lane (shift >= width + 2 * shoulder + 1 m), so a wide
+ * lane costs shift, and shift costs tyre grip: at the same radius a 14 m lane
+ * with 15 m of shift rides at grip usage 0.3 while a 20 m lane with 27 m of
+ * shift rides at 1.07 and fails. Keep the skew at or below the east loop's
+ * 0.24 (about 13 degrees); a wider lane therefore needs a bigger radius. */
+export const MAX_LOOP_SKEW = 0.25;
+
+export function loopSkew(spec: Readonly<LoopSpec>): number {
+  return Math.abs(spec.shift) / (2 * Math.PI * spec.radius);
+}
 /** Slabs overlap their neighbours by this fraction so wheel rays never fall
  * through a seam. */
 const SEGMENT_OVERLAP = 1.12;

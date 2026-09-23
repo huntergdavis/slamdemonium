@@ -5,7 +5,9 @@ import { BREAKABLE_PROP_PLACEMENTS } from '../src/world/breakablePlacements';
 import {
   FORGIVING_LOOP_RADIUS,
   LOOP_LAYOUT,
+  MAX_LOOP_SKEW,
   MIN_FAIR_LOOP_RADIUS,
+  loopSkew,
   loopSlabDescriptors,
 } from '../src/world/loopDeLoop';
 import {
@@ -280,11 +282,18 @@ describe('the loop rule', () => {
     expect(FORGIVING_LOOP_RADIUS).toBeGreaterThan(MIN_FAIR_LOOP_RADIUS);
     for (const [name, map] of Object.entries(MAPS)) {
       if (name === 'lab') continue; // The 10 m control predates the rule.
-      for (const loop of map.loops)
+      for (const loop of map.loops) {
         expect(
           loop.radius,
           `${name} loop at (${loop.x}, ${loop.z})`,
         ).toBeGreaterThanOrEqual(MIN_FAIR_LOOP_RADIUS);
+        // The exit lane clears the entry lane, and the skew that costs
+        // stays inside the measured bound.
+        expect(Math.abs(loop.shift)).toBeGreaterThanOrEqual(
+          loop.width + 2 * (loop.shoulder?.width ?? 0) + 1,
+        );
+        expect(loopSkew(loop)).toBeLessThanOrEqual(MAX_LOOP_SKEW);
+      }
     }
     expect(LAB_MAP.loops).toBe(LOOP_LAYOUT);
   });
