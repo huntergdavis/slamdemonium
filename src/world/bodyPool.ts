@@ -4,10 +4,10 @@ import type { SurfacedBodies, SurfacedPooledBoxDesc } from './surfacedBodies';
 
 /** Pool sizing, stated so it can be argued with rather than inherited.
  *
- * Body budget: Jolt is initialised with 1024 bodies. The default track uses
+ * Body budget: Jolt is initialised with 8192 bodies. The default track uses
  * 130 (one ground, 128 barrier segments, one car), four ramps and 48 loop
  * slabs. This pool adds 240 (48 breakables and 192 debris), for 422 bodies
- * total and about 600 spare. A denser smash route is a change to these two
+ * total and about 7770 spare. A denser smash route is a change to these two
  * numbers, not to the lifecycle mechanism.
  *
  * Debris: 192 fragments is 24 smashed props with 8 fragments each alive at
