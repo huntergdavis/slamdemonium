@@ -34,9 +34,12 @@ Virtual gearbox promoted to shared vehicle state feeding both audio and the tach
 - [x] F8 (PR #81) | developer 1 | Five gears at 1.6 spacing, CTO tuned audio defaults, derived spacing cap and runtime ratio clamp so no gear can be stranded above top speed. `gearCount` is now a 3-8 presentation slider. Fifth gear starts at 49.2 m/s, which needs boost or a long straight on the current ring, so it will be heard far more once the bigger maps land.
 
 ### v0.5 — Something to hit
-Agreed with the CTO on 2026-09-22: smashing first, timed race elements later. Ramps and jumping are in scope because air time is a core arcade-racer pleasure and it gives the smash loop its best setups. Slice shape is being specced; the readiness audit covers airborne state, the physics adapter's runtime body add/remove, and how the world is built.
-- [ ] F5 | unassigned | Crash + retry loop: one smash route, light breakables, bounded debris, impact feel, scoring, instant retry. Contact impulse is nullable on our engine so severity must be estimated explicitly.
-- [ ] F9 | unassigned | Ramps and jumping: static ramp geometry, an airborne model with air control and landing behaviour, camera handling off the ground, and landings that feed the same impact severity path as smashing.
+Agreed with the CTO on 2026-09-22: smashing first, timed race elements later, with ramps and jumping in scope because air time is a core arcade-racer pleasure and it gives the smash loop its best setups. Spec and readiness audit: docs/slices/air-and-impact.md. Phase A foundations shipped in PR #83; the air and impact halves now run in parallel.
+- [x] F10 (PR #83) | developer 2 | Phase A foundations: quaternion static bodies, pooled create/activate/deactivate with exact heap equality, scoped removal, and a surface facade that makes an unregistered body unrepresentable.
+- [ ] F9 | developer 2 | Phase B, air: airborne telemetry with a monotonic landing counter, the body-axis downforce fix, player air control with the flight damping promoted to a tuning key, camera and landing feel, and ramp geometry through the facade.
+- [ ] F11 | developer 2 | C1, ONE shared impact severity estimator. Contact impulse is null on our engine, so severity is estimated from approach speed and mass. Folds together the two existing independent estimates in haptics and audio rather than adding a third. A landing and a prop smash must be the same call.
+- [ ] F5 | developer 1 | C2, breakable props on the pooled bodies: a bounded smash route, props that deactivate and spawn bounded debris from the pool, nothing created mid-session.
+- [ ] F12 | unassigned | C3/C4, scoring from severity with chaining, and the run loop: countdown, timed run, score, instant retry.
 
 ### v0.6 — A reason to repeat
 - [ ] F6 | unassigned | Run loop: start, countdown, checkpoint validity, finish, personal best, retry. Non-colliding pose ghosts (~49 KiB/min), not a second simulated car. Version track/car/tuning/rules identity before trusting saved bests.
