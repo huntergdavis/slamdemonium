@@ -14,6 +14,8 @@ import {
 } from '../src/world/trackPhysics';
 import { makePad } from './input-helpers';
 import { createTrackSurfaceResolver } from '../src/world/trackSurfaces';
+import { createSurfaceRegistry } from '../src/world/surfaceRegistry';
+import { createSurfacedBodies } from '../src/world/surfacedBodies';
 import { createTrackLayout } from '../src/world/trackLayout';
 import { createKerbFootprintQuery } from '../src/world/kerbFootprint';
 import { SURFACE_IDS, type SurfaceResolver } from '../src/content/surfaces';
@@ -41,6 +43,10 @@ export async function scriptVehicleHarness(
   } = {},
 ) {
   const world = await createPhysicsWorld({ wasmPath });
+  // One registry for the track and for any geometry a test adds through the
+  // facade, exactly as boot wires it.
+  const registry = createSurfaceRegistry();
+  const surfacedBodies = createSurfacedBodies(world, registry);
   let surfaceResolver: SurfaceResolver;
   if (options.flatPlane) {
     const ground = {
@@ -54,6 +60,7 @@ export async function scriptVehicleHarness(
       groundSurfaceId: SURFACE_IDS.asphalt,
       ground,
       kerbFootprint: () => false,
+      registry,
     });
   } else {
     const config = DEFAULT_TRACK_CONFIG;
@@ -63,6 +70,7 @@ export async function scriptVehicleHarness(
       groundSurfaceId: config.surfaceId,
       ground: createGroundDescriptor(config),
       kerbFootprint: createKerbFootprintQuery(createTrackLayout(config).curbs),
+      registry,
     });
   }
   const store = new TuningStore();
@@ -129,6 +137,7 @@ export async function scriptVehicleHarness(
   }
   return {
     world,
+    surfacedBodies,
     store,
     vehicle,
     mapper,
@@ -140,6 +149,7 @@ export async function scriptVehicleHarness(
       scripts.dispose();
       keyboard.dispose();
       surfaceResolver.dispose();
+      surfacedBodies.dispose();
       world.dispose();
     },
   };

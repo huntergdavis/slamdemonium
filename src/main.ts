@@ -40,6 +40,7 @@ import { Vehicle } from './vehicle/vehicle';
 import { VehicleVisualHistory } from './vehicle/visualState';
 import { createTestTrack, installTrackColliders } from './world/track';
 import { createPropPools } from './world/bodyPool';
+import { createRampVisual, installRamps } from './world/ramps';
 import { createBreakableProps } from './world/breakableProps';
 import { BREAKABLE_PROP_PLACEMENTS } from './world/breakablePlacements';
 import { createSurfacedBodies } from './world/surfacedBodies';
@@ -94,6 +95,12 @@ async function boot(): Promise<void> {
     surfaceRegistry,
   );
   const surfacedBodies = createSurfacedBodies(physics, surfaceRegistry);
+  // Ramps are static geometry installed through the facade, so each one
+  // registers its asphalt surface in the call that creates it (design slice
+  // B5). Collider and mesh come from the same descriptor.
+  installRamps(surfacedBodies);
+  const rampVisual = createRampVisual(view.scene, track.materials.asphalt);
+  resources.push(rampVisual);
   // Phase C props and debris are reserved now so that no body is created or
   // destroyed mid-session; see POOL_BUDGET for the arithmetic.
   const propPools = createPropPools(surfacedBodies);
