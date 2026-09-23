@@ -1,5 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
+import { SURFACE_IDS } from '../src/content/surfaces';
 import { BREAKABLE_PROP_PLACEMENTS } from '../src/world/breakablePlacements';
 import { LOOP_LAYOUT, loopSlabDescriptors } from '../src/world/loopDeLoop';
 import {
@@ -163,7 +164,15 @@ describe('proving ground structures', () => {
       z: TARGET_LINE_Z,
     });
     expect(small!.x).toBeLessThan(0); // West.
+    // The west loop is the control: plain asphalt, no shoulders, the lab's
+    // geometry. Only the east loop carries the forgiving mechanisms and the
+    // tinted surface the loopGrip slider applies to.
+    expect(small!.surface).toBeUndefined();
+    expect(small!.shoulder).toBeUndefined();
     expect(big!.x).toBeGreaterThan(0); // East.
+    expect(big!.surface).toBe(SURFACE_IDS.stickyAsphalt);
+    expect(big!.shoulder).toBeDefined();
+    expect(big!.width).toBeGreaterThan(small!.width);
     expect(big!.z).toBe(TARGET_LINE_Z);
     expect(big!.radius).toBeGreaterThanOrEqual(18);
     for (const loop of pg.loops) {

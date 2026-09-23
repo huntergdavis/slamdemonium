@@ -21,7 +21,9 @@ export const WORLD_COLORS = Object.freeze({
   postCyan: 0x3ed8ee,
   fog: 0xb8c7cc,
   ground: 0x6d7779,
-  stickyAsphalt: 0x7fa6c9,
+  // Saturated so it survives multiplication by the grey asphalt texture and
+  // reads as a different surface from 380 m away in the fog.
+  stickyAsphalt: 0x4fb0ff,
 });
 
 /** CPU generation occurs once here; renderer uploads on first render. */
@@ -68,6 +70,8 @@ export function createTrackMaterials(
     stickyAsphalt: new MeshStandardMaterial({
       map,
       color: WORLD_COLORS.stickyAsphalt,
+      emissive: WORLD_COLORS.stickyAsphalt,
+      emissiveIntensity: 0.12,
       roughness: 0.8,
       metalness: 0,
     }),

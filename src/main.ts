@@ -119,7 +119,7 @@ async function boot(): Promise<void> {
   installLoops(surfacedBodies, map.loops);
   const loopVisual = createLoopVisual(
     view.scene,
-    track.materials.asphalt,
+    (surface) => track.materials.forSurface(surface),
     map.loops,
   );
   resources.push(loopVisual);

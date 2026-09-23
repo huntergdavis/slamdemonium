@@ -261,15 +261,20 @@ export interface LoopVisual {
   dispose(): void;
 }
 
-/** One box mesh per slab from the same descriptors the colliders use. */
+/** One box mesh per slab from the same descriptors the colliders use. Each
+ * slab takes the material of its own surface (`materialFor`, normally the
+ * track's `materials.forSurface`), so a loop with its own surface is
+ * visibly its own; the materials stay owned by whoever supplied them. */
 export function createLoopVisual(
   scene: Scene,
-  material: Material,
+  materialFor: Material | ((surface: SurfaceId) => Material),
   specs: readonly LoopSpec[] = LOOP_LAYOUT,
 ): LoopVisual {
   const root = new Group();
   root.name = 'loops';
   const geometries: BoxGeometry[] = [];
+  const pick =
+    typeof materialFor === 'function' ? materialFor : () => materialFor;
   for (const spec of specs)
     for (const slab of loopSlabDescriptors(spec)) {
       const geometry = new BoxGeometry(
@@ -278,7 +283,7 @@ export function createLoopVisual(
         slab.halfExtents.z * 2,
       );
       geometries.push(geometry);
-      const mesh = new Mesh(geometry, material);
+      const mesh = new Mesh(geometry, pick(slab.surface as SurfaceId));
       mesh.position.set(slab.center.x, slab.center.y, slab.center.z);
       const q = slab.rotation!;
       mesh.quaternion.set(q.x, q.y, q.z, q.w);

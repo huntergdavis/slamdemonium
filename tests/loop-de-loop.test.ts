@@ -1,4 +1,4 @@
-import { Quaternion, Scene, Vector3 } from 'three';
+import { Mesh, Quaternion, Scene, Vector3 } from 'three';
 import type { Material } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { SURFACE_IDS } from '../src/content/surfaces';
@@ -188,5 +188,29 @@ describe('loop through the facade', () => {
     expect(scene.children).toHaveLength(0);
     expect(dispose).not.toHaveBeenCalled();
     void Vector3;
+  });
+
+  it('gives each slab the material of its own surface, so a loop with its own surface is visibly its own', () => {
+    const scene = new Scene();
+    const plain = { name: 'asphalt' } as unknown as Material;
+    const sticky = { name: 'sticky' } as unknown as Material;
+    const materialFor = vi.fn((surface: number) =>
+      surface === SURFACE_IDS.stickyAsphalt ? sticky : plain,
+    );
+    const east: LoopSpec = {
+      ...loop,
+      x: 60,
+      surface: SURFACE_IDS.stickyAsphalt,
+      shoulder: { width: 3, bank: Math.PI / 15 },
+    };
+    const visual = createLoopVisual(scene, materialFor, [loop, east]);
+    const meshes = visual.root.children as Mesh[];
+    expect(meshes).toHaveLength(loop.segments + east.segments * 3);
+    for (let i = 0; i < loop.segments; i++)
+      expect(meshes[i]!.material).toBe(plain);
+    for (let i = loop.segments; i < meshes.length; i++)
+      expect(meshes[i]!.material).toBe(sticky);
+    expect(materialFor).toHaveBeenCalledTimes(meshes.length);
+    visual.dispose();
   });
 });
