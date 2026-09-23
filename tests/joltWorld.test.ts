@@ -261,3 +261,122 @@ it('reports real local inertia and applies live angular limits, damping and cont
   w.getAngularVelocity(id, omega);
   expect(omega.y).toBeLessThan(3);
 });
+
+describe('phase A foundations: quaternion statics, pooled lifecycle, scoped removal', () => {
+  it('builds a pitched static body as one box whose top face reports the tilted normal', async () => {
+    const w = await world();
+    const pitch = Math.PI / 12; // 15 degrees nose-up about X.
+    const ramp = w.createStaticBody({
+      center: { x: 0, y: 0, z: 0 },
+      halfExtents: { x: 2, y: 0.25, z: 4 },
+      rotation: { x: Math.sin(pitch / 2), y: 0, z: 0, w: Math.cos(pitch / 2) },
+      surfaceId: 0,
+    });
+    const hit = {
+      distance: 0,
+      point: vec(),
+      normal: vec(),
+      bodyId: -1,
+      surfaceId: -1,
+    };
+    expect(
+      w.rayCast({ x: 0, y: 5, z: 0 }, { x: 0, y: -1, z: 0 }, 10, hit),
+    ).toBe(true);
+    expect(hit.bodyId).toBe(ramp);
+    expect(hit.normal.y).toBeCloseTo(Math.cos(pitch), 3);
+    expect(Math.abs(hit.normal.z)).toBeCloseTo(Math.sin(pitch), 3);
+    expect(hit.normal.x).toBeCloseTo(0, 5);
+    expect(() =>
+      w.createStaticBody({
+        center: vec(),
+        halfExtents: { x: 1, y: 1, z: 1 },
+        rotation: { x: 1, y: 1, z: 0, w: 1 },
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it('keeps pooled bodies out of the simulation until activated and removes them on deactivate', async () => {
+    const w = await world();
+    w.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 50, y: 0.5, z: 50 });
+    const pooled = w.createPooledBox({
+      motion: 'static',
+      halfExtents: { x: 1, y: 1, z: 1 },
+    });
+    const hit = {
+      distance: 0,
+      point: vec(),
+      normal: vec(),
+      bodyId: -1,
+      surfaceId: -1,
+    };
+    expect(w.isBodyActive(pooled)).toBe(false);
+    w.rayCast({ x: 10, y: 5, z: 10 }, { x: 0, y: -1, z: 0 }, 10, hit);
+    expect(hit.bodyId).not.toBe(pooled); // Inactive: the ray reaches the floor.
+    w.activateBody(pooled, { x: 10, y: 1, z: 10 }, quat());
+    expect(w.isBodyActive(pooled)).toBe(true);
+    w.rayCast({ x: 10, y: 5, z: 10 }, { x: 0, y: -1, z: 0 }, 10, hit);
+    expect(hit.bodyId).toBe(pooled);
+    expect(hit.point.y).toBeCloseTo(2, 3);
+    w.deactivateBody(pooled);
+    w.deactivateBody(pooled); // Idempotent.
+    w.rayCast({ x: 10, y: 5, z: 10 }, { x: 0, y: -1, z: 0 }, 10, hit);
+    expect(hit.bodyId).not.toBe(pooled);
+    const debris = w.createPooledBox({
+      motion: 'dynamic',
+      ...box(),
+      surfaceId: 2,
+    });
+    w.activateBody(debris, { x: -10, y: 3, z: 0 }, quat());
+    for (let i = 0; i < 240; i++) w.step(1 / 120);
+    const p = vec();
+    w.getTransform(debris, p, quat());
+    expect(p.y).toBeCloseTo(0.5, 1); // Fell and settled on the floor.
+    w.deactivateBody(debris);
+    w.activateBody(debris, { x: -10, y: 3, z: 0 }, quat());
+    const v = vec();
+    w.getLinearVelocity(debris, v);
+    expect(Math.hypot(v.x, v.y, v.z)).toBe(0); // Re-activation zeroes velocity.
+  });
+
+  it('cycles pooled bodies in and out of the simulation with the heap exactly unchanged after warm-up', async () => {
+    const w = await world();
+    w.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 50, y: 0.5, z: 50 });
+    const ids: number[] = [];
+    for (let i = 0; i < 64; i++)
+      ids.push(w.createPooledBox({ motion: 'dynamic', ...box(), ccd: false }));
+    const stats = { heapBytes: 0, freeBytes: 0 };
+    let baseline = 0;
+    for (let cycle = 0; cycle < 6; cycle++) {
+      ids.forEach((id, i) =>
+        w.activateBody(
+          id,
+          { x: (i % 8) * 1.5 - 6, y: 2 + Math.floor(i / 8) * 1.5, z: 0 },
+          quat(),
+        ),
+      );
+      for (let i = 0; i < 120; i++) w.step(1 / 120);
+      for (const id of ids) w.deactivateBody(id);
+      for (let i = 0; i < 10; i++) w.step(1 / 120);
+      w.getMemoryStats(stats);
+      if (cycle === 1) baseline = stats.freeBytes;
+      if (cycle > 1) expect(stats.freeBytes).toBe(baseline);
+    }
+  });
+
+  it('destroys a body on request, forgets it, and reclaims its memory', async () => {
+    const w = await world();
+    const stats = { heapBytes: 0, freeBytes: 0 };
+    w.getMemoryStats(stats);
+    const before = stats.freeBytes;
+    const id = w.createPooledBox({
+      motion: 'static',
+      halfExtents: { x: 1, y: 1, z: 1 },
+    });
+    w.activateBody(id, { x: 0, y: 1, z: 0 }, quat());
+    w.destroyBody(id);
+    expect(() => w.isBodyActive(id)).toThrow('Unknown physics body.');
+    w.getMemoryStats(stats);
+    expect(stats.freeBytes).toBe(before);
+    w.dispose(); // Must not double-remove the destroyed body.
+  });
+});

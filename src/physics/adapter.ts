@@ -27,6 +27,32 @@ export interface DynamicBoxDesc extends MassDesc {
   angularDamping: number;
 }
 
+/** A static box with a full rotation, so a pitched ramp is one body.
+ * `rotation` defaults to identity and must be a unit quaternion. */
+export interface StaticBodyDesc {
+  center: V3;
+  halfExtents: V3;
+  rotation?: Quat;
+  friction?: number;
+  restitution?: number;
+  surfaceId?: number;
+}
+/** A body created at boot and kept out of the simulation until activated.
+ * Activation and deactivation never create or destroy anything, so they
+ * leave the WebAssembly heap exactly where the boot baseline put it. */
+export type PooledBoxDesc =
+  | {
+      motion: 'static';
+      halfExtents: V3;
+      friction?: number;
+      restitution?: number;
+      surfaceId?: number;
+    }
+  | ({ motion: 'dynamic'; surfaceId?: number } & Omit<
+      DynamicBoxDesc,
+      'center'
+    >);
+
 export type BodyProperties = Pick<
   DynamicBoxDesc,
   'angularDamping' | 'maxAngularVelocity' | 'friction' | 'restitution'
@@ -65,7 +91,18 @@ export interface IPhysicsWorld {
     restitution?: number,
     surfaceId?: number,
   ): BodyId;
+  createStaticBody(desc: StaticBodyDesc): BodyId;
   createDynamicBox(desc: DynamicBoxDesc): BodyId;
+  /** Boot only: creates the body but does not add it to the simulation. */
+  createPooledBox(desc: PooledBoxDesc): BodyId;
+  /** Places an inactive pooled body and adds it to the simulation with zero
+   * velocity. Idempotent for an already active body (it is moved). */
+  activateBody(id: BodyId, pos: V3, quat: Quat): void;
+  /** Removes a body from the simulation without destroying it. */
+  deactivateBody(id: BodyId): void;
+  isBodyActive(id: BodyId): boolean;
+  /** Scoped removal for teardown: destroys the body. Never on the hot path. */
+  destroyBody(id: BodyId): void;
   updateMassProperties(id: BodyId, desc: MassDesc): void;
   setContactProperties(id: BodyId, friction: number, restitution: number): void;
   setBodyProperties(id: BodyId, properties: BodyProperties): void;

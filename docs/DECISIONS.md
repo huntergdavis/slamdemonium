@@ -488,6 +488,17 @@ has a reachable top gear; the usable spacing range depends on gear count and
 top speed and is derived rather than hard-coded. The existing integration baselines remain the guard:
 2.2083 s to 100 km/h and 72.399 m braking distance.
 
+## Phase A foundations for air and impact: quaternion statics, pooled bodies, surfaces by construction (2026-09-22)
+
+Three adapter and world changes that both halves of the air-and-impact slice need (see `docs/slices/air-and-impact.md`).
+
+- **Quaternion static bodies.** `IPhysicsWorld.createStaticBody(desc)` takes a unit quaternion, so a pitched ramp is one body rather than a staircase of yaw-only boxes that would be audible through the suspension. `createStaticBox` stays as a yaw wrapper; the two tests that pin the default track at 129 static bodies are untouched.
+- **Pooled lifecycle.** `createPooledBox` creates a body at boot without adding it to the simulation; `activateBody` places it and adds it with zero velocity; `deactivateBody` removes it without destroying it. The WebAssembly heap regression asserts exact equality against a 60 second baseline, so runtime body creation or destruction would fail it outright; a unit test now cycles 64 pooled dynamic bodies in and out and asserts free bytes exactly equal after warm-up. `destroyBody` exists for scoped teardown only and is never used mid-session.
+- **Pool budget.** `POOL_BUDGET` in `src/world/bodyPool.ts` reserves 32 breakables and 128 debris fragments at boot. Arithmetic: Jolt is initialised for 1024 bodies, the default track uses 130 (ground, 128 barriers, car), the pool adds 160 for 290, leaving about 700 spare. 128 debris is 16 smashed props with 8 fragments each alive at once; when exhausted the pool retires the oldest fragment and reuses it. These are starting numbers to argue with, and a denser smash route is a change to two constants.
+- **Surfaces by construction.** The resolver used to be a closed snapshot of the ground and barriers; a body it did not know resolved to null and the tyre model skipped that wheel, so a ramp added without registration would have had suspension force and no grip, brakes or steering. Now one `SurfaceRegistry` is shared by the track resolver and a `SurfacedBodies` facade in the world layer, and the facade is the only way world code creates bodies: every creation registers its authored surface in the same call, pooled bodies register at boot so activation never touches the registry, and destroy unregisters. The adapter stays engine-facing and the rule that no Jolt type leaves `joltWorld.ts` holds. The resolver keeps returning null for an unknown body as defence in depth, with its diagnostic intact, because that is how a future regression would be noticed. A test installs a pitched ramp through the facade and asserts a wheel hit resolves to asphalt.
+
+Not in this change: ramps in the layout, airborne state, the downforce fix, debris behaviour, scoring.
+
 ## 2026-09-22 — RPM ramp and independent firing-rate presentation controls
 
 The CTO reported that the RPM note climbed too quickly within each gear while
