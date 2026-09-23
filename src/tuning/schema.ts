@@ -986,12 +986,11 @@ const definitions = [
     unit: 'ratio',
     default: 1.6,
     min: 1.3,
-    // Keep the range wide so the CTO's verbatim 1.6 default remains valid:
-    // at six gears the derived cap is about 1.484. Show the effective cap in
-    // Options later rather than shrinking this range around the default.
+    // Keep the range wide so the CTO's verbatim 1.6 default remains valid;
+    // Options shows the lower effective cap when the runtime ladder clamps it.
     max: 1.65,
     step: 0.05,
-    help: 'How much longer each virtual gear is than the one below. Lower shifts sooner and more often; higher makes each gear last longer. The usable spacing range depends on gear count and top speed. Presentation only: it changes the note and the tachometer, never acceleration.',
+    help: 'How much longer each virtual gear is than the one below. Lower shifts sooner and more often; higher makes each gear last longer. The effective value is shown below when the runtime cap applies. Presentation only: it changes the note and the tachometer, never acceleration.',
   },
   {
     key: 'gearCount',
