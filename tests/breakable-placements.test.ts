@@ -10,6 +10,8 @@ it('keeps the proving-ground banks and gates outside runways and targets', () =>
     expect(!(Math.abs(z) <= 13 && x >= -350 && x <= 350)).toBe(true);
     expect(!(x >= -47 && x <= -25 && z >= -200 && z <= 40)).toBe(true);
     expect(!(x >= 23 && x <= 49 && z >= -200 && z <= 40)).toBe(true);
+    // The widened east-loop exit runs north from z=58 with shoulders to x=70.
+    expect(!(x >= 48 && x <= 80 && z >= 58 && z <= 350)).toBe(true);
     // Giant-ramp landing corridor and both loop target corridors.
     expect(!(Math.abs(x) <= 20 && z >= 35 && z <= 445)).toBe(true);
     expect(!(x >= -57 && x <= -25 && z >= 17 && z <= 63)).toBe(true);

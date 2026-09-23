@@ -14,7 +14,8 @@ const BANK_CENTERS = [
   { x: -70, z: -260 },
   { x: 70, z: -260 },
   { x: -70, z: 180 },
-  { x: 70, z: 180 },
+  // East of the widened loop's x=58 +/- 10 exit and x=70 shoulders.
+  { x: 84, z: 180 },
 ] as const;
 
 function createBank(
