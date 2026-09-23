@@ -294,3 +294,54 @@ it('reports airborne state with a counted landing and carries no downforce in fl
     rig.dispose();
   }
 });
+
+it('gives pitch authority only past the gate, brakes the nose down at about a quarter turn per second, and self-levels an inverted launch', async () => {
+  const { scriptVehicleHarness } = await import('../scriptVehicleHarness');
+  const { Vector3 } = await import('three');
+  const rig = await scriptVehicleHarness({ flatPlane: true });
+  try {
+    const { world, vehicle, loop, setPad } = rig;
+    const s = vehicle.telemetry;
+    const pad = (throttle: number, brake: number, steer: number) =>
+      setPad({
+        throttle,
+        brake,
+        steer,
+        handbrake: false,
+        boost: false,
+        source: 'gamepad',
+      });
+    // Launch level and fast, then hold full brake in the air.
+    pad(0, 0, 0);
+    vehicle.respawn({ x: 0, y: 30, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+    world.setLinearVelocity(vehicle.body, { x: 0, y: 6, z: -30 });
+    pad(0, 1, 0);
+    let weightAtGate = -1;
+    for (let step = 0; step < 1.2 * HZ; step++) {
+      loop.stepMany(1);
+      if (weightAtGate < 0 && s.airTime > 0.1)
+        weightAtGate = s.airControlWeight;
+    }
+    expect(weightAtGate).toBe(0); // Still zero at the gate itself.
+    expect(s.airControlWeight).toBe(1);
+    // Right axis is world +X for this launch; nose-down is a negative rate.
+    const pitchRate = s.angularVelocity.x;
+    expect(pitchRate).toBeLessThan(-0.6); // Most of a quarter turn per second.
+    expect(pitchRate).toBeGreaterThan(-2.0);
+    expect(s.angularVelocity.length()).toBeLessThanOrEqual(12.001);
+    // Inverted launch with hands off: option A rights the car before landing.
+    pad(0, 0, 0);
+    vehicle.respawn({ x: 0, y: 14, z: 0 }, { x: 0, y: 0, z: 1, w: 0 });
+    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -20 });
+    let landed = false;
+    for (let step = 0; step < 4 * HZ && !landed; step++) {
+      loop.stepMany(1);
+      landed = s.groundedWheels > 0 && s.landingCount > 0;
+    }
+    expect(landed).toBe(true);
+    const bodyUp = new Vector3(0, 1, 0).applyQuaternion(s.rotation);
+    expect(bodyUp.y).toBeGreaterThan(0.7); // Within about 45 degrees of wheels-down.
+  } finally {
+    rig.dispose();
+  }
+});

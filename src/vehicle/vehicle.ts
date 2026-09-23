@@ -18,6 +18,13 @@ import { DEG, VEHICLE_GEOMETRY as G } from './constants';
 import { DEFAULT_ENGINE } from './engineProfile';
 import { RpmModel } from './rpmModel';
 import { AirStateTracker } from './airState';
+import { airControlTorques } from './airControl';
+import type {
+  AirAttitude,
+  AirControlInputs,
+  AirControlTorques,
+  AirControlTuning,
+} from './airControl';
 import { countersteerAngle, steeringLock, VehicleControls } from './controls';
 import {
   brakeForce,
@@ -80,6 +87,30 @@ export class Vehicle {
    * telemetry, never touches forces or controls. */
   private readonly rpmModel = new RpmModel(DEFAULT_ENGINE);
   private readonly airState = new AirStateTracker();
+  private wasAirborneForControl = false;
+  private readonly airInputs: AirControlInputs = {
+    throttle: 0,
+    brake: 0,
+    steer: 0,
+    throttleAtTakeoff: 0,
+  };
+  private readonly airAttitude: AirAttitude = {
+    pitchAngle: 0,
+    rollAngle: 0,
+    pitchRate: 0,
+    rollRate: 0,
+    inertiaPitch: 0,
+    inertiaRoll: 0,
+  };
+  private readonly airTuning: AirControlTuning = {
+    authorityTurnsPerSecond: 0,
+    autoLevel: 0,
+  };
+  private readonly airTorques: AirControlTorques = {
+    pitch: 0,
+    roll: 0,
+    weight: 0,
+  };
 
   constructor(
     readonly world: IPhysicsWorld,
@@ -508,17 +539,52 @@ export class Vehicle {
     s.yawAssistTorque = grip + slide;
     this.torque.copy(this.up).multiplyScalar(s.yawAssistTorque);
     // D/E are stability safeguards, independent of tunable handling assists.
+    // The flight damping used to be a hardcoded 0.8; airDamping tunes it.
+    const pitchRate = s.angularVelocity.dot(this.right);
+    const rollRate = s.angularVelocity.dot(this.forward);
     if (s.groundedWheels < 2) {
+      const damping = t.get('airDamping');
       this.torque.addScaledVector(
         this.right,
-        -0.8 * this.inertia.x * s.angularVelocity.dot(this.right),
+        -damping * this.inertia.x * pitchRate,
       );
       this.torque.addScaledVector(
         this.forward,
-        -0.8 * this.inertia.z * s.angularVelocity.dot(this.forward),
+        -damping * this.inertia.z * rollRate,
       );
     }
     const roll = Math.atan2(this.right.y, this.up.y);
+    // Air control (design slice B3): pitch and roll authority plus optional
+    // self-levelling once fully airborne past the kerb-hop gate. airTime is
+    // last step's derived value and is 0 whenever any wheel is grounded, so
+    // intermittent kerb contact never grants authority.
+    const airborne = s.groundedWheels === 0;
+    if (airborne && !this.wasAirborneForControl)
+      this.airInputs.throttleAtTakeoff = this.controls.throttle;
+    this.wasAirborneForControl = airborne;
+    if (airborne && s.airTime > 0) {
+      this.airInputs.throttle = this.controls.throttle;
+      this.airInputs.brake = this.controls.brake;
+      this.airInputs.steer = this.controls.steer;
+      this.airAttitude.pitchAngle = Math.asin(clamp(this.forward.y, -1, 1));
+      this.airAttitude.rollAngle = roll;
+      this.airAttitude.pitchRate = pitchRate;
+      this.airAttitude.rollRate = rollRate;
+      this.airAttitude.inertiaPitch = this.inertia.x;
+      this.airAttitude.inertiaRoll = this.inertia.z;
+      this.airTuning.authorityTurnsPerSecond = t.get('airControlAuthority');
+      this.airTuning.autoLevel = t.get('airAutoLevel');
+      airControlTorques(
+        s.airTime,
+        this.airInputs,
+        this.airAttitude,
+        this.airTuning,
+        this.airTorques,
+      );
+      this.torque.addScaledVector(this.right, this.airTorques.pitch);
+      this.torque.addScaledVector(this.forward, this.airTorques.roll);
+    } else this.airTorques.weight = 0;
+    s.airControlWeight = this.airTorques.weight;
     if (Math.abs(roll) > 35 * DEG && (s.speed < 3 || s.groundedWheels > 0)) {
       const correction = clamp(
         8 * roll - 2 * s.angularVelocity.dot(this.forward),
