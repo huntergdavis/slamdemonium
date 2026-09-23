@@ -1,5 +1,3 @@
-import { DEFAULT_ENGINE, maxGearSpacing } from '../vehicle/engineProfile';
-
 /** Single source of truth: docs/vertical-slice-design.md, table 7.2.
  * Values retain the documented UI units; use getRadians() for simulation angles.
  * For discrete controls, step is 1 and the discrete list is authoritative.
@@ -864,7 +862,7 @@ const definitions = [
     group: 'Audio',
     label: 'Engine character',
     unit: '0 to 1',
-    default: 1,
+    default: 0.75,
     min: 0,
     max: 1,
     step: 0.05,
@@ -875,7 +873,7 @@ const definitions = [
     group: 'Audio',
     label: 'Throttle rev lift',
     unit: 'rpm',
-    default: 2800,
+    default: 1850,
     min: 0,
     max: 4000,
     step: 50,
@@ -886,7 +884,7 @@ const definitions = [
     group: 'Audio',
     label: 'RPM ramp curve',
     unit: 'exponent',
-    default: 1.4,
+    default: 1.2,
     min: 0.6,
     max: 2.5,
     step: 0.05,
@@ -919,7 +917,7 @@ const definitions = [
     group: 'Audio',
     label: 'Firing unevenness',
     unit: '0 to 1',
-    default: 0.7,
+    default: 1,
     min: 0,
     max: 1,
     step: 0.05,
@@ -941,11 +939,11 @@ const definitions = [
     group: 'Audio',
     label: 'Engine level',
     unit: 'x',
-    default: 1.45,
+    default: 2,
     min: 0,
-    max: 2,
+    max: 3,
     step: 0.05,
-    help: 'Engine loudness relative to tyres, boost and impacts. One is the neutral reference mix, 1.45 is the current shipped level, zero is silent, two is clearly dominant. Presentation only: it changes the mix, never acceleration.',
+    help: 'Engine loudness relative to tyres, boost and impacts. One is the neutral reference mix, two is the current shipped ceiling, zero is silent, three is clearly dominant. Presentation only: it changes the mix, never acceleration.',
   },
   {
     key: 'gearSpacing',
@@ -954,11 +952,7 @@ const definitions = [
     unit: 'ratio',
     default: 1.6,
     min: 1.3,
-    max: maxGearSpacing(
-      DEFAULT_ENGINE.gearCount,
-      DEFAULT_ENGINE.firstGearSpeed,
-      60,
-    ),
+    max: 1.65,
     step: 0.05,
     help: 'How much longer each virtual gear is than the one below. Lower shifts sooner and more often; higher makes each gear last longer. The usable spacing range depends on gear count and top speed. Presentation only: it changes the note and the tachometer, never acceleration.',
   },
@@ -967,7 +961,7 @@ const definitions = [
     group: 'Audio',
     label: 'Gear count',
     unit: 'gears',
-    default: 5,
+    default: 6,
     min: 3,
     max: 8,
     step: 1,

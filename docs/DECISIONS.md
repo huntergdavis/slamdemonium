@@ -20,6 +20,8 @@ Running log of technical decisions, spike results and changed defaults. New entr
 
 | 2026-09-22 | [Five virtual gears and presentation-only gear count](#2026-09-22--five-virtual-gears-and-presentation-only-gear-count) | Ship five derived gears with 1.6 spacing; expose integer 3–8 gear count tuning without changing acceleration or braking. |
 
+| 2026-09-22 | [Six-gear audio profile and deliberate redline cruise](#2026-09-22--six-gear-audio-profile-and-deliberate-redline-cruise) | Ship the CTO upload verbatim while keeping the existing 0.97 unboosted-top-speed cap: top gear is deliberately boost-only and unboosted cruise stays near redline. |
+
 | 2026-09-22 | [RPM ramp and independent firing-rate presentation controls](#2026-09-22--rpm-ramp-and-independent-firing-rate-presentation-controls) | Shape the RPM sweep with an exponent and scale worklet pulse timing separately; neither control changes vehicle forces or the tachometer's RPM. |
 
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
@@ -520,3 +522,22 @@ remain 2.2083 s to 100 km/h and 72.399 m braking distance.
 
 - **Airborne state** (`src/vehicle/airState.ts`, written to telemetry after physics): `airborne` (no wheel grounded this step), `airTime` (seconds since every wheel left, 0 while grounded), `lastAirTime` (the most recent counted flight) and `landingCount`, a monotonic counter so a 30 Hz consumer polling 120 Hz physics misses no landing, the same contract as the gearbox shift counters and for the same reason: a one-step flag was the bug we already fixed once. A flight shorter than 0.1 s is a kerb hop: `airborne` still reports it, but it neither counts a landing nor updates `lastAirTime`. Presentation and scoring read this; forces never do.
 - **Downforce** used to be applied along the body's down axis unconditionally, so an airborne car carried a body-relative force and an inverted one was pushed upward in world space. Nothing launched the car, so nobody saw it; ramps would have. Downforce is now zero when no wheel is grounded and unchanged otherwise, which keeps the flat-track acceleration and braking regressions and the determinism digest identical. Scaling it by grounded fraction on two or three wheels is a feel decision left for the CTO, not made here.
+## 2026-09-22 — Six-gear audio profile and deliberate redline cruise
+
+The CTO's 2026-09-22 upload changed exactly six Audio values, tuned by ear on
+the deployed build: `engineCharacter` 0.75, `engineRevLift` 1850,
+`rpmRampExponent` 1.2, `firingUnevenness` 1, `engineLevel` 2, and
+`gearCount` 6. Every other tuning value remains unchanged, including
+`gearSpacing` 1.6. The engine-level ceiling is raised to 3 so the uploaded 2.0
+value is not a range endpoint.
+
+The existing `GEAR_TOP_SPEED_HEADROOM` value of 0.97 and its cap based on
+unboosted top speed are intentional design behavior. The top speed and the top
+virtual gear are deliberately boost-only; without boost, cruising sits pinned
+near redline so the racer sounds like it is working hard. A six-gear profile at
+`gearSpacing` 1.6 is therefore allowed to use the effective capped ratio while
+the slider continues to show the uploaded value. This near-redline unboosted
+cruise is intent, not a stranded-gear bug, and the ladder must not be widened to
+make it quieter. The physical drivetrain, acceleration and braking remain
+unchanged; the integration guards remain 2.2083 s to 100 km/h and 72.399 m
+braking distance.

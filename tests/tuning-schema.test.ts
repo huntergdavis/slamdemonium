@@ -101,15 +101,16 @@ describe('tuning schema: design sections 7.2 and 13.1', () => {
     }
     expect(Object.keys(DEFAULT_VALUES)).toHaveLength(83);
     expect(DEFAULT_VALUES).toMatchObject({
-      engineRevLift: 2800,
+      engineCharacter: 0.75,
+      engineRevLift: 1850,
       exhaustLength: 1.3,
       exhaustFeedback: 0.76,
-      firingUnevenness: 0.7,
-      rpmRampExponent: 1.4,
+      rpmRampExponent: 1.2,
+      firingUnevenness: 1,
       firingRateScale: 1.15,
-      engineLevel: 1.45,
+      engineLevel: 2,
       gearSpacing: 1.6,
-      gearCount: 5,
+      gearCount: 6,
     });
     expect(PARAM_BY_KEY.gearSpacing.max).toBe(1.65);
     expect(isParamKey('__proto__')).toBe(false);

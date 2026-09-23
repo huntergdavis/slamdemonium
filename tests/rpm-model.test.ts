@@ -139,4 +139,38 @@ describe('derived rpm model', () => {
     expect(state.gearCount).toBe(8);
     expect(state.gear).toBeLessThanOrEqual(8);
   });
+
+  it('makes nominal six-gear spacing byte-identical to its unboosted cap', () => {
+    const cappedRatio =
+      Math.pow((60 * 0.97) / DEFAULT_ENGINE.firstGearSpeed, 1 / 4) *
+      (1 - 1e-9);
+    const nominal = fresh();
+    const capped = fresh();
+    for (let step = 1; step <= 2400; step++) {
+      const speed = (step / 2400) * 60;
+      nominal.model.step(
+        DT,
+        speed,
+        1,
+        0,
+        LIFT,
+        nominal.state,
+        1.6,
+        6,
+        60,
+      );
+      capped.model.step(
+        DT,
+        speed,
+        1,
+        0,
+        LIFT,
+        capped.state,
+        cappedRatio,
+        6,
+        60,
+      );
+      expect(nominal.state).toEqual(capped.state);
+    }
+  });
 });
