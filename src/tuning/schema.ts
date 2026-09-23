@@ -16,7 +16,8 @@ export interface ParamDef {
     | 'Collision'
     | 'Camera'
     | 'Input'
-    | 'Audio';
+    | 'Audio'
+    | 'Air';
   label: string;
   unit: string;
   default: number;
@@ -856,6 +857,39 @@ const definitions = [
     max: 1,
     step: 0.05,
     help: 'Engine, tyres, boost and impact volume. Zero is silent. Master mute in the pause menu silences all audio without changing this value.',
+  },
+  {
+    key: 'airControlAuthority',
+    group: 'Air',
+    label: 'Air control authority',
+    unit: 'turns/s',
+    default: 0.25,
+    min: 0,
+    max: 1.5,
+    step: 0.05,
+    help: 'How fast the car can pitch and roll in the air at full input. Pitch: press more throttle than at takeoff for nose up, lift or brake for nose down. Roll: steer. Only after a tenth of a second fully airborne; zero disables.',
+  },
+  {
+    key: 'airDamping',
+    group: 'Air',
+    label: 'Air damping',
+    unit: 'x inertia',
+    default: 0.8,
+    min: 0,
+    max: 3,
+    step: 0.1,
+    help: 'Pitch and roll damping whenever fewer than two wheels are grounded. Higher settles tumbles faster and also resists air control.',
+  },
+  {
+    key: 'airAutoLevel',
+    group: 'Air',
+    label: 'Air self-levelling',
+    unit: '0 to 2',
+    default: 0.5,
+    min: 0,
+    max: 2,
+    step: 0.05,
+    help: 'How strongly the car rolls and pitches itself back toward wheels-down in the air when the player gives no input. Zero leaves the landing entirely to the player.',
   },
   {
     key: 'engineCharacter',

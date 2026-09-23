@@ -98,7 +98,10 @@
     "firingRateScale": 1.15,
     "engineLevel": 2,
     "gearSpacing": 1.6,
-    "gearCount": 6
+    "gearCount": 6,
+    "airControlAuthority": 0.25,
+    "airDamping": 0.8,
+    "airAutoLevel": 0.5
   },
   "durationSteps": 240,
   "frames": [

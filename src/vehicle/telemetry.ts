@@ -107,4 +107,6 @@ export class VehicleTelemetry {
   airTime = 0;
   lastAirTime = 0;
   landingCount = 0;
+  /** 0..1 authority the air control applied this step; 0 whenever grounded. */
+  airControlWeight = 0;
 }
