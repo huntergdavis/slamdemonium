@@ -25,6 +25,11 @@ import type {
   AirControlTorques,
   AirControlTuning,
 } from './airControl';
+import {
+  createImpactSeverity,
+  estimateImpactSeverity,
+} from '../core/impactSeverity';
+import type { ImpactSeverity } from '../core/impactSeverity';
 import { countersteerAngle, steeringLock, VehicleControls } from './controls';
 import {
   brakeForce,
@@ -111,6 +116,9 @@ export class Vehicle {
     roll: 0,
     weight: 0,
   };
+  /** Severity of the latest counted landing, the same record a wall hit
+   * produces, so camera, haptics, audio and scoring treat both alike. */
+  readonly landingImpact: ImpactSeverity = createImpactSeverity();
 
   constructor(
     readonly world: IPhysicsWorld,
@@ -624,7 +632,27 @@ export class Vehicle {
     s.brake = this.controls.brake;
     s.handbrake = this.controls.handbrake;
     // Derived after everything physical is final for this step.
+    const landingsBefore = s.landingCount;
     this.airState.step(dt, s.groundedWheels, s);
+    if (s.landingCount !== landingsBefore) {
+      // A landing is an impact like any other: pre-step velocity against the
+      // first grounded wheel's contact normal, through the shared estimator.
+      let normal: Vector3 | null = null;
+      for (const wheel of s.wheels)
+        if (wheel.grounded) {
+          normal = wheel.contactNormal;
+          break;
+        }
+      estimateImpactSeverity(
+        null,
+        this.previousVelocity,
+        normal ?? this.up,
+        this.mass.mass,
+        this.landingImpact,
+      );
+      s.landingSpeed = this.landingImpact.approachSpeed;
+      s.landingSeverity = this.landingImpact.severity;
+    }
     this.rpmModel.step(
       dt,
       s.vLong,

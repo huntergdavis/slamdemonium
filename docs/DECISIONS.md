@@ -554,3 +554,7 @@ cruise is intent, not a stranded-gear bug, and the ladder must not be widened to
 make it quieter. The physical drivetrain, acceleration and braking remain
 unchanged; the integration guards remain 2.2083 s to 100 km/h and 72.399 m
 braking distance.
+
+## Phase B4: a landing is an impact (2026-09-23)
+
+When the airborne tracker counts a landing, the vehicle runs the shared estimator (`src/core/impactSeverity.ts`) on the pre-step velocity against the first grounded wheel's contact normal and publishes `landingSpeed` and `landingSeverity` on telemetry, keeping the full record on `vehicle.landingImpact`. Boot watches the monotonic `landingCount` once per step and hands that record to the same three consumers a wall hit uses: camera kick, controller rumble and the audio crunch on the landing surface's profile. No second severity shape, no separate landing-feel code path; phase C scoring reads the same numbers. Kerb hops below the 0.1 s threshold are not landings and produce nothing.
