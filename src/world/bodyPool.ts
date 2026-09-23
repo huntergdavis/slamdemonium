@@ -5,18 +5,20 @@ import type { SurfacedBodies, SurfacedPooledBoxDesc } from './surfacedBodies';
 /** Pool sizing, stated so it can be argued with rather than inherited.
  *
  * Body budget: Jolt is initialised with 1024 bodies. The default track uses
- * 130 (one ground, 128 barrier segments, one car). This pool adds 160 for a
- * total of 290, leaving about 700 spare, so a denser smash route later is a
- * change to these two numbers, not to the design.
+ * 130 (one ground, 128 barrier segments, one car), four ramps and 48 loop
+ * slabs. This pool adds 240 (48 breakables and 192 debris), for 422 bodies
+ * total and about 600 spare. A denser smash route is a change to these two
+ * numbers, not to the lifecycle mechanism.
  *
- * Debris: 128 fragments is 16 smashed props with 8 fragments each alive at
+ * Debris: 192 fragments is 24 smashed props with 8 fragments each alive at
  * the same time. When the pool is exhausted the oldest active fragment is
  * retired and reused, so a long chain degrades gracefully instead of failing.
- * Breakables: 32 intact props placed per run. Phase C decides shapes and
+ * Breakables: 48 intact props placed per run: 32 infield boxes and 16 gate
+ * panels. Phase C decides shapes and
  * masses; the placeholders below only reserve the bodies at boot so that no
  * body is ever created or destroyed mid-session, which is what keeps the
  * WebAssembly heap regression exactly equal to its 60 second baseline. */
-export const POOL_BUDGET = Object.freeze({ breakables: 32, debris: 128 });
+export const POOL_BUDGET = Object.freeze({ breakables: 48, debris: 192 });
 
 export interface BodyPoolSpec {
   readonly count: number;

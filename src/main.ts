@@ -115,9 +115,10 @@ async function boot(): Promise<void> {
     track.spawn.position,
     surfaceResolver,
   );
-  // Four authored banks of eight sit on the infield ahead of spawn. They stay
-  // clear of the scripted routes and racing line; the placement module is data
-  // only so the route can move without changing lifecycle code.
+  // Four authored banks of eight plus two eight-panel smash gates sit on the
+  // infield. They stay clear of the scripted routes and racing line; the
+  // placement module is data only so the route can move without changing
+  // lifecycle code.
   const breakableProps = createBreakableProps({
     physics,
     pools: propPools,
