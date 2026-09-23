@@ -482,7 +482,14 @@ async function boot(): Promise<void> {
     );
     // Breakables consume this same record; they never estimate the contact a
     // second time. Their boundary copies the borrowed point immediately.
-    breakableProps.onContact(a, b, point, impactNormal, impact);
+    breakableProps.onContact(
+      a,
+      b,
+      point,
+      impactNormal,
+      vehicle.telemetry.velocity,
+      impact,
+    );
     const otherBody = a === vehicle.body ? b : a;
     // This callback runs inside physics.step: consumers only queue fixed
     // scalars here. Audio output runs after simulation in update().

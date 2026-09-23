@@ -53,6 +53,16 @@ describe('breakable props', () => {
     const { world, active, activated, velocity } = fakeWorld();
     const bodies = createSurfacedBodies(world, createSurfaceRegistry());
     const pools = createPropPools(bodies);
+    const firstPropDescriptor = (
+      world.createPooledBox as ReturnType<typeof vi.fn>
+    ).mock.calls[0]?.[0] as {
+      motion: string;
+      mass?: number;
+      restitution?: number;
+    };
+    expect(firstPropDescriptor.motion).toBe('dynamic');
+    expect(firstPropDescriptor.mass).toBe(15);
+    expect(firstPropDescriptor.restitution).toBe(0.2);
     const props = createBreakableProps({
       physics: world,
       pools,
@@ -73,12 +83,14 @@ describe('breakable props', () => {
     const prop = activated[0]!;
     const impact = createImpactSeverity();
     impact.severity = 0.5;
+    impact.approachSpeed = 5;
     const point = { x: 0, y: 0.5, z: -10 };
     const normal = { x: 0, y: 0, z: 1 };
-    props.onContact(1, prop, point, normal, impact);
+    const vehicleVelocity = { x: 0, y: 0, z: -10 };
+    props.onContact(1, prop, point, normal, vehicleVelocity, impact);
     expect(active.get(prop)).toBe(true);
     expect(pools.debris.liveCount).toBe(0);
-    props.onContact(1, prop, point, normal, impact);
+    props.onContact(1, prop, point, normal, vehicleVelocity, impact);
     props.update(0);
     expect(active.get(prop)).toBe(false);
     expect(pools.debris.liveCount).toBe(8);
@@ -89,6 +101,11 @@ describe('breakable props', () => {
     for (const id of activated.slice(2)) velocity.set(id, { x: 0, y: 0, z: 0 });
     props.update(0.75);
     expect(pools.debris.liveCount).toBe(0);
+    props.reset();
+    impact.approachSpeed = 1;
+    props.onContact(1, activated[0]!, point, normal, vehicleVelocity, impact);
+    props.update(0);
+    expect(active.get(activated[0]!)).toBe(true);
     props.reset();
     expect(pools.breakables.liveCount).toBe(2);
     expect(pools.debris.liveCount).toBe(0);
