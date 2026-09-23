@@ -201,8 +201,8 @@ export function createBreakableProps(
         );
       else fragmentStill[index] = 0;
       if (
-        fragmentAge[index] >= FRAGMENT_TTL_SECONDS ||
-        fragmentStill[index] >= FRAGMENT_SETTLE_SECONDS
+        fragmentAge[index]! >= FRAGMENT_TTL_SECONDS ||
+        fragmentStill[index]! >= FRAGMENT_SETTLE_SECONDS
       ) {
         pools.debris.release(id);
         fragmentActive[index] = 0;
