@@ -4,16 +4,18 @@ const IDENTITY_ROTATION = Object.freeze({ x: 0, y: 0, z: 0, w: 1 });
 const BANK_OFFSETS = [-1.875, -0.625, 0.625, 1.875] as const;
 
 /**
- * Four eight-prop banks on the infield ahead of the spawn. Each bank is a
- * staggered four-by-two row; the diagonal centers keep every outer footprint
- * inside the 110 m inner paint boundary while the ring racing line stays at
- * 130 m. This is authored data so moving a bank is a data-only change.
+ * Four eight-prop banks occupy separated shoulders of the proving ground.
+ * Each bank is a staggered four-by-two row. They stay outside the painted
+ * runway lanes and are far enough apart that a car cannot pull two banks into
+ * one contact island at once. This is authored data so moving a bank is a
+ * data-only change.
  */
 const BANK_CENTERS = [
-  { x: 98, z: -20 },
-  { x: 90, z: -42 },
-  { x: 77, z: -62 },
-  { x: 60, z: -78 },
+  { x: -70, z: -260 },
+  { x: 70, z: -260 },
+  { x: -70, z: 180 },
+  // East of the widened loop's x=58 +/- 10 exit and x=70 shoulders.
+  { x: 84, z: 180 },
 ] as const;
 
 function createBank(
@@ -35,7 +37,7 @@ function createBank(
   return placements;
 }
 
-/** Four banks of eight occupy the original infield smash route. */
+/** Four banks of eight occupy separated proving-ground shoulders. */
 const GATE_SLAT_OFFSETS = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5] as const;
 
 function createGate(
@@ -67,17 +69,11 @@ function createGate(
   return placements;
 }
 
-/** Two eight-panel smash gates follow the loop and sit on the north-east
- * infield spur. All panels are the same pooled breakable rule as the boxes. */
+/** Two eight-panel smash gates sit on runway-side smash alleys. Their nearest
+ * panels remain at least five metres outside each 16 m runway lane. */
 const GATE_PLACEMENTS = [
-  ...createGate(
-    { x: -77.8, z: 56.6 },
-    { x: -Math.SQRT1_2, z: -Math.SQRT1_2 },
-  ),
-  ...createGate(
-    { x: 54, z: 95 },
-    { x: -0.87, z: 0.5 },
-  ),
+  ...createGate({ x: 26, z: 140 }, { x: 0, z: 1 }),
+  ...createGate({ x: 140, z: 24 }, { x: 1, z: 0 }),
 ] as const;
 
 /** Four banks (32) plus two eight-panel gates (16) fill the 48-prop pool. */
