@@ -2,12 +2,9 @@ import {
   BoxGeometry,
   Group,
   InstancedMesh,
-  Matrix4,
-  MeshStandardMaterial,
-  Quaternion,
-  Scene,
-  Vector3,
+  Object3D,
 } from 'three';
+import type { Material, Scene } from 'three';
 import type { IPhysicsWorld, Quat, V3 } from '../physics/adapter';
 import type { BreakableProps } from '../world/breakableProps';
 
@@ -21,26 +18,19 @@ export function createBreakablePropsVisual(
   scene: Scene,
   physics: IPhysicsWorld,
   props: BreakableProps,
+  material: Material,
 ): BreakablePropsVisual {
   const root = new Group();
   root.name = 'breakable-props';
   const geometry = new BoxGeometry(1, 1, 1);
-  const propMaterial = new MeshStandardMaterial({
-    color: 0x7f8791,
-    roughness: 0.85,
-  });
-  const debrisMaterial = new MeshStandardMaterial({
-    color: 0xb6bdc7,
-    roughness: 0.9,
-  });
   const propMesh = new InstancedMesh(
     geometry,
-    propMaterial,
+    material,
     props.propCapacity,
   );
   const debrisMesh = new InstancedMesh(
     geometry,
-    debrisMaterial,
+    material,
     props.fragmentCapacity,
   );
   propMesh.name = 'breakable-props.intact';
@@ -58,37 +48,54 @@ export function createBreakablePropsVisual(
   const fragmentIds = new Float64Array(props.fragmentCapacity);
   const position: V3 = { x: 0, y: 0, z: 0 };
   const rotation: Quat = { x: 0, y: 0, z: 0, w: 1 };
-  const threePosition = new Vector3();
-  const threeRotation = new Quaternion();
-  const unitScale = new Vector3(1, 1, 1);
-  const hiddenScale = new Vector3(0, 0, 0);
-  const matrix = new Matrix4();
-  const hiddenMatrix = new Matrix4().compose(
-    threePosition,
-    threeRotation,
-    hiddenScale,
+  const transform = new Object3D();
+  const hiddenTransform = new Object3D();
+  transform.scale.set(
+    props.propHalfExtents.x * 2,
+    props.propHalfExtents.y * 2,
+    props.propHalfExtents.z * 2,
   );
+  hiddenTransform.scale.set(0, 0, 0);
+  hiddenTransform.updateMatrix();
   let disposed = false;
 
-  function updateBody(mesh: InstancedMesh, id: number, index: number): void {
+  function updateBody(
+    mesh: InstancedMesh,
+    id: number,
+    index: number,
+    scaleX: number,
+    scaleY: number,
+    scaleZ: number,
+  ): void {
     physics.getTransform(id, position, rotation);
-    threePosition.set(position.x, position.y, position.z);
-    threeRotation.set(rotation.x, rotation.y, rotation.z, rotation.w);
-    matrix.compose(threePosition, threeRotation, unitScale);
-    mesh.setMatrixAt(index, matrix);
+    transform.position.set(position.x, position.y, position.z);
+    transform.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+    transform.scale.set(scaleX, scaleY, scaleZ);
+    transform.updateMatrix();
+    mesh.setMatrixAt(index, transform.matrix);
   }
 
   function hideRemainder(mesh: InstancedMesh, from: number, capacity: number) {
     for (let index = from; index < capacity; index++)
-      mesh.setMatrixAt(index, hiddenMatrix);
+      mesh.setMatrixAt(index, hiddenTransform.matrix);
   }
 
+  // Physics poses are sampled after the latest step; the placeholder may lead
+  // the interpolated car by one step when render cadence varies.
   function update(): void {
     if (disposed) return;
     const propCount = props.copyActivePropIds(propIds);
     for (let index = 0; index < propCount; index++) {
       const id = propIds[index];
-      if (id !== undefined) updateBody(propMesh, id, index);
+      if (id !== undefined)
+        updateBody(
+          propMesh,
+          id,
+          index,
+          props.propHalfExtents.x * 2,
+          props.propHalfExtents.y * 2,
+          props.propHalfExtents.z * 2,
+        );
     }
     hideRemainder(propMesh, propCount, props.propCapacity);
     propMesh.instanceMatrix.needsUpdate = true;
@@ -96,7 +103,15 @@ export function createBreakablePropsVisual(
     const fragmentCount = props.copyActiveFragmentIds(fragmentIds);
     for (let index = 0; index < fragmentCount; index++) {
       const id = fragmentIds[index];
-      if (id !== undefined) updateBody(debrisMesh, id, index);
+      if (id !== undefined)
+        updateBody(
+          debrisMesh,
+          id,
+          index,
+          props.fragmentHalfExtents.x * 2,
+          props.fragmentHalfExtents.y * 2,
+          props.fragmentHalfExtents.z * 2,
+        );
     }
     hideRemainder(debrisMesh, fragmentCount, props.fragmentCapacity);
     debrisMesh.instanceMatrix.needsUpdate = true;
@@ -110,8 +125,6 @@ export function createBreakablePropsVisual(
       disposed = true;
       root.removeFromParent();
       geometry.dispose();
-      propMaterial.dispose();
-      debrisMaterial.dispose();
     },
   };
 }

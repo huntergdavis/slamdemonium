@@ -116,6 +116,7 @@ async function boot(): Promise<void> {
     view.scene,
     physics,
     breakableProps,
+    track.materials.barrier,
   );
   resources.push(
     breakablePropsVisual,

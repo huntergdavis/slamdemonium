@@ -18,6 +18,8 @@ export interface BreakablePropsOptions {
 export interface BreakableProps {
   readonly propCapacity: number;
   readonly fragmentCapacity: number;
+  readonly propHalfExtents: Readonly<V3>;
+  readonly fragmentHalfExtents: Readonly<V3>;
   /** Copies active body IDs into caller-owned fixed buffers; no allocation. */
   copyActivePropIds(out: Float64Array): number;
   copyActiveFragmentIds(out: Float64Array): number;
@@ -270,6 +272,8 @@ export function createBreakableProps(
   return {
     propCapacity: propIds.length,
     fragmentCapacity: fragmentIds.length,
+    propHalfExtents: pools.breakables.halfExtents,
+    fragmentHalfExtents: pools.debris.halfExtents,
     copyActivePropIds(out: Float64Array): number {
       let count = 0;
       for (let index = 0; index < propActive.length; index++) {

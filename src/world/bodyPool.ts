@@ -35,7 +35,7 @@ export class BodyPool {
 
   constructor(
     private readonly bodies: SurfacedBodies,
-    spec: BodyPoolSpec,
+    private readonly spec: BodyPoolSpec,
   ) {
     if (!Number.isSafeInteger(spec.count) || spec.count <= 0)
       throw new RangeError('Pool size must be a positive integer.');
@@ -48,6 +48,10 @@ export class BodyPool {
 
   get capacity(): number {
     return this.ids.length;
+  }
+
+  get halfExtents(): Readonly<V3> {
+    return this.spec.desc.halfExtents;
   }
   get liveCount(): number {
     return this.activeCount;
