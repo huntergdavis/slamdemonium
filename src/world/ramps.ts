@@ -22,13 +22,14 @@ export interface RampSpec {
 /** Slab thickness; the low edge buries this much below the ground plane. */
 export const RAMP_THICKNESS = 0.3;
 
-/** Two ramps on the infield side of the racing line, launching along the
+/** Four ramps on the infield side of the racing line, launching along the
  * ring and turned 15 degrees inward so a jump drifts toward the centre and
- * can never clear the 152 m barrier and drop past the kill plane. Their
- * slabs sit at about 113 m radius, so their footprints end near 120 m and
- * the 127 to 130 m line the example scripts follow clears them by over six
- * metres (the clearance test asked for five; at 120 m the ring lap came
- * within 3.6 m). A driver steers onto them from the racing line. At 40 m/s the first launches about 5 m/s upward
+ * can never clear the 152 m barrier and drop past the kill plane. The two
+ * small ones sit at about 113 m radius, the two big ones at about 105 m, so
+ * every footprint ends inside 120 m and the 127 to 130 m line the example
+ * scripts follow clears them by over six metres (the clearance test asks
+ * for five; at 120 m the ring lap came within 3.6 m). A driver steers onto
+ * them from the racing line. At 40 m/s the first launches about 5 m/s upward
  * for a 0.7 s, 30 m hop; the second about 7 m/s for a 0.9 s, 36 m jump.
  * Both are data: the ramp clearance test measures every example route
  * against them, so a moved ramp fails a test before it surprises a replay. */
@@ -48,6 +49,29 @@ export const RAMP_LAYOUT: readonly RampSpec[] = Object.freeze([
     length: 14,
     width: 6,
     rise: 2.4,
+  }),
+  // Two bigger ramps at the east and west points, in the quadrants the prop
+  // banks do not use, launching along the ring's counter-clockwise direction
+  // and 15 degrees inward. East: 18 m long, 3.5 m lip, about 1 s and 40 m of
+  // flight at 40 m/s with a 6 m apex. West: 24 m long, 6 m lip, about 1.3 s
+  // and 50 m with a 9 m apex; from 105 m radius it lands near 100 m, far
+  // inside the 152 m barrier. Their footprints end near 118 m, still over
+  // eight metres inside the example routes.
+  Object.freeze({
+    x: 105,
+    z: 0,
+    heading: Math.PI - (15 * Math.PI) / 180,
+    length: 18,
+    width: 8,
+    rise: 3.5,
+  }),
+  Object.freeze({
+    x: -105,
+    z: 0,
+    heading: -(15 * Math.PI) / 180,
+    length: 24,
+    width: 8,
+    rise: 6,
   }),
 ]);
 
