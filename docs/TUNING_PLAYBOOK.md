@@ -118,6 +118,8 @@ Once all four wheels have been off the ground for a tenth of a second you get pi
 
 A hard landing kicks the camera and the controller by how fast you came down, on the same scale as a wall hit; that is not a slider. The ramps themselves are authored geometry, not tuning.
 
+The default world is the proving ground: you spawn at the south end of a 700 m runway facing north, and on the target line 380 m ahead are the giant ramp (centre lane), the small 10 m loop (left branch) and the big 18 m loop (right branch). Respawn (R) puts you back on the same line, so a run is: hold throttle, pick a lane, hit the target, press R. The 50 m crossbars count your approach. Add `?map=lab` to the URL for the old 150 m ring.
+
 ## Sanity references
 
 With the defaults, these are the numbers the car should roughly hit. If a tune drifts far from them, that is fine, but know that you did it. Full table in [Appendix A of the design doc](vertical-slice-design.md#appendix-a-what-the-default-numbers-mean).

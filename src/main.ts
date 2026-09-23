@@ -42,6 +42,8 @@ import { createTestTrack, installTrackColliders } from './world/track';
 import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
 import { createLoopVisual, installLoops } from './world/loopDeLoop';
+import { MAPS, resolveMapName } from './world/maps';
+import { createRunwayVisual } from './world/runways';
 import { createBreakableProps } from './world/breakableProps';
 import { BREAKABLE_PROP_PLACEMENTS } from './world/breakablePlacements';
 import { createSurfacedBodies } from './world/surfacedBodies';
@@ -73,12 +75,19 @@ async function boot(): Promise<void> {
     return;
   }
   world = physics;
+  // The world is a named map: the proving ground by default, the lab ring
+  // with `?map=lab` (and in the e2e build). Every structure below is the
+  // map's data.
+  const map =
+    MAPS[resolveMapName(location.search, import.meta.env.VITE_DEFAULT_MAP)];
   const track = createTestTrack(view.scene, {
     maxAnisotropy: view.renderer.capabilities.getMaxAnisotropy(),
     config: {
+      ...map.track,
       wallFriction: tuning.get('wallFriction'),
       restitution: tuning.get('restitution'),
     },
+    ...(map.spawn ? { spawn: map.spawn } : {}),
   });
   resources.push(track);
   view.renderer.shadowMap.enabled = true;
@@ -99,13 +108,30 @@ async function boot(): Promise<void> {
   // Ramps are static geometry installed through the facade, so each one
   // registers its asphalt surface in the call that creates it (design slice
   // B5). Collider and mesh come from the same descriptor.
-  installRamps(surfacedBodies);
-  const rampVisual = createRampVisual(view.scene, track.materials.asphalt);
+  installRamps(surfacedBodies, map.ramps);
+  const rampVisual = createRampVisual(
+    view.scene,
+    track.materials.asphalt,
+    map.ramps,
+  );
   resources.push(rampVisual);
-  // The loop-de-loop: a helix of pitched slabs, data through the same facade.
-  installLoops(surfacedBodies);
-  const loopVisual = createLoopVisual(view.scene, track.materials.asphalt);
+  // The loop-de-loops: helices of pitched slabs, data through the same facade.
+  installLoops(surfacedBodies, map.loops);
+  const loopVisual = createLoopVisual(
+    view.scene,
+    track.materials.asphalt,
+    map.loops,
+  );
   resources.push(loopVisual);
+  // Runways are paint on the infield collider: one instanced draw, no bodies.
+  resources.push(
+    createRunwayVisual(
+      view.scene,
+      track.materials.paint,
+      map.runways,
+      track.config,
+    ),
+  );
   // Phase C props and debris are reserved now so that no body is created or
   // destroyed mid-session; see POOL_BUDGET for the arithmetic.
   const propPools = createPropPools(surfacedBodies);
@@ -445,6 +471,11 @@ async function boot(): Promise<void> {
   const scripts = new ScriptController({
     store: tuning,
     mapper: input,
+    ring: {
+      centerLineRadius: track.config.centerLineRadius,
+      innerRadius: track.config.ringInnerRadius,
+      outerRadius: track.config.pavedRadius,
+    },
     reset(spawn) {
       injected = false;
       perfStepDriver = undefined;
