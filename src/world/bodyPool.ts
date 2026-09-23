@@ -128,10 +128,20 @@ export function createPropPools(bodies: SurfacedBodies): PropPools {
   const breakables = new BodyPool(bodies, {
     count: POOL_BUDGET.breakables,
     desc: {
-      motion: 'static',
+      // Small scenery must give way to the car. Keeping these pooled bodies
+      // dynamic avoids an immovable-wall response before deferred breakage
+      // runs after the physics step; the low mass makes the hit feel like
+      // destruction while preserving the pooled, allocation-free lifecycle.
+      motion: 'dynamic',
       halfExtents: { x: 0.5, y: 0.5, z: 0.5 },
-      friction: 0.5,
-      restitution: 0,
+      mass: 15,
+      comOffset: { x: 0, y: 0, z: 0 },
+      inertiaScale: { x: 1, y: 1, z: 1 },
+      friction: 0.6,
+      restitution: 0.2,
+      ccd: false,
+      maxAngularVelocity: 30,
+      angularDamping: 0.1,
       surface: SURFACE_IDS.concrete,
     },
   });

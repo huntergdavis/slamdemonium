@@ -31,6 +31,7 @@ export interface BreakableProps {
     bodyB: BodyId,
     point: Readonly<V3>,
     normalIntoVehicle: Readonly<V3>,
+    vehicleVelocity: Readonly<V3>,
     impact: Readonly<ImpactSeverity>,
   ): void;
   /** Retires settled or expired fragments after a physics step. */
@@ -45,6 +46,7 @@ const FRAGMENT_TTL_SECONDS = 8;
 const FRAGMENT_SPEED = 2.5;
 const FRAGMENT_SPREAD = 0.9;
 const FRAGMENT_SPACING = 0.25;
+const BREAK_APPROACH_SPEED = 3;
 
 /**
  * Pooled breakables for the smash route. Four authored banks of eight consume
@@ -77,6 +79,9 @@ export function createBreakableProps(
   const contactNormalX = new Float64Array(contactQueueCapacity);
   const contactNormalY = new Float64Array(contactQueueCapacity);
   const contactNormalZ = new Float64Array(contactQueueCapacity);
+  const contactVelocityX = new Float64Array(contactQueueCapacity);
+  const contactVelocityY = new Float64Array(contactQueueCapacity);
+  const contactVelocityZ = new Float64Array(contactQueueCapacity);
   const contactSeverity = new Float64Array(contactQueueCapacity);
   const propQueued = new Uint8Array(pools.breakables.capacity);
   let contactQueueHead = 0;
@@ -133,6 +138,9 @@ export function createBreakableProps(
     normalX: number,
     normalY: number,
     normalZ: number,
+    velocityX: number,
+    velocityY: number,
+    velocityZ: number,
     severity: number,
   ): void {
     const speed = FRAGMENT_SPEED + Math.max(0, Math.min(1, severity)) * 7;
@@ -155,10 +163,13 @@ export function createBreakableProps(
       fragmentActive[index] = 1;
       fragmentAge[index] = 0;
       fragmentStill[index] = 0;
-      fragmentVelocity.x = -normalX * speed + sideX;
+      const alongNormal =
+        velocityX * -normalX + velocityY * -normalY + velocityZ * -normalZ;
+      const carriedSpeed = Math.max(0, alongNormal);
+      fragmentVelocity.x = -normalX * (speed + carriedSpeed) + sideX;
       fragmentVelocity.y =
-        Math.abs(normalY) * speed + 1.5 + (fragment % 3) * 0.5;
-      fragmentVelocity.z = -normalZ * speed + sideZ;
+        velocityY + Math.abs(normalY) * speed + 1.5 + (fragment % 3) * 0.5;
+      fragmentVelocity.z = -normalZ * (speed + carriedSpeed) + sideZ;
       physics.setLinearVelocity(id, fragmentVelocity);
       fragmentAngular.x = sideZ * 8;
       fragmentAngular.y = (fragment % 2 === 0 ? 1 : -1) * 6;
@@ -184,6 +195,7 @@ export function createBreakableProps(
     bodyB: BodyId,
     point: Readonly<V3>,
     normalIntoVehicle: Readonly<V3>,
+    vehicleVelocity: Readonly<V3>,
     impact: Readonly<ImpactSeverity>,
   ): void {
     if (disposed) return;
@@ -192,6 +204,8 @@ export function createBreakableProps(
     if (other < 0) return;
     const prop = findProp(other);
     if (prop < 0) return;
+    // Low-speed nudges move the light dynamic prop without breaking it.
+    if (impact.approachSpeed < BREAK_APPROACH_SPEED) return;
     // Jolt invokes this callback during Step; defer all body mutations until
     // update() after Step has returned. One queued entry per prop also drops
     // repeated contact points from the same physics step.
@@ -205,6 +219,9 @@ export function createBreakableProps(
     contactNormalX[slot] = normalIntoVehicle.x;
     contactNormalY[slot] = normalIntoVehicle.y;
     contactNormalZ[slot] = normalIntoVehicle.z;
+    contactVelocityX[slot] = vehicleVelocity.x;
+    contactVelocityY[slot] = vehicleVelocity.y;
+    contactVelocityZ[slot] = vehicleVelocity.z;
     contactSeverity[slot] = impact.severity;
     propQueued[prop] = 1;
     contactQueueTail = (slot + 1) % contactQueueCapacity;
@@ -232,6 +249,9 @@ export function createBreakableProps(
         contactNormalX[slot] ?? 0,
         contactNormalY[slot] ?? 0,
         contactNormalZ[slot] ?? 0,
+        contactVelocityX[slot] ?? 0,
+        contactVelocityY[slot] ?? 0,
+        contactVelocityZ[slot] ?? 0,
         contactSeverity[slot] ?? 0,
       );
     }
