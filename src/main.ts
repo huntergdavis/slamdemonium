@@ -22,6 +22,7 @@ import { createCarVisual } from './render/carVisual';
 import { createSkidMarks } from './render/skidMarks';
 import { createSpeedCues } from './render/speedCues';
 import { createBreakablePropsVisual } from './render/breakablePropsVisual';
+import { createStreamedPropVisual } from './render/streamedPropVisual';
 import { prepareScene } from './render/prepareScene';
 import { BUILTIN_PRESETS } from './tuning/presets';
 import type { BuiltinPresetName } from './tuning/presets';
@@ -46,6 +47,10 @@ import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
 import { createBreakableProps } from './world/breakableProps';
 import { BREAKABLE_PROP_PLACEMENTS } from './world/breakablePlacements';
+import {
+  createPropStreamRecords,
+  createPropStreamer,
+} from './world/propStreaming';
 import { createSurfacedBodies } from './world/surfacedBodies';
 import { createSurfaceRegistry } from './world/surfaceRegistry';
 import './style.css';
@@ -141,16 +146,32 @@ async function boot(): Promise<void> {
     track.spawn.position,
     surfaceResolver,
   );
-  // Four authored banks of eight plus two eight-panel smash gates sit on the
-  // infield. They stay clear of the scripted routes and racing line; the
-  // placement module is data only so the route can move without changing
-  // lifecycle code.
+  // Authored prop records are promoted near the car and represented by a
+  // cheap far-field instance elsewhere; the record format is shared with a
+  // future map editor so moving content never changes lifecycle code.
   const breakableProps = createBreakableProps({
     physics,
     pools: propPools,
     placements: BREAKABLE_PROP_PLACEMENTS,
     vehicleBody: vehicle.body,
+    initialActiveIndices: [],
   });
+  const propStreamRecords = createPropStreamRecords(BREAKABLE_PROP_PLACEMENTS);
+  const propStreamer = createPropStreamer({
+    props: breakableProps,
+    records: propStreamRecords,
+    readVehiclePosition: (out) => {
+      out.x = vehicle.telemetry.position.x;
+      out.y = vehicle.telemetry.position.y;
+      out.z = vehicle.telemetry.position.z;
+    },
+  });
+  const streamedPropVisual = createStreamedPropVisual(
+    view.scene,
+    propStreamer,
+    breakableProps.propHalfExtents,
+    track.materials.barrier,
+  );
   const breakablePropsVisual = createBreakablePropsVisual(
     view.scene,
     physics,
@@ -158,6 +179,8 @@ async function boot(): Promise<void> {
     track.materials.barrier,
   );
   resources.push(
+    streamedPropVisual,
+    propStreamer,
     breakablePropsVisual,
     breakableProps,
     propPools,
@@ -299,6 +322,7 @@ async function boot(): Promise<void> {
       postStep(dt) {
         vehicle.postStep(dt);
         breakableProps.update(dt);
+        propStreamer.update();
         history.afterStep();
         track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
@@ -346,6 +370,7 @@ async function boot(): Promise<void> {
         const pose = history.interpolate(alpha);
         carVisual.update(visualHistory.interpolate(alpha, pose));
         breakablePropsVisual.update();
+        streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
@@ -378,7 +403,7 @@ async function boot(): Promise<void> {
     visualHistory.reset();
     cameraRig.reset();
     skids.breakStrips();
-    breakableProps.reset();
+    propStreamer.reset();
     controllerSupport.reset();
     audio.reset();
     loop.resetClock();

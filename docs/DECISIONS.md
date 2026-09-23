@@ -641,3 +641,39 @@ The CTO drove both loops and said the blue one is "so great" and the small one "
 A second sweep (radius 10 to 22 at 40 and 50 m/s, lane 14 and 20, with and without shoulders, facets of 1.3 and 0.65 m) confirmed the floor and added a second lever. Facet size changes nothing: a 10 m loop with 0.65 m facets is as unfair as with 1.3 m. Lane width is not free: the exit lane must clear the entry lane, so the helix shift grows with the lane (shift >= width + 2 x shoulder + 1 m), and shift costs grip. At the same radius a 14 m lane with 15 m of shift rides at grip usage 0.3, while a 20 m lane with 27 m of shift rides at 1.07 and fails, because the car is fighting a 17 degree skew all the way round. The reason is mechanical, not a preference: to follow a lane that slides sideways the car holds a constant sideways component all the way round, paid for out of the same grip budget it needs to correct its line, on tyres already carrying 13 to 17 times their static load. The skew shift / (2 pi R) therefore stays at or below 0.25 (`MAX_LOOP_SKEW`, about 13 degrees): the east loop's 27 m at 18 m radius is 0.24 and rides at 0.55, and that it sat inside the bound was luck until the guard made it a property. A wider lane needs a bigger radius to pay for it. The 10 m radius is closed as a question: it fails at every facet size, lane width, shoulder and speed tested, with or without extra grip; nobody needs to test it again. Tolerances also move with entry speed: the 14 m loop takes 20 degrees and 10 m at 40 m/s and 15 degrees and 2 m at 50, so the table's single numbers are the conservative end.
 
 Below 14 m a loop is unfair rather than hard: the tyres sit past their grip limit on a perfect line, so a perfect entry at the wrong speed still falls, and no surface we can author changes that (grip 1.3 to 2.0 on the 10 m loop left every tolerance at zero; on the 18 m loop a 0.8 to 1.5 sweep moved nothing consistently). At 14 m a loop is fair: it reads as a challenge, not as broken. At 18 m it is forgiving. The rule, held by `MIN_FAIR_LOOP_RADIUS` and `FORGIVING_LOOP_RADIUS` in `src/world/loopDeLoop.ts` and guarded in `tests/maps.test.ts`: no authored loop goes below 14 m; a loop meant to be fun rather than a test starts at 18 m. When the map editor arrives this table is what stops a beautiful tight loop that nobody can finish. Product decisions by the PM: the west loop becomes the hard loop at 14 m rather than being retired, so size still varies while staying fair; the 10 m loop stays on the lab ring as the control; both proving-ground loops carry the tinted surface with `loopGrip` neutral at 1.0 and a range widened to 0.2 to 8 on purpose, so the CTO, who suggested stickiness twice, can push it until it obviously helps or obviously does not and settle that with his own hands rather than on our word.
+
+## Phase-one world streaming and the fixed physics heap (2026-09-23)
+
+The Jolt build declares a fixed 2048-page memory with both initial and maximum
+set to 2048: 128 MiB is a real WASM limit, not a JavaScript setting or a budget
+we can grow at runtime. Changing it requires publishing a different Jolt build;
+the browser application has no supported lever to resize it. The 8192-body world
+ceiling remains separate from this heap decision.
+
+The capacity probe measured 19,000 inactive pooled bodies at 41,128,320 bytes
+used and roughly 0.14--0.17 ms per step; 24,000 inactive bodies used
+48,450,592 bytes and measured about 0.13 ms. Active but separated static bodies
+measured about 0.43 ms at 19,000 and 0.57 ms at 24,000. The dynamic 19,000-body
+probe was inconclusive after exceeding its measurement window, so phase one does
+not claim that a resident dynamic world at that scale is safe.
+
+Phase one proves streaming against the existing authored records. One
+`PropStreamRecord` is both the authored map record and the runtime stream record:
+it has a stable object id, cell id, pose and placement index. Far records use one
+instanced visual; records inside a 220 m promotion radius use the preallocated
+breakable pool, and demotion waits until 300 m. The hysteresis is deliberately
+small and reviewable before phase two scales the data toward 19,000 records.
+Destroyed ids stay destroyed across promotion boundaries. A live body is never
+demoted while its current physics pose remains near the car, which prevents a
+car resting on a body from falling through an unloaded region. Reset is the
+explicit session boundary that clears destroyed state; streaming alone never
+resurrects content.
+
+The 192/768 phase-one reservation is sized for the planned first content pass,
+while the current authored map promotes only its nearby subset. This is a
+runtime-content rule rather than a claim that thousands of awake contacts are
+safe: no authored cell should arrange more than roughly 24--32 touching bodies,
+and adjacent cells must remain separated enough that an 80 m/s car cannot pull
+two contact islands together. The authored and streamed records intentionally
+share one format so the future editor writes exactly what runtime consumes;
+there is no second export format to drift from the game.

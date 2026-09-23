@@ -13,6 +13,8 @@ export interface BreakablePropsOptions {
   readonly pools: PropPools;
   readonly placements: readonly BreakablePlacement[];
   readonly vehicleBody: BodyId;
+  /** Optional phase-one stream seed; omitted means all authored records. */
+  readonly initialActiveIndices?: readonly number[];
 }
 
 export interface BreakableProps {
@@ -25,6 +27,11 @@ export interface BreakableProps {
   copyActiveFragmentIds(out: Float64Array): number;
   /** Activates all authored props; call only during boot or reset. */
   reset(): void;
+  activate(index: number): boolean;
+  deactivate(index: number): boolean;
+  isActive(index: number): boolean;
+  isDestroyed(index: number): boolean;
+  getActivePropPosition(index: number, out: V3): boolean;
   /** Handles one already-estimated vehicle contact. */
   onContact(
     bodyA: BodyId,
@@ -53,10 +60,9 @@ const BREAK_APPROACH_SPEED = 3;
 const BREAK_TOTAL_SPEED_FRACTION = 0.5;
 
 /**
- * Pooled breakables for the smash route. Four authored banks of eight and two
- * eight-panel gates consume the full 48-prop budget; 192 debris bodies
- * represent twenty-four simultaneous eight-fragment breaks. No body is
- * created or destroyed during a run.
+ * Pooled breakables for the smash route. Phase one reserves 192 promotion
+ * slots and 768 debris bodies; authored records activate only near the car.
+ * No body is created or destroyed during a run.
  */
 export function createBreakableProps(
   options: BreakablePropsOptions,
@@ -89,6 +95,7 @@ export function createBreakableProps(
   const contactVelocityZ = new Float64Array(contactQueueCapacity);
   const contactSeverity = new Float64Array(contactQueueCapacity);
   const propQueued = new Uint8Array(pools.breakables.capacity);
+  const propDestroyed = new Uint8Array(options.placements.length);
   let contactQueueHead = 0;
   let contactQueueTail = 0;
   let contactQueueCount = 0;
@@ -116,17 +123,27 @@ export function createBreakableProps(
     return -1;
   }
 
+  function activateProp(index: number): boolean {
+    if (index < 0 || index >= options.placements.length) return false;
+    if (propActive[index] !== 0 || propDestroyed[index] !== 0) return false;
+    const placement = options.placements[index];
+    if (!placement) return false;
+    propIds[index] = pools.breakables.acquire(
+      placement.position as V3,
+      placement.rotation as Quat,
+    );
+    propActive[index] = 1;
+    return true;
+  }
+
   function activateProps(): void {
-    for (let index = 0; index < options.placements.length; index++) {
-      const placement = options.placements[index];
-      if (!placement) continue;
-      const id = pools.breakables.acquire(
-        placement.position as V3,
-        placement.rotation as Quat,
-      );
-      propIds[index] = id;
-      propActive[index] = 1;
+    const seed = options.initialActiveIndices;
+    if (seed) {
+      for (const index of seed) activateProp(index);
+      return;
     }
+    for (let index = 0; index < options.placements.length; index++)
+      activateProp(index);
   }
 
   function clearFragments(): void {
@@ -159,7 +176,9 @@ export function createBreakableProps(
       fragmentPosition.x =
         pointX - normalX * FRAGMENT_ORIGIN_OFFSET + sideX * FRAGMENT_SPACING;
       fragmentPosition.y =
-        pointY - normalY * FRAGMENT_ORIGIN_OFFSET + 0.12 +
+        pointY -
+        normalY * FRAGMENT_ORIGIN_OFFSET +
+        0.12 +
         (fragment % 2) * 0.08;
       // Gate panels can be shorter than the original one-metre boxes. Keep a
       // burst above the ground plane even when a contact normal points down.
@@ -201,11 +220,21 @@ export function createBreakableProps(
     pools.breakables.releaseAll();
     clearFragments();
     propActive.fill(0);
+    propDestroyed.fill(0);
     propQueued.fill(0);
     contactQueueHead = 0;
     contactQueueTail = 0;
     contactQueueCount = 0;
     activateProps();
+  }
+
+  function deactivateProp(index: number): boolean {
+    if (index < 0 || index >= propActive.length || propActive[index] === 0)
+      return false;
+    const id = propIds[index];
+    if (id === undefined) return false;
+    propActive[index] = 0;
+    return pools.breakables.release(id);
   }
 
   function onContact(
@@ -270,6 +299,7 @@ export function createBreakableProps(
       const id = propIds[prop];
       if (id === undefined) continue;
       propActive[prop] = 0;
+      propDestroyed[prop] = 1;
       pools.breakables.release(id);
       spawnFragments(
         contactPointX[slot] ?? 0,
@@ -318,6 +348,8 @@ export function createBreakableProps(
   }
 
   activateProps();
+  const activePosition: V3 = { x: 0, y: 0, z: 0 };
+  const activeRotation: Quat = { x: 0, y: 0, z: 0, w: 1 };
   return {
     propCapacity: propIds.length,
     fragmentCapacity: fragmentIds.length,
@@ -344,6 +376,26 @@ export function createBreakableProps(
       return count;
     },
     reset,
+    activate: activateProp,
+    deactivate: deactivateProp,
+    isActive(index: number): boolean {
+      return index >= 0 && index < propActive.length && propActive[index] !== 0;
+    },
+    isDestroyed(index: number): boolean {
+      return (
+        index >= 0 && index < propDestroyed.length && propDestroyed[index] !== 0
+      );
+    },
+    getActivePropPosition(index: number, out: V3): boolean {
+      if (!this.isActive(index)) return false;
+      const id = propIds[index];
+      if (id === undefined) return false;
+      physics.getTransform(id, activePosition, activeRotation);
+      out.x = activePosition.x;
+      out.y = activePosition.y;
+      out.z = activePosition.z;
+      return true;
+    },
     onContact,
     update,
     dispose(): void {
@@ -352,6 +404,7 @@ export function createBreakableProps(
       pools.breakables.releaseAll();
       clearFragments();
       propActive.fill(0);
+      propDestroyed.fill(0);
       propQueued.fill(0);
       contactQueueHead = 0;
       contactQueueTail = 0;
