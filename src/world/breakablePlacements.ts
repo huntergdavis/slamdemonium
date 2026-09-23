@@ -35,6 +35,51 @@ function createBank(
   return placements;
 }
 
-/** Four banks of eight consume the complete 32-prop authored pool. */
+/** Four banks of eight occupy the original infield smash route. */
+const GATE_SLAT_OFFSETS = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5] as const;
+
+function createGate(
+  center: Readonly<{ x: number; z: number }>,
+  forward: Readonly<{ x: number; z: number }>,
+): readonly BreakablePlacement[] {
+  // Left = up x forward. Six one-metre slats cross the lane at hood height;
+  // the two grounded edge pylons make the gate legible and breakable too.
+  const left = { x: forward.z, z: -forward.x };
+  const placements: BreakablePlacement[] = [];
+  for (const offset of GATE_SLAT_OFFSETS)
+    placements.push({
+      position: Object.freeze({
+        x: center.x + left.x * offset,
+        y: 1,
+        z: center.z + left.z * offset,
+      }),
+      rotation: IDENTITY_ROTATION,
+    });
+  for (const offset of [-4, 4])
+    placements.push({
+      position: Object.freeze({
+        x: center.x + left.x * offset,
+        y: 0.5,
+        z: center.z + left.z * offset,
+      }),
+      rotation: IDENTITY_ROTATION,
+    });
+  return placements;
+}
+
+/** Two eight-panel smash gates follow the loop and sit on the north-east
+ * infield spur. All panels are the same pooled breakable rule as the boxes. */
+const GATE_PLACEMENTS = [
+  ...createGate(
+    { x: -77.8, z: 56.6 },
+    { x: -Math.SQRT1_2, z: -Math.SQRT1_2 },
+  ),
+  ...createGate(
+    { x: 54, z: 95 },
+    { x: -0.87, z: 0.5 },
+  ),
+] as const;
+
+/** Four banks (32) plus two eight-panel gates (16) fill the 48-prop pool. */
 export const BREAKABLE_PROP_PLACEMENTS: readonly BreakablePlacement[] =
-  Object.freeze(BANK_CENTERS.flatMap(createBank));
+  Object.freeze([...BANK_CENTERS.flatMap(createBank), ...GATE_PLACEMENTS]);

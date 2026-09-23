@@ -142,15 +142,15 @@ describe('body pool', () => {
     expect(alive()).toBe(0);
   });
 
-  it('reserves the stated budget: 32 breakables and 128 debris, 290 of 1024 with the default track', () => {
+  it('reserves the stated budget: 48 breakables and 192 debris, 422 of 1024 with the default track', () => {
     const { world, alive } = fakeWorld();
     const pools = createPropPools(
       createSurfacedBodies(world, createSurfaceRegistry()),
     );
-    expect(POOL_BUDGET).toEqual({ breakables: 32, debris: 128 });
-    expect(pools.breakables.capacity + pools.debris.capacity).toBe(160);
-    expect(alive()).toBe(160);
-    expect(130 + 160).toBeLessThanOrEqual(1024 - 700);
+    expect(POOL_BUDGET).toEqual({ breakables: 48, debris: 192 });
+    expect(pools.breakables.capacity + pools.debris.capacity).toBe(240);
+    expect(alive()).toBe(240);
+    expect(130 + 4 + 48 + 240).toBeLessThanOrEqual(1024 - 600);
     pools.dispose();
     expect(alive()).toBe(0);
   });

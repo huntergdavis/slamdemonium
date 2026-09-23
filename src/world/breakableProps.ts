@@ -53,9 +53,10 @@ const BREAK_APPROACH_SPEED = 3;
 const BREAK_TOTAL_SPEED_FRACTION = 0.5;
 
 /**
- * Pooled breakables for the smash route. Four authored banks of eight consume
- * the full 32-prop budget; 128 debris bodies represent sixteen simultaneous
- * eight-fragment breaks. No body is created or destroyed during a run.
+ * Pooled breakables for the smash route. Four authored banks of eight and two
+ * eight-panel gates consume the full 48-prop budget; 192 debris bodies
+ * represent twenty-four simultaneous eight-fragment breaks. No body is
+ * created or destroyed during a run.
  */
 export function createBreakableProps(
   options: BreakablePropsOptions,
@@ -160,6 +161,12 @@ export function createBreakableProps(
       fragmentPosition.y =
         pointY - normalY * FRAGMENT_ORIGIN_OFFSET + 0.12 +
         (fragment % 2) * 0.08;
+      // Gate panels can be shorter than the original one-metre boxes. Keep a
+      // burst above the ground plane even when a contact normal points down.
+      fragmentPosition.y = Math.max(
+        fragmentPosition.y,
+        pools.debris.halfExtents.y + 0.02,
+      );
       fragmentPosition.z =
         pointZ - normalZ * FRAGMENT_ORIGIN_OFFSET + sideZ * FRAGMENT_SPACING;
       fragmentRotation.x = 0;
