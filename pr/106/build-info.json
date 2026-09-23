@@ -1,9 +1,9 @@
 {
   "version": "0.4.0",
-  "commit": "10a12337eb2dcb17a46c8d65da2adc01f6f109b6",
-  "shortCommit": "10a1233",
+  "commit": "b41ce1b93cfbf7ac08d57699181c72eb1f33cb61",
+  "shortCommit": "b41ce1b",
   "channel": "unreleased",
   "tag": null,
   "dirty": false,
-  "label": "UNRELEASED · v0.4.0 · 10a1233"
+  "label": "UNRELEASED · v0.4.0 · b41ce1b"
 }
