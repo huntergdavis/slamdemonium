@@ -15,6 +15,7 @@ function render(
   load: number,
   seconds: number,
   character = 0,
+  firingRateScale = 1,
 ): Float32Array {
   const engine = new Engine();
   const out = new Float32Array(Math.round(seconds * SAMPLE_RATE));
@@ -23,6 +24,7 @@ function render(
     rpm: new Float32Array([rpm]),
     load: new Float32Array([load]),
     character: new Float32Array([character]),
+    firingRateScale: new Float32Array([firingRateScale]),
   };
   for (let offset = 0; offset < out.length; offset += 128) {
     expect(engine.process([], [[block]], params)).toBe(true);
@@ -84,6 +86,11 @@ describe('procedural engine voice', () => {
       );
       expect(Math.abs(measured / nearest - 1)).toBeLessThan(0.06);
     }
+  });
+  it('scales pulse timing without changing the requested RPM', () => {
+    const normal = periodHz(render(1800, 0.5, 1, 0, 1));
+    const faster = periodHz(render(1800, 0.5, 1, 0, 1.5));
+    expect(faster).toBeGreaterThan(normal * 1.25);
   });
   /** Share of energy above a one-pole high-pass corner. */
   function highShare(x: Float32Array, hz: number): number {

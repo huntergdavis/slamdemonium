@@ -56,6 +56,7 @@ export class AudioDirector {
     exhaustSeconds: 0.009,
     exhaustFeedback: 0.72,
     firingUnevenness: 1,
+    firingRateScale: 1,
     tyres: new Float64Array(3),
     boost: 0,
     rate: 1,
@@ -254,6 +255,7 @@ export class AudioDirector {
       (2 * this.deps.tuning.get('exhaustLength')) / SPEED_OF_SOUND;
     mix.exhaustFeedback = this.deps.tuning.get('exhaustFeedback');
     mix.firingUnevenness = this.deps.tuning.get('firingUnevenness');
+    mix.firingRateScale = this.deps.tuning.get('firingRateScale');
     mix.engineIdle = approach(
       mix.engineIdle,
       0.22 * (1 - throttle * 0.75),

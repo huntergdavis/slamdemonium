@@ -20,6 +20,8 @@ Running log of technical decisions, spike results and changed defaults. New entr
 
 | 2026-09-22 | [Five virtual gears and presentation-only gear count](#2026-09-22--five-virtual-gears-and-presentation-only-gear-count) | Ship five derived gears with 1.6 spacing; expose integer 3–8 gear count tuning without changing acceleration or braking. |
 
+| 2026-09-22 | [RPM ramp and independent firing-rate presentation controls](#2026-09-22--rpm-ramp-and-independent-firing-rate-presentation-controls) | Shape the RPM sweep with an exponent and scale worklet pulse timing separately; neither control changes vehicle forces or the tachometer's RPM. |
+
 When you add an entry, add one row here: date, the entry heading as a link, one line of consequence.
 
 ## 2026-09-20 — WP0: minimal browser scaffold and reproducible tooling
@@ -485,3 +487,20 @@ spacing from `gearCount`, `firstGearSpeed` and top speed so every slider positio
 has a reachable top gear; the usable spacing range depends on gear count and
 top speed and is derived rather than hard-coded. The existing integration baselines remain the guard:
 2.2083 s to 100 km/h and 72.399 m braking distance.
+
+## 2026-09-22 — RPM ramp and independent firing-rate presentation controls
+
+The CTO reported that the RPM note climbed too quickly within each gear while
+also wanting the engine voice itself to sound slightly faster. These are
+separate presentation axes. `rpmRampExponent` applies a power curve to the
+normalized speed within the current virtual gear (default 1.4, range 0.6–2.5):
+an exponent above one holds the note lower through most of the gear and steepens
+near the shift. This changes the derived RPM/tachometer presentation, not the
+physical drivetrain or acceleration. Widening gears would have changed shift
+cadence and contradicted the settled five-gear feel, so it was rejected.
+
+`firingRateScale` (default 1.15, range 0.5–2) independently scales the
+AudioWorklet pulse train. It does not alter shared telemetry RPM, so the
+tachometer remains truthful while the sound can be made slightly quicker. Both
+controls are included in replay/example tuning headers; integration baselines
+remain 2.2083 s to 100 km/h and 72.399 m braking distance.

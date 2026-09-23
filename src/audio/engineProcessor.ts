@@ -169,6 +169,13 @@ class EngineProcessor extends AudioWorkletProcessor {
         maxValue: 1,
         automationRate: 'k-rate',
       },
+      {
+        name: 'firingRateScale',
+        defaultValue: 1,
+        minValue: 0.5,
+        maxValue: 2,
+        automationRate: 'k-rate',
+      },
     ] as const;
   }
   private phase = 0;
@@ -242,6 +249,10 @@ class EngineProcessor extends AudioWorkletProcessor {
     const pipeFeedback =
       parameters['pipeFeedback']?.[0] ?? DEFAULT_PIPE_FEEDBACK;
     const u = parameters['unevenness']?.[0] ?? 1;
+    const firingRateScale = Math.max(
+      0.5,
+      Math.min(2, parameters['firingRateScale']?.[0] ?? 1),
+    );
     if (
       pipeSeconds !== this.pipeSeconds ||
       pipeFeedback !== this.pipeFeedback
@@ -251,7 +262,7 @@ class EngineProcessor extends AudioWorkletProcessor {
       this.pipeFeedback = pipeFeedback;
     }
     const dt = 1 / sampleRate;
-    const firingHz = (rpm / 60) * this.firingsPerRev;
+    const firingHz = (rpm / 60) * this.firingsPerRev * firingRateScale;
     const useFilters = c < 1;
     const usePipe = c > 0;
     if (useFilters && (c !== this.tunedCharacter || rpm !== this.tunedRpm)) {

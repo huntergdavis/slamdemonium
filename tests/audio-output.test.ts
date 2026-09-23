@@ -69,6 +69,7 @@ const mix: AudioMix = {
   exhaustSeconds: 0.009,
   exhaustFeedback: 0.72,
   firingUnevenness: 1,
+  firingRateScale: 1,
   tyres: new Float64Array([0.2, 0, 0]),
   boost: 0,
   rate: 1,

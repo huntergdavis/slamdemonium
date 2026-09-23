@@ -19,6 +19,7 @@ export class EngineSynth {
   private pipeSeconds = -1;
   private pipeFeedback = -1;
   private unevenness = -1;
+  private firingRateScale = -1;
   private disposed = false;
 
   constructor(
@@ -67,7 +68,7 @@ export class EngineSynth {
   /** level 0..1 (already includes sfxVolume), rpm in revolutions per minute
    * (already includes the slow-motion rate), load 0..1, character 0..1
    * (0 even four-cylinder, 1 muscle voice), then the live exhaust shape:
-   * pipe round trip in seconds, feedback 0..1, firing unevenness 0..1. */
+   * pipe round trip in seconds, feedback 0..1, firing unevenness 0..1, and pulse timing scale. */
   apply(
     level: number,
     rpm: number,
@@ -76,6 +77,7 @@ export class EngineSynth {
     pipeSeconds: number,
     pipeFeedback: number,
     unevenness: number,
+    firingRateScale: number,
   ): void {
     if (!this.node || !this.gain) return;
     const now = this.ctx.currentTime;
@@ -116,6 +118,14 @@ export class EngineSynth {
       this.param('unevenness').setTargetAtTime(unevenness, now, RPM_SMOOTHING);
       this.unevenness = unevenness;
     }
+    if (firingRateScale !== this.firingRateScale) {
+      this.param('firingRateScale').setTargetAtTime(
+        firingRateScale,
+        now,
+        RPM_SMOOTHING,
+      );
+      this.firingRateScale = firingRateScale;
+    }
   }
 
   /** Native audio-clock fade to silence, independent of the next RAF. */
@@ -148,7 +158,8 @@ export class EngineSynth {
       | 'character'
       | 'pipeSeconds'
       | 'pipeFeedback'
-      | 'unevenness',
+      | 'unevenness'
+      | 'firingRateScale',
   ): AudioParam {
     const param = this.node!.parameters.get(name);
     if (!param) throw new Error('Engine parameter missing: ' + name);
