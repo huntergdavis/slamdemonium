@@ -71,6 +71,7 @@ export class Vehicle {
     restitution: 0,
   };
   private readonly inertia = new Vector3();
+  private readonly groundNormal = new Vector3();
   private readonly forward = new Vector3();
   private readonly right = new Vector3();
   private readonly up = new Vector3();
@@ -561,7 +562,25 @@ export class Vehicle {
         -damping * this.inertia.z * rollRate,
       );
     }
-    const roll = Math.atan2(this.right.y, this.up.y);
+    // Righting reference. The roll-righting assist exists to rescue a car
+    // that is flipped on the ground, so "flipped" is measured against the
+    // ground actually under the car: the mean contact normal when any wheel
+    // touches, world up when none does (a car on its roof has no wheel
+    // contact). Against world up alone, a loop or a banked wall read as a
+    // flipped car and the assist fought them with its full torque.
+    let contacts = 0;
+    this.groundNormal.set(0, 0, 0);
+    for (const wheel of s.wheels)
+      if (wheel.grounded) {
+        this.groundNormal.add(wheel.contactNormal);
+        contacts++;
+      }
+    if (contacts > 0) this.groundNormal.normalize();
+    else this.groundNormal.set(0, 1, 0);
+    const roll = Math.atan2(
+      this.right.dot(this.groundNormal),
+      this.up.dot(this.groundNormal),
+    );
     // Air control (design slice B3): pitch and roll authority plus optional
     // self-levelling once fully airborne past the kerb-hop gate. airTime is
     // last step's derived value and is 0 whenever any wheel is grounded, so
