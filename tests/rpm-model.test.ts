@@ -82,6 +82,18 @@ describe('derived rpm model', () => {
     expect(state.rpm).toBeGreaterThan(DEFAULT_ENGINE.redlineRpm);
     expect(state.rpm).toBeLessThanOrEqual(DEFAULT_ENGINE.boostRpm + 1e-6);
   });
+  it('slows the early sweep when the ramp exponent is above one', () => {
+    const sample = (rampExponent: number): number => {
+      const { model, state } = fresh();
+      for (let step = 0; step < 240; step++)
+        model.step(DT, 6, 0, 0, LIFT, state, 1.6, 5, 60, rampExponent);
+      return state.rpm;
+    };
+    const linear = sample(1);
+    const curved = sample(1.4);
+    expect(curved).toBeLessThan(linear - 400);
+    expect(curved).toBeGreaterThan(DEFAULT_ENGINE.idleRpm);
+  });
   it('keeps first gear in reverse and follows speed magnitude', () => {
     const { model, state } = fresh();
     for (let step = 0; step < 240; step++)

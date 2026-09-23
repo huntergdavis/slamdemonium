@@ -56,6 +56,8 @@ export interface AudioMix {
   exhaustSeconds: number;
   exhaustFeedback: number;
   firingUnevenness: number;
+  /** Multiplies pulse timing without changing the shared telemetry RPM. */
+  firingRateScale: number;
   readonly tyres: Float64Array;
   boost: number;
   rate: number;

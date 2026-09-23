@@ -115,6 +115,7 @@ export class HowlerOutput implements AudioOutput {
       mix.exhaustSeconds,
       clamp(mix.exhaustFeedback),
       clamp(mix.firingUnevenness),
+      Math.max(0.5, Math.min(2, mix.firingRateScale)),
     );
     for (let index = 0; index < LOOP_VOICES; index++) {
       const howl = this.loops[index]!;

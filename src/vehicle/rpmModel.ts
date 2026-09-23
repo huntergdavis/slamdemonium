@@ -72,6 +72,7 @@ export class RpmModel {
     gearRatio = this.profile.gearRatio,
     gearCount = this.profile.gearCount,
     topSpeed = Infinity,
+    rampExponent = 1,
   ): void {
     const p = this.profile;
     const count = Number.isFinite(gearCount)
@@ -108,9 +109,14 @@ export class RpmModel {
       }
     }
     const pedal = this.shiftCut > 0 ? 0 : Math.max(0, Math.min(1, throttle));
+    const gearSpan = p.firstGearSpeed * ratio ** this.gear;
+    const normalizedSpeed = Math.max(0, Math.min(1, v / gearSpan));
+    const curve = Number.isFinite(rampExponent)
+      ? Math.max(0.01, rampExponent)
+      : 1;
     const gearRpm =
       p.idleRpm +
-      (v * (p.shiftRpm - p.idleRpm)) / (p.firstGearSpeed * ratio ** this.gear);
+      Math.pow(normalizedSpeed, curve) * (p.shiftRpm - p.idleRpm);
     this.revLift = approach(
       this.revLift,
       pedal * revLiftRpm,

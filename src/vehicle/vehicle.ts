@@ -558,6 +558,7 @@ export class Vehicle {
       t.get('gearSpacing'),
       t.get('gearCount'),
       t.get('topSpeed'),
+      t.get('rpmRampExponent'),
     );
   }
   postStep(dt: number): void {

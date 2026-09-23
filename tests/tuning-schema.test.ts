@@ -9,10 +9,10 @@ import {
 } from '../src/tuning/schema';
 
 describe('tuning schema: design sections 7.2 and 13.1', () => {
-  it('has all 81 unique keys, valid ranges, labels, units, and help', () => {
-    expect(PARAM_DEFS).toHaveLength(81);
+  it('has all 83 unique keys, valid ranges, labels, units, and help', () => {
+    expect(PARAM_DEFS).toHaveLength(83);
     expect(new Set(PARAM_DEFS.map((definition) => definition.key)).size).toBe(
-      81,
+      83,
     );
     for (const definition of PARAM_DEFS) {
       expect(definition.default).toBeGreaterThanOrEqual(definition.min);
@@ -99,12 +99,14 @@ describe('tuning schema: design sections 7.2 and 13.1', () => {
         expect(value).toBeLessThanOrEqual(PARAM_BY_KEY[key].max);
       }
     }
-    expect(Object.keys(DEFAULT_VALUES)).toHaveLength(81);
+    expect(Object.keys(DEFAULT_VALUES)).toHaveLength(83);
     expect(DEFAULT_VALUES).toMatchObject({
       engineRevLift: 2800,
       exhaustLength: 1.3,
       exhaustFeedback: 0.76,
       firingUnevenness: 0.7,
+      rpmRampExponent: 1.4,
+      firingRateScale: 1.15,
       engineLevel: 1.45,
       gearSpacing: 1.6,
       gearCount: 5,
