@@ -21,6 +21,7 @@ import { CameraRig } from './render/cameraRig';
 import { createCarVisual } from './render/carVisual';
 import { createSkidMarks } from './render/skidMarks';
 import { createSpeedCues } from './render/speedCues';
+import { createBreakablePropsVisual } from './render/breakablePropsVisual';
 import { prepareScene } from './render/prepareScene';
 import { BUILTIN_PRESETS } from './tuning/presets';
 import type { BuiltinPresetName } from './tuning/presets';
@@ -111,7 +112,17 @@ async function boot(): Promise<void> {
     placements: BREAKABLE_PROP_PLACEMENTS,
     vehicleBody: vehicle.body,
   });
-  resources.push(breakableProps, propPools, surfacedBodies);
+  const breakablePropsVisual = createBreakablePropsVisual(
+    view.scene,
+    physics,
+    breakableProps,
+  );
+  resources.push(
+    breakablePropsVisual,
+    breakableProps,
+    propPools,
+    surfacedBodies,
+  );
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
   const carVisual = createCarVisual(view.scene);
@@ -265,6 +276,7 @@ async function boot(): Promise<void> {
         vehicle.telemetry.timeScale = tuning.get('timeScale');
         const pose = history.interpolate(alpha);
         carVisual.update(visualHistory.interpolate(alpha, pose));
+        breakablePropsVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
