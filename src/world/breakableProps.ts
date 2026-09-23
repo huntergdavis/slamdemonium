@@ -43,10 +43,13 @@ const FRAGMENTS_PER_BREAK = 8;
 const FRAGMENT_SETTLE_SPEED = 0.35;
 const FRAGMENT_SETTLE_SECONDS = 0.75;
 const FRAGMENT_TTL_SECONDS = 8;
-const FRAGMENT_SPEED = 2.5;
-const FRAGMENT_SPREAD = 0.9;
+// A fast, wide burst makes the replacement read as destruction rather than a
+// pile being nudged. The prop remains pooled and the contact stays deferred.
+const FRAGMENT_SPEED = 4.5;
+const FRAGMENT_SPREAD = 2.4;
 const FRAGMENT_SPACING = 0.25;
 const BREAK_APPROACH_SPEED = 3;
+const BREAK_TOTAL_SPEED_FRACTION = 0.5;
 
 /**
  * Pooled breakables for the smash route. Four authored banks of eight consume
@@ -204,8 +207,19 @@ export function createBreakableProps(
     if (other < 0) return;
     const prop = findProp(other);
     if (prop < 0) return;
-    // Low-speed nudges move the light dynamic prop without breaking it.
-    if (impact.approachSpeed < BREAK_APPROACH_SPEED) return;
+    // A shallow sideswipe can have low normal closing speed despite being a
+    // fast hit. Keep genuinely slow nudges intact, but let a fast contact
+    // break based on half the vehicle's total speed as well.
+    const totalSpeed = Math.sqrt(
+      vehicleVelocity.x * vehicleVelocity.x +
+        vehicleVelocity.y * vehicleVelocity.y +
+        vehicleVelocity.z * vehicleVelocity.z,
+    );
+    const breakSpeed = Math.max(
+      impact.approachSpeed,
+      totalSpeed * BREAK_TOTAL_SPEED_FRACTION,
+    );
+    if (breakSpeed < BREAK_APPROACH_SPEED) return;
     // Jolt invokes this callback during Step; defer all body mutations until
     // update() after Step has returned. One queued entry per prop also drops
     // repeated contact points from the same physics step.

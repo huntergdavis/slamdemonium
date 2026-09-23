@@ -103,9 +103,18 @@ describe('breakable props', () => {
     expect(pools.debris.liveCount).toBe(0);
     props.reset();
     impact.approachSpeed = 1;
+    vehicleVelocity.z = -1;
     props.onContact(1, activated[0]!, point, normal, vehicleVelocity, impact);
     props.update(0);
     expect(active.get(activated[0]!)).toBe(true);
+
+    props.reset();
+    impact.approachSpeed = 0.5;
+    vehicleVelocity.z = -10;
+    props.onContact(1, activated[0]!, point, normal, vehicleVelocity, impact);
+    props.update(0);
+    expect(pools.debris.liveCount).toBe(8);
+
     props.reset();
     expect(pools.breakables.liveCount).toBe(2);
     expect(pools.debris.liveCount).toBe(0);

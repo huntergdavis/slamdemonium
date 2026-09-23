@@ -1,7 +1,9 @@
 import {
   BoxGeometry,
+  DodecahedronGeometry,
   Group,
   InstancedMesh,
+  MeshStandardMaterial,
   Object3D,
 } from 'three';
 import type { Material, Scene } from 'three';
@@ -13,7 +15,11 @@ export interface BreakablePropsVisual {
   dispose(): void;
 }
 
-/** Plain pooled boxes: one mesh for intact props and one for debris. */
+const FRAGMENT_SCALE_X = [0.62, 0.9, 0.72, 0.98, 0.68, 0.86, 0.76, 0.94];
+const FRAGMENT_SCALE_Y = [0.78, 0.56, 0.92, 0.64, 0.7, 0.88, 0.6, 0.82];
+const FRAGMENT_SCALE_Z = [0.9, 0.7, 0.58, 0.84, 0.66, 0.96, 0.74, 0.62];
+
+/** Pooled painted props and visibly irregular, contrasting debris. */
 export function createBreakablePropsVisual(
   scene: Scene,
   physics: IPhysicsWorld,
@@ -22,15 +28,24 @@ export function createBreakablePropsVisual(
 ): BreakablePropsVisual {
   const root = new Group();
   root.name = 'breakable-props';
-  const geometry = new BoxGeometry(1, 1, 1);
+  const propGeometry = new BoxGeometry(1, 1, 1);
+  // A faceted shape and varied scale make the wreckage read as fragments even
+  // at chase-camera distance; the physics colliders remain boxes.
+  const debrisGeometry = new DodecahedronGeometry(0.5, 0);
+  const propMaterial = material.clone();
+  const debrisMaterial = material.clone();
+  if (propMaterial instanceof MeshStandardMaterial)
+    propMaterial.color.setHex(0xc86432);
+  if (debrisMaterial instanceof MeshStandardMaterial)
+    debrisMaterial.color.setHex(0x455768);
   const propMesh = new InstancedMesh(
-    geometry,
-    material,
+    propGeometry,
+    propMaterial,
     props.propCapacity,
   );
   const debrisMesh = new InstancedMesh(
-    geometry,
-    material,
+    debrisGeometry,
+    debrisMaterial,
     props.fragmentCapacity,
   );
   propMesh.name = 'breakable-props.intact';
@@ -108,9 +123,12 @@ export function createBreakablePropsVisual(
           debrisMesh,
           id,
           index,
-          props.fragmentHalfExtents.x * 2,
-          props.fragmentHalfExtents.y * 2,
-          props.fragmentHalfExtents.z * 2,
+          props.fragmentHalfExtents.x * 2 *
+            (FRAGMENT_SCALE_X[index % FRAGMENT_SCALE_X.length] ?? 1),
+          props.fragmentHalfExtents.y * 2 *
+            (FRAGMENT_SCALE_Y[index % FRAGMENT_SCALE_Y.length] ?? 1),
+          props.fragmentHalfExtents.z * 2 *
+            (FRAGMENT_SCALE_Z[index % FRAGMENT_SCALE_Z.length] ?? 1),
         );
     }
     hideRemainder(debrisMesh, fragmentCount, props.fragmentCapacity);
@@ -124,7 +142,10 @@ export function createBreakablePropsVisual(
       if (disposed) return;
       disposed = true;
       root.removeFromParent();
-      geometry.dispose();
+      propGeometry.dispose();
+      debrisGeometry.dispose();
+      propMaterial.dispose();
+      debrisMaterial.dispose();
     },
   };
 }
