@@ -87,7 +87,8 @@ export function createBreakableProps(
 
   function activateProps(): void {
     for (let index = 0; index < options.placements.length; index++) {
-      const placement = options.placements[index]!;
+      const placement = options.placements[index];
+      if (!placement) continue;
       const id = pools.breakables.acquire(
         placement.position as V3,
         placement.rotation as Quat,
@@ -184,26 +185,24 @@ export function createBreakableProps(
     const dt = Math.max(0, Number.isFinite(dtSeconds) ? dtSeconds : 0);
     for (let index = 0; index < fragmentActive.length; index++) {
       if (fragmentActive[index] === 0) continue;
-      const id = fragmentIds[index]!;
-      fragmentAge[index] = Math.min(
+      const id = fragmentIds[index];
+      if (id === undefined) continue;
+      const age = Math.min(
         FRAGMENT_TTL_SECONDS,
-        fragmentAge[index]! + dt,
+        (fragmentAge[index] ?? 0) + dt,
       );
+      fragmentAge[index] = age;
       physics.getLinearVelocity(id, observedVelocity);
       const speedSquared =
         observedVelocity.x * observedVelocity.x +
         observedVelocity.y * observedVelocity.y +
         observedVelocity.z * observedVelocity.z;
-      if (speedSquared < FRAGMENT_SETTLE_SPEED * FRAGMENT_SETTLE_SPEED)
-        fragmentStill[index] = Math.min(
-          FRAGMENT_SETTLE_SECONDS,
-          fragmentStill[index]! + dt,
-        );
-      else fragmentStill[index] = 0;
-      if (
-        fragmentAge[index]! >= FRAGMENT_TTL_SECONDS ||
-        fragmentStill[index]! >= FRAGMENT_SETTLE_SECONDS
-      ) {
+      const still =
+        speedSquared < FRAGMENT_SETTLE_SPEED * FRAGMENT_SETTLE_SPEED
+          ? Math.min(FRAGMENT_SETTLE_SECONDS, (fragmentStill[index] ?? 0) + dt)
+          : 0;
+      fragmentStill[index] = still;
+      if (age >= FRAGMENT_TTL_SECONDS || still >= FRAGMENT_SETTLE_SECONDS) {
         pools.debris.release(id);
         fragmentActive[index] = 0;
       }
