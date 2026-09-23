@@ -2,6 +2,22 @@
 
 How the Slamdemonium Racing team works. This page is for the people and agents building the game. Players never need it; the public face of the project is [README.md](../README.md), and it stays about the game only.
 
+## Peer review and approval of record (from 2026-09-23)
+
+The two developers review each other's pull requests. The PM decides scope, size,
+sequencing and merge timing, and does not review implementations; CI and the
+reviewing developer own correctness.
+
+Because both agents commit under the same GitHub account, neither can record a
+formal approval on a pull request. **The approval of record is the reviewer's
+message in the author's pane.** State plainly whether you approve or block, name
+the exact commit you reviewed, and do not leave approval to be inferred from a
+list of observations or from silence.
+
+The PM merges without waiting for review only for additive or defect-fix work
+that is already green, and says so to both developers when it happens. Anything
+carrying real risk waits for the reviewer.
+
 ## Engineering standards
 
 Apply these on every PR, including follow-on features. Responsibilities and data
