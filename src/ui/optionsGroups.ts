@@ -1,4 +1,5 @@
 import playbook from '../../docs/TUNING_PLAYBOOK.md?raw';
+import { DEFAULT_ENGINE, gearSpacingCap } from '../vehicle/engineProfile';
 import { PARAM_DEFS, type ParamGroup, type ParamKey } from '../tuning/schema';
 import { ParamControl, node } from './paramControl';
 import { TireCurvePlot, type TirePlotTelemetry } from './tireCurvePlot';
@@ -40,6 +41,8 @@ export class OptionsGroups {
   private readonly logLabel: Text;
   private logIndex = 0;
   private readonly beforeSearch = new Map<HTMLDetailsElement, boolean>();
+  private effectiveSpacingText: Text | undefined;
+  private readonly unsubscribeStore: () => void;
 
   constructor(
     host: HTMLElement,
@@ -122,6 +125,13 @@ export class OptionsGroups {
         hasAdvanced ||= definition.advanced === true;
         controls.push(control);
         this.register(control);
+        if (definition.key === 'gearSpacing') {
+          const caption = node(doc, 'p', 'sl-caption');
+          this.effectiveSpacingText = doc.createTextNode('');
+          caption.dataset.effectiveSpacing = 'true';
+          caption.append(this.effectiveSpacingText);
+          control.element.append(caption);
+        }
       }
       if (hasAdvanced) body.append(advanced);
       this.groups.push({ element: group, advanced, controls });
@@ -164,6 +174,15 @@ export class OptionsGroups {
     this.log.addEventListener('toggle', () => {
       this.updateLog();
     });
+    this.unsubscribeStore = session.store.onChange((change) => {
+      if (
+        change.key === 'gearSpacing' ||
+        change.key === 'gearCount' ||
+        change.key === 'topSpeed'
+      )
+        this.updateEffectiveSpacing();
+    });
+    this.updateEffectiveSpacing();
   }
 
   sync(key?: ParamKey): void {
@@ -223,7 +242,25 @@ export class OptionsGroups {
   }
 
   dispose(): void {
+    this.unsubscribeStore();
     this.plot.dispose();
+  }
+
+  private updateEffectiveSpacing(): void {
+    const text = this.effectiveSpacingText;
+    if (!text) return;
+    const requested = this.session.store.get('gearSpacing');
+    const cap = gearSpacingCap(
+      this.session.store.get('gearCount'),
+      DEFAULT_ENGINE.firstGearSpeed,
+      this.session.store.get('topSpeed'),
+    );
+    const effective = Math.min(requested, cap);
+    const formatted = effective.toFixed(3);
+    text.nodeValue =
+      effective < requested - 1e-9
+        ? `Effective spacing: ${formatted} (capped from ${requested})`
+        : `Effective spacing: ${formatted}`;
   }
 
   private register(control: ParamControl): void {
