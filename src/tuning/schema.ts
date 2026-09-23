@@ -78,6 +78,17 @@ const definitions = [
     help: 'Global multiplier on tire friction (wet/dirt test).',
   },
   {
+    key: 'loopGrip',
+    group: 'World',
+    label: 'Loop grip',
+    unit: 'x',
+    default: 1.0,
+    min: 0.5,
+    max: 2.5,
+    step: 0.01,
+    help: 'Tire friction multiplier on the big east loop only (the tinted surface). 1 = plain asphalt. Measured: neither more nor less grip widened the loop; the radius did.',
+  },
+  {
     key: 'physicsHz',
     group: 'World',
     label: 'Physics hz',

@@ -1,6 +1,6 @@
 import { BoxGeometry, Group, Matrix4, Mesh, Quaternion, Vector3 } from 'three';
 import type { Material, Scene } from 'three';
-import { SURFACE_IDS } from '../content/surfaces';
+import { SURFACE_IDS, type SurfaceId } from '../content/surfaces';
 import type { BodyId, V3 } from '../physics/adapter';
 import type { SurfacedBodies, SurfacedStaticBodyDesc } from './surfacedBodies';
 
@@ -20,6 +20,13 @@ export interface LoopSpec {
   readonly width: number;
   readonly shift: number;
   readonly segments: number;
+  /** Ground surface of every slab; default asphalt. */
+  readonly surface?: SurfaceId;
+  /** Raised shoulders along both lane edges: a strip `width` metres wide
+   * banked `bank` radians up toward the outside, so a car drifting off
+   * centre climbs a ramp and rolls back to the middle instead of leaving
+   * the lane. Half-pipe forgiveness, not assistance: it is geometry. */
+  readonly shoulder?: Readonly<{ width: number; bank: number }>;
 }
 
 export const LOOP_THICKNESS = 0.3;
@@ -112,30 +119,35 @@ function laneFrame(spec: Readonly<LoopSpec>, theta: number) {
   return { point: scratch.point, tangent: scratch.tangent, up: scratch.up };
 }
 
-/** One pitched slab per segment, asphalt, low side flush with the lane. */
+const shoulderScratch = {
+  right: new Vector3(),
+  up: new Vector3(),
+  edge: new Vector3(),
+};
+
+/** One pitched slab per segment, low side flush with the lane, plus one
+ * banked shoulder slab per edge when the spec asks for them. The lane slab
+ * comes first in each segment's group, then the left shoulder, then the
+ * right. */
 export function loopSlabDescriptors(
   spec: Readonly<LoopSpec>,
 ): SurfacedStaticBodyDesc[] {
   const arc = (2 * Math.PI * spec.radius) / spec.segments;
+  const surface = spec.surface ?? SURFACE_IDS.asphalt;
+  const halfLength = (arc * SEGMENT_OVERLAP) / 2;
   const slabs: SurfacedStaticBodyDesc[] = [];
-  for (let i = 0; i < spec.segments; i++) {
-    const theta = ((i + 0.5) * 2 * Math.PI) / spec.segments;
-    const frame = laneFrame(spec, theta);
-    // Right-handed basis with Z along the tangent; the slab is symmetric.
-    scratch.right.crossVectors(frame.up, frame.tangent).normalize();
-    scratch.up.crossVectors(frame.tangent, scratch.right).normalize();
-    scratch.matrix.makeBasis(scratch.right, scratch.up, frame.tangent);
+  const push = (
+    centre: Vector3,
+    right: Vector3,
+    up: Vector3,
+    tangent: Vector3,
+    halfWidth: number,
+  ): void => {
+    scratch.matrix.makeBasis(right, up, tangent);
     scratch.quaternion.setFromRotationMatrix(scratch.matrix);
-    scratch.centre
-      .copy(frame.point)
-      .addScaledVector(scratch.up, -LOOP_THICKNESS / 2);
     slabs.push({
-      center: { x: scratch.centre.x, y: scratch.centre.y, z: scratch.centre.z },
-      halfExtents: {
-        x: spec.width / 2,
-        y: LOOP_THICKNESS / 2,
-        z: (arc * SEGMENT_OVERLAP) / 2,
-      },
+      center: { x: centre.x, y: centre.y, z: centre.z },
+      halfExtents: { x: halfWidth, y: LOOP_THICKNESS / 2, z: halfLength },
       rotation: {
         x: scratch.quaternion.x,
         y: scratch.quaternion.y,
@@ -144,8 +156,54 @@ export function loopSlabDescriptors(
       },
       friction: 0.5,
       restitution: 0,
-      surface: SURFACE_IDS.asphalt,
+      surface,
     });
+  };
+  for (let i = 0; i < spec.segments; i++) {
+    const theta = ((i + 0.5) * 2 * Math.PI) / spec.segments;
+    const frame = laneFrame(spec, theta);
+    // Right-handed basis with Z along the tangent; the slab is symmetric.
+    scratch.right.crossVectors(frame.up, frame.tangent).normalize();
+    scratch.up.crossVectors(frame.tangent, scratch.right).normalize();
+    scratch.centre
+      .copy(frame.point)
+      .addScaledVector(scratch.up, -LOOP_THICKNESS / 2);
+    push(
+      scratch.centre,
+      scratch.right,
+      scratch.up,
+      frame.tangent,
+      spec.width / 2,
+    );
+    if (!spec.shoulder) continue;
+    const { width, bank } = spec.shoulder;
+    const cos = Math.cos(bank);
+    const sin = Math.sin(bank);
+    for (const side of [-1, 1]) {
+      // Rotate the lane frame about the tangent so the shoulder's outer edge
+      // rises: its right axis tilts up on the outside, its normal toward the
+      // lane centre. The inner edge meets the lane surface edge exactly.
+      shoulderScratch.right
+        .copy(scratch.right)
+        .multiplyScalar(cos)
+        .addScaledVector(scratch.up, side * sin);
+      shoulderScratch.up
+        .copy(scratch.up)
+        .multiplyScalar(cos)
+        .addScaledVector(scratch.right, -side * sin);
+      shoulderScratch.edge
+        .copy(frame.point)
+        .addScaledVector(scratch.right, (side * spec.width) / 2)
+        .addScaledVector(shoulderScratch.right, (side * width) / 2)
+        .addScaledVector(shoulderScratch.up, -LOOP_THICKNESS / 2);
+      push(
+        shoulderScratch.edge,
+        shoulderScratch.right,
+        shoulderScratch.up,
+        frame.tangent,
+        width / 2,
+      );
+    }
   }
   return slabs;
 }
@@ -161,10 +219,11 @@ export function loopFootprint(spec: Readonly<LoopSpec>): {
   const lx = f.z; // left = up x forward = (f.z, 0, -f.x) in the ground plane
   const lz = -f.x;
   const halfShift = spec.shift / 2;
+  const halfWidth = spec.width / 2 + (spec.shoulder?.width ?? 0);
   return {
     x: spec.x + lx * halfShift,
     z: spec.z + lz * halfShift,
-    radius: Math.hypot(spec.radius + 1, Math.abs(halfShift) + spec.width / 2),
+    radius: Math.hypot(spec.radius + 1, Math.abs(halfShift) + halfWidth),
   };
 }
 

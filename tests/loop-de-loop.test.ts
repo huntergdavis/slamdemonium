@@ -11,6 +11,7 @@ import {
   loopExit,
   loopFootprint,
   loopSlabDescriptors,
+  type LoopSpec,
 } from '../src/world/loopDeLoop';
 import { createSurfaceRegistry } from '../src/world/surfaceRegistry';
 import { createSurfacedBodies } from '../src/world/surfacedBodies';
@@ -59,6 +60,74 @@ describe('loop-de-loop geometry', () => {
         r + Math.hypot(slab.halfExtents.x, slab.halfExtents.z),
       ).toBeLessThan(121);
     }
+  });
+});
+
+describe('loop shoulders', () => {
+  const banked: LoopSpec = {
+    ...loop,
+    width: 20,
+    shift: 22,
+    surface: SURFACE_IDS.stickyAsphalt,
+    shoulder: { width: 2, bank: Math.PI / 6 },
+  };
+  it('adds one banked strip per edge whose inner edge meets the lane and whose outer edge rises, all on the chosen surface', () => {
+    const slabs = loopSlabDescriptors(banked);
+    expect(slabs).toHaveLength(banked.segments * 3);
+    const plain = loopSlabDescriptors({ ...loop, width: 20, shift: 22 });
+    for (let i = 0; i < banked.segments; i++) {
+      const lane = slabs[3 * i]!;
+      expect(lane.center).toEqual(plain[i]!.center);
+      const q = lane.rotation!;
+      const laneQ = new Quaternion(q.x, q.y, q.z, q.w);
+      const right = new Vector3(1, 0, 0).applyQuaternion(laneQ);
+      const up = new Vector3(0, 1, 0).applyQuaternion(laneQ);
+      const laneTop = new Vector3(
+        lane.center.x,
+        lane.center.y,
+        lane.center.z,
+      ).addScaledVector(up, LOOP_THICKNESS / 2);
+      for (const [k, side] of [
+        [1, -1],
+        [2, 1],
+      ] as const) {
+        const shoulder = slabs[3 * i + k]!;
+        expect(shoulder.surface).toBe(SURFACE_IDS.stickyAsphalt);
+        expect(shoulder.halfExtents.x).toBe(1);
+        const sq = shoulder.rotation!;
+        const sQ = new Quaternion(sq.x, sq.y, sq.z, sq.w);
+        const sRight = new Vector3(1, 0, 0).applyQuaternion(sQ);
+        const sUp = new Vector3(0, 1, 0).applyQuaternion(sQ);
+        // Banked 30 degrees about the tangent: normal tilts toward the lane.
+        expect(sUp.angleTo(up)).toBeCloseTo(Math.PI / 6, 6);
+        expect(sUp.dot(right) * side).toBeLessThan(0);
+        // Its inner top edge is the lane's outer top edge.
+        const centre = new Vector3(
+          shoulder.center.x,
+          shoulder.center.y,
+          shoulder.center.z,
+        );
+        const innerTop = centre
+          .clone()
+          .addScaledVector(sUp, LOOP_THICKNESS / 2)
+          .addScaledVector(sRight, -side * 1);
+        const laneEdgeTop = laneTop.clone().addScaledVector(right, side * 10);
+        expect(innerTop.distanceTo(laneEdgeTop)).toBeLessThan(1e-6);
+        // Its outer edge stands above the lane plane by width * sin(bank).
+        const outerTop = centre
+          .clone()
+          .addScaledVector(sUp, LOOP_THICKNESS / 2)
+          .addScaledVector(sRight, side * 1);
+        expect(outerTop.clone().sub(laneTop).dot(up)).toBeCloseTo(
+          2 * Math.sin(Math.PI / 6),
+          6,
+        );
+      }
+    }
+    // The footprint grows by the shoulder width.
+    expect(loopFootprint(banked).radius).toBeGreaterThan(
+      loopFootprint({ ...loop, width: 20, shift: 22 }).radius,
+    );
   });
 });
 

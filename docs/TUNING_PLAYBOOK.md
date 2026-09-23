@@ -120,6 +120,8 @@ A hard landing kicks the camera and the controller by how fast you came down, on
 
 The default world is the proving ground: you spawn at the south end of a 700 m runway facing north, and on the target line 380 m ahead are the giant ramp (centre lane), the small 10 m loop (left branch) and the big 18 m loop (right branch). Respawn (R) puts you back on the same line, so a run is: hold throttle, pick a lane, hit the target, press R. The 50 m crossbars count your approach. Add `?map=lab` to the URL for the old 150 m ring.
 
+The two loops are the loop experiment. The small one on the left is the original 10 m loop, untouched: it needs a dead-on entry between 36 and 44 m/s and any correction inside it spins the car, because its wheels carry 18 to 26 times their static weight and the tyres are already at their limit on a perfect line. The big one on the right is 18 m, with a 20 m lane, gentle banked shoulders and its own tinted surface. It takes a crooked entry (30 degrees, 10 m off centre in the test), completes from 16 m/s up, and survives most of a full-lock jab on the wall. `loopGrip` scales tyre friction on the tinted surface only, 1 = plain asphalt. Measured, neither 0.8 nor 1.5 widened the window; it is there so you can feel that for yourself.
+
 ## Sanity references
 
 With the defaults, these are the numbers the car should roughly hit. If a tune drifts far from them, that is fine, but know that you did it. Full table in [Appendix A of the design doc](vertical-slice-design.md#appendix-a-what-the-default-numbers-mean).

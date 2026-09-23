@@ -44,3 +44,5 @@ Results and per-scenario wall times are written to `scratch/wp9b-integration.jso
 These are observed results, not replacement acceptance thresholds. The assertions retain the design-derived targets and captured tuning limits.
 
 `proving-ground.integration.ts` measures the default map's structures on the real engine: the giant ramp landing radius at 60 and 85 m/s against the 470 m barrier, the lowest entry speed that completes the 18 m east loop, and every example route's clearance of the proving ground's ramps and loops (the lab fixtures replay in-game on whichever map is loaded).
+
+`loop-forgiveness.integration.ts` measures how forgiving each authored loop is with a plain lane-following test driver: widest entry angle, largest lateral offset and lowest speed that still complete, plus two in-loop tolerances (a quarter-second steering kick on the wall, and riding a line off centre). It reports the lab loop, the east loop with radius only, and the east loop as authored, side by side, into `scratch/loop-forgiveness.json`.
