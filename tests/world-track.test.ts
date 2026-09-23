@@ -18,6 +18,7 @@ import {
   installTrackColliders,
   resolveTrackConfig,
 } from '../src/world/track';
+import { SURFACE_IDS } from '../src/content/surfaces';
 import { createTrackLayout } from '../src/world/trackLayout';
 import type { TrackPhysicsPort } from '../src/world/trackPhysics';
 
@@ -145,6 +146,23 @@ describe('track scene and physics seam', () => {
     expect(track.materials.map.anisotropy).toBe(8);
     expect(track.materials.map.repeat.x).toBe(37.5);
     expect(track.materials.asphalt.roughness).toBe(0.95);
+    track.dispose();
+  });
+  it('gives the sticky loop surface its own visibly tinted material, sharing the asphalt texture', () => {
+    const track = createTestTrack(new Scene(), {
+      maxAnisotropy: 1,
+      asphalt: { size: 128 },
+    });
+    const plain = track.materials.forSurface(SURFACE_IDS.asphalt);
+    const sticky = track.materials.forSurface(SURFACE_IDS.stickyAsphalt);
+    expect(sticky).not.toBe(plain);
+    expect(sticky.map).toBe(plain.map);
+    // Far from white: the tint has to survive the grey texture and the fog.
+    const c = sticky.color;
+    expect(Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b)).toBeGreaterThan(
+      0.5,
+    );
+    expect(plain.color.getHex()).toBe(0xffffff);
     track.dispose();
   });
   it('respawns strictly below -50 m with the cached CCW spawn pose', () => {

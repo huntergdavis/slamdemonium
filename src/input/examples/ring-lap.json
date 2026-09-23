@@ -19,6 +19,7 @@
     "gravity": 14.7,
     "timeScale": 1,
     "surfaceGrip": 1,
+    "loopGrip": 1,
     "physicsHz": 120,
     "mass": 1300,
     "comHeightOffset": -0.2,

@@ -235,7 +235,12 @@ export class Vehicle {
         wheel.surfaceId === null
           ? null
           : getKnownSurfaceDefinition(wheel.surfaceId);
-      wheel.surfaceGripMultiplier = surface?.gripMultiplier ?? null;
+      wheel.surfaceGripMultiplier =
+        surface === null
+          ? null
+          : surface.context === 'ground' && surface.gripTuning
+            ? surface.gripMultiplier * this.tuning.get(surface.gripTuning)
+            : surface.gripMultiplier;
       wheel.springForce =
         wheel.Fz =
         wheel.Fx =

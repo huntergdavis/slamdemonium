@@ -21,6 +21,9 @@ export const WORLD_COLORS = Object.freeze({
   postCyan: 0x3ed8ee,
   fog: 0xb8c7cc,
   ground: 0x6d7779,
+  // Saturated so it survives multiplication by the grey asphalt texture and
+  // reads as a different surface from 380 m away in the fog.
+  stickyAsphalt: 0x4fb0ff,
 });
 
 /** CPU generation occurs once here; renderer uploads on first render. */
@@ -62,6 +65,16 @@ export function createTrackMaterials(
       color: WORLD_COLORS.ground,
       roughness: 1,
     }),
+    // The sticky loop surface: the same asphalt texture with a visible tint,
+    // so the driver can see where the extra grip is.
+    stickyAsphalt: new MeshStandardMaterial({
+      map,
+      color: WORLD_COLORS.stickyAsphalt,
+      emissive: WORLD_COLORS.stickyAsphalt,
+      emissiveIntensity: 0.12,
+      roughness: 0.8,
+      metalness: 0,
+    }),
     paint: new MeshBasicMaterial({
       color: WORLD_COLORS.paint,
       polygonOffset: true,
@@ -88,6 +101,7 @@ export function createTrackMaterials(
     asphalt: materials.asphalt,
     kerb: materials.curb,
     concrete: materials.barrier,
+    stickyAsphalt: materials.stickyAsphalt,
   };
   let disposed = false;
   return {

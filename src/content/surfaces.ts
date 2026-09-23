@@ -3,6 +3,7 @@ export const SURFACE_IDS = Object.freeze({
   asphalt: 0,
   kerb: 1,
   concrete: 2,
+  stickyAsphalt: 3,
 } as const);
 export type SurfaceId = (typeof SURFACE_IDS)[keyof typeof SURFACE_IDS];
 export type SurfaceKey = keyof typeof SURFACE_IDS;
@@ -32,6 +33,9 @@ export interface GroundSurfaceDefinition extends SurfaceCommon {
   readonly context: 'ground';
   /** Multiplies, never replaces, the live global surfaceGrip tuning control. */
   readonly gripMultiplier: number;
+  /** A tuning key that further multiplies this surface's grip live, so a
+   * surface built for a feel problem can be dialled by the driver. */
+  readonly gripTuning?: 'loopGrip';
 }
 export interface ContactSurfaceDefinition extends SurfaceCommon {
   readonly context: 'contact';
@@ -72,6 +76,26 @@ export const SURFACE_DEFINITIONS: readonly SurfaceDefinition[] = Object.freeze([
     audioProfile: 'concrete',
     fxProfile: 'concrete',
     hapticProfile: 'solid',
+  } as const),
+  // The big loop's own asphalt: same tyre model, same sounds, grip scaled
+  // live by the `loopGrip` slider so the driver can dial that loop alone.
+  // Neutral by default: the measurement in
+  // tests/integration/loop-forgiveness.integration.ts found neither more nor
+  // less grip widened the loop's window; the radius did. Tinted so the
+  // driver can see where the slider applies.
+  Object.freeze({
+    id: SURFACE_IDS.stickyAsphalt,
+    key: 'stickyAsphalt',
+    context: 'ground',
+    gripMultiplier: 1,
+    gripTuning: 'loopGrip',
+    visual: Object.freeze({
+      materialKey: 'stickyAsphalt',
+      uvKey: 'asphalt-world',
+    }),
+    audioProfile: 'asphalt',
+    fxProfile: 'asphalt',
+    hapticProfile: 'smooth',
   } as const),
 ]);
 

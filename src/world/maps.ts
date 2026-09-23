@@ -1,3 +1,4 @@
+import { SURFACE_IDS } from '../content/surfaces';
 import { LOOP_LAYOUT, type LoopSpec } from './loopDeLoop';
 import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import type { RunwaySpec } from './runways';
@@ -120,16 +121,28 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       shift: -13,
       segments: 48,
     }),
-    // East: the big loop, 18 m radius (36 m tall), 16 m lane, exit one lane
-    // outward. Coasting floor sqrt(5 g R) is about 30 m/s before losses.
+    // East: the forgiving loop. 18 m radius (36 m tall) so the wheels carry
+    // 13 times their static load instead of the small loop's 18 to 26 and
+    // the tyres keep margin; a 20 m lane; 3 m shoulders banked 12 degrees
+    // so a car drifting toward an edge climbs and rolls back to the middle
+    // (steeper banks launch the chassis instead: 30 degrees measured as a
+    // 24 m/s hit and a fall); and its own surface so the `loopGrip` slider
+    // scales this loop's grip alone (neutral by default: measured, grip did
+    // not widen the window in either direction; the radius did).
+    // Exit lane one lane outward. Measured before and after in
+    // tests/integration/loop-forgiveness.integration.ts.
     Object.freeze({
       x: 36,
       z: TARGET_LINE_Z,
       heading: NORTH,
       radius: 18,
-      width: 16,
-      shift: 18,
+      width: 20,
+      // The exit lane and its shoulder must clear the entry lane and its
+      // shoulder where the helix comes back down: 20 + 3 + 3 + 1 m of air.
+      shift: 27,
       segments: 64,
+      surface: SURFACE_IDS.stickyAsphalt,
+      shoulder: Object.freeze({ width: 3, bank: 12 * DEG }),
     }),
   ]),
   runways: Object.freeze([
@@ -165,7 +178,7 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       z: -80,
       heading: NORTH,
       length: 240,
-      width: PROVING_GROUND_RUNWAY_WIDTH,
+      width: 20,
       markerMeters: 50,
     }),
   ]),

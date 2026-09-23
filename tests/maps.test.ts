@@ -1,10 +1,8 @@
+import { Quaternion, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
+import { SURFACE_IDS } from '../src/content/surfaces';
 import { BREAKABLE_PROP_PLACEMENTS } from '../src/world/breakablePlacements';
-import {
-  LOOP_LAYOUT,
-  loopFootprint,
-  loopSlabDescriptors,
-} from '../src/world/loopDeLoop';
+import { LOOP_LAYOUT, loopSlabDescriptors } from '../src/world/loopDeLoop';
 import {
   DEFAULT_MAP_NAME,
   LAB_MAP,
@@ -26,6 +24,7 @@ import {
   runwayInstances,
   runwayLaneClearance,
 } from '../src/world/runways';
+import type { SurfacedStaticBodyDesc } from '../src/world/surfacedBodies';
 import { resolveTrackConfig } from '../src/world/trackConfig';
 import { createTrackLayout } from '../src/world/trackLayout';
 import {
@@ -37,7 +36,9 @@ const MIN_LANE_CLEARANCE = 5;
 const pg = PROVING_GROUND_MAP;
 const config = resolveTrackConfig(pg.track);
 
-/** Every structure as a ground-plane footprint circle. */
+/** Every structure as ground-plane discs: one per ramp, one per loop slab
+ * (a loop's single footprint circle is far too generous once it has
+ * shoulders and a wide exit lane). */
 function footprints(map: typeof pg) {
   return [
     ...map.ramps.map((spec, index) => {
@@ -50,12 +51,37 @@ function footprints(map: typeof pg) {
         radius: rampFootprintRadius(spec),
       };
     }),
-    ...map.loops.map((spec, index) => ({
-      kind: 'loop' as const,
-      index,
-      ...loopFootprint(spec),
-    })),
+    ...map.loops.flatMap((spec, index) =>
+      loopSlabDescriptors(spec).flatMap((slab) =>
+        slabCorners(slab).map((corner) => ({
+          kind: 'loop' as const,
+          index,
+          x: corner.x,
+          z: corner.z,
+          radius: 0,
+        })),
+      ),
+    ),
   ];
+}
+
+/** Ground projections of a slab's four top corners: a loop slab is wide
+ * across the lane and short along it, so a disc around it would be far
+ * too generous along the lane. */
+function slabCorners(slab: SurfacedStaticBodyDesc): { x: number; z: number }[] {
+  const q = slab.rotation!;
+  const rotation = new Quaternion(q.x, q.y, q.z, q.w);
+  const right = new Vector3(1, 0, 0).applyQuaternion(rotation);
+  const tangent = new Vector3(0, 0, 1).applyQuaternion(rotation);
+  const corners: { x: number; z: number }[] = [];
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      const c = new Vector3(slab.center.x, slab.center.y, slab.center.z)
+        .addScaledVector(right, sx * slab.halfExtents.x)
+        .addScaledVector(tangent, sz * slab.halfExtents.z);
+      corners.push({ x: c.x, z: c.z });
+    }
+  return corners;
 }
 
 describe('map selection', () => {
@@ -138,7 +164,15 @@ describe('proving ground structures', () => {
       z: TARGET_LINE_Z,
     });
     expect(small!.x).toBeLessThan(0); // West.
+    // The west loop is the control: plain asphalt, no shoulders, the lab's
+    // geometry. Only the east loop carries the forgiving mechanisms and the
+    // tinted surface the loopGrip slider applies to.
+    expect(small!.surface).toBeUndefined();
+    expect(small!.shoulder).toBeUndefined();
     expect(big!.x).toBeGreaterThan(0); // East.
+    expect(big!.surface).toBe(SURFACE_IDS.stickyAsphalt);
+    expect(big!.shoulder).toBeDefined();
+    expect(big!.width).toBeGreaterThan(small!.width);
     expect(big!.z).toBe(TARGET_LINE_Z);
     expect(big!.radius).toBeGreaterThanOrEqual(18);
     for (const loop of pg.loops) {
@@ -206,21 +240,31 @@ describe('proving ground structures', () => {
       // the outward radial has turned a little, so ask for at least 40.
       expect(forward.x * outward.x + forward.z * outward.z).toBeLessThan(-0.64);
     }
-    for (const f of footprints(pg))
+    const all = footprints(pg);
+    for (const f of all)
       expect(Math.hypot(f.x, f.z) + f.radius).toBeLessThan(
         config.barrierInnerRadius - 10,
       );
-    // Footprint circles never overlap one another. The circles are
-    // conservative (a loop's covers its entry and exit lanes and the whole
-    // helix); the slab-level lane check above is the precise separation.
-    const all = footprints(pg);
-    for (let i = 0; i < all.length; i++)
-      for (let j = i + 1; j < all.length; j++) {
-        const a = all[i]!,
-          b = all[j]!;
-        expect(
-          Math.hypot(a.x - b.x, a.z - b.z) - a.radius - b.radius,
-        ).toBeGreaterThan(0);
+    // Distinct structures keep daylight between them: closest approach
+    // between the disc sets of every pair of structures.
+    const groups = new Map<string, typeof all>();
+    for (const f of all) {
+      const key = `${f.kind} ${f.index}`;
+      groups.set(key, [...(groups.get(key) ?? []), f]);
+    }
+    const names = [...groups.keys()];
+    for (let i = 0; i < names.length; i++)
+      for (let j = i + 1; j < names.length; j++) {
+        let closest = Infinity;
+        for (const a of groups.get(names[i]!)!)
+          for (const b of groups.get(names[j]!)!)
+            closest = Math.min(
+              closest,
+              Math.hypot(a.x - b.x, a.z - b.z) - a.radius - b.radius,
+            );
+        expect(closest, `${names[i]} vs ${names[j]}`).toBeGreaterThan(
+          MIN_LANE_CLEARANCE,
+        );
       }
   });
 });

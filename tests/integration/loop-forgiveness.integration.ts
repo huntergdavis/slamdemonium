@@ -53,16 +53,29 @@ const baseSpec = (spec: LoopSpec): LoopSpec => ({
   heading: Math.PI, // Entry lane runs along +Z.
 });
 
-async function attempt(
+export async function attempt(
   spec: LoopSpec,
   speed: number,
   entryAngleDeg: number,
   lateralOffset: number,
   drive: boolean,
+  inside: { kick: number; ride: number } = { kick: 0, ride: 0 },
+  tuning: Readonly<Record<string, number>> = {},
+  trace?: (
+    step: number,
+    x: number,
+    y: number,
+    z: number,
+    steer: number,
+    speed: number,
+    grounded: number,
+  ) => void,
 ): Promise<Outcome> {
   const rig = await scriptVehicleHarness({ flatPlane: true });
   try {
-    const { vehicle, loop, setPad, surfacedBodies, world } = rig;
+    const { vehicle, loop, setPad, surfacedBodies, world, store } = rig;
+    for (const [key, value] of Object.entries(tuning))
+      store.set(key as Parameters<typeof store.set>[0], value);
     const s = vehicle.telemetry;
     for (const slab of loopSlabDescriptors(spec))
       surfacedBodies.createStaticBody(slab);
@@ -123,8 +136,18 @@ async function attempt(
         source: 'gamepad',
       });
       loop.stepMany(1);
+      trace?.(
+        step,
+        s.position.x,
+        s.position.y,
+        s.position.z,
+        steer,
+        s.speed,
+        s.groundedWheels,
+      );
       if (step === 2) staticFz = s.wheels.reduce((sum, w) => sum + w.Fz, 0) / 4;
-      rel.copy(s.position).sub(entry).addScaledVector(left, -lateralOffset);
+      // Relative to the lane centreline at the entry, not the offset start.
+      rel.copy(s.position).sub(entry).addScaledVector(left, lateralOffset);
       const along = rel.dot(f);
       const across = rel.dot(left);
       const onLoop = s.position.y > 1.2;
@@ -135,12 +158,24 @@ async function attempt(
         const laneAcross =
           (spec.shift * ((theta + 2 * Math.PI) % (2 * Math.PI))) /
           (2 * Math.PI);
-        const error = across - laneAcross;
+        // `ride` asks the driver to hold a line that far off centre, toward
+        // the side the exit slides away from (the outside of the helix).
+        const outward = -Math.sign(spec.shift || 1);
+        const error = across - laneAcross - outward * inside.ride;
         const rate = (error - previousError) * HZ;
         previousError = error;
         steer = drive
           ? Math.max(-1, Math.min(1, -0.12 * error - 0.05 * rate))
           : 0;
+        // `kick`: a quarter second of fixed steer toward the outside between
+        // 60 and 105 degrees up the wall, the over-correction the CTO makes
+        // when he tries to adjust his line.
+        if (
+          inside.kick > 0 &&
+          theta > Math.PI / 3 &&
+          theta < (7 * Math.PI) / 12
+        )
+          steer = outward * inside.kick;
         for (const w of s.wheels) {
           if (!w.grounded) continue;
           out.minMu = Math.min(out.minMu, w.mu);
@@ -161,9 +196,12 @@ async function attempt(
           return out;
         }
       } else if (drive && along < 0) {
-        // Approach: aim at the entry point.
+        // Approach: aim at the lane centre, damped so the car arrives
+        // travelling straight rather than swinging through the centreline.
         const error = across;
-        steer = Math.max(-1, Math.min(1, -0.08 * error));
+        const rate = (error - previousError) * HZ;
+        previousError = error;
+        steer = Math.max(-1, Math.min(1, -0.06 * error - 0.04 * rate));
       } else steer = 0;
       bodyUp.set(0, 1, 0).applyQuaternion(s.rotation);
       if (bodyUp.y < -0.9 && s.groundedWheels >= 2) inverted = true;
@@ -207,13 +245,28 @@ async function widest(
   return best;
 }
 
-const LOOPS: Record<string, LoopSpec> = {
+const forgiving = PROVING_GROUND_MAP.loops[1]!;
+export const LOOPS: Record<string, LoopSpec> = {
+  /** The lab loop, the CTO's today, unchanged as the control. */
   small: baseSpec(LOOP_LAYOUT[0]!),
-  big: baseSpec(PROVING_GROUND_MAP.loops[1]!),
+  /** The east loop as first built: bigger radius only (the "before"). */
+  bigPlain: baseSpec({
+    x: forgiving.x,
+    z: forgiving.z,
+    heading: forgiving.heading,
+    radius: forgiving.radius,
+    width: 16,
+    shift: 18,
+    segments: forgiving.segments,
+  }),
+  /** The east loop as authored: wide lane, banked shoulders, sticky surface. */
+  big: baseSpec(forgiving),
 };
-const ANGLES = [0, 2, 4, 6, 8, 10, 12, 15, 20];
-const OFFSETS = [0, 1, 2, 3, 4, 5, 6];
-const SPEEDS_DOWN = [60, 54, 48, 44, 40, 36, 32, 28, 24];
+const ANGLES = [0, 2, 4, 6, 8, 10, 12, 15, 18, 21, 25, 30];
+const KICKS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+const RIDES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12];
+const OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const SPEEDS_DOWN = [60, 54, 48, 44, 40, 36, 32, 28, 24, 20, 16];
 
 it('measures entry angle, lateral offset and speed tolerance of both authored loops', async () => {
   const report: Record<string, unknown> = {};
@@ -240,6 +293,18 @@ it('measures entry angle, lateral offset and speed tolerance of both authored lo
       if (outcome.completed) floor = v;
       else if (floor < Infinity) break;
     }
+    const kicks: Record<string, Outcome> = {};
+    const rides: Record<string, Outcome> = {};
+    const kick = await widest(
+      KICKS,
+      (k) => attempt(spec, good, 0, 0, true, { kick: k, ride: 0 }),
+      kicks,
+    );
+    const ride = await widest(
+      RIDES,
+      (d) => attempt(spec, good, 0, 0, true, { kick: 0, ride: d }),
+      rides,
+    );
     const noDriver = await attempt(spec, good, 0, 0, false);
     report[name] = {
       radius: spec.radius,
@@ -249,11 +314,15 @@ it('measures entry angle, lateral offset and speed tolerance of both authored lo
       entryAngleToleranceDeg: angle,
       lateralOffsetToleranceM: offset,
       lowestCompletingSpeed: floor,
+      steerKickTolerance: kick,
+      rideOffCentreToleranceM: ride,
       noSteeringCompletes: noDriver.completed,
       noSteering: noDriver,
       angles,
       offsets,
       speeds,
+      kicks,
+      rides,
     };
   }
   measurements.loopForgiveness = report;
