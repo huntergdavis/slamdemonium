@@ -1,0 +1,195 @@
+import { LOOP_LAYOUT, type LoopSpec } from './loopDeLoop';
+import { RAMP_LAYOUT, type RampSpec } from './ramps';
+import type { RunwaySpec } from './runways';
+import type { TrackConfig } from './trackConfig';
+
+/** A named world: track geometry overrides, where the car starts, and the
+ * structures built on it. Every placement is data in absolute metres, so a
+ * map is a table, not code. */
+export interface MapSpawn {
+  readonly x: number;
+  readonly z: number;
+  /** Yaw, ramp convention: 0 faces -Z, positive turns left. */
+  readonly heading: number;
+}
+export interface MapDefinition {
+  readonly name: MapName;
+  readonly label: string;
+  readonly track: Readonly<Partial<TrackConfig>>;
+  /** Undefined means the track's own ring start line. */
+  readonly spawn?: MapSpawn;
+  readonly ramps: readonly RampSpec[];
+  readonly loops: readonly LoopSpec[];
+  readonly runways: readonly RunwaySpec[];
+}
+export type MapName = 'lab' | 'proving-ground';
+
+const DEG = Math.PI / 180;
+/** Heading that faces +Z. */
+const NORTH = Math.PI;
+
+/** Ring ramps on the proving ground, one per diagonal so the four runway
+ * ends stay clear. Same four slabs as the lab, at the same distance inside
+ * the racing line, but turned 45 degrees inward instead of 15: the CTO hits
+ * these at 60 m/s and more, not 40, and the 24 m ramp at boost top speed
+ * flies about 390 m. Aimed 45 degrees in from 365 m it comes down near 290 m
+ * on the infield; aimed 15 degrees in it would clear the 470 m barrier. */
+function ringRamp(
+  positionDegrees: number,
+  radius: number,
+  slab: Pick<RampSpec, 'length' | 'width' | 'rise'>,
+): RampSpec {
+  const phi = positionDegrees * DEG;
+  return {
+    x: radius * Math.cos(phi),
+    z: radius * Math.sin(phi),
+    // Counter-clockwise tangent is heading pi - phi; inward is a right turn.
+    heading: Math.PI - phi - 45 * DEG,
+    ...slab,
+  };
+}
+
+/** The lab: the 150 m ring the tuning and every replay fixture were made
+ * on, exactly as before. The harness and the e2e suite run here. */
+export const LAB_MAP: MapDefinition = Object.freeze({
+  name: 'lab',
+  label: 'Lab ring (150 m)',
+  track: Object.freeze({}),
+  ramps: RAMP_LAYOUT,
+  loops: LOOP_LAYOUT,
+  runways: Object.freeze([]),
+});
+
+/** Where the proving ground's three targets share one line: the car spawns
+ * at the south end of the main runway and everything to hit is ahead. */
+export const TARGET_LINE_Z = 40;
+export const PROVING_GROUND_SPAWN_Z = -340;
+export const PROVING_GROUND_RUNWAY_WIDTH = 16;
+
+/** The proving ground: the same parametric ring at three times the radius
+ * (400 m centre line, about 9.5 times the area) with a paved infield the
+ * runways cross. The whole design is the approach: spawn at the south end
+ * of a 700 m runway facing north, 380 m of straight to the target line, top
+ * speed reached in about 250 m, and Respawn puts the car back on the same
+ * line. On the target line the giant ramp sits on the runway's centre, the
+ * lab's 10 m loop flanks it to the west and an 18 m loop to the east, so
+ * the two loops are compared from the same spawn at the same speed. The
+ * east-west runway is a second empty straight. */
+export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
+  name: 'proving-ground',
+  label: 'Proving ground (400 m)',
+  track: Object.freeze({
+    pavedRadius: 460,
+    ringInnerRadius: 340,
+    centerLineRadius: 400,
+    barrierInnerRadius: 470,
+    barrierSegments: 384, // About 7.7 m per box, as on the lab ring.
+    groundExtent: 1500,
+    tickDegrees: 5,
+    skidpadRadii: Object.freeze([]), // The runways cross at the centre.
+    fogDensity: 0.0008, // The far side of the ring stays legible.
+  }),
+  spawn: Object.freeze({ x: 0, z: PROVING_GROUND_SPAWN_Z, heading: NORTH }),
+  ramps: Object.freeze([
+    // The giant ramp: 40 m long, 16 m wide, 9 m lip, launching north along
+    // the runway. At 60 m/s about 3.3 s and 190 m of air with a 15 m apex,
+    // landing on the infield; at boost top speed (85 m/s) about 350 m,
+    // landing on the ring pavement 40 m inside the barrier. The integration
+    // test measures both.
+    Object.freeze({
+      x: 0,
+      z: TARGET_LINE_Z,
+      heading: NORTH,
+      length: 40,
+      width: PROVING_GROUND_RUNWAY_WIDTH,
+      rise: 9,
+    }),
+    Object.freeze(ringRamp(45, 375, { length: 12, width: 6, rise: 1.6 })),
+    Object.freeze(ringRamp(225, 375, { length: 14, width: 6, rise: 2.4 })),
+    Object.freeze(ringRamp(-45, 365, { length: 18, width: 8, rise: 3.5 })),
+    Object.freeze(ringRamp(135, 365, { length: 24, width: 8, rise: 6 })),
+  ]),
+  loops: Object.freeze([
+    // West: the lab loop unchanged (10 m, 12 m lane, exit one lane outward).
+    Object.freeze({
+      x: -36,
+      z: TARGET_LINE_Z,
+      heading: NORTH,
+      radius: 10,
+      width: 12,
+      shift: -13,
+      segments: 48,
+    }),
+    // East: the big loop, 18 m radius (36 m tall), 16 m lane, exit one lane
+    // outward. Coasting floor sqrt(5 g R) is about 30 m/s before losses.
+    Object.freeze({
+      x: 36,
+      z: TARGET_LINE_Z,
+      heading: NORTH,
+      radius: 18,
+      width: 16,
+      shift: 18,
+      segments: 64,
+    }),
+  ]),
+  runways: Object.freeze([
+    // Main: north-south through the centre, spawn at its south end.
+    Object.freeze({
+      x: 0,
+      z: 0,
+      heading: NORTH,
+      length: 700,
+      width: PROVING_GROUND_RUNWAY_WIDTH,
+      markerMeters: 50,
+    }),
+    // Cross: east-west, an empty straight.
+    Object.freeze({
+      x: 0,
+      z: 0,
+      heading: Math.PI / 2,
+      length: 700,
+      width: PROVING_GROUND_RUNWAY_WIDTH,
+      markerMeters: 50,
+    }),
+    // Branches to the two loops: ease over from the main lane after 140 m.
+    Object.freeze({
+      x: -36,
+      z: -80,
+      heading: NORTH,
+      length: 240,
+      width: 12,
+      markerMeters: 50,
+    }),
+    Object.freeze({
+      x: 36,
+      z: -80,
+      heading: NORTH,
+      length: 240,
+      width: PROVING_GROUND_RUNWAY_WIDTH,
+      markerMeters: 50,
+    }),
+  ]),
+});
+
+export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
+  lab: LAB_MAP,
+  'proving-ground': PROVING_GROUND_MAP,
+});
+export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
+
+export function isMapName(value: unknown): value is MapName {
+  return typeof value === 'string' && Object.hasOwn(MAPS, value);
+}
+
+/** `?map=lab` in the page URL wins; then the build's default (the e2e
+ * build sets `VITE_DEFAULT_MAP=lab` so the suite keeps testing the world
+ * its fixtures were recorded on); then the proving ground. */
+export function resolveMapName(
+  search: string,
+  buildDefault?: unknown,
+): MapName {
+  const requested = new URLSearchParams(search).get('map');
+  if (isMapName(requested)) return requested;
+  if (isMapName(buildDefault)) return buildDefault;
+  return DEFAULT_MAP_NAME;
+}

@@ -34,6 +34,10 @@ export interface TrackOptions {
   maxAnisotropy: number;
   config?: Partial<TrackConfig>;
   asphalt?: AsphaltOptions;
+  /** Where the car starts and respawns; default is the ring start line at
+   * (centerLineRadius, 0) facing -Z. `heading` is yaw in the ramp convention
+   * (0 faces -Z, positive turns left). */
+  spawn?: { x: number; z: number; heading: number };
 }
 export interface TrackSpawn {
   position: Readonly<WorldPoint>;
@@ -186,13 +190,31 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
   sun.shadow.camera.updateProjectionMatrix();
   root.add(ambient, sun, sun.target);
   scene.add(root);
+  const spawnAt = options.spawn ?? {
+    x: config.centerLineRadius,
+    z: 0,
+    heading: 0,
+  };
+  if (
+    ![spawnAt.x, spawnAt.z, spawnAt.heading].every(Number.isFinite) ||
+    Math.hypot(spawnAt.x, spawnAt.z) >= config.barrierInnerRadius
+  )
+    throw new RangeError('Spawn must be finite and inside the barrier');
   const spawn: Readonly<TrackSpawn> = Object.freeze({
     position: Object.freeze({
-      x: config.centerLineRadius,
+      x: spawnAt.x,
       y: config.spawnHeight,
-      z: 0,
+      z: spawnAt.z,
     }),
-    rotation: Object.freeze({ x: 0, y: 0, z: 0, w: 1 }),
+    rotation:
+      spawnAt.heading === 0
+        ? Object.freeze({ x: 0, y: 0, z: 0, w: 1 })
+        : Object.freeze({
+            x: 0,
+            y: Math.sin(spawnAt.heading / 2),
+            z: 0,
+            w: Math.cos(spawnAt.heading / 2),
+          }),
   });
   let disposed = false;
   const surfaceResolvers = new Set<SurfaceResolver>();

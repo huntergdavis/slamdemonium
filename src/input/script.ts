@@ -11,7 +11,11 @@ import {
   type ReplayTelemetry,
   type ReplayResult,
 } from './scriptAssertions';
-import { RingLapTimer, type LapProgress } from './lapTimer';
+import {
+  RingLapTimer,
+  type LapProgress,
+  type RingLapOptions,
+} from './lapTimer';
 import type {
   InputScript,
   ScriptHeader,
@@ -37,6 +41,12 @@ export interface ScriptControllerOptions {
   onComplete: () => void;
   onError?: (error: Error) => void;
   recordingCapacitySteps?: number;
+  /** Ring the lap timer measures; default is the lab ring. Boot passes the
+   * loaded map's radii so laps count on whichever ring the car is on. */
+  ring?: Pick<
+    RingLapOptions,
+    'centerLineRadius' | 'innerRadius' | 'outerRadius'
+  >;
 }
 
 /** Boot exposes this instance as game.scripts and calls afterStep at every completed step. */
@@ -176,7 +186,10 @@ export class ScriptController {
       header.spawn,
       this.options.readTelemetry().recoveryCount ?? 0,
     );
-    this.lap = new RingLapTimer({ physicsHz: header.tuning.physicsHz });
+    this.lap = new RingLapTimer({
+      physicsHz: header.tuning.physicsHz,
+      ...this.options.ring,
+    });
     this.lap.reset(header.spawn.position);
   }
 

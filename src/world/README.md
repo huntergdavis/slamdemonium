@@ -4,6 +4,10 @@ The implementation is [track.ts](track.ts), with geometry configuration in [trac
 
 Defaults implement design section 9 and docs/design/visual-direction.md: one 150 m paved disc including the infield; ring paint at 110/150 m, center dashes at 130 m; 15/30 m skidpad circles; red/white curbs; cyan/white posts; a 128-box wall; exponential fog and a following shadow light. Dashes, ticks, curbs, posts and wall each use a single InstancedMesh. Geometry is static after construction.
 
+## Maps
+
+[maps.ts](maps.ts) names the worlds boot can load. `lab` is the ring above with its `RAMP_LAYOUT` and `LOOP_LAYOUT`; `proving-ground` (the default) scales the ring to a 400 m centre line, spawns the car at the south end of a 700 m north-south runway facing +Z, and places the giant ramp and two loops on one target line 380 m ahead. Runways ([runways.ts](runways.ts)) are paint only: the paved disc is already the collider. `resolveMapName(location.search, import.meta.env.VITE_DEFAULT_MAP)` picks `?map=`, then the build default, then the proving ground; the e2e build sets the default to `lab` so the replay fixtures keep their world. `createTestTrack` takes the map's `config` overrides and `spawn` (`{x, z, heading}`, heading in the ramp convention).
+
 ## Bind to the renderer and physics loop
 
 ```ts

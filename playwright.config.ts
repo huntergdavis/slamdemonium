@@ -28,8 +28,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    // Every spec exercises built assets; only E2E builds include the input fixture.
-    env: { VITE_TEST_API: '1' },
+    // Every spec exercises built assets; only E2E builds include the input
+    // fixture, and they boot the lab ring the replay fixtures were recorded
+    // on (`?map=` still switches; see src/world/maps.ts).
+    env: { VITE_TEST_API: '1', VITE_DEFAULT_MAP: 'lab' },
     command:
       'npm run build && npm run preview -- --port ' + port + ' --strictPort',
     url: baseURL,
