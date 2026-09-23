@@ -40,6 +40,7 @@ import { VehicleVisualHistory } from './vehicle/visualState';
 import { createTestTrack, installTrackColliders } from './world/track';
 import { createPropPools } from './world/bodyPool';
 import { createBreakableProps } from './world/breakableProps';
+import { BREAKABLE_PROP_PLACEMENTS } from './world/breakablePlacements';
 import { createSurfacedBodies } from './world/surfacedBodies';
 import { createSurfaceRegistry } from './world/surfaceRegistry';
 import './style.css';
@@ -101,13 +102,13 @@ async function boot(): Promise<void> {
     track.spawn.position,
     surfaceResolver,
   );
-  // The CTO is still choosing the default-ring smash banks. Keep the pooled
-  // lifecycle live and reachable without inventing a route; the placement-only
-  // follow-up supplies these authored poses and activates the 32 props.
+  // Four authored banks of eight sit on the infield ahead of spawn. They stay
+  // clear of the scripted routes and racing line; the placement module is data
+  // only so the route can move without changing lifecycle code.
   const breakableProps = createBreakableProps({
     physics,
     pools: propPools,
-    placements: [],
+    placements: BREAKABLE_PROP_PLACEMENTS,
     vehicleBody: vehicle.body,
   });
   resources.push(breakableProps, propPools, surfacedBodies);
