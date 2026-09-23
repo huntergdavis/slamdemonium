@@ -129,6 +129,16 @@ export interface IPhysicsWorld {
    * Null impulse means this engine cannot provide a solved contact impulse.
    * Stock Jolt supplies real IDs/point/normal but no impulse; Rapier can supply
    * a real impulse via its post-solve contactImpulse/contact-force API.
+   *
+   * The callback runs INSIDE step(), from the engine's contact listener, and
+   * two rules follow. Never call any world method from it: a getter such as
+   * getLinearVelocity takes a body lock the solver already holds and spins
+   * forever in single-threaded WASM (it cost an hour to find; there is no
+   * error, only a hang), and adding, removing or moving bodies mid-step is
+   * undefined behaviour. Copy the borrowed scalars and the pre-step values
+   * you already hold (telemetry velocity, not a fresh read) into fixed
+   * storage, and do the work after step() returns. Boot, the audio director
+   * and the breakable props all follow this.
    */
   onContact(callback: ContactCallback): void;
   /** Both heap capacity and allocator free bytes; capacity alone cannot detect leaks. */

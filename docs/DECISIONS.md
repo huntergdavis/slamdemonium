@@ -1,5 +1,7 @@
 # Decisions
 
+Dates in this log are Pacific time, the clock of the machine the commits come from; an agent reading UTC will see the next day for late entries.
+
 Running log of technical decisions, spike results and changed defaults. New entries go at the bottom; this index is the way in.
 
 ## Index
@@ -566,3 +568,7 @@ When the airborne tracker counts a landing, the vehicle runs the shared estimato
 ## Phase C2: light dynamic breakables preserve smash-through feel (2026-09-22)
 
 A real Jolt comparison showed the original static pooled prop stopping a 1300 kg car from 30 m/s to 0 with a 0.22 m/s rebound; releasing it after the contact callback did not change that response because the immovable collision was solved inside the step. Breakables therefore use pooled dynamic 15 kg bodies with friction 0.6, restitution 0.2, angular damping 0.1 and CCD off. The deferred contact ring and single shared `ImpactSeverity` record remain unchanged, so body mutation stays outside `world.Step`. Contacts below 3 m/s nudge the light prop without breaking it; break fragments inherit the forward component of the copied vehicle velocity so the destruction reads ahead of the car. A sensor was rejected because it would require new adapter support and make destruction feel weightless.
+
+## Smash-through is guarded on the real engine (2026-09-22)
+
+The fake-pool unit tests for breakables cannot see the defect the CTO found (a static prop stops the car dead inside the step, whatever happens after it), so `tests/integration/prop-smash-through.integration.ts` drives a car-sized box at one authored prop through the real pool, facade and breakable lifecycle on Jolt, wired the way boot wires them. It asserts under 1 m/s lost through a prop at 30 m/s with all eight fragments spawned, and that a 2.5 m/s nudge shoves the intact box over a metre while costing under 0.5 m/s. Measured on merge: 0.44 and 0.23 m/s. The same investigation recorded a rule in `IPhysicsWorld.onContact`: never call a world method from inside the contact callback, because a getter takes a body lock the solver holds and hangs single-threaded WASM with no error.
