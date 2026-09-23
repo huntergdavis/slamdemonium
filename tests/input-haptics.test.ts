@@ -1,3 +1,7 @@
+import {
+  createImpactSeverity,
+  estimateImpactSeverity,
+} from '../src/core/impactSeverity';
 import { describe, expect, it, vi } from 'vitest';
 import { ControllerHaptics } from '../src/input/haptics';
 import { VehicleTelemetry } from '../src/vehicle/telemetry';
@@ -67,7 +71,15 @@ describe('controller feedback stays outside physics', () => {
     const r = setup();
     r.telemetry.velocity.set(0, 0, -20);
     const start = (now: number) => {
-      r.haptics.onImpact(null, { x: 0, y: 0, z: 1 }, 1300);
+      r.haptics.onImpact(
+        estimateImpactSeverity(
+          null,
+          r.telemetry.velocity,
+          { x: 0, y: 0, z: 1 },
+          1300,
+          createImpactSeverity(),
+        ),
+      );
       r.haptics.update(now);
     };
     start(0);
@@ -99,11 +111,27 @@ describe('controller feedback stays outside physics', () => {
     const r = setup();
     r.telemetry.velocity.set(0, 0, 20);
     const normal = { x: 0, y: 0, z: 1 };
-    r.haptics.onImpact(null, normal, 1300);
+    r.haptics.onImpact(
+      estimateImpactSeverity(
+        null,
+        r.telemetry.velocity,
+        normal,
+        1300,
+        createImpactSeverity(),
+      ),
+    );
     r.haptics.update(0);
     expect(r.play).not.toHaveBeenCalled(); // moving away
     normal.z = -1;
-    r.haptics.onImpact(null, normal, 1300);
+    r.haptics.onImpact(
+      estimateImpactSeverity(
+        null,
+        r.telemetry.velocity,
+        normal,
+        1300,
+        createImpactSeverity(),
+      ),
+    );
     normal.z = 1;
     r.telemetry.velocity.set(0, 0, 0);
     r.haptics.update(60);
@@ -117,7 +145,15 @@ describe('controller feedback stays outside physics', () => {
     const r = setup();
     r.play.mockRejectedValue(new Error('Unsupported'));
     r.telemetry.velocity.z = -20;
-    r.haptics.onImpact(null, { x: 0, y: 0, z: 1 }, 1300);
+    r.haptics.onImpact(
+      estimateImpactSeverity(
+        null,
+        r.telemetry.velocity,
+        { x: 0, y: 0, z: 1 },
+        1300,
+        createImpactSeverity(),
+      ),
+    );
     r.haptics.update(0);
     await Promise.resolve();
     expect(r.haptics.state.status).toBe('error');

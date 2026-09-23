@@ -1,3 +1,4 @@
+import type { ImpactSeverity } from '../core/impactSeverity';
 import type { EngineProfile } from '../vehicle/engineProfile';
 import type { TuningStore } from '../tuning/store';
 import { AudioSettings } from './settings';
@@ -165,9 +166,7 @@ export class AudioDirector {
   onImpact(
     otherBodyId: number,
     profile: AudioProfile | null,
-    impulse: number | null,
-    normalWorld: Readonly<{ x: number; y: number; z: number }>,
-    massKg: number,
+    impact: Readonly<ImpactSeverity>,
   ): void {
     if (
       this.disposed ||
@@ -176,23 +175,8 @@ export class AudioDirector {
       !Number.isFinite(otherBodyId)
     )
       return;
-    let severity: number;
-    if (impulse !== null && Number.isFinite(impulse)) {
-      severity = positive(impulse) / Math.max(1, positive(massKg));
-    } else {
-      const velocity = this.deps.readTelemetry().velocity;
-      // Uses pre-step vehicle velocity against a static obstacle; this is
-      // estimated approach speed, not a measured solved contact impulse.
-      severity = positive(
-        -(
-          velocity.x * normalWorld.x +
-          velocity.y * normalWorld.y +
-          velocity.z * normalWorld.z
-        ),
-      );
-      this.mutableState.estimatedImpacts++;
-    }
-    const gain = clamp01((severity - 0.8) / 18);
+    if (impact.estimated) this.mutableState.estimatedImpacts++;
+    const gain = impact.severity; // The shared canonical 0..1 scale.
     if (gain <= 0) return;
     let slot = -1;
     for (let index = 0; index < PAIR_SLOTS; index++) {

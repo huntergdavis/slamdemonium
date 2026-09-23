@@ -8,6 +8,10 @@ import type {
 } from '../src/audio/types';
 import { TuningStore } from '../src/tuning/store';
 import { DEFAULT_ENGINE } from '../src/vehicle/engineProfile';
+import {
+  createImpactSeverity,
+  estimateImpactSeverity,
+} from '../src/core/impactSeverity';
 
 function setup() {
   const tuning = new TuningStore();
@@ -93,7 +97,17 @@ describe('audio stays outside simulation', () => {
     const borrowed = { ...normal };
     for (let step = 0; step < 300; step++) {
       r.director.afterStep(1 / 120);
-      r.director.onImpact(10, 'concrete', null, borrowed, 1300);
+      r.director.onImpact(
+        10,
+        'concrete',
+        estimateImpactSeverity(
+          null,
+          r.telemetry.velocity,
+          borrowed,
+          1300,
+          createImpactSeverity(),
+        ),
+      );
     }
     expect(r.output.apply).not.toHaveBeenCalled();
     expect(r.output.playImpact).not.toHaveBeenCalled();
@@ -146,7 +160,17 @@ describe('audio stays outside simulation', () => {
     r.director.update(0);
     r.telemetry.boostEnvelope = 1;
     r.director.afterStep(1 / 120);
-    r.director.onImpact(10, 'concrete', null, normal, 1300);
+    r.director.onImpact(
+      10,
+      'concrete',
+      estimateImpactSeverity(
+        null,
+        r.telemetry.velocity,
+        normal,
+        1300,
+        createImpactSeverity(),
+      ),
+    );
     r.pause(true);
     r.director.update(16);
     r.director.update(300000);
@@ -167,9 +191,29 @@ describe('audio stays outside simulation', () => {
   it('bounds queued impacts and skips unresolved surfaces without inventing an asphalt fallback', () => {
     const r = setup();
     for (let body = 0; body < 100; body++)
-      r.director.onImpact(body, 'concrete', null, normal, 1300);
+      r.director.onImpact(
+        body,
+        'concrete',
+        estimateImpactSeverity(
+          null,
+          r.telemetry.velocity,
+          normal,
+          1300,
+          createImpactSeverity(),
+        ),
+      );
     expect(r.director.state.droppedImpacts).toBe(68);
-    r.director.onImpact(101, null, null, normal, 1300);
+    r.director.onImpact(
+      101,
+      null,
+      estimateImpactSeverity(
+        null,
+        r.telemetry.velocity,
+        normal,
+        1300,
+        createImpactSeverity(),
+      ),
+    );
     r.director.update(0);
     expect(r.output.playImpact).toHaveBeenCalledTimes(32);
     r.director.update(16);
@@ -200,7 +244,17 @@ describe('audio stays outside simulation', () => {
       r.director.setMasterMuted(mode === 'muted');
       r.tuning.set('sfxVolume', mode === 'zero' ? 0 : 0.7);
       r.output.state.status = mode === 'locked' ? 'locked' : 'ready';
-      r.director.onImpact(1, 'concrete', null, normal, 1300);
+      r.director.onImpact(
+        1,
+        'concrete',
+        estimateImpactSeverity(
+          null,
+          r.telemetry.velocity,
+          normal,
+          1300,
+          createImpactSeverity(),
+        ),
+      );
       r.director.afterStep(1);
       r.director.update(0);
     }
