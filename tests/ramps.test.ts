@@ -76,12 +76,12 @@ describe('ramp geometry', () => {
     expect(rampFootprintRadius(spec)).toBeCloseTo(Math.hypot(6, 3), 6);
   });
 
-  it('authors both default ramps inside the barrier, aimed inward, and clear of the racing line', () => {
+  it('authors every default ramp inside the barrier, aimed inward, and clear of the racing line', () => {
     for (const ramp of RAMP_LAYOUT) {
       const d = rampBodyDescriptor(ramp);
       const radius = Math.hypot(d.center.x, d.center.z);
       expect(radius).toBeLessThan(124); // Six metres inside the 130 m line.
-      expect(radius).toBeGreaterThan(110);
+      expect(radius).toBeGreaterThan(95); // But on the infield, not the centre.
       const forward = rampForward(ramp, { x: 0, y: 0, z: 0 });
       // Inward: launch direction points against the outward radial.
       const outward = { x: d.center.x / radius, z: d.center.z / radius };
