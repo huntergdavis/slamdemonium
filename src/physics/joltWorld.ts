@@ -68,9 +68,15 @@ export async function createPhysicsWorld(
     2,
   );
   const settings = new J.JoltSettings();
-  settings.mMaxBodies = 1024;
-  settings.mMaxBodyPairs = 4096;
-  settings.mMaxContactConstraints = 2048;
+  // Capacity is paid once in Jolt's fixed WASM allocator. A fresh-process
+  // sweep measured about 12.84 MiB used at 1024/4096/2048, versus 20.41 MiB
+  // at 8192/32768/16384, with startup staying around 0.4-0.55 s. The larger
+  // ceiling gives maps and editors room for thousands of dormant bodies.
+  settings.mMaxBodies = 8192;
+  settings.mMaxBodyPairs = 32768;
+  settings.mMaxContactConstraints = 16384;
+  // Deliberate for the single-thread WASM build on GitHub Pages: Pages does
+  // not provide cross-origin isolation, so worker threads cannot be used.
   settings.mMaxWorkerThreads = 0;
   settings.mObjectLayerPairFilter = pairs;
   settings.mBroadPhaseLayerInterface = broad;
