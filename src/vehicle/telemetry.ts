@@ -109,4 +109,8 @@ export class VehicleTelemetry {
   landingCount = 0;
   /** 0..1 authority the air control applied this step; 0 whenever grounded. */
   airControlWeight = 0;
+  /** Shared impact severity of the most recent counted landing: closing
+   * speed into the ground (m/s) and the canonical 0..1 scale. */
+  landingSpeed = 0;
+  landingSeverity = 0;
 }

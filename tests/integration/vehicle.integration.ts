@@ -290,6 +290,12 @@ it('reports airborne state with a counted landing and carries no downforce in fl
     expect(s.airTime).toBe(0);
     expect(s.landingCount).toBe(landingsBefore + 1);
     expect(s.lastAirTime).toBeGreaterThan(0.3);
+    // Landing severity comes from the shared estimator: a 3 m drop closes at
+    // roughly sqrt(2 g h) less the suspension travel already absorbed.
+    expect(s.landingSpeed).toBeGreaterThan(4);
+    expect(s.landingSpeed).toBeLessThan(10);
+    expect(s.landingSeverity).toBeGreaterThan(0.15);
+    expect(vehicle.landingImpact.estimated).toBe(true);
   } finally {
     rig.dispose();
   }

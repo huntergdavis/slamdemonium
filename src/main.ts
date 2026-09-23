@@ -229,6 +229,23 @@ async function boot(): Promise<void> {
         }
         skids.sample(vehicle.telemetry.wheels, loop.simulationSeconds + dt);
         hud.recordStep(vehicle.telemetry, dt, renderTelemetry);
+        // A counted landing kicks camera, rumble and a surface crunch through
+        // the same severity record as a wall hit. The counter is monotonic, so
+        // this catches every landing regardless of steps per frame.
+        if (vehicle.telemetry.landingCount !== landingsSeen) {
+          landingsSeen = vehicle.telemetry.landingCount;
+          const landing = vehicle.landingImpact;
+          cameraRig.addImpact(landing);
+          controllerSupport.onImpact(landing);
+          const wheel = vehicle.telemetry.wheels.find((w) => w.grounded);
+          if (wheel)
+            audio.onImpact(
+              wheel.hit.bodyId,
+              resolveGroundedSurface(true, wheel.surfaceId)?.audioProfile ??
+                null,
+              landing,
+            );
+        }
         controllerSupport.afterStep(dt);
         audio.afterStep(dt);
         scripts.afterStep();
@@ -413,6 +430,7 @@ async function boot(): Promise<void> {
   resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
   const impact = createImpactSeverity();
+  let landingsSeen = vehicle.telemetry.landingCount;
   // One subscriber serves camera, controller and audio, and ONE severity
   // estimate serves all three (src/core/impactSeverity.ts). Jolt's normal
   // separates body B; orient our reused record out of the other surface into
