@@ -1,9 +1,9 @@
 {
   "version": "0.4.0",
-  "commit": "cdc237e48e3f550da1259607e4469954106be97e",
-  "shortCommit": "cdc237e",
+  "commit": "fa20a14102b68673caa3f05aa2348c01769e4a1d",
+  "shortCommit": "fa20a14",
   "channel": "unreleased",
   "tag": null,
   "dirty": false,
-  "label": "UNRELEASED · v0.4.0 · cdc237e"
+  "label": "UNRELEASED · v0.4.0 · fa20a14"
 }
