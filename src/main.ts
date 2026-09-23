@@ -10,6 +10,7 @@ import {
   createImpactSeverity,
   estimateImpactSeverity,
 } from './core/impactSeverity';
+import { ImpactFeedback } from './core/impactFeedback';
 import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
@@ -231,21 +232,25 @@ async function boot(): Promise<void> {
         hud.recordStep(vehicle.telemetry, dt, renderTelemetry);
         // A counted landing kicks camera, rumble and a surface crunch through
         // the same severity record as a wall hit. The counter is monotonic, so
-        // this catches every landing regardless of steps per frame.
+        // this catches every landing regardless of steps per frame; the
+        // feedback seam suppresses it when a chassis contact already fired.
         if (vehicle.telemetry.landingCount !== landingsSeen) {
           landingsSeen = vehicle.telemetry.landingCount;
-          const landing = vehicle.landingImpact;
-          cameraRig.addImpact(landing);
-          controllerSupport.onImpact(landing);
-          const wheel = vehicle.telemetry.wheels.find((w) => w.grounded);
-          if (wheel)
-            audio.onImpact(
+          const wheels = vehicle.telemetry.wheels;
+          let grounded = -1;
+          for (let i = 0; i < wheels.length && grounded < 0; i++)
+            if (wheels[i]!.grounded) grounded = i;
+          if (grounded >= 0) {
+            const wheel = wheels[grounded]!;
+            impactFeedback.onLanding(
               wheel.hit.bodyId,
               resolveGroundedSurface(true, wheel.surfaceId)?.audioProfile ??
                 null,
-              landing,
+              vehicle.landingImpact,
             );
+          }
         }
+        impactFeedback.endStep();
         controllerSupport.afterStep(dt);
         audio.afterStep(dt);
         scripts.afterStep();
@@ -431,6 +436,11 @@ async function boot(): Promise<void> {
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
   const impact = createImpactSeverity();
   let landingsSeen = vehicle.telemetry.landingCount;
+  const impactFeedback = new ImpactFeedback({
+    camera: cameraRig,
+    haptics: controllerSupport,
+    audio,
+  });
   // One subscriber serves camera, controller and audio, and ONE severity
   // estimate serves all three (src/core/impactSeverity.ts). Jolt's normal
   // separates body B; orient our reused record out of the other surface into
@@ -452,12 +462,10 @@ async function boot(): Promise<void> {
     // Breakables consume this same record; they never estimate the contact a
     // second time. Their boundary copies the borrowed point immediately.
     breakableProps.onContact(a, b, point, impactNormal, impact);
-    cameraRig.addImpact(impact);
-    controllerSupport.onImpact(impact);
     const otherBody = a === vehicle.body ? b : a;
-    // This callback runs inside physics.step: audio only queues fixed scalars.
-    // Audio output runs after simulation in update(), never in this callback.
-    audio.onImpact(
+    // This callback runs inside physics.step: consumers only queue fixed
+    // scalars here. Audio output runs after simulation in update().
+    impactFeedback.onContact(
       otherBody,
       surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null,
       impact,
