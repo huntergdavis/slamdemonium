@@ -16,6 +16,13 @@ export interface BreakablePropsOptions {
 }
 
 export interface BreakableProps {
+  readonly propCapacity: number;
+  readonly fragmentCapacity: number;
+  readonly propHalfExtents: Readonly<V3>;
+  readonly fragmentHalfExtents: Readonly<V3>;
+  /** Copies active body IDs into caller-owned fixed buffers; no allocation. */
+  copyActivePropIds(out: Float64Array): number;
+  copyActiveFragmentIds(out: Float64Array): number;
   /** Activates all authored props; call only during boot or reset. */
   reset(): void;
   /** Handles one already-estimated vehicle contact. */
@@ -263,6 +270,30 @@ export function createBreakableProps(
 
   activateProps();
   return {
+    propCapacity: propIds.length,
+    fragmentCapacity: fragmentIds.length,
+    propHalfExtents: pools.breakables.halfExtents,
+    fragmentHalfExtents: pools.debris.halfExtents,
+    copyActivePropIds(out: Float64Array): number {
+      let count = 0;
+      for (let index = 0; index < propActive.length; index++) {
+        if (propActive[index] === 0 || count >= out.length) continue;
+        const id = propIds[index];
+        if (id === undefined) continue;
+        out[count++] = id;
+      }
+      return count;
+    },
+    copyActiveFragmentIds(out: Float64Array): number {
+      let count = 0;
+      for (let index = 0; index < fragmentActive.length; index++) {
+        if (fragmentActive[index] === 0 || count >= out.length) continue;
+        const id = fragmentIds[index];
+        if (id === undefined) continue;
+        out[count++] = id;
+      }
+      return count;
+    },
     reset,
     onContact,
     update,
