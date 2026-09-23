@@ -17,6 +17,7 @@ import { DriftAssist, gripYawTorque } from './assists';
 import { DEG, VEHICLE_GEOMETRY as G } from './constants';
 import { DEFAULT_ENGINE } from './engineProfile';
 import { RpmModel } from './rpmModel';
+import { AirStateTracker } from './airState';
 import { countersteerAngle, steeringLock, VehicleControls } from './controls';
 import {
   brakeForce,
@@ -78,6 +79,7 @@ export class Vehicle {
   /** Derived rpm and virtual gear for presentation; reads telemetry, writes
    * telemetry, never touches forces or controls. */
   private readonly rpmModel = new RpmModel(DEFAULT_ENGINE);
+  private readonly airState = new AirStateTracker();
 
   constructor(
     readonly world: IPhysicsWorld,
@@ -257,13 +259,21 @@ export class Vehicle {
           right.springForce = Math.max(0, right.springForce - antiRoll);
       }
     }
+    // Aero downforce acts along the body's down axis, so it must not act on
+    // an airborne car: in flight it would carry a body-relative force and
+    // push an inverted car upward in world space. With any wheel grounded
+    // it is unchanged, which keeps the flat-track regressions identical.
     const downforce =
-      this.mass.mass *
-      t.get('gravity') *
-      t.get('downforceAtTopSpeed') *
-      (s.speed / t.get('topSpeed')) ** 2;
-    this.force.copy(this.down).multiplyScalar(downforce);
-    this.world.applyForceAtPoint(this.body, this.force, this.centerOfMass);
+      s.groundedWheels === 0
+        ? 0
+        : this.mass.mass *
+          t.get('gravity') *
+          t.get('downforceAtTopSpeed') *
+          (s.speed / t.get('topSpeed')) ** 2;
+    if (downforce > 0) {
+      this.force.copy(this.down).multiplyScalar(downforce);
+      this.world.applyForceAtPoint(this.body, this.force, this.centerOfMass);
+    }
     for (const wheel of s.wheels) {
       if (!wheel.grounded) continue;
       wheel.Fz = wheel.springForce + downforce / s.groundedWheels;
@@ -548,6 +558,7 @@ export class Vehicle {
     s.brake = this.controls.brake;
     s.handbrake = this.controls.handbrake;
     // Derived after everything physical is final for this step.
+    this.airState.step(dt, s.groundedWheels, s);
     this.rpmModel.step(
       dt,
       s.vLong,
@@ -651,6 +662,7 @@ export class Vehicle {
     this.telemetry.longitudinalAcceleration =
       this.telemetry.lateralAcceleration = 0;
     this.rpmModel.reset(this.telemetry);
+    this.airState.reset(this.telemetry);
     this.readState();
     this.previousVelocity.copy(this.telemetry.velocity);
   }

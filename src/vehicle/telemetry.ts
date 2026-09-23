@@ -101,4 +101,10 @@ export class VehicleTelemetry {
   redlineRpm = 0;
   upshiftCount = 0;
   downshiftCount = 0;
+  /** Derived airborne state (see vehicle/airState.ts): presentation only.
+   * landingCount is monotonic so any polling rate sees every landing. */
+  airborne = false;
+  airTime = 0;
+  lastAirTime = 0;
+  landingCount = 0;
 }

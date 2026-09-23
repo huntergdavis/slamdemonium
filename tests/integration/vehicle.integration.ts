@@ -244,3 +244,53 @@ it('holds a constant-steer circle below the load-dependent friction limit', asyn
   // 1 m/s² allows measured acceleration's 0.1 s low-pass lag and suspension transients.
   expect(maxExcess).toBeLessThanOrEqual(1);
 });
+
+it('reports airborne state with a counted landing and carries no downforce in flight, even inverted', async () => {
+  const { scriptVehicleHarness } = await import('../scriptVehicleHarness');
+  const rig = await scriptVehicleHarness({ flatPlane: true });
+  try {
+    const { world, vehicle, store, loop } = rig;
+    const s = vehicle.telemetry;
+    store.set('downforceAtTopSpeed', 3); // Worst case: three times weight at top speed.
+    // Fast and airborne, wheels down: only gravity should act vertically.
+    vehicle.respawn({ x: 0, y: 8, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+    world.setLinearVelocity(vehicle.body, {
+      x: 0,
+      y: 0,
+      z: -store.get('topSpeed'),
+    });
+    loop.stepMany(1);
+    const v0 = s.velocity.y;
+    loop.stepMany(12);
+    const fallAccel = (s.velocity.y - v0) / (12 / HZ);
+    expect(s.airborne).toBe(true);
+    expect(s.airTime).toBeGreaterThan(0.1);
+    expect(s.landingCount).toBe(0);
+    expect(fallAccel).toBeCloseTo(-store.get('gravity'), 0);
+    // Inverted and fast: before the fix, body-down pointed up in world space
+    // and downforce pushed the car skyward.
+    vehicle.respawn({ x: 0, y: 8, z: 0 }, { x: 0, y: 0, z: 1, w: 0 });
+    world.setLinearVelocity(vehicle.body, {
+      x: 0,
+      y: 0,
+      z: -store.get('topSpeed'),
+    });
+    loop.stepMany(1);
+    const v1 = s.velocity.y;
+    loop.stepMany(12);
+    expect((s.velocity.y - v1) / (12 / HZ)).toBeCloseTo(
+      -store.get('gravity'),
+      0,
+    );
+    // Drop from rest and land: the landing counts exactly once.
+    vehicle.respawn({ x: 0, y: 3, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+    const landingsBefore = s.landingCount;
+    loop.stepMany(3 * HZ);
+    expect(s.airborne).toBe(false);
+    expect(s.airTime).toBe(0);
+    expect(s.landingCount).toBe(landingsBefore + 1);
+    expect(s.lastAirTime).toBeGreaterThan(0.3);
+  } finally {
+    rig.dispose();
+  }
+});
