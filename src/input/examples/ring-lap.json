@@ -89,16 +89,16 @@
     "vignetteStrength": 0.5,
     "hapticsIntensity": 0.35,
     "sfxVolume": 0.7,
-    "engineCharacter": 1,
-    "engineRevLift": 2800,
-    "rpmRampExponent": 1.4,
+    "engineCharacter": 0.75,
+    "engineRevLift": 1850,
+    "rpmRampExponent": 1.2,
     "exhaustLength": 1.3,
     "exhaustFeedback": 0.76,
-    "firingUnevenness": 0.7,
+    "firingUnevenness": 1,
     "firingRateScale": 1.15,
-    "engineLevel": 1.45,
+    "engineLevel": 2,
     "gearSpacing": 1.6,
-    "gearCount": 5
+    "gearCount": 6
   },
   "durationSteps": 5169,
   "frames": [
