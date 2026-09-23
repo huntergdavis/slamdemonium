@@ -189,7 +189,7 @@ export function createBreakableProps(
       if (id === undefined) continue;
       const age = Math.min(
         FRAGMENT_TTL_SECONDS,
-        (fragmentAge[index] ?? 0) + dt,
+        fragmentAge[index] + dt,
       );
       fragmentAge[index] = age;
       physics.getLinearVelocity(id, observedVelocity);
@@ -199,7 +199,7 @@ export function createBreakableProps(
         observedVelocity.z * observedVelocity.z;
       const still =
         speedSquared < FRAGMENT_SETTLE_SPEED * FRAGMENT_SETTLE_SPEED
-          ? Math.min(FRAGMENT_SETTLE_SECONDS, (fragmentStill[index] ?? 0) + dt)
+          ? Math.min(FRAGMENT_SETTLE_SECONDS, fragmentStill[index] + dt)
           : 0;
       fragmentStill[index] = still;
       if (age >= FRAGMENT_TTL_SECONDS || still >= FRAGMENT_SETTLE_SECONDS) {
