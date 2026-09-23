@@ -579,7 +579,7 @@ The Jolt world now reserves 8192 bodies, 32768 body pairs and 16384 contact cons
 
 ## Two smash gates use the expanded pooled budget (2026-09-23)
 
-The crash route now adds two eight-panel gates: six bumper/hood-height slats and two edge pylons per gate, all using the same light dynamic breakable rule as the infield boxes. The pool grows from 32 to 48 breakables and from 128 to 192 debris fragments. With 130 base track bodies, four ramps and 48 loop slabs, the boot reservation is 422 bodies of Jolt's 1024-body capacity, leaving about 600 spare. The two-gate limit is deliberate: frame cost is measured before adding a third, and each gate keeps a clear bypass and the scripted racing line remains a regression path.
+The crash route now adds two eight-panel gates: six bumper/hood-height slats and two edge pylons per gate, all using the same light dynamic breakable rule as the infield boxes. The pool grows from 32 to 48 breakables and from 128 to 192 debris fragments. With 130 base track bodies, four ramps and 48 loop slabs, the boot reservation is 422 bodies of Jolt's 8192-body capacity, leaving about 7770 spare. The two-gate limit is deliberate: frame cost is measured before adding a third, and each gate keeps a clear bypass and the scripted racing line remains a regression path.
 
 ## The loop-de-loop is a helix, as data through the facade (2026-09-23)
 
