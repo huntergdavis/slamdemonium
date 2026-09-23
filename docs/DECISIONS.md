@@ -594,3 +594,18 @@ The roll-righting assist exists to rescue a car flipped on the ground. It measur
 The CTO's loop drive exposed two camera defects, measured with the real rig on real trajectories: reversing at 12 m/s the direction jumped more than 20 degrees on 13 frames in six seconds (a full 180 in one frame) and the camera sat behind the nose showing where he came from; riding the 10 m loop the camera was outside the tube on 43 of 99 arc frames with the structure blocking the line of sight to the car on 41. One cause: the rig assumed a flat world, following the flattened nose direction, hanging off the car by world up, and blending toward the travel direction with an angle wrap that flips when travel is exactly backwards.
 
 Three changes in `src/render/cameraRig.ts`, every one gated on conditions ordinary forward driving never meets, and `tests/integration/camera-identity.integration.ts` pins the camera path over the ring-lap and handbrake fixtures to the bit as proof. (1) The direction is rate-limited on the shortest arc, 720 degrees per second normally and 180 while swinging, so a flip is impossible and every ordinary frame copies the target exactly. (2) After a third of a second of sustained reversing the camera swings round to the front and looks back along the reversing path (`camReverseSwing`, default 1, the CTO's "backup should be cinematic"; zero keeps it behind the nose). The hold is load-bearing: a reverse blip after a crash never throws the view around. (3) The camera's sense of up blends toward the ground normal once the ground tilts past 20 degrees (`camTrackFollow`, default 1, zero is a world-up camera), holds while airborne and eases back over half a second after landing, so it rides inside a loop behind the car; and a line-of-sight rule pulls the camera in to just short of any static geometry between it and the car, quickly in and slowly out, using the adapter ray cast with the car's body ignored. That rule is correctness, not a slider. Distance, height, follow time, shake, roll, field of view and the presets are untouched.
+
+## Large maps distribute contacts, not just bodies (2026-09-23)
+
+The ten-times-larger map is delivered before redistributing crash content so the
+CTO can line up long straightaways and isolate loop behavior. Content then scales
+by spreading encounter cells rather than clustering every breakable in one place:
+start with 192 scenery breakables and six gates, each gate isolated on a long
+straight or loop approach with a clear bypass. The pool may hold more dormant
+bodies because the 8192-body reservation is cheap; the runtime protection is the
+contact layout. An authored cell must contain no more than roughly 24–32 bodies
+that can be awake and touching at once, and adjacent cells must be separated far
+enough that a car at 80 m/s cannot pull both into one contact island. This is the
+content rule that preserves frame rate; a hundred simultaneous colliding bodies
+already measured at about 18.6 ms per step, while dormant bodies were effectively
+free.
