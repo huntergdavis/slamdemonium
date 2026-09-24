@@ -23,6 +23,8 @@ export interface PropStreamer {
   reset(): void;
   isPromoted(index: number): boolean;
   isFarVisible(index: number): boolean;
+  /** Copies far-visibility transitions into a caller-owned buffer. */
+  copyFarVisibilityChanges(out: Int32Array): number;
   dispose(): void;
 }
 
@@ -62,11 +64,18 @@ export function createPropStreamer(options: {
   readonly props: BreakableProps;
   readonly records: readonly PropStreamRecord[];
   readonly readVehiclePosition: (out: V3) => void;
+  /** Maximum simultaneous promotions; full pools skip far candidate scans. */
+  readonly maxPromoted?: number;
   readonly enterRadius?: number;
   readonly exitRadius?: number;
 }): PropStreamer {
   const enterRadius = options.enterRadius ?? PROP_STREAM_ENTER_RADIUS;
   const exitRadius = options.exitRadius ?? PROP_STREAM_EXIT_RADIUS;
+  const maxPromoted = options.maxPromoted ?? options.records.length;
+  if (!Number.isSafeInteger(maxPromoted) || maxPromoted <= 0)
+    throw new RangeError(
+      'Maximum streamed promotions must be a positive integer.',
+    );
   if (!(exitRadius > enterRadius))
     throw new RangeError('Prop stream exit radius must exceed entry radius.');
   const enterSquared = enterRadius * enterRadius;
@@ -75,6 +84,9 @@ export function createPropStreamer(options: {
   const promotedSlots = new Int32Array(options.records.length);
   promotedSlots.fill(-1);
   const promotedIndices = new Int32Array(options.records.length);
+  const farChanged = new Uint8Array(options.records.length);
+  const farChanges = new Int32Array(options.records.length);
+  let farChangeCount = 0;
   let promotedCount = 0;
   const vehiclePosition: V3 = { x: 0, y: 0, z: 0 };
   const bodyPosition: V3 = { x: 0, y: 0, z: 0 };
@@ -101,11 +113,18 @@ export function createPropStreamer(options: {
   let candidateMark = 0;
   let disposed = false;
 
+  function queueFarChange(index: number): void {
+    if (farChanged[index] !== 0 || farChangeCount >= farChanges.length) return;
+    farChanged[index] = 1;
+    farChanges[farChangeCount++] = index;
+  }
+
   function addPromoted(index: number): void {
     const slot = promotedSlots[index];
     if (
       slot === undefined ||
       slot >= 0 ||
+      promotedCount >= maxPromoted ||
       promotedCount >= promotedIndices.length
     )
       return;
@@ -126,11 +145,19 @@ export function createPropStreamer(options: {
   }
 
   function markCell(cellId: number): void {
+    if (candidateCount >= maxPromoted) return;
     const indices = cellIndicesById.get(cellId);
     if (!indices) return;
     for (const index of indices) {
+      if (candidateCount >= maxPromoted) return;
       if (candidateMarks[index] === candidateMark) continue;
       candidateMarks[index] = candidateMark;
+      if (promoted[index] !== 0) continue;
+      const record = options.records[index];
+      if (!record) continue;
+      const dx = record.position.x - vehiclePosition.x;
+      const dz = record.position.z - vehiclePosition.z;
+      if (dx * dx + dz * dz > enterSquared) continue;
       candidateIndices[candidateCount++] = index;
     }
   }
@@ -150,12 +177,14 @@ export function createPropStreamer(options: {
       ) {
         promoted[index] = 1;
         addPromoted(index);
+        queueFarChange(index);
       }
       return;
     }
     if (!options.props.isActive(record.placementIndex)) {
       promoted[index] = 0;
       removePromoted(index);
+      queueFarChange(index);
       return;
     }
     if (authoredDistanceSquared <= exitSquared) return;
@@ -172,12 +201,23 @@ export function createPropStreamer(options: {
     if (options.props.deactivate(record.placementIndex)) {
       promoted[index] = 0;
       removePromoted(index);
+      queueFarChange(index);
     }
   }
 
   function update(): void {
     if (disposed) return;
     options.readVehiclePosition(vehiclePosition);
+    // Demote active records first. Once the promotion cap is full, the active
+    // list is the only set that can change; skipping candidate cells avoids
+    // repeatedly walking thousands of far authored records.
+    for (let i = 0; i < promotedCount;) {
+      const index = promotedIndices[i]!;
+      const before = promotedCount;
+      process(index);
+      if (promotedCount === before) i++;
+    }
+    if (promotedCount >= maxPromoted) return;
     candidateMark++;
     if (candidateMark === 0) {
       candidateMarks.fill(0);
@@ -192,12 +232,6 @@ export function createPropStreamer(options: {
       for (let cellZ = minCellZ; cellZ <= maxCellZ; cellZ++)
         markCell(cellX * 100000 + cellZ);
     for (let i = 0; i < candidateCount; i++) process(candidateIndices[i]!);
-    for (let i = 0; i < promotedCount;) {
-      const index = promotedIndices[i]!;
-      const before = promotedCount;
-      process(index);
-      if (promotedCount === before) i++;
-    }
   }
 
   function reset(): void {
@@ -206,6 +240,10 @@ export function createPropStreamer(options: {
     promoted.fill(0);
     promotedSlots.fill(-1);
     promotedCount = 0;
+    farChangeCount = 0;
+    farChanged.fill(0);
+    for (let index = 0; index < options.records.length; index++)
+      queueFarChange(index);
     update();
   }
 
@@ -225,6 +263,20 @@ export function createPropStreamer(options: {
         promoted[index] === 0 &&
         !options.props.isDestroyed(options.records[index]?.placementIndex ?? -1)
       );
+    },
+    copyFarVisibilityChanges(out: Int32Array): number {
+      const count = Math.min(out.length, farChangeCount);
+      for (let index = 0; index < count; index++) {
+        const recordIndex = farChanges[index]!;
+        out[index] = recordIndex;
+        farChanged[recordIndex] = 0;
+      }
+      if (count === farChangeCount) farChangeCount = 0;
+      else {
+        farChanges.copyWithin(0, count, farChangeCount);
+        farChangeCount -= count;
+      }
+      return count;
     },
     dispose(): void {
       disposed = true;

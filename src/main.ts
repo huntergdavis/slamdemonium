@@ -180,10 +180,19 @@ async function boot(): Promise<void> {
     initialActiveIndices: [],
     maxActiveProps: MAX_ACTIVE_BREAKABLES,
   });
-  const propStreamRecords = createPropStreamRecords(BREAKABLE_PROP_PLACEMENTS);
+  const propStreamRecords = createPropStreamRecords(
+    BREAKABLE_PROP_PLACEMENTS,
+    32,
+  );
   const propStreamer = createPropStreamer({
     props: breakableProps,
     records: propStreamRecords,
+    // Dense phase-two fields need a tighter promotion window: at 60–80 m/s
+    // this still gives roughly one second to promote before contact while
+    // keeping the candidate query inside the active-content budget.
+    maxPromoted: MAX_ACTIVE_BREAKABLES,
+    enterRadius: 90,
+    exitRadius: 130,
     readVehiclePosition: (out) => {
       out.x = vehicle.telemetry.position.x;
       out.y = vehicle.telemetry.position.y;

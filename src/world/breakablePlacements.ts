@@ -1,6 +1,9 @@
 import type { BreakablePlacement } from './breakableProps';
 
 const IDENTITY_ROTATION = Object.freeze({ x: 0, y: 0, z: 0, w: 1 });
+const PHASE_TWO_RECORD_COUNT = 256;
+const FAR_FIELD_LIMIT = 350;
+const FAR_FIELD_STEP = 4;
 const CLUSTER_X_OFFSETS = [-7, -2.35, 2.35, 7] as const;
 const CLUSTER_Z_OFFSETS = [-6, 0, 6] as const;
 // Route-side scatter gives the driver several light contacts to pick off
@@ -90,17 +93,79 @@ const GATE_PLACEMENTS = [
   ...createGate({ x: -140, z: -24 }, { x: -1, z: 0 }),
 ] as const;
 
+/** True for positions reserved for runways, targets, and the racing line. */
+function isRouteExcluded(x: number, z: number): boolean {
+  if (Math.abs(x) <= 13 && z >= -370 && z <= 370) return true;
+  if (Math.abs(z) <= 13 && x >= -370 && x <= 370) return true;
+  if (x >= -52 && x <= -20 && z >= -220 && z <= 60) return true;
+  if (x >= 18 && x <= 54 && z >= -220 && z <= 60) return true;
+  if (x >= 43 && x <= 85 && z >= 48 && z <= 370) return true;
+  if (Math.abs(x) <= 20 && z >= 25 && z <= 455) return true;
+  if (x >= -62 && x <= -20 && z >= 12 && z <= 68) return true;
+  if (x >= 20 && x <= 62 && z >= 12 && z <= 68) return true;
+  return false;
+}
+
+function yawRotation(
+  yaw: number,
+): Readonly<{ x: number; y: number; z: number; w: number }> {
+  return Object.freeze({
+    x: 0,
+    y: Math.sin(yaw * 0.5),
+    z: 0,
+    w: Math.cos(yaw * 0.5),
+  });
+}
+
+function hashUnit(index: number): number {
+  const value = Math.sin(index * 12.9898 + 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function createFarFieldPopulation(
+  authored: readonly BreakablePlacement[],
+): readonly BreakablePlacement[] {
+  const placements = [...authored];
+  let candidate = 0;
+  for (
+    let z = -FAR_FIELD_LIMIT;
+    z <= FAR_FIELD_LIMIT && placements.length < PHASE_TWO_RECORD_COUNT;
+    z += FAR_FIELD_STEP
+  ) {
+    for (
+      let x = -FAR_FIELD_LIMIT;
+      x <= FAR_FIELD_LIMIT && placements.length < PHASE_TWO_RECORD_COUNT;
+      x += FAR_FIELD_STEP
+    ) {
+      const jitterX = (hashUnit(candidate++) - 0.5) * 0.8;
+      const jitterZ = (hashUnit(candidate++) - 0.5) * 0.8;
+      const px = x + jitterX;
+      const pz = z + jitterZ;
+      if (Math.hypot(px, pz) >= FAR_FIELD_LIMIT || isRouteExcluded(px, pz))
+        continue;
+      placements.push({
+        position: Object.freeze({ x: px, y: 0.5, z: pz }),
+        rotation: yawRotation((hashUnit(candidate++) - 0.5) * Math.PI * 2),
+      });
+    }
+  }
+  if (placements.length !== PHASE_TWO_RECORD_COUNT)
+    throw new Error(
+      `Phase-two population generated ${placements.length} records.`,
+    );
+  return Object.freeze(placements);
+}
+
 /**
- * Phase-one proving-ground density: six route-side scatter cells and six
- * tighter cluster cells (12 props each, 144 total), plus six eight-piece
- * gates (48), exactly fill the 192 promotion slots. The scatter fields are
- * light pick-off targets; clusters punish a poor line with several nearby
- * contacts; gates are the tall, high-visibility targets. No cell exceeds the
- * 24–32 touching-body rule, and cells are separated so an 80 m/s car cannot
- * drag two encounter islands into one contact cluster.
+ * Phase-two proving-ground content: the original 192 route targets remain the
+ * deliberate smash encounters (scatter cells, tighter clusters, and six tall
+ * gates). The remaining records form a varied far-field lattice inside the
+ * infield. Every lattice gap is wider than a one-metre collider, so dormant
+ * scenery does not become a touching island; only the nearby promotion window
+ * can spend dynamic-body budget. Runway and target corridors stay empty.
  */
 export const BREAKABLE_PROP_PLACEMENTS: readonly BreakablePlacement[] =
-  Object.freeze([
+  createFarFieldPopulation([
     ...SCATTER_CELLS.flatMap((center) => createEncounterCell(center, true)),
     ...CLUSTER_CELLS.flatMap((center) => createEncounterCell(center, false)),
     ...GATE_PLACEMENTS,
