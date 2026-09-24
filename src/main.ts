@@ -47,6 +47,7 @@ import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
+import { createWorldLandmarks } from './render/worldLandmarks';
 import { createBreakableProps } from './world/breakableProps';
 import { BREAKABLE_PROP_PLACEMENTS } from './world/breakablePlacements';
 import {
@@ -149,6 +150,7 @@ async function boot(): Promise<void> {
       track.config,
     ),
   );
+  resources.push(createWorldLandmarks(view.scene, map));
   // Phase C props and debris are reserved now so that no body is created or
   // destroyed mid-session; see POOL_BUDGET for the arithmetic.
   const propPools = createPropPools(surfacedBodies);
@@ -158,6 +160,10 @@ async function boot(): Promise<void> {
     track.spawn.position,
     surfaceResolver,
   );
+  // Apply the authored map heading before the first frame; without this
+  // initial respawn the proving-ground camera starts facing away from every
+  // target even though subsequent respawns use the correct rotation.
+  vehicle.respawn(track.spawn.position, track.spawn.rotation);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
   // cheap far-field instance elsewhere; the record format is shared with a
