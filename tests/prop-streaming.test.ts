@@ -9,8 +9,10 @@ function fakeProps(count: number) {
   const active = new Uint8Array(count);
   const destroyed = new Uint8Array(count);
   const live = Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
+  let activateCalls = 0;
   const props = {
     activate(index: number) {
+      activateCalls++;
       if (index < 0 || index >= count || destroyed[index] || active[index])
         return false;
       active[index] = 1;
@@ -40,7 +42,13 @@ function fakeProps(count: number) {
       destroyed.fill(0);
     },
   } as unknown as BreakableProps;
-  return { props, active, destroyed, live };
+  return {
+    props,
+    active,
+    destroyed,
+    live,
+    getActivateCalls: () => activateCalls,
+  };
 }
 
 describe('phase-one prop streaming', () => {
@@ -121,5 +129,31 @@ describe('phase-one prop streaming', () => {
     car.x = 0;
     stream.update();
     expect(active[0]).toBe(0);
+  });
+
+  it('indexes sparse records by nearby cells instead of scanning the record set', () => {
+    const records = createPropStreamRecords(
+      Array.from({ length: 1000 }, (_, index) => ({
+        position: { x: index * 1000, y: 0.5, z: 0 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+      })),
+      64,
+    );
+    const { props, active, getActivateCalls } = fakeProps(records.length);
+    const car = { x: 0, y: 0, z: 0 };
+    const stream = createPropStreamer({
+      props,
+      records,
+      readVehiclePosition: (out) => Object.assign(out, car),
+      enterRadius: 20,
+      exitRadius: 40,
+    });
+    expect(active[0]).toBe(1);
+    expect(getActivateCalls()).toBe(1);
+    car.x = 500000;
+    stream.update();
+    expect(active[0]).toBe(0);
+    expect(active[500]).toBe(1);
+    expect(getActivateCalls()).toBe(2);
   });
 });
