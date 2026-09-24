@@ -30,6 +30,40 @@ export interface LoopSpec {
 }
 
 export const LOOP_THICKNESS = 0.3;
+
+/** The loop rule, measured in tests/integration/loop-forgiveness.integration.ts
+ * with the same lane-following test driver at every size. Below 14 m a loop
+ * is unfair, not hard: at 10 and 12 m the tyres sit past their grip limit on
+ * a perfect line (grip usage 1.07 at 18 to 26 times static load), so a
+ * perfect entry at the wrong speed still falls and no surface we can author
+ * rescues it (loopGrip 1.3, 1.6 and 2.0 all measured zero tolerance). At 14 m
+ * a loop is fair: 10 degrees of entry angle, 2 m of offset, a 0.8 lock kick
+ * on the wall, every speed from 24 to 60 m/s. At 18 m it is forgiving: 30
+ * degrees, 10 m, 0.9, and no upper speed failure. No authored loop goes
+ * below MIN_FAIR_LOOP_RADIUS; a loop meant to be fun rather than a challenge
+ * starts at FORGIVING_LOOP_RADIUS. */
+export const MIN_FAIR_LOOP_RADIUS = 14;
+export const FORGIVING_LOOP_RADIUS = 18;
+/** The helix skew, shift / (2 pi radius), is the second lever, and this is
+ * why the bound exists rather than what it is. A loop is a helix: over one
+ * turn the lane slides sideways by `shift` so the exit lane comes down
+ * beside the entry lane instead of onto it, which forces
+ * shift >= width + 2 * shoulder + 1 m. To follow a lane that slides, the car
+ * must hold a constant sideways component all the way round, and on the
+ * wall the tyres are carrying 13 to 17 times their static load with load
+ * sensitivity already trimming their friction, so that sideways component
+ * is paid for out of the same grip budget the driver needs to correct his
+ * line. Measured: a 14 m lane with 15 m of shift rides at grip usage 0.3,
+ * a 20 m lane with 27 m of shift on the same radius at 1.07 and falls. So
+ * a wider lane buys shift, shift buys skew, skew spends grip: a wider lane
+ * needs a bigger radius to pay for it. The east loop sits at 0.24, which
+ * is why it works; 0.25 is the edge of what was measured to ride with
+ * margin, not a round number. */
+export const MAX_LOOP_SKEW = 0.25;
+
+export function loopSkew(spec: Readonly<LoopSpec>): number {
+  return Math.abs(spec.shift) / (2 * Math.PI * spec.radius);
+}
 /** Slabs overlap their neighbours by this fraction so wheel rays never fall
  * through a seam. */
 const SEGMENT_OVERLAP = 1.12;

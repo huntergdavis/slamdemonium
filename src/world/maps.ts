@@ -1,5 +1,10 @@
 import { SURFACE_IDS } from '../content/surfaces';
-import { LOOP_LAYOUT, type LoopSpec } from './loopDeLoop';
+import {
+  FORGIVING_LOOP_RADIUS,
+  LOOP_LAYOUT,
+  MIN_FAIR_LOOP_RADIUS,
+  type LoopSpec,
+} from './loopDeLoop';
 import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import type { RunwaySpec } from './runways';
 import type { TrackConfig } from './trackConfig';
@@ -111,15 +116,22 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
     Object.freeze(ringRamp(135, 365, { length: 24, width: 8, rise: 6 })),
   ]),
   loops: Object.freeze([
-    // West: the lab loop unchanged (10 m, 12 m lane, exit one lane outward).
+    // West: the hard loop. 14 m is the measured minimum radius at which a
+    // loop is fair (MIN_FAIR_LOOP_RADIUS): arrive within 10 degrees and 2 m
+    // at any speed from 24 to 60 m/s and a half-lock correction on the wall
+    // does not drop you; the lab's 10 m loop, which reads as broken because
+    // a perfect line at the wrong speed still falls, stays on the lab ring as
+    // the control. Plain lane, no shoulders, on the tinted surface with the
+    // slider neutral, so the CTO can try stickiness on this loop himself.
     Object.freeze({
       x: -36,
       z: TARGET_LINE_Z,
       heading: NORTH,
-      radius: 10,
-      width: 12,
-      shift: -13,
-      segments: 48,
+      radius: MIN_FAIR_LOOP_RADIUS,
+      width: 14,
+      shift: -15,
+      segments: 56,
+      surface: SURFACE_IDS.stickyAsphalt,
     }),
     // East: the forgiving loop. 18 m radius (36 m tall) so the wheels carry
     // 13 times their static load instead of the small loop's 18 to 26 and
@@ -135,7 +147,7 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       x: 36,
       z: TARGET_LINE_Z,
       heading: NORTH,
-      radius: 18,
+      radius: FORGIVING_LOOP_RADIUS,
       width: 20,
       // The exit lane and its shoulder must clear the entry lane and its
       // shoulder where the helix comes back down: 20 + 3 + 3 + 1 m of air.
@@ -170,7 +182,7 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       z: -80,
       heading: NORTH,
       length: 240,
-      width: 12,
+      width: 14,
       markerMeters: 50,
     }),
     Object.freeze({

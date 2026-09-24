@@ -83,10 +83,10 @@ const definitions = [
     label: 'Loop grip',
     unit: 'x',
     default: 1.0,
-    min: 0.5,
-    max: 2.5,
+    min: 0.2,
+    max: 8.0,
     step: 0.01,
-    help: 'Tire friction multiplier on the big east loop only (the tinted surface). 1 = plain asphalt. Measured: neither more nor less grip widened the loop; the radius did.',
+    help: 'Tire friction multiplier on the two tinted loops only. 1 = plain asphalt. The range runs to absurd on purpose: push it until stickiness obviously helps or obviously does not. Measured: it did not; radius did.',
   },
   {
     key: 'physicsHz',

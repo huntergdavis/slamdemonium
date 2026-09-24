@@ -2,7 +2,14 @@ import { Quaternion, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { SURFACE_IDS } from '../src/content/surfaces';
 import { BREAKABLE_PROP_PLACEMENTS } from '../src/world/breakablePlacements';
-import { LOOP_LAYOUT, loopSlabDescriptors } from '../src/world/loopDeLoop';
+import {
+  FORGIVING_LOOP_RADIUS,
+  LOOP_LAYOUT,
+  MAX_LOOP_SKEW,
+  MIN_FAIR_LOOP_RADIUS,
+  loopSkew,
+  loopSlabDescriptors,
+} from '../src/world/loopDeLoop';
 import {
   DEFAULT_MAP_NAME,
   LAB_MAP,
@@ -155,26 +162,26 @@ describe('proving ground structures', () => {
     expect(giant!.x).toBe(0);
     expect(giant!.rise).toBeGreaterThanOrEqual(9);
     expect(giant!.length).toBeGreaterThanOrEqual(40);
-    const [small, big] = pg.loops;
-    expect(small).toMatchObject({
-      radius: LOOP_LAYOUT[0]!.radius,
-      width: LOOP_LAYOUT[0]!.width,
-      shift: LOOP_LAYOUT[0]!.shift,
-      segments: LOOP_LAYOUT[0]!.segments,
+    const [west, east] = pg.loops;
+    // West is the hard loop at the measured minimum fair radius; east is the
+    // forgiving one. Both carry the tinted surface the loopGrip slider
+    // scales (neutral by default), only the east has shoulders, and the
+    // lab's 10 m loop stays on the lab ring as the control.
+    expect(west).toMatchObject({
+      radius: MIN_FAIR_LOOP_RADIUS,
+      width: 14,
       z: TARGET_LINE_Z,
+      surface: SURFACE_IDS.stickyAsphalt,
     });
-    expect(small!.x).toBeLessThan(0); // West.
-    // The west loop is the control: plain asphalt, no shoulders, the lab's
-    // geometry. Only the east loop carries the forgiving mechanisms and the
-    // tinted surface the loopGrip slider applies to.
-    expect(small!.surface).toBeUndefined();
-    expect(small!.shoulder).toBeUndefined();
-    expect(big!.x).toBeGreaterThan(0); // East.
-    expect(big!.surface).toBe(SURFACE_IDS.stickyAsphalt);
-    expect(big!.shoulder).toBeDefined();
-    expect(big!.width).toBeGreaterThan(small!.width);
-    expect(big!.z).toBe(TARGET_LINE_Z);
-    expect(big!.radius).toBeGreaterThanOrEqual(18);
+    expect(west!.x).toBeLessThan(0); // West.
+    expect(west!.shoulder).toBeUndefined();
+    expect(east!.x).toBeGreaterThan(0); // East.
+    expect(east!.z).toBe(TARGET_LINE_Z);
+    expect(east!.radius).toBe(FORGIVING_LOOP_RADIUS);
+    expect(east!.surface).toBe(SURFACE_IDS.stickyAsphalt);
+    expect(east!.shoulder).toBeDefined();
+    expect(east!.width).toBeGreaterThan(west!.width);
+    expect(LAB_MAP.loops[0]!.radius).toBe(10); // The control, untouched.
     for (const loop of pg.loops) {
       expect(loop.heading).toBe(giant!.heading);
       expect(Math.abs(loop.shift)).toBeGreaterThan(loop.width);
@@ -266,6 +273,29 @@ describe('proving ground structures', () => {
           MIN_LANE_CLEARANCE,
         );
       }
+  });
+});
+
+describe('the loop rule', () => {
+  it('authors no loop below the measured minimum fair radius, except the lab control', () => {
+    expect(MIN_FAIR_LOOP_RADIUS).toBe(14);
+    expect(FORGIVING_LOOP_RADIUS).toBeGreaterThan(MIN_FAIR_LOOP_RADIUS);
+    for (const [name, map] of Object.entries(MAPS)) {
+      if (name === 'lab') continue; // The 10 m control predates the rule.
+      for (const loop of map.loops) {
+        expect(
+          loop.radius,
+          `${name} loop at (${loop.x}, ${loop.z})`,
+        ).toBeGreaterThanOrEqual(MIN_FAIR_LOOP_RADIUS);
+        // The exit lane clears the entry lane, and the skew that costs
+        // stays inside the measured bound.
+        expect(Math.abs(loop.shift)).toBeGreaterThanOrEqual(
+          loop.width + 2 * (loop.shoulder?.width ?? 0) + 1,
+        );
+        expect(loopSkew(loop)).toBeLessThanOrEqual(MAX_LOOP_SKEW);
+      }
+    }
+    expect(LAB_MAP.loops).toBe(LOOP_LAYOUT);
   });
 });
 
