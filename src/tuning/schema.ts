@@ -48,7 +48,7 @@ const definitions = [
     group: 'World',
     label: 'Gravity',
     unit: 'm/s^2',
-    default: 14.7,
+    default: 20,
     min: 4.0,
     max: 40.0,
     step: 0.1,

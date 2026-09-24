@@ -192,7 +192,9 @@ it('brakes from a scripted 60 m/s approach within 15 percent of 77 metres', asyn
   expect(distance!).toBeLessThanOrEqual(77 * 1.15);
   // F0 must preserve the pre-surface-change, real Jolt stopping measurement.
   // Same scripted approach/defaults; compare to sub-millimetre rounding, not wall time.
-  expect(distance!).toBeCloseTo(72.3990478515625, 3);
+  // Gravity 20 is the CTO's new default; retain the old 14.7 m/s² result in
+  // the decision record rather than treating this deliberate retune as drift.
+  expect(distance!).toBeCloseTo(71.3531494140625, 3);
   expect(stopSeconds).toBeGreaterThan(0);
   expect(stopSeconds).toBeLessThan(4);
 });
@@ -337,7 +339,10 @@ it('gives pitch authority only past the gate, brakes the nose down at about a qu
     expect(s.angularVelocity.length()).toBeLessThanOrEqual(12.001);
     // Inverted launch with hands off: option A rights the car before landing.
     pad(0, 0, 0);
-    vehicle.respawn({ x: 0, y: 14, z: 0 }, { x: 0, y: 0, z: 1, w: 0 });
+    // At gravity 20 a 14 m inverted launch reaches the ground before the
+    // righting assist can complete; 18 m preserves the intended air-control
+    // test window without changing the assist itself.
+    vehicle.respawn({ x: 0, y: 18, z: 0 }, { x: 0, y: 0, z: 1, w: 0 });
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -20 });
     let landed = false;
     for (let step = 0; step < 4 * HZ && !landed; step++) {
