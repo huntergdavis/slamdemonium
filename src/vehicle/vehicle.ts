@@ -44,6 +44,11 @@ import {
   springRate,
   suspensionForce,
 } from './suspension';
+
+/** Righting torque was tuned against the original 14.7 m/s² default; scale
+ * its cap with gravity so heavier ground contact cannot strand a roofed car. */
+const RIGHTING_REFERENCE_GRAVITY = 14.7;
+
 import { VehicleTelemetry } from './telemetry';
 import {
   effectiveFriction,
@@ -618,10 +623,11 @@ export class Vehicle {
     } else this.airTorques.weight = 0;
     s.airControlWeight = this.airTorques.weight;
     if (Math.abs(roll) > 35 * DEG && (s.speed < 3 || s.groundedWheels > 0)) {
+      const gravityScale = t.get('gravity') / RIGHTING_REFERENCE_GRAVITY;
       const correction = clamp(
-        8 * roll - 2 * s.angularVelocity.dot(this.forward),
-        -12,
-        12,
+        (8 * roll - 2 * s.angularVelocity.dot(this.forward)) * gravityScale,
+        -12 * gravityScale,
+        12 * gravityScale,
       );
       this.torque.addScaledVector(this.forward, this.inertia.z * correction);
     }
