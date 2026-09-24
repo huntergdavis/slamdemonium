@@ -48,6 +48,7 @@ import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
 import { createWorldLandmarks } from './render/worldLandmarks';
+import type { MiniMapLandmark } from './ui/miniMap';
 import {
   createBreakableProps,
   MAX_ACTIVE_BREAKABLES,
@@ -499,6 +500,28 @@ async function boot(): Promise<void> {
       syncPause();
     },
   });
+  const miniMapLandmarks: MiniMapLandmark[] = [];
+  for (const ramp of map.ramps)
+    miniMapLandmarks.push({
+      x: ramp.x,
+      z: ramp.z,
+      label: 'R',
+      color: '#ff7a24',
+    });
+  for (const loop of map.loops)
+    miniMapLandmarks.push({
+      x: loop.x,
+      z: loop.z,
+      label: 'L',
+      color: '#4fb0ff',
+    });
+  for (const pipe of map.halfPipes)
+    miniMapLandmarks.push({
+      x: pipe.x,
+      z: pipe.z,
+      label: 'A',
+      color: '#ffd34f',
+    });
   // Options restores persistence through the same store; apply any mass change
   // before the first step, after the live body/visual subscriptions are installed.
   massRebuild.flush();
@@ -528,6 +551,13 @@ async function boot(): Promise<void> {
     readTelemetry: () => vehicle.telemetry,
     readScore: () => crashScore.state,
     readRenderTelemetry: () => renderTelemetry,
+    miniMap: {
+      landmarks: miniMapLandmarks,
+      halfSize: Math.max(
+        track.config.pavedRadius,
+        track.config.barrierInnerRadius,
+      ),
+    },
   });
   const scripts = new ScriptController({
     store: tuning,

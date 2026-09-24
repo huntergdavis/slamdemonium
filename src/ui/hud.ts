@@ -9,6 +9,7 @@ import {
   type HudRenderTelemetry,
 } from './hudTelemetry';
 import { HudPlots } from './hudPlots';
+import { MiniMap, type MiniMapOptions } from './miniMap';
 import { node } from './paramControl';
 import {
   TelemetryRecorder,
@@ -29,6 +30,7 @@ export interface HudOptions extends RecorderOptions {
   >;
   readTelemetry: () => HudTelemetry | undefined;
   readScore?: () => Readonly<CrashScoreState>;
+  miniMap?: Omit<MiniMapOptions, 'host'>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
   /** Optional export sink for tests/integration. Default downloads a CSV. */
   onExport?: (recording: RecordingExport) => void;
@@ -77,6 +79,7 @@ export class Hud {
   private readonly scoreChainText: Text;
   private readonly scoreChainTrack: HTMLElement;
   private readonly plots: HudPlots;
+  private readonly miniMap?: MiniMap;
   private readonly unsubscribe: () => void;
   private readonly modeButton: HTMLButtonElement;
   private readonly collapseButton: HTMLButtonElement;
@@ -164,6 +167,8 @@ export class Hud {
     this.notice.hidden = true;
     reading(this.notice, 'recording', '');
     this.element.append(this.notice);
+    if (options.miniMap)
+      this.miniMap = new MiniMap({ host: this.element, ...options.miniMap });
     this.plots = new HudPlots(this.root);
     const gg = card('sl-hud__gg', 'G-G · last 10 s', true);
     gg.append(this.plots.gg);
@@ -350,9 +355,10 @@ export class Hud {
     this.exportStopped();
     this.updateNotice();
     this.updateScore(this.options.readScore?.());
+    const telemetry = this.options.readTelemetry();
+    this.miniMap?.update(telemetry);
     if (this.mode === 'off' || this.element.dataset.collapsed === 'true')
       return;
-    const telemetry = this.options.readTelemetry();
     const render = this.options.readRenderTelemetry?.();
     const store = this.options.store;
     this.set('timeScale', 'Time ×' + fixed(store.get('timeScale'), 2));
@@ -670,6 +676,7 @@ export class Hud {
     this.unsubscribe();
     this.recorder.dispose();
     this.plots.dispose();
+    this.miniMap?.dispose();
     this.modeButton.removeEventListener('click', this.cycleFromButton);
     this.collapseButton.removeEventListener('click', this.toggleCollapsed);
     if (this.downloadURL) URL.revokeObjectURL(this.downloadURL);

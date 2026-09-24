@@ -5,6 +5,8 @@ export type HudTelemetry = Readonly<
   Pick<
     VehicleTelemetry,
     | 'speed'
+    | 'position'
+    | 'rotation'
     | 'speedKmh'
     | 'vLong'
     | 'vLat'

@@ -713,6 +713,22 @@
   right: 0;
   min-width: 9rem;
 }
+.sl-mini-map {
+  position: absolute;
+  top: 72px;
+  right: 0;
+  width: 180px;
+  padding: 8px;
+}
+.sl-mini-map .sl-card__title {
+  margin-bottom: 4px;
+}
+.sl-mini-map canvas {
+  display: block;
+  width: 180px;
+  height: 180px;
+  image-rendering: auto;
+}
 .sl-hud__score [data-reading='scoreTotal'] {
   display: block;
   font-size: 1.35rem;
