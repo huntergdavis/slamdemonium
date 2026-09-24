@@ -780,3 +780,15 @@ The final transition-queue implementation was measured with the official sustain
 The next bisection point, 512 records, failed the same official gate at 0.6428 ms average and 2.5000 ms p99. The requested 19,000 records also fit the fixed heap without allocator growth, but failed at 0.5464 ms average and 3.2000 ms p99; the failure is CPU work, not memory capacity. The shortened smoke runs were not used to set this ceiling.
 
 Going higher requires a spatial or level-of-detail path that avoids touching the full far-field candidate/visual set every physics update; further threshold tuning of the current scan is not enough.
+
+## Ground depth-stability guard (2026-09-24)
+
+Nine merges shipped today with all five required checks green, yet the CTO
+found the aquifer's jumping ground texture in the first minute of driving.
+The cause was a coplanar asphalt floor, a class of defect that ordinary unit,
+reachability, bundle, integration, and preview checks cannot see. The map
+tests now reject authored horizontal asphalt bodies whose top is within 1 cm of
+the track ground plane. This catches duplicate floors, plazas, and aprons
+without screenshot goldens or a render-maintenance tax; the existing track
+ground remains the aquifer floor. The mini-map PR also moved hidden-HUD work
+behind its visibility gate, so collapsed HUDs skip telemetry and map redraws.

@@ -110,6 +110,24 @@ function slabCorners(slab: SurfacedStaticBodyDesc): { x: number; z: number }[] {
   return corners;
 }
 
+/** A static asphalt box with a horizontal top at the track ground overlaps
+ * the main ground mesh and causes depth fighting. Keep this check geometric so
+ * future floors, plazas, or aprons fail without a screenshot golden. */
+function coplanarGroundSurfaces(
+  slabs: readonly SurfacedStaticBodyDesc[],
+  groundY = 0,
+  epsilon = 0.01,
+): SurfacedStaticBodyDesc[] {
+  return slabs.filter((slab) => {
+    if (slab.surface !== SURFACE_IDS.asphalt) return false;
+    const q = slab.rotation;
+    const upY = q ? 1 - 2 * (q.x * q.x + q.z * q.z) : 1;
+    if (Math.abs(upY) < 1 - 1e-3) return false;
+    const verticalHalfExtent = Math.abs(upY) * slab.halfExtents.y;
+    return Math.abs(slab.center.y + verticalHalfExtent - groundY) <= epsilon;
+  });
+}
+
 describe('map selection', () => {
   it('takes the URL switch first, then the build default, then the proving ground', () => {
     expect(resolveMapName('?map=lab')).toBe('lab');
@@ -155,6 +173,15 @@ describe('proving ground track', () => {
     // Paint and posts triple roughly, not explode.
     const layout = createTrackLayout(config);
     expect(layout.curbs.length + layout.posts.length).toBeLessThan(3500);
+  });
+
+  it('keeps authored asphalt structures off the track ground plane', () => {
+    const structures = [
+      ...pg.ramps.flatMap((spec) => rampBodyDescriptors(spec)),
+      ...pg.loops.flatMap((spec) => loopSlabDescriptors(spec)),
+      ...pg.halfPipes.flatMap((spec) => halfPipeSlabDescriptors(spec)),
+    ];
+    expect(coplanarGroundSurfaces(structures)).toHaveLength(0);
   });
 
   it('spawns at the south end of the main runway facing north with a full straight ahead', () => {
