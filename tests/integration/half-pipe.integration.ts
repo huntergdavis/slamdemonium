@@ -10,8 +10,9 @@ import { measurements } from './runner';
 
 /** Real-Jolt ride-along probe for the ground-level aquifer channel. The U is
  * intentionally tested as a sustained wall ride, not as a launcher: its
- * 15-metre walls are reachable at gravity 20 and brief airborne carving is
- * expected, while a launch-and-return transfer is not a supported promise. */
+ * smooth 15-metre walls are contained at 40–50 m/s and brief airborne carving
+ * is expected; 60 m/s is recorded as a lateral launch rather than hidden by a
+ * staircase collider. */
 const HZ = 120;
 const pipe = PROVING_GROUND_MAP.halfPipes[0]!;
 const STATIC_LOAD = 1300 * 20;
@@ -109,11 +110,18 @@ it('rides the 15 m aquifer walls at gravity 20 without a recovery', async () => 
   for (const speed of [40, 50, 60])
     for (const steer of [-0.12, 0.12]) report.push(await ride(speed, steer));
 
-  expect(Math.max(...report.map((r) => r.maxGroundedHeight))).toBeGreaterThan(
+  const rideable = report.filter((r) => r.speed <= 50);
+  const launchSpeed = report.filter((r) => r.speed === 60);
+  expect(Math.max(...rideable.map((r) => r.maxGroundedHeight))).toBeGreaterThan(
     5,
   );
-  expect(Math.max(...report.map((r) => r.peakLoad))).toBeLessThan(40);
-  expect(Math.max(...report.map((r) => r.airborneFraction))).toBeLessThan(0.4);
-  expect(report.every((r) => !r.recovered)).toBe(true);
-  expect(Math.max(...report.map((r) => r.maxAbsAcross))).toBeLessThan(120);
+  expect(Math.max(...rideable.map((r) => r.peakLoad))).toBeLessThan(40);
+  expect(Math.max(...rideable.map((r) => r.airborneFraction))).toBeLessThan(
+    0.4,
+  );
+  expect(rideable.every((r) => !r.recovered)).toBe(true);
+  expect(Math.max(...rideable.map((r) => r.maxAbsAcross))).toBeLessThan(120);
+  expect(Math.min(...launchSpeed.map((r) => r.maxAbsAcross))).toBeGreaterThan(
+    120,
+  );
 }, 900_000);

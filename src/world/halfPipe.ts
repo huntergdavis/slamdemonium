@@ -7,10 +7,9 @@ import type { SurfacedBodies, SurfacedStaticBodyDesc } from './surfacedBodies';
 /** A long, ground-level U channel: the floor stays at world ground and two
  * curved walls rise on either side of the travel lane. The car drives through
  * it like an aquifer rather than crossing an elevated spine. deck is the open
- * channel length and width is the flat floor width. The measured recipe is
- * R16, an 85 degree lip and a 60 m floor at gravity 20: about 15 m of rideable
- * wall with 14 to 19 times static wheel load. Launch-and-return is deliberately
- * not the success criterion for this primitive. */
+ * channel length and width is the flat floor width. The smooth R16/85 degree
+ * recipe is contained at 40–50 m/s; at 60 m/s it launches laterally beyond the
+ * channel, so the ride window is deliberately recorded rather than implied. */
 export interface HalfPipeSpec {
   readonly x: number;
   readonly z: number;
@@ -33,8 +32,11 @@ export const DEEP_HALF_PIPE_RADIUS = 16;
 export const HALF_PIPE_THICKNESS = 0.3;
 /** Coping rails along both wall lips, outside the lane. */
 export const HALF_PIPE_RAIL = Object.freeze({ width: 0.3, height: 0.8 });
-const SEGMENT_ARC = 0.8;
-const SEGMENT_OVERLAP = 1.12;
+/** Maximum arc length of one wall collider/mesh segment.  At the fixed 120 Hz
+ * step a fast car travels farther than this in one step, so the overlapping
+ * segments present a continuous transition rather than staircase steps. */
+export const HALF_PIPE_SEGMENT_ARC = 0.2;
+const SEGMENT_OVERLAP = 1.08;
 
 export function halfPipeForward(spec: Readonly<HalfPipeSpec>, out: V3): V3 {
   out.x = -Math.sin(spec.heading);
@@ -108,7 +110,10 @@ export function halfPipeSlabDescriptors(
     scratch.axis.set(0, 1, 0),
     spec.heading,
   );
-  const n = Math.max(6, Math.round((R * HALF_PIPE_EXIT_ANGLE) / SEGMENT_ARC));
+  const n = Math.max(
+    32,
+    Math.ceil((R * HALF_PIPE_EXIT_ANGLE) / HALF_PIPE_SEGMENT_ARC),
+  );
   const d = HALF_PIPE_EXIT_ANGLE / n;
   for (const side of [-1, 1]) {
     for (let i = 0; i < n; i++) {
