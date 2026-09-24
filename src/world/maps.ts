@@ -74,13 +74,10 @@ export const LAB_MAP: MapDefinition = Object.freeze({
 export const TARGET_LINE_Z = 40;
 export const PROVING_GROUND_SPAWN_Z = -340;
 export const PROVING_GROUND_RUNWAY_WIDTH = 16;
-/** Deck centre of the half-pipe spine on the cross runway; its footprint
- * runs 42.5 m either way, so its east chevrons end before the centre crossing. */
-export const HALF_PIPE_X = -150;
-/** Braking chevrons: crossbars this close over the last 100 m before each
- * wall, the road-marking convention for slow down. The transfer wants an
- * approach of 20 to 30 m/s on a runway that otherwise trains flat out. */
-export const HALF_PIPE_APPROACH = 100;
+/** Centre of the aquifer channel on the cross runway. */
+export const HALF_PIPE_X = -220;
+/** Braking chevrons lead into each open end of the long channel. */
+export const HALF_PIPE_APPROACH = 20;
 export const HALF_PIPE_CHEVRON_METERS = 10;
 
 /** The proving ground: the same parametric ring at three times the radius
@@ -172,20 +169,17 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
     }),
   ]),
   halfPipes: Object.freeze([
-    // The half-pipe transfer on the cross runway: 40 m radius (5.4 m walls
-    // that read as a pipe), 30 degree lips, a 45 m deck, coping rails,
-    // drivable from both ends. Approach at 20 to 30 m/s from either side
-    // (launch 30 to 36 under throttle) and the car comes down in the far
-    // pipe at the ramp's landing impact; flat out it flies over the whole
-    // thing and lands hard but upright 155 m on, the legible miss. Measured in
-    // tests/integration/half-pipe.integration.ts.
+    // The aquifer channel: 16 m radius, 85 degree lips, 60 m floor and 280 m
+    // open length. It is visible from the cross runway and is driven along,
+    // not crossed as a launcher. The 15 m wall ride was measured at 40 to
+    // 60 m/s and gravity 20; launch-and-return at this scale is not reliable.
     Object.freeze({
       x: HALF_PIPE_X,
       z: 0,
       heading: -Math.PI / 2, // Axis along +X.
       radius: DEEP_HALF_PIPE_RADIUS,
-      deck: 45,
-      width: PROVING_GROUND_RUNWAY_WIDTH,
+      deck: 280,
+      width: 60,
     }),
   ]),
   runways: Object.freeze([
@@ -224,10 +218,9 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       width: 20,
       markerMeters: 50,
     }),
-    // Braking chevrons on the cross runway, ending at each half-pipe wall's
-    // ground edge (42.5 m from the deck centre).
+    // Braking chevrons on the cross runway, ending at each channel opening.
     Object.freeze({
-      x: HALF_PIPE_X - 42.5 - HALF_PIPE_APPROACH / 2,
+      x: HALF_PIPE_X - 140 - HALF_PIPE_APPROACH / 2,
       z: 0,
       heading: -Math.PI / 2, // Faces the wall it leads to.
       length: HALF_PIPE_APPROACH,
@@ -235,7 +228,7 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       markerMeters: HALF_PIPE_CHEVRON_METERS,
     }),
     Object.freeze({
-      x: HALF_PIPE_X + 42.5 + HALF_PIPE_APPROACH / 2,
+      x: HALF_PIPE_X + 140 + HALF_PIPE_APPROACH / 2,
       z: 0,
       heading: Math.PI / 2, // Faces the wall it leads to.
       length: HALF_PIPE_APPROACH,

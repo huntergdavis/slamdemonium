@@ -4,52 +4,34 @@ import { SURFACE_IDS, type SurfaceId } from '../content/surfaces';
 import type { BodyId, V3 } from '../physics/adapter';
 import type { SurfacedBodies, SurfacedStaticBodyDesc } from './surfacedBodies';
 
-/** A half-pipe transfer, built as a spine because the world is one ground
- * slab and cannot be trenched: a quarter-pipe wall rising from the ground,
- * a solid deck at the lip height, and a mirrored quarter-pipe wall down the
- * other side, open at ground level at both ends and therefore drivable from
- * either direction. `x`/`z` is the centre of the deck; `heading` is the
- * axis of travel in the ramp convention (radians, 0 = -Z, positive turns
- * left); the walls are symmetric about the deck.
- *
- * The recipe, measured in tests/integration/half-pipe.integration.ts on the
- * real engine and recorded in docs/DECISIONS.md. Our world runs 1.5 g and
- * the car arrives at 40 to 60 m/s, so a skate-style steep wall is a cannon:
- * a 65 to 80 degree exit threw the car 50 to 110 m up for 4 to 5 s and
- * landed it at 30 to 40 m/s, twice the giant ramp's landing. Exit angle
- * sets range and landing violence together (both follow the vertical
- * component of the launch: touchdown speed is launch speed x sin(exit) plus
- * the drop from the lip), so the wall exits at 30 degrees: from a 20 to 30
- * m/s approach the car lands at 15 to 23 m/s, the giant ramp's level; the
- * flat-out miss lands at 33, upright. Wall height is radius x
- * (1 - cos 30) = 0.134 R, so depth comes from radius, not steepness; the
- * arc above a 30 degree lip must never be built, even as picture, because
- * the launch is tangent to the circle and the rest of the arc curves back
- * over the car's path. Range is launch speed squared x sin 60 / g, about
- * v^2 / 17 with the launch speed 8 to 10 m/s above the approach speed under
- * full throttle; the deck under the gap makes an undershoot a landing and
- * the flat beyond the far wall gives an overshoot somewhere to land. */
+/** A long, ground-level U channel: the floor stays at world ground and two
+ * curved walls rise on either side of the travel lane. The car drives through
+ * it like an aquifer rather than crossing an elevated spine. deck is the open
+ * channel length and width is the flat floor width. The measured recipe is
+ * R16, an 85 degree lip and a 60 m floor at gravity 20: about 15 m of rideable
+ * wall with 14 to 19 times static wheel load. Launch-and-return is deliberately
+ * not the success criterion for this primitive. */
 export interface HalfPipeSpec {
   readonly x: number;
   readonly z: number;
   readonly heading: number;
-  /** Transition radius, metres; wall height is 0.134 R at the 30 degree exit. */
+  /** Transition radius, metres; wall height is radius x (1 - cos lip). */
   readonly radius: number;
-  /** Deck length between the two lips, metres: the gap to fly. */
+  /** Open channel length along the travel axis, metres. */
   readonly deck: number;
-  /** Lane width across the travel direction, metres. */
+  /** Flat floor width across the travel direction, metres. */
   readonly width: number;
   readonly surface?: SurfaceId;
 }
 
-/** Fixed by the recipe: steeper couples range to landing violence. */
-export const HALF_PIPE_EXIT_ANGLE = (30 * Math.PI) / 180;
+/** Near-vertical channel lip from the measured aquifer ride. */
+export const HALF_PIPE_EXIT_ANGLE = (85 * Math.PI) / 180;
 /** Below this the transition load climbs toward the loop's unfair region. */
 export const MIN_HALF_PIPE_RADIUS = 16;
-/** Recommended: a 5.4 m wall that reads as a pipe from the runway. */
-export const DEEP_HALF_PIPE_RADIUS = 40;
+/** Shipped aquifer wall: about 15 m tall at gravity 20. */
+export const DEEP_HALF_PIPE_RADIUS = 16;
 export const HALF_PIPE_THICKNESS = 0.3;
-/** Coping rails along both deck edges, outside the lane. */
+/** Coping rails along both wall lips, outside the lane. */
 export const HALF_PIPE_RAIL = Object.freeze({ width: 0.3, height: 0.8 });
 const SEGMENT_ARC = 0.8;
 const SEGMENT_OVERLAP = 1.12;
@@ -61,22 +43,22 @@ export function halfPipeForward(spec: Readonly<HalfPipeSpec>, out: V3): V3 {
   return out;
 }
 
-/** Height of the deck and of both lips above the ground. */
+/** Height of each wall lip above the ground. */
 export function halfPipeLipHeight(spec: Readonly<HalfPipeSpec>): number {
   return spec.radius * (1 - Math.cos(HALF_PIPE_EXIT_ANGLE));
 }
 
-/** Horizontal run of one wall, from its ground edge to its lip. */
+/** Horizontal run of one wall from its floor edge to its lip. */
 export function halfPipeWallRun(spec: Readonly<HalfPipeSpec>): number {
   return spec.radius * Math.sin(HALF_PIPE_EXIT_ANGLE);
 }
 
-/** Along-heading half-length of the whole structure: two walls and the deck. */
+/** Along-heading half-length of the open channel. */
 export function halfPipeHalfLength(spec: Readonly<HalfPipeSpec>): number {
-  return spec.deck / 2 + halfPipeWallRun(spec);
+  return spec.deck / 2;
 }
 
-/** Flight range from a lip at the given launch speed, for placement checks. */
+/** Flight range from a lip at the given launch speed, retained for placement checks. */
 export function halfPipeRange(launchSpeed: number, gravity: number): number {
   return (
     (launchSpeed * launchSpeed * Math.sin(2 * HALF_PIPE_EXIT_ANGLE)) / gravity
@@ -87,13 +69,12 @@ const scratch = {
   forward: new Vector3(),
   left: new Vector3(),
   up: new Vector3(),
-  right: new Vector3(),
   centre: new Vector3(),
   quaternion: new Quaternion(),
   axis: new Vector3(),
 };
 
-/** Every static body: wall slabs on both sides, the deck, two coping rails. */
+/** Every static body: ground-level floor, two curved walls and coping rails. */
 export function halfPipeSlabDescriptors(
   spec: Readonly<HalfPipeSpec>,
 ): SurfacedStaticBodyDesc[] {
@@ -103,7 +84,7 @@ export function halfPipeSlabDescriptors(
     0,
     -Math.cos(spec.heading),
   );
-  const l = scratch.left.set(0, 1, 0).cross(f).normalize(); // Across the lane.
+  const l = scratch.left.set(0, 1, 0).cross(f).normalize();
   const R = spec.radius;
   const H = halfPipeLipHeight(spec);
   const run = halfPipeWallRun(spec);
@@ -117,18 +98,12 @@ export function halfPipeSlabDescriptors(
     out.push({
       center: { x: centre.x, y: centre.y, z: centre.z },
       halfExtents,
-      rotation: {
-        x: rotation.x,
-        y: rotation.y,
-        z: rotation.z,
-        w: rotation.w,
-      },
+      rotation: { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w },
       friction: 0.5,
       restitution: 0,
       surface: slabSurface,
     });
   };
-  // Yaw of the whole structure about world Y.
   const yaw = new Quaternion().setFromAxisAngle(
     scratch.axis.set(0, 1, 0),
     spec.heading,
@@ -136,52 +111,42 @@ export function halfPipeSlabDescriptors(
   const n = Math.max(6, Math.round((R * HALF_PIPE_EXIT_ANGLE) / SEGMENT_ARC));
   const d = HALF_PIPE_EXIT_ANGLE / n;
   for (const side of [-1, 1]) {
-    // Ground edge of this wall lies half a deck plus a wall run from the
-    // centre, on the side it belongs to; the arc centre sits R above it.
-    const groundEdge = side * (spec.deck / 2 + run);
     for (let i = 0; i < n; i++) {
       const phi = (i + 0.5) * d;
-      // Along the heading: from the ground edge back toward the deck.
-      const along = groundEdge - side * R * Math.sin(phi);
+      const across = side * (spec.width / 2 + R * Math.sin(phi));
       const y = R * (1 - Math.cos(phi));
-      // Surface normal toward the arc centre: up cos(phi), toward the deck sin(phi).
-      const ny = Math.cos(phi);
-      const nAlong = -side * Math.sin(phi);
-      // Rotation about the lane's across axis (left) taking up to the normal:
-      // positive angle tilts up toward -forward for side +1.
-      const tilt = Math.atan2(nAlong, ny); // signed angle from up toward +forward
-      scratch.quaternion.setFromAxisAngle(l, -tilt).multiply(yaw);
-      scratch.up.set(0, 1, 0).applyQuaternion(scratch.quaternion);
-      scratch.centre
-        .set(spec.x, 0, spec.z)
-        .addScaledVector(f, along)
-        .setY(y)
-        .addScaledVector(scratch.up, -HALF_PIPE_THICKNESS / 2);
+      const roll = new Quaternion().setFromAxisAngle(
+        scratch.axis.set(0, 0, 1),
+        side > 0 ? phi : Math.PI - phi,
+      );
+      scratch.quaternion.copy(yaw).multiply(roll);
+      scratch.centre.set(spec.x, y, spec.z).addScaledVector(l, across);
       pushBox(
         scratch.centre,
         {
-          x: spec.width / 2,
+          x: (R * d * SEGMENT_OVERLAP) / 2,
           y: HALF_PIPE_THICKNESS / 2,
-          z: (R * d * SEGMENT_OVERLAP) / 2,
+          z: spec.deck / 2,
         },
         scratch.quaternion,
         surface,
       );
     }
   }
-  // The deck: flat at lip height between the lips.
-  scratch.centre.set(spec.x, H - HALF_PIPE_THICKNESS / 2, spec.z);
+  scratch.centre.set(spec.x, -HALF_PIPE_THICKNESS / 2, spec.z);
   pushBox(
     scratch.centre,
-    { x: spec.width / 2, y: HALF_PIPE_THICKNESS / 2, z: spec.deck / 2 + 0.2 },
+    { x: spec.width / 2, y: HALF_PIPE_THICKNESS / 2, z: spec.deck / 2 },
     yaw,
     surface,
   );
-  // Coping rails along both deck edges, just outside the lane.
   for (const side of [-1, 1]) {
     scratch.centre
       .set(spec.x, H + HALF_PIPE_RAIL.height / 2, spec.z)
-      .addScaledVector(l, side * (spec.width / 2 + HALF_PIPE_RAIL.width / 2));
+      .addScaledVector(
+        l,
+        side * (spec.width / 2 + run + HALF_PIPE_RAIL.width / 2),
+      );
     pushBox(
       scratch.centre,
       {
@@ -196,7 +161,7 @@ export function halfPipeSlabDescriptors(
   return out;
 }
 
-/** Ground-plane corners of the whole footprint, for clearance checks. */
+/** Ground-plane footprint of the whole channel and its wall lips. */
 export function halfPipeFootprint(spec: Readonly<HalfPipeSpec>): {
   x: number;
   z: number;
@@ -207,7 +172,7 @@ export function halfPipeFootprint(spec: Readonly<HalfPipeSpec>): {
     z: spec.z,
     radius: Math.hypot(
       halfPipeHalfLength(spec),
-      spec.width / 2 + HALF_PIPE_RAIL.width,
+      spec.width / 2 + halfPipeWallRun(spec) + HALF_PIPE_RAIL.width,
     ),
   };
 }
