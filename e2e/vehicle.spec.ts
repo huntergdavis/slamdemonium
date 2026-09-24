@@ -27,6 +27,8 @@ test('G1: keyboard drives the suspended box on the track and the camera follows'
   );
   await page.keyboard.down('KeyA');
   await page.evaluate(() => window.__game.stepMany(90));
+  const turning = await page.evaluate(() => window.__game.getTelemetry());
+  expect(Number(turning.yawRate)).toBeGreaterThan(0);
   await page.keyboard.up('KeyA');
   await page.keyboard.up('KeyW');
   await page.evaluate(
@@ -37,7 +39,6 @@ test('G1: keyboard drives the suspended box on the track and the camera follows'
   );
   const turned = await page.evaluate(() => window.__game.getTelemetry());
   expect((turned.position as { x: number }).x).toBeLessThan(129);
-  expect(Number(turned.yawRate)).toBeGreaterThan(0);
   // A damped camera has a steady moving-target lag of followTime * speed.
   // Manual stepping jumps the target; allow it to settle over real render frames.
   await expect

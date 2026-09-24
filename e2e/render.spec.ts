@@ -20,6 +20,10 @@ test('built renderer bounds boost FOV, draws skid strips and mounts live speed c
     game.tuning.set('fovBase', 110);
     game.tuning.set('fovSpeedGain', 50);
     game.tuning.set('fovBoostKick', 50);
+    // Gravity 20 increases tire load and grip enough that the old boost-only
+    // drive no longer guarantees slip. Lower grip explicitly so this renderer
+    // test exercises skid-strip emission instead of depending on that feel.
+    game.tuning.set('surfaceGrip', 0.2);
     game.setDriftMeter(1);
     game.setInput({ throttle: 1, boost: true });
     game.stepMany(90);
