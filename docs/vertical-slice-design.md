@@ -508,7 +508,7 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 
 | Key | Group | Unit | Default | Min | Max | Step | Flags | What it changes |
 |---|---|---|---|---|---|---|---|---|
-| gravity | World | m/s^2 | 14.7 | 4 | 40 | 0.1 | Q | Weight of everything: tire limits, suspension load, air time. Higher feels heavier and grippier. |
+| gravity | World | m/s^2 | 20 | 4 | 40 | 0.1 | Q | Weight of everything: tire limits, suspension load, air time. Higher feels heavier and grippier. |
 | timeScale | World | x | 1.0 | 0.05 | 2.0 | 0.01 | | Simulation speed. Slow motion for testing crashes and drift catches. |
 | surfaceGrip | World | x | 1.0 | 0.2 | 1.5 | 0.01 | | Global multiplier on tire friction (wet/dirt test). |
 | physicsHz | World | Hz | 120 | 60 | 240 | discrete | A | Physics step rate. Feel should not change; used to test stability. |
@@ -896,14 +896,14 @@ The slice deliberately stops at one box on flat pavement. These are the next mec
 
 ## Appendix A: what the default numbers mean
 
-Computed with the default values (gravity 14.7 m/s^2, peak grip 1.5, slide ratio 0.78, downforce 0.6 x weight at top speed). Use these as sanity references when tuning.
+Computed with the default values (gravity 20 m/s^2, peak grip 1.5, slide ratio 0.78, downforce 0.6 x weight at top speed). Use these as sanity references when tuning.
 
 | Quantity | Value |
 |---|---|
 | 0 to 100 km/h | about 2.15 s |
 | 0 to 55 m/s (198 km/h) | about 6.7 s |
 | 0 to 59 m/s | about 10.2 s |
-| Peak lateral acceleration at low speed | 22 m/s^2 (about 2.25 x Earth gravity) |
+| Peak lateral acceleration at low speed | 30 m/s^2 (about 3.06 x Earth gravity) |
 | Sliding lateral acceleration | about 17 m/s^2 |
 | Peak lateral acceleration at 60 m/s with downforce | about 35 m/s^2 |
 | Full brake from 60 m/s | about 2.6 s, about 77 m (commanded 24 m/s^2; traction with ABS limits it slightly below about 31 m/s) |

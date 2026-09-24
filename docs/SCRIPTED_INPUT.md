@@ -42,7 +42,7 @@ A minimal example, the shipped handbrake turn, has four frames: settle for half 
   "seed": 20903,
   "spawn": { "position": { "x": 130, "y": 0.86, "z": 0 },
              "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 } },
-  "tuning": { "gravity": 14.7, "timeScale": 1, "... every schema key ...": 0 },
+  "tuning": { "gravity": 20, "timeScale": 1, "... every schema key ...": 0 },
   "durationSteps": 420,
   "frames": [
     { "step": 0,   "input": { "throttle": 0,   "brake": 0, "steer": 0,    "handbrake": false, "boost": false, "source": "gamepad" } },

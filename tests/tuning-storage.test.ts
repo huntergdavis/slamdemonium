@@ -103,12 +103,12 @@ describe('TuningStorage', () => {
       'Named defaults',
     );
     expect(states).toEqual(['saving', 'saved']);
-    persistence.store.set('gravity', 20);
+    persistence.store.set('gravity', 21);
     const entry = persistence.changeLogEntry(0);
     expect(Object.isFrozen(entry)).toBe(true);
     expect(persistence.changeLogEntry(0)).toBe(entry);
     const exported = persistence.exportJSON();
-    persistence.store.set('gravity', 21);
+    persistence.store.set('gravity', 22);
     expect(parseTuningJSON(exported).changeLog).toHaveLength(1);
     expect(persistence.changeLogLength).toBe(2);
     persistence.dispose();
@@ -154,7 +154,7 @@ describe('TuningStorage', () => {
       hash: '',
       debounceMs: 200,
     });
-    store.set('gravity', 20);
+    store.set('gravity', 21);
     vi.advanceTimersByTime(100);
     store.set('gravity', 22);
     expect(storage.getItem(WORKING_SET_KEY)).toBeNull();
@@ -162,8 +162,8 @@ describe('TuningStorage', () => {
     expect(storage.getItem(WORKING_SET_KEY)).toBeNull();
     vi.advanceTimersByTime(1);
     expect(persistence.changeLog).toEqual([
-      { timestamp: 500, key: 'gravity', old: 14.7, new: 20 },
-      { timestamp: 500, key: 'gravity', old: 20, new: 22 },
+      { timestamp: 500, key: 'gravity', old: 20, new: 21 },
+      { timestamp: 500, key: 'gravity', old: 21, new: 22 },
     ]);
     const restored = new TuningStorage(new TuningStore(), {
       storage,
@@ -227,7 +227,7 @@ describe('TuningStorage', () => {
       hash: '',
     });
     persistence.importJSON(
-      '{"version":1,"name":"Imported","values":{"gravity":20},"changeLog":[{"timestamp":100,"key":"gravity","old":14.7,"new":20}]}',
+      '{"version":1,"name":"Imported","values":{"gravity":21},"changeLog":[{"timestamp":100,"key":"gravity","old":20,"new":21}]}',
     );
     const exported = parseTuningJSON(persistence.exportJSON());
     expect(exported.name).toBe('Imported');
@@ -252,9 +252,9 @@ describe('TuningStorage', () => {
     vi.spyOn(storage, 'setItem').mockImplementation(() => {
       throw new Error('quota');
     });
-    persistence.store.set('gravity', 20);
+    persistence.store.set('gravity', 21);
     expect(() => persistence.flush()).not.toThrow();
-    expect(persistence.store.get('gravity')).toBe(20);
+    expect(persistence.store.get('gravity')).toBe(21);
     expect(warn).toHaveBeenLastCalledWith(
       'Could not save tuning to local storage.',
     );

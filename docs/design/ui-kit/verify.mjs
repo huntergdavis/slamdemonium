@@ -39,7 +39,7 @@ try {
   await page
     .getByRole('button', { name: 'Reset gravity to default', exact: true })
     .click();
-  assert.equal(await range.inputValue(), '14.7');
+  assert.equal(await range.inputValue(), '20');
   assert.ok(
     await range.evaluate((node, original) => node === original, originalRange),
   );

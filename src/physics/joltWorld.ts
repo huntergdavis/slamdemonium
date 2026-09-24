@@ -1,5 +1,6 @@
 import initJolt from 'jolt-physics/wasm';
 import wasmUrl from 'jolt-physics/jolt-physics.wasm.wasm?url';
+import { DEFAULT_VALUES } from '../tuning/schema';
 import type {
   BodyId,
   ContactCallback,
@@ -574,6 +575,6 @@ export async function createPhysicsWorld(
       disposed = true;
     },
   };
-  api.setGravity(14.7);
+  api.setGravity(DEFAULT_VALUES.gravity);
   return api;
 }
