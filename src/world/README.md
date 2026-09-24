@@ -16,6 +16,10 @@ Defaults implement design section 9 and docs/design/visual-direction.md: one 150
 
 `LoopSpec` (loopDeLoop.ts) can carry a `surface` (default asphalt) and a `shoulder` (`{width, bank}`): one banked strip per lane edge, inner edge flush with the lane, outer edge raised by `width * sin(bank)`, so a car drifting off centre climbs and rolls back. Keep the bank gentle: 30 degrees measured as a chassis hit and a fall; 12 degrees over 3 m works. With shoulders the helix `shift` must exceed `width + 2 * shoulder.width` or the descending exit hangs over the entry. The loop rule (measured, see docs/DECISIONS.md): no authored loop below `MIN_FAIR_LOOP_RADIUS` (14 m); a loop meant to be fun starts at `FORGIVING_LOOP_RADIUS` (18 m). Grip does not substitute for radius.
 
+### Half-pipes
+
+[halfPipe.ts](halfPipe.ts) builds a transfer as a spine: a 30 degree quarter-pipe wall up, a solid deck, a mirrored wall down, coping rails outside the lane, open at ground level both ends. `HalfPipeSpec` is `{x, z, heading, radius, deck, width}` with the deck centre at `x`/`z`; wall height is 0.134 x radius, so depth comes from radius (40 m gives 5.4 m walls). The exit angle is fixed at 30 degrees because steeper couples range to landing violence, and nothing is ever built above the lip on the same arc, even as picture (the launch is tangent to it). Gap = launch speed squared / 17. Rule and measurements in docs/DECISIONS.md.
+
 ## Bind to the renderer and physics loop
 
 ```ts

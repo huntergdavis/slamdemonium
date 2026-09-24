@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { SURFACE_IDS } from '../src/content/surfaces';
 import { BREAKABLE_PROP_PLACEMENTS } from '../src/world/breakablePlacements';
 import {
+  MIN_HALF_PIPE_RADIUS,
+  halfPipeSlabDescriptors,
+} from '../src/world/halfPipe';
+import {
   FORGIVING_LOOP_RADIUS,
   LOOP_LAYOUT,
   MAX_LOOP_SKEW,
@@ -12,6 +16,8 @@ import {
 } from '../src/world/loopDeLoop';
 import {
   DEFAULT_MAP_NAME,
+  HALF_PIPE_CHEVRON_METERS,
+  HALF_PIPE_X,
   LAB_MAP,
   MAPS,
   PROVING_GROUND_MAP,
@@ -64,6 +70,17 @@ function footprints(map: typeof pg) {
       loopSlabDescriptors(spec).flatMap((slab) =>
         slabCorners(slab).map((corner) => ({
           kind: 'loop' as const,
+          index,
+          x: corner.x,
+          z: corner.z,
+          radius: 0,
+        })),
+      ),
+    ),
+    ...map.halfPipes.flatMap((spec, index) =>
+      halfPipeSlabDescriptors(spec).flatMap((slab) =>
+        slabCorners(slab).map((corner) => ({
+          kind: 'halfPipe' as const,
           index,
           x: corner.x,
           z: corner.z,
@@ -205,10 +222,16 @@ describe('proving ground structures', () => {
 
   it('keeps every runway lane clear of everything except its own end target', () => {
     // Lane index -> the one structure allowed inside it.
-    const targets: Record<number, { kind: 'ramp' | 'loop'; index: number }> = {
+    const targets: Record<
+      number,
+      { kind: 'ramp' | 'loop' | 'halfPipe'; index: number }
+    > = {
       0: { kind: 'ramp', index: 0 },
+      1: { kind: 'halfPipe', index: 0 }, // The spine sits in the cross lane.
       2: { kind: 'loop', index: 0 },
       3: { kind: 'loop', index: 1 },
+      4: { kind: 'halfPipe', index: 0 }, // Chevron lanes end at its walls.
+      5: { kind: 'halfPipe', index: 0 },
     };
     const all = footprints(pg);
     pg.runways.forEach((lane, laneIndex) => {
@@ -303,6 +326,29 @@ describe('the loop rule', () => {
       }
     }
     expect(LAB_MAP.loops).toBe(LOOP_LAYOUT);
+  });
+});
+
+describe('the half-pipe rule', () => {
+  it('authors no half-pipe below the minimum transition radius, on the cross runway with chevrons leading to both walls', () => {
+    expect(MIN_HALF_PIPE_RADIUS).toBe(16);
+    for (const map of Object.values(MAPS))
+      for (const pipe of map.halfPipes)
+        expect(pipe.radius).toBeGreaterThanOrEqual(MIN_HALF_PIPE_RADIUS);
+    const [pipe] = pg.halfPipes;
+    expect(pipe).toMatchObject({ x: HALF_PIPE_X, z: 0, radius: 40, deck: 45 });
+    expect(runwayLaneClearance(pg.runways[1]!, pipe!.x, pipe!.z)).toBe(0);
+    // Both chevron lanes end exactly at a wall's ground edge and face it.
+    for (const [lane, side] of [
+      [pg.runways[4]!, -1],
+      [pg.runways[5]!, 1],
+    ] as const) {
+      const f = runwayForward(lane);
+      expect(Math.sign(f.x)).toBe(-side); // Toward the spine.
+      const end = lane.x + f.x * (lane.length / 2);
+      expect(end).toBeCloseTo(pipe!.x + side * 42.5, 9);
+      expect(lane.markerMeters).toBe(HALF_PIPE_CHEVRON_METERS);
+    }
   });
 });
 

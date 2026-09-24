@@ -1,4 +1,5 @@
 import { SURFACE_IDS } from '../content/surfaces';
+import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
   LOOP_LAYOUT,
@@ -26,6 +27,7 @@ export interface MapDefinition {
   readonly spawn?: MapSpawn;
   readonly ramps: readonly RampSpec[];
   readonly loops: readonly LoopSpec[];
+  readonly halfPipes: readonly HalfPipeSpec[];
   readonly runways: readonly RunwaySpec[];
 }
 export type MapName = 'lab' | 'proving-ground';
@@ -63,6 +65,7 @@ export const LAB_MAP: MapDefinition = Object.freeze({
   track: Object.freeze({}),
   ramps: RAMP_LAYOUT,
   loops: LOOP_LAYOUT,
+  halfPipes: Object.freeze([]),
   runways: Object.freeze([]),
 });
 
@@ -71,6 +74,14 @@ export const LAB_MAP: MapDefinition = Object.freeze({
 export const TARGET_LINE_Z = 40;
 export const PROVING_GROUND_SPAWN_Z = -340;
 export const PROVING_GROUND_RUNWAY_WIDTH = 16;
+/** Deck centre of the half-pipe spine on the cross runway; its footprint
+ * runs 42.5 m either way, so its east chevrons end before the centre crossing. */
+export const HALF_PIPE_X = -150;
+/** Braking chevrons: crossbars this close over the last 100 m before each
+ * wall, the road-marking convention for slow down. The transfer wants an
+ * approach of 20 to 30 m/s on a runway that otherwise trains flat out. */
+export const HALF_PIPE_APPROACH = 100;
+export const HALF_PIPE_CHEVRON_METERS = 10;
 
 /** The proving ground: the same parametric ring at three times the radius
  * (400 m centre line, about 9.5 times the area) with a paved infield the
@@ -160,6 +171,23 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       shoulder: Object.freeze({ width: 3, bank: 12 * DEG }),
     }),
   ]),
+  halfPipes: Object.freeze([
+    // The half-pipe transfer on the cross runway: 40 m radius (5.4 m walls
+    // that read as a pipe), 30 degree lips, a 45 m deck, coping rails,
+    // drivable from both ends. Approach at 20 to 30 m/s from either side
+    // (launch 30 to 36 under throttle) and the car comes down in the far
+    // pipe at the ramp's landing impact; flat out it flies over the whole
+    // thing and lands hard but upright 155 m on, the legible miss. Measured in
+    // tests/integration/half-pipe.integration.ts.
+    Object.freeze({
+      x: HALF_PIPE_X,
+      z: 0,
+      heading: -Math.PI / 2, // Axis along +X.
+      radius: DEEP_HALF_PIPE_RADIUS,
+      deck: 45,
+      width: PROVING_GROUND_RUNWAY_WIDTH,
+    }),
+  ]),
   runways: Object.freeze([
     // Main: north-south through the centre, spawn at its south end.
     Object.freeze({
@@ -195,6 +223,24 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       length: 240,
       width: 20,
       markerMeters: 50,
+    }),
+    // Braking chevrons on the cross runway, ending at each half-pipe wall's
+    // ground edge (42.5 m from the deck centre).
+    Object.freeze({
+      x: HALF_PIPE_X - 42.5 - HALF_PIPE_APPROACH / 2,
+      z: 0,
+      heading: -Math.PI / 2, // Faces the wall it leads to.
+      length: HALF_PIPE_APPROACH,
+      width: PROVING_GROUND_RUNWAY_WIDTH,
+      markerMeters: HALF_PIPE_CHEVRON_METERS,
+    }),
+    Object.freeze({
+      x: HALF_PIPE_X + 42.5 + HALF_PIPE_APPROACH / 2,
+      z: 0,
+      heading: Math.PI / 2, // Faces the wall it leads to.
+      length: HALF_PIPE_APPROACH,
+      width: PROVING_GROUND_RUNWAY_WIDTH,
+      markerMeters: HALF_PIPE_CHEVRON_METERS,
     }),
   ]),
 });
