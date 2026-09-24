@@ -610,6 +610,15 @@ content rule that preserves frame rate; a hundred simultaneous colliding bodies
 already measured at about 18.6 ms per step, while dormant bodies were effectively
 free.
 
+The first proving-ground population applies the rule: 144 scenery records in
+twelve 12-prop cells plus six eight-piece gates, 192 records total, promoted
+through the existing 220 m / 300 m hysteresis. A clean production build and
+300-second perf run measured a 0.2435 ms average and 0.9 ms p99 manual physics
+step, with 0.00% WASM allocator growth; retained JS heap rose 4.88%. The
+population is broad in authored space while each encounter stays local, and
+this measured frame cost is the evidence for the phase rather than an
+assumption about dormant body count.
+
 ## The proving ground is the default map; the lab ring stays as a named test world (2026-09-23)
 
 The CTO could not test ramps and loops because the 150 m ring gives no room to line up a run at speed. `src/world/maps.ts` now names two worlds as data. The lab is the ring exactly as it was, and `tests/scriptVehicleHarness.ts`, every replay fixture, the e2e build (`VITE_DEFAULT_MAP=lab` in `playwright.config.ts`) and `?map=lab` in the browser keep using it; no fixture was regenerated. The proving ground is the same parametric ring at three times the radius (400 m centre line, 340 to 460 m pavement, 384 barrier boxes of the same 7.7 m length, ground collider scaled with them by `createGroundDescriptor`, 1500 m visual ground, fog at 0.0008) and is what boot loads by default. The design is the approach, not the area: the car spawns at the south end of a 700 m painted runway facing north, reaches top speed in about 250 m, and 380 m ahead on one target line sit the giant ramp on the runway's centre (40 m, 16 m wide, 9 m lip), the lab's 10 m loop unchanged to the west and an 18 m loop to the east on their own branch lanes, so the two loops are compared from the same spawn at the same speed; Respawn returns the car to the same line. Runways are paint (`src/world/runways.ts`, one instanced draw) on the infield's existing asphalt collider, not bodies. The four lab ramps sit on the ring at the diagonals, turned 45 degrees inward instead of 15 because at 60 m/s and above a 15 degree launch from a 365 m radius would clear the 470 m barrier. `tests/maps.test.ts` guards the lanes: nothing but its end target may stand within 5 m of a runway, including the props and gates that still sit at their lab coordinates until they are re-placed. `tests/integration/proving-ground.integration.ts` measures the giant ramp landing at 60 and 85 m/s against the barrier, the east loop's entry-speed floor, and the example routes' clearance of every structure. The camera rig is untouched. Props and gates move in a following change by their owner.
