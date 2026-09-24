@@ -1,6 +1,5 @@
 import {
   BoxGeometry,
-  ConeGeometry,
   CylinderGeometry,
   DoubleSide,
   Group,
@@ -31,7 +30,7 @@ export function createWorldLandmarks(
 ): WorldLandmarks {
   const root = new Group();
   root.name = 'world-landmarks';
-  const geometries: Array<BoxGeometry | ConeGeometry | CylinderGeometry> = [];
+  const geometries: Array<BoxGeometry | CylinderGeometry> = [];
   const materials: MeshStandardMaterial[] = [];
 
   const material = (color: number): MeshStandardMaterial => {
@@ -45,9 +44,8 @@ export function createWorldLandmarks(
     return value;
   };
   const poleGeometry = new CylinderGeometry(0.35, 0.5, BEACON_HEIGHT, 8);
-  const capGeometry = new ConeGeometry(2.5, 5, 4);
   const panelGeometry = new BoxGeometry(8, 24, 0.5);
-  geometries.push(poleGeometry, capGeometry, panelGeometry);
+  geometries.push(poleGeometry, panelGeometry);
 
   const beacon = (x: number, z: number, color: number): void => {
     const m = material(color);
@@ -55,10 +53,6 @@ export function createWorldLandmarks(
     pole.position.set(x, BEACON_HEIGHT / 2, z);
     pole.castShadow = true;
     root.add(pole);
-    const cap = new Mesh(capGeometry, m);
-    cap.position.set(x, BEACON_HEIGHT + 1.75, z);
-    cap.castShadow = true;
-    root.add(cap);
     const panel = new Mesh(panelGeometry, m);
     panel.position.set(x, 12, z);
     panel.castShadow = true;
