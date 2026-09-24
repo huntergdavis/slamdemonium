@@ -5,6 +5,7 @@ import type { BreakablePlacement, BreakableProps } from './breakableProps';
 export interface PropStreamRecord {
   readonly id: string;
   readonly cellId: number;
+  readonly cellSize: number;
   readonly placementIndex: number;
   readonly position: Readonly<V3>;
   readonly rotation: Readonly<Quat>;
@@ -44,6 +45,7 @@ export function createPropStreamRecords(
     const record: PropStreamRecord = Object.freeze({
       id: `prop-${index}`,
       cellId,
+      cellSize,
       placementIndex: index,
       position: placement.position,
       rotation: placement.rotation,
@@ -70,54 +72,131 @@ export function createPropStreamer(options: {
   const enterSquared = enterRadius * enterRadius;
   const exitSquared = exitRadius * exitRadius;
   const promoted = new Uint8Array(options.records.length);
+  const promotedSlots = new Int32Array(options.records.length);
+  promotedSlots.fill(-1);
+  const promotedIndices = new Int32Array(options.records.length);
+  let promotedCount = 0;
   const vehiclePosition: V3 = { x: 0, y: 0, z: 0 };
   const bodyPosition: V3 = { x: 0, y: 0, z: 0 };
   const cellsById = new Map<number, PropStreamRecord[]>();
-  for (const record of options.records) {
+  const cellIndicesById = new Map<number, number[]>();
+  for (let index = 0; index < options.records.length; index++) {
+    const record = options.records[index];
+    if (!record) continue;
     const cell = cellsById.get(record.cellId);
     if (cell) cell.push(record);
     else cellsById.set(record.cellId, [record]);
+    const indices = cellIndicesById.get(record.cellId);
+    if (indices) indices.push(index);
+    else cellIndicesById.set(record.cellId, [index]);
   }
   const cells = Object.freeze(
     [...cellsById].map(([id, records]) =>
       Object.freeze({ id, records: Object.freeze(records) }),
     ),
   );
+  const candidateIndices = new Int32Array(options.records.length);
+  const candidateMarks = new Uint32Array(options.records.length);
+  const cellSize = options.records[0]?.cellSize ?? 160;
+  let candidateMark = 0;
   let disposed = false;
+
+  function addPromoted(index: number): void {
+    const slot = promotedSlots[index];
+    if (
+      slot === undefined ||
+      slot >= 0 ||
+      promotedCount >= promotedIndices.length
+    )
+      return;
+    promotedSlots[index] = promotedCount;
+    promotedIndices[promotedCount++] = index;
+  }
+
+  function removePromoted(index: number): void {
+    const slot = promotedSlots[index];
+    if (slot === undefined || slot < 0 || promotedCount <= 0) return;
+    const lastSlot = promotedCount - 1;
+    const lastIndex = promotedIndices[lastSlot];
+    if (lastIndex === undefined) return;
+    promotedCount = lastSlot;
+    promotedIndices[slot] = lastIndex;
+    promotedSlots[lastIndex] = slot;
+    promotedSlots[index] = -1;
+  }
+
+  function markCell(cellId: number): void {
+    const indices = cellIndicesById.get(cellId);
+    if (!indices) return;
+    for (const index of indices) {
+      if (candidateMarks[index] === candidateMark) continue;
+      candidateMarks[index] = candidateMark;
+      candidateIndices[candidateCount++] = index;
+    }
+  }
+
+  let candidateCount = 0;
+
+  function process(index: number): void {
+    const record = options.records[index];
+    if (!record) return;
+    const dx = record.position.x - vehiclePosition.x;
+    const dz = record.position.z - vehiclePosition.z;
+    const authoredDistanceSquared = dx * dx + dz * dz;
+    if (promoted[index] === 0) {
+      if (
+        authoredDistanceSquared <= enterSquared &&
+        options.props.activate(record.placementIndex)
+      ) {
+        promoted[index] = 1;
+        addPromoted(index);
+      }
+      return;
+    }
+    if (!options.props.isActive(record.placementIndex)) {
+      promoted[index] = 0;
+      removePromoted(index);
+      return;
+    }
+    if (authoredDistanceSquared <= exitSquared) return;
+    // Check the live pose before releasing. This prevents a pushed body (and
+    // especially a body supporting the car) from being unloaded by its old
+    // authored cell location.
+    if (
+      options.props.getActivePropPosition(record.placementIndex, bodyPosition)
+    ) {
+      const liveDx = bodyPosition.x - vehiclePosition.x;
+      const liveDz = bodyPosition.z - vehiclePosition.z;
+      if (liveDx * liveDx + liveDz * liveDz <= exitSquared) return;
+    }
+    if (options.props.deactivate(record.placementIndex)) {
+      promoted[index] = 0;
+      removePromoted(index);
+    }
+  }
 
   function update(): void {
     if (disposed) return;
     options.readVehiclePosition(vehiclePosition);
-    for (let index = 0; index < options.records.length; index++) {
-      const record = options.records[index];
-      if (!record) continue;
-      const dx = record.position.x - vehiclePosition.x;
-      const dz = record.position.z - vehiclePosition.z;
-      const authoredDistanceSquared = dx * dx + dz * dz;
-      if (promoted[index] === 0) {
-        if (
-          authoredDistanceSquared <= enterSquared &&
-          options.props.activate(record.placementIndex)
-        )
-          promoted[index] = 1;
-        continue;
-      }
-      if (!options.props.isActive(record.placementIndex)) {
-        promoted[index] = 0;
-        continue;
-      }
-      if (authoredDistanceSquared <= exitSquared) continue;
-      // Check the live pose before releasing. This prevents a pushed body (and
-      // especially a body supporting the car) from being unloaded by its old
-      // authored cell location.
-      if (
-        options.props.getActivePropPosition(record.placementIndex, bodyPosition)
-      ) {
-        const liveDx = bodyPosition.x - vehiclePosition.x;
-        const liveDz = bodyPosition.z - vehiclePosition.z;
-        if (liveDx * liveDx + liveDz * liveDz <= exitSquared) continue;
-      }
-      if (options.props.deactivate(record.placementIndex)) promoted[index] = 0;
+    candidateMark++;
+    if (candidateMark === 0) {
+      candidateMarks.fill(0);
+      candidateMark = 1;
+    }
+    candidateCount = 0;
+    const minCellX = Math.floor((vehiclePosition.x - exitRadius) / cellSize);
+    const maxCellX = Math.floor((vehiclePosition.x + exitRadius) / cellSize);
+    const minCellZ = Math.floor((vehiclePosition.z - exitRadius) / cellSize);
+    const maxCellZ = Math.floor((vehiclePosition.z + exitRadius) / cellSize);
+    for (let cellX = minCellX; cellX <= maxCellX; cellX++)
+      for (let cellZ = minCellZ; cellZ <= maxCellZ; cellZ++)
+        markCell(cellX * 100000 + cellZ);
+    for (let i = 0; i < candidateCount; i++) process(candidateIndices[i]!);
+    for (let i = 0; i < promotedCount;) {
+      const index = promotedIndices[i]!;
+      const before = promotedCount;
+      process(index);
+      if (promotedCount === before) i++;
     }
   }
 
@@ -125,6 +204,8 @@ export function createPropStreamer(options: {
     if (disposed) return;
     options.props.reset();
     promoted.fill(0);
+    promotedSlots.fill(-1);
+    promotedCount = 0;
     update();
   }
 
