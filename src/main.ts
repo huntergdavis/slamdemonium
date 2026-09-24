@@ -11,6 +11,7 @@ import {
   estimateImpactSeverity,
 } from './core/impactSeverity';
 import { ImpactFeedback } from './core/impactFeedback';
+import { CrashScore } from './core/crashScore';
 import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
@@ -157,6 +158,7 @@ async function boot(): Promise<void> {
     track.spawn.position,
     surfaceResolver,
   );
+  const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
   // cheap far-field instance elsewhere; the record format is shared with a
   // future map editor so moving content never changes lifecycle code.
@@ -165,6 +167,7 @@ async function boot(): Promise<void> {
     pools: propPools,
     placements: BREAKABLE_PROP_PLACEMENTS,
     vehicleBody: vehicle.body,
+    onBreak: (severity) => crashScore.recordBreakSeverity(severity),
     initialActiveIndices: [],
   });
   const propStreamRecords = createPropStreamRecords(BREAKABLE_PROP_PLACEMENTS);
@@ -333,6 +336,7 @@ async function boot(): Promise<void> {
       postStep(dt) {
         vehicle.postStep(dt);
         breakableProps.update(dt);
+        crashScore.update(dt);
         propStreamer.update();
         history.afterStep();
         track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
@@ -417,6 +421,7 @@ async function boot(): Promise<void> {
     propStreamer.reset();
     controllerSupport.reset();
     audio.reset();
+    crashScore.resetChain();
     loop.resetClock();
   }
   function requestRespawn(): void {
@@ -502,6 +507,7 @@ async function boot(): Promise<void> {
     store: tuning,
     session: options.session,
     readTelemetry: () => vehicle.telemetry,
+    readScore: () => crashScore.state,
     readRenderTelemetry: () => renderTelemetry,
   });
   const scripts = new ScriptController({

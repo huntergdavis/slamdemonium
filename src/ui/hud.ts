@@ -1,4 +1,5 @@
 import type { TuningStore } from '../tuning/store';
+import type { CrashScoreState } from '../core/crashScore';
 import { steeringLock } from '../vehicle/controls';
 import {
   HudHistory,
@@ -27,6 +28,7 @@ export interface HudOptions extends RecorderOptions {
     'presetName' | 'activeSlot' | 'modified' | 'onUpdate'
   >;
   readTelemetry: () => HudTelemetry | undefined;
+  readScore?: () => Readonly<CrashScoreState>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
   /** Optional export sink for tests/integration. Default downloads a CSV. */
   onExport?: (recording: RecordingExport) => void;
@@ -69,6 +71,11 @@ export class Hud {
   private readonly tachometer: HTMLElement;
   private readonly tachTrack: HTMLElement;
   private readonly notice: HTMLElement;
+  private readonly scoreTotal: Text;
+  private readonly scoreAward: HTMLElement;
+  private readonly scoreChain: HTMLElement;
+  private readonly scoreChainText: Text;
+  private readonly scoreChainTrack: HTMLElement;
   private readonly plots: HudPlots;
   private readonly unsubscribe: () => void;
   private readonly modeButton: HTMLButtonElement;
@@ -142,6 +149,15 @@ export class Hud {
     this.collapseButton.addEventListener('click', this.toggleCollapsed);
     controls.append(this.modeButton, this.collapseButton);
     this.element.append(controls);
+    const score = card('sl-hud__score', 'CRASH SCORE');
+    this.scoreTotal = reading(score, 'scoreTotal', '0').firstChild as Text;
+    this.scoreAward = reading(score, 'scoreAward', '', 'sl-hud__score-award');
+    this.scoreAward.setAttribute('aria-live', 'polite');
+    this.scoreChain = reading(score, 'scoreChain', '', 'sl-hud__score-chain');
+    this.scoreChainText = this.scoreChain.firstChild as Text;
+    this.scoreChainTrack = node(doc, 'span', 'sl-hud__score-chain-track');
+    this.scoreChain.append(this.scoreChainTrack);
+    this.scoreChain.hidden = true;
     this.notice = node(doc, 'div', 'sl-card sl-hud__recording');
     this.notice.dataset.hudPersistent = '';
     this.notice.setAttribute('role', 'status');
@@ -333,6 +349,7 @@ export class Hud {
     this.lastReadMs = nowMs;
     this.exportStopped();
     this.updateNotice();
+    this.updateScore(this.options.readScore?.());
     if (this.mode === 'off' || this.element.dataset.collapsed === 'true')
       return;
     const telemetry = this.options.readTelemetry();
@@ -453,6 +470,34 @@ export class Hud {
       'Nominal μ ' + fixed(mu, 2) + ' × g = ' + fixed(reference) + ' m/s²',
     );
     this.plots.draw(this.history, nowMs / 1000, reference);
+  }
+
+  private updateScore(score: Readonly<CrashScoreState> | undefined): void {
+    if (!score) return;
+    write(this.scoreTotal, score.total.toLocaleString('en-US'));
+    const showAward = score.awardAgeSeconds < 0.9 && score.lastAward > 0;
+    this.scoreAward.hidden = !showAward;
+    if (showAward)
+      write(
+        this.scoreAward.firstChild as Text,
+        '+' + score.lastAward.toLocaleString('en-US'),
+      );
+    const active = score.chainCount > 0 && score.chainRemainingSeconds > 0;
+    this.scoreChain.hidden = !active;
+    if (active) {
+      write(
+        this.scoreChainText,
+        'CHAIN ×' +
+          score.multiplier +
+          ' · ' +
+          score.chainRemainingSeconds.toFixed(1) +
+          's',
+      );
+      this.scoreChainTrack.style.setProperty(
+        '--sl-chain-progress',
+        (score.chainRemainingSeconds / 2) * 100 + '%',
+      );
+    }
   }
 
   private fill(meter: Meter, value: number, maximum = 1): void {
