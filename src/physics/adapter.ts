@@ -37,6 +37,18 @@ export interface StaticBodyDesc {
   restitution?: number;
   surfaceId?: number;
 }
+
+/** A static triangle mesh. Vertices and indices are local to `center` and
+ * `rotation`; the same authored mesh can therefore feed physics and render. */
+export interface StaticMeshDesc {
+  center: V3;
+  vertices: readonly V3[];
+  indices: readonly number[];
+  rotation?: Quat;
+  friction?: number;
+  restitution?: number;
+  surfaceId?: number;
+}
 /** A body created at boot and kept out of the simulation until activated.
  * Activation and deactivation never create or destroy anything, so they
  * leave the WebAssembly heap exactly where the boot baseline put it. */
@@ -92,6 +104,7 @@ export interface IPhysicsWorld {
     surfaceId?: number,
   ): BodyId;
   createStaticBody(desc: StaticBodyDesc): BodyId;
+  createStaticMesh(desc: StaticMeshDesc): BodyId;
   createDynamicBox(desc: DynamicBoxDesc): BodyId;
   /** Boot only: creates the body but does not add it to the simulation. */
   createPooledBox(desc: PooledBoxDesc): BodyId;

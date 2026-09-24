@@ -8,6 +8,7 @@ import type {
   IPhysicsWorld,
   MassDesc,
   Quat,
+  StaticMeshDesc,
   V3,
 } from './adapter';
 
@@ -268,6 +269,79 @@ export async function createPhysicsWorld(
     box.Release();
     return add(body, halfExtents, false, surfaceId, activate);
   }
+  function createStaticMesh(desc: StaticMeshDesc): BodyId {
+    if (
+      desc.vertices.length < 3 ||
+      desc.indices.length < 3 ||
+      desc.indices.length % 3 !== 0
+    )
+      throw new RangeError('Static mesh needs vertices and complete triangles.');
+    for (const index of desc.indices) {
+      if (!Number.isInteger(index) || index < 0 || index >= desc.vertices.length)
+        throw new RangeError('Static mesh index is out of range.');
+    }
+    const triangles = new J.TriangleList();
+    triangles.reserve(desc.indices.length / 3);
+    for (let i = 0; i < desc.indices.length; i += 3) {
+      const v1 = desc.vertices[desc.indices[i]!]!;
+      const v2 = desc.vertices[desc.indices[i + 1]!]!;
+      const v3 = desc.vertices[desc.indices[i + 2]!]!;
+      triangles.push_back(
+        new J.Triangle(
+          new J.Vec3(v1.x, v1.y, v1.z),
+          new J.Vec3(v2.x, v2.y, v2.z),
+          new J.Vec3(v3.x, v3.y, v3.z),
+          0,
+        ),
+      );
+    }
+    for (const vertex of desc.vertices) {
+      if (!Number.isFinite(vertex.x + vertex.y + vertex.z))
+        throw new RangeError('Static mesh vertex must be finite.');
+    }
+    const materials = new J.PhysicsMaterialList();
+    const material = new J.PhysicsMaterial();
+    materials.push_back(material);
+    const settings = new J.MeshShapeSettings(triangles, materials);
+    settings.Sanitize();
+    const result = settings.Create();
+    if (result.HasError()) {
+      const error = result.GetError();
+      J.destroy(result);
+      J.destroy(settings);
+      J.destroy(material);
+      J.destroy(materials);
+      J.destroy(triangles);
+      throw new Error('Static mesh shape failed: ' + error.toString());
+    }
+    const mesh = result.Get();
+    position.Set(desc.center.x, desc.center.y, desc.center.z);
+    setRotation(desc.rotation);
+    const creation = new J.BodyCreationSettings(
+      mesh,
+      position,
+      rotation,
+      J.EMotionType_Static,
+      STATIC,
+    );
+    creation.mFriction = desc.friction ?? 0.5;
+    creation.mRestitution = desc.restitution ?? 0;
+    const body = bodies.CreateBody(creation);
+    J.destroy(creation);
+    mesh.Release();
+    J.destroy(result);
+    J.destroy(settings);
+    J.destroy(material);
+    J.destroy(materials);
+    J.destroy(triangles);
+    const extent = { x: 0, y: 0, z: 0 };
+    for (const vertex of desc.vertices) {
+      extent.x = Math.max(extent.x, Math.abs(vertex.x));
+      extent.y = Math.max(extent.y, Math.abs(vertex.y));
+      extent.z = Math.max(extent.z, Math.abs(vertex.z));
+    }
+    return add(body, extent, false, desc.surfaceId ?? 0, true);
+  }
   function createDynamic(
     desc: Omit<DynamicBoxDesc, 'center'>,
     center: V3,
@@ -346,6 +420,10 @@ export async function createPhysicsWorld(
         desc.surfaceId ?? 0,
         true,
       );
+    },
+    createStaticMesh(desc) {
+      assertAlive();
+      return createStaticMesh(desc);
     },
     createDynamicBox(desc: DynamicBoxDesc) {
       assertAlive();

@@ -363,6 +363,32 @@ describe('phase A foundations: quaternion statics, pooled lifecycle, scoped remo
     }
   });
 
+  it('creates one static triangle mesh body for a continuous sloped surface', async () => {
+    const w = await world();
+    const id = w.createStaticMesh({
+      center: { x: 0, y: 0, z: 0 },
+      vertices: [
+        { x: -2, y: 0, z: -2 },
+        { x: 2, y: 0, z: -2 },
+        { x: 2, y: 1, z: 2 },
+        { x: -2, y: 1, z: 2 },
+      ],
+      indices: [0, 2, 1, 0, 3, 2],
+    });
+    const hit: RayHit = {
+      distance: 0,
+      point: vec(),
+      normal: vec(),
+      bodyId: -1,
+      surfaceId: -1,
+    };
+    expect(
+      w.rayCast({ x: 0, y: 5, z: 0 }, { x: 0, y: -1, z: 0 }, 10, hit),
+    ).toBe(true);
+    expect(hit.bodyId).toBe(id);
+    expect(hit.point.y).toBeCloseTo(0.5, 2);
+  });
+
   it('destroys a body on request, forgets it, and reclaims its memory', async () => {
     const w = await world();
     const stats = { heapBytes: 0, freeBytes: 0 };
