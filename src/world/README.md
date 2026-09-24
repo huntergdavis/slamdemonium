@@ -8,6 +8,10 @@ Defaults implement design section 9 and docs/design/visual-direction.md: one 150
 
 [maps.ts](maps.ts) names the worlds boot can load. `lab` is the ring above with its `RAMP_LAYOUT` and `LOOP_LAYOUT`; `proving-ground` (the default) scales the ring to a 400 m centre line, spawns the car at the south end of a 700 m north-south runway facing +Z, and places the giant ramp and two loops on one target line 380 m ahead. Runways ([runways.ts](runways.ts)) are paint only: the paved disc is already the collider. `resolveMapName(location.search, import.meta.env.VITE_DEFAULT_MAP)` picks `?map=`, then the build default, then the proving ground; the e2e build sets the default to `lab` so the replay fixtures keep their world. `createTestTrack` takes the map's `config` overrides and `spawn` (`{x, z, heading}`, heading in the ramp convention).
 
+### Ramps and loops
+
+`RampSpec.symmetric` makes a ramp a triangle: a mirrored back face meets the front at the lip so it is drivable from both directions; `rampBodyDescriptors` returns every face and `rampFootprint` covers them. Only make a ramp symmetric when both landing corridors have been checked: the ring ramps are one-way because their reverse face would launch outward over the barrier.
+
 ### Loops
 
 `LoopSpec` (loopDeLoop.ts) can carry a `surface` (default asphalt) and a `shoulder` (`{width, bank}`): one banked strip per lane edge, inner edge flush with the lane, outer edge raised by `width * sin(bank)`, so a car drifting off centre climbs and rolls back. Keep the bank gentle: 30 degrees measured as a chassis hit and a fall; 12 degrees over 3 m works. With shoulders the helix `shift` must exceed `width + 2 * shoulder.width` or the descending exit hangs over the entry. The loop rule (measured, see docs/DECISIONS.md): no authored loop below `MIN_FAIR_LOOP_RADIUS` (14 m); a loop meant to be fun starts at `FORGIVING_LOOP_RADIUS` (18 m). Grip does not substitute for radius.

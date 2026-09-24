@@ -97,11 +97,13 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
   }),
   spawn: Object.freeze({ x: 0, z: PROVING_GROUND_SPAWN_Z, heading: NORTH }),
   ramps: Object.freeze([
-    // The giant ramp: 40 m long, 16 m wide, 9 m lip, launching north along
-    // the runway. At 60 m/s about 3.3 s and 190 m of air with a 15 m apex,
-    // landing on the infield; at boost top speed (85 m/s) about 350 m,
-    // landing on the ring pavement 40 m inside the barrier. The integration
-    // test measures both.
+    // The giant ramp: a triangle, 40 m long each face, 16 m wide, 9 m lip
+    // at z 80, drivable from both directions so a run never has to circle
+    // back. Northbound at 60 m/s about 2.2 s and 160 m of air with a 15 m
+    // apex, landing on the infield; at boost top speed about 300 m, landing
+    // on the ring pavement well inside the barrier. Southbound the same
+    // flight lands on the main runway between the target line and the
+    // spawn. The integration test measures all four.
     Object.freeze({
       x: 0,
       z: TARGET_LINE_Z,
@@ -109,6 +111,7 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       length: 40,
       width: PROVING_GROUND_RUNWAY_WIDTH,
       rise: 9,
+      symmetric: true,
     }),
     Object.freeze(ringRamp(45, 375, { length: 12, width: 6, rise: 1.6 })),
     Object.freeze(ringRamp(225, 375, { length: 14, width: 6, rise: 2.4 })),

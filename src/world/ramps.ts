@@ -17,6 +17,10 @@ export interface RampSpec {
   readonly width: number;
   /** Height of the lip at the far end, metres; pitch is atan(rise / length). */
   readonly rise: number;
+  /** A triangle: a second, mirrored face descends from the lip so the ramp
+   * can be driven from either direction and a test run never has to circle
+   * back to re-approach. Its low edge lies 2 * length along the heading. */
+  readonly symmetric?: boolean;
 }
 
 /** Slab thickness; the low edge buries this much below the ground plane. */
@@ -116,9 +120,56 @@ export function rampBodyDescriptor(
   };
 }
 
+/** The back face of a triangle ramp as its own spec: same slab, launching
+ * the other way, low edge two lengths along the heading from the front's. */
+export function rampBackFace(spec: Readonly<RampSpec>): RampSpec {
+  const f = rampForward(spec, { x: 0, y: 0, z: 0 });
+  // Each slab's top surface stops half a thickness short of the apex (its
+  // low-edge top corner sits at the spec point, so its far top corner is at
+  // length - thickness/2 * sin(pitch)); pulling the back face in by a full
+  // thickness * sin(pitch) makes the two top surfaces meet at one ridge.
+  const span = 2 * spec.length - RAMP_THICKNESS * Math.sin(rampPitch(spec));
+  return {
+    x: spec.x + f.x * span,
+    z: spec.z + f.z * span,
+    heading: spec.heading + Math.PI,
+    length: spec.length,
+    width: spec.width,
+    rise: spec.rise,
+  };
+}
+
+/** Every static body of a ramp: one slab, or two meeting at the lip. */
+export function rampBodyDescriptors(
+  spec: Readonly<RampSpec>,
+): SurfacedStaticBodyDesc[] {
+  const slabs = [rampBodyDescriptor(spec)];
+  if (spec.symmetric) slabs.push(rampBodyDescriptor(rampBackFace(spec)));
+  return slabs;
+}
+
 /** Horizontal footprint radius from the slab centre, for clearance checks. */
 export function rampFootprintRadius(spec: Readonly<RampSpec>): number {
   return Math.hypot(spec.length / 2, spec.width / 2);
+}
+
+/** Ground-plane disc containing every face of the ramp: for a single slab
+ * its own centre and radius; for a triangle, centred on the lip. */
+export function rampFootprint(spec: Readonly<RampSpec>): {
+  x: number;
+  z: number;
+  radius: number;
+} {
+  if (!spec.symmetric) {
+    const d = rampBodyDescriptor(spec);
+    return { x: d.center.x, z: d.center.z, radius: rampFootprintRadius(spec) };
+  }
+  const f = rampForward(spec, { x: 0, y: 0, z: 0 });
+  return {
+    x: spec.x + f.x * spec.length,
+    z: spec.z + f.z * spec.length,
+    radius: Math.hypot(spec.length, spec.width / 2),
+  };
 }
 
 /** Installs every ramp through the facade, so each registers its asphalt
@@ -128,7 +179,9 @@ export function installRamps(
   bodies: SurfacedBodies,
   specs: readonly RampSpec[] = RAMP_LAYOUT,
 ): readonly BodyId[] {
-  return specs.map((spec) => bodies.createStaticBody(rampBodyDescriptor(spec)));
+  return specs.flatMap((spec) =>
+    rampBodyDescriptors(spec).map((slab) => bodies.createStaticBody(slab)),
+  );
 }
 
 export interface RampVisual {
@@ -146,21 +199,21 @@ export function createRampVisual(
   const root = new Group();
   root.name = 'ramps';
   const geometries: BoxGeometry[] = [];
-  for (const spec of specs) {
-    const desc = rampBodyDescriptor(spec);
-    const geometry = new BoxGeometry(
-      desc.halfExtents.x * 2,
-      desc.halfExtents.y * 2,
-      desc.halfExtents.z * 2,
-    );
-    geometries.push(geometry);
-    const mesh = new Mesh(geometry, material);
-    mesh.position.set(desc.center.x, desc.center.y, desc.center.z);
-    const q = desc.rotation as Quat;
-    mesh.quaternion.set(q.x, q.y, q.z, q.w);
-    mesh.castShadow = mesh.receiveShadow = true;
-    root.add(mesh);
-  }
+  for (const spec of specs)
+    for (const desc of rampBodyDescriptors(spec)) {
+      const geometry = new BoxGeometry(
+        desc.halfExtents.x * 2,
+        desc.halfExtents.y * 2,
+        desc.halfExtents.z * 2,
+      );
+      geometries.push(geometry);
+      const mesh = new Mesh(geometry, material);
+      mesh.position.set(desc.center.x, desc.center.y, desc.center.z);
+      const q = desc.rotation as Quat;
+      mesh.quaternion.set(q.x, q.y, q.z, q.w);
+      mesh.castShadow = mesh.receiveShadow = true;
+      root.add(mesh);
+    }
   scene.add(root);
   return {
     root,

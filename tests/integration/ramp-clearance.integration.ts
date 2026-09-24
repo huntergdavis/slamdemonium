@@ -1,11 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { parseInputScript } from '../../src/input/scriptFormat';
-import {
-  RAMP_LAYOUT,
-  rampBodyDescriptor,
-  rampFootprintRadius,
-} from '../../src/world/ramps';
+import { RAMP_LAYOUT, rampFootprint } from '../../src/world/ramps';
 import { measurements, runScript } from './runner';
 
 /** Car centre to the nearest point of a ramp's footprint circle. Five metres
@@ -19,10 +15,7 @@ const EXAMPLES = ['standing-start', 'handbrake-turn', 'ring-lap'] as const;
  * recorded result. This replays each example and measures the closest
  * approach to every authored ramp footprint. */
 it('keeps every example script route clear of every authored ramp', async () => {
-  const footprints = RAMP_LAYOUT.map((spec) => {
-    const d = rampBodyDescriptor(spec);
-    return { x: d.center.x, z: d.center.z, radius: rampFootprintRadius(spec) };
-  });
+  const footprints = RAMP_LAYOUT.map(rampFootprint);
   const clearance: Record<string, unknown> = {};
   for (const name of EXAMPLES) {
     const script = parseInputScript(

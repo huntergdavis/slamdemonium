@@ -677,3 +677,11 @@ and adjacent cells must remain separated enough that an 80 m/s car cannot pull
 two contact islands together. The authored and streamed records intentionally
 share one format so the future editor writes exactly what runtime consumes;
 there is no second export format to drift from the game.
+
+## Ramps are triangles where a run should repeat (2026-09-23)
+
+The CTO: "make the ramp triangle shaped so we can go up it both directions and don't have to circle all the way back around." `RampSpec.symmetric` adds a mirrored back face whose low edge lies two lengths along the heading (less a thickness of pitch, so the two top surfaces meet at one ridge); collider and mesh come from the same two descriptors, and `rampFootprint` covers both faces. The giant ramp on the main runway is a triangle: northbound it lands at z 200 from 60 m/s and 294 at boost, southbound at z -39 and -136, on the main runway 200 m short of the spawn, so a run is throttle, ramp, turn, throttle, ramp. The four ring ramps stay one-way on purpose: they launch 45 degrees inward, and a back face would launch 45 degrees outward, which at 60 m/s lands at 520 m radius, past the 470 m barrier and off the ground collider. A primitive that can be driven both ways must have both landing corridors measured, not one.
+
+## A known CI flake in the deployment tooling tests (2026-09-23)
+
+`test_pages.LifecycleTests.test_real_git_open_update_close_keeps_live_root_identical` errored once on PR 112 in its `TemporaryDirectory` teardown with `OSError: [Errno 39] Directory not empty: 'objects'`: the bare git fixture's background maintenance races the cleanup. Every other tooling test passed and the PR touched no tooling; the rerun passed and the PR merged on the clean run. The tooling's original owner is gone, so if it happens again the fix is ours and it is small (ignore cleanup errors on that tempdir, or run the fixture's git with `gc.auto=0`), in its own PR, before anything merges behind it. A check failing on something the PR does not touch is evidence about the check, and the answer is to fix the check, not to merge past it twice.
