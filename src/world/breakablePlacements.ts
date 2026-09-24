@@ -1,33 +1,43 @@
 import type { BreakablePlacement } from './breakableProps';
 
 const IDENTITY_ROTATION = Object.freeze({ x: 0, y: 0, z: 0, w: 1 });
-const CELL_X_OFFSETS = [-7, -2.35, 2.35, 7] as const;
-const CELL_Z_OFFSETS = [-6, 0, 6] as const;
+const CLUSTER_X_OFFSETS = [-7, -2.35, 2.35, 7] as const;
+const CLUSTER_Z_OFFSETS = [-6, 0, 6] as const;
+// Route-side scatter gives the driver several light contacts to pick off
+// without turning the whole shoulder into one collision island.
+const SCATTER_X_OFFSETS = [-8, -2.7, 2.7, 8] as const;
+const SCATTER_Z_OFFSETS = [-5, 0, 5] as const;
 
 /** Twelve 12-prop encounter cells keep contact islands local on the large map.
  * They sit in the infield shoulders, away from every runway and target corridor;
  * moving a cell is a data-only edit shared by the streamer and far visual. */
-const ENCOUNTER_CELLS = [
+const SCATTER_CELLS = [
   { x: -120, z: -280 },
   { x: 120, z: -280 },
   { x: -180, z: -180 },
   { x: 180, z: -180 },
-  { x: -120, z: 180 },
-  { x: 120, z: 180 },
-  { x: -180, z: 280 },
-  { x: 180, z: 280 },
-  { x: -280, z: -120 },
-  { x: 280, z: -120 },
-  { x: -280, z: 120 },
-  { x: 280, z: 120 },
+  { x: -180, z: -80 },
+  { x: 180, z: -80 },
+] as const;
+
+const CLUSTER_CELLS = [
+  { x: -100, z: 140 },
+  { x: 100, z: 140 },
+  { x: -100, z: 260 },
+  { x: 100, z: 260 },
+  { x: -320, z: 30 },
+  { x: -250, z: -30 },
 ] as const;
 
 function createEncounterCell(
-  center: (typeof ENCOUNTER_CELLS)[number],
+  center: (typeof SCATTER_CELLS)[number] | (typeof CLUSTER_CELLS)[number],
+  scatter: boolean,
 ): readonly BreakablePlacement[] {
   const placements: BreakablePlacement[] = [];
-  for (const zOffset of CELL_Z_OFFSETS)
-    for (const xOffset of CELL_X_OFFSETS)
+  const xOffsets = scatter ? SCATTER_X_OFFSETS : CLUSTER_X_OFFSETS;
+  const zOffsets = scatter ? SCATTER_Z_OFFSETS : CLUSTER_Z_OFFSETS;
+  for (const zOffset of zOffsets)
+    for (const xOffset of xOffsets)
       placements.push({
         position: Object.freeze({
           x: center.x + xOffset,
@@ -81,13 +91,17 @@ const GATE_PLACEMENTS = [
 ] as const;
 
 /**
- * Phase-one proving-ground density: 12 cells x 12 scenery props (144) plus
- * six eight-piece gates (48) exactly fill the 192 promotion slots. No cell
- * exceeds the 24–32 touching-body rule, and cells are separated so an 80 m/s
- * car cannot drag two encounter islands into one contact cluster.
+ * Phase-one proving-ground density: six route-side scatter cells and six
+ * tighter cluster cells (12 props each, 144 total), plus six eight-piece
+ * gates (48), exactly fill the 192 promotion slots. The scatter fields are
+ * light pick-off targets; clusters punish a poor line with several nearby
+ * contacts; gates are the tall, high-visibility targets. No cell exceeds the
+ * 24–32 touching-body rule, and cells are separated so an 80 m/s car cannot
+ * drag two encounter islands into one contact cluster.
  */
 export const BREAKABLE_PROP_PLACEMENTS: readonly BreakablePlacement[] =
   Object.freeze([
-    ...ENCOUNTER_CELLS.flatMap(createEncounterCell),
+    ...SCATTER_CELLS.flatMap((center) => createEncounterCell(center, true)),
+    ...CLUSTER_CELLS.flatMap((center) => createEncounterCell(center, false)),
     ...GATE_PLACEMENTS,
   ]);
