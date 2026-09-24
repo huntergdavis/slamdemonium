@@ -21,6 +21,13 @@ import type { TuningSession } from './tuningSession';
 import './ui.css';
 
 export type HudMode = 'full' | 'minimal' | 'off';
+
+/** The bottom reminder: the keys a first-time player needs, in a glance. It
+ * replaced the driving-screen strip (Escape, O, H, controller status). */
+export const HUD_HINT_TEXT = Object.freeze({
+  keyboard: 'Esc menu · O options · H HUD',
+  gamepad: 'Start menu · View options · hold LB for commands',
+});
 export interface HudOptions extends RecorderOptions {
   /** Prefer options.root, so the shared Options-open layout applies. */
   host: HTMLElement;
@@ -90,6 +97,7 @@ export class Hud {
   private readonly hint: HTMLElement;
   private readonly hintState = new HudHintState();
   private activitySinceUpdate = false;
+  private hintDevice: 'keyboard' | 'gamepad' = 'keyboard';
   private lastReadMs = -Infinity;
   private previousFrameMs = NaN;
   private frameMs = NaN;
@@ -169,9 +177,9 @@ export class Hud {
     this.scoreChain.hidden = true;
     // The reminder: bottom of the screen, persistent through HUD off, shown
     // and hidden by the timing in hudHint.ts.
-    this.hint = node(doc, 'p', 'sl-hud__hint', 'Press H for HUD');
+    this.hint = node(doc, 'p', 'sl-hud__hint', HUD_HINT_TEXT.keyboard);
     this.hint.dataset.hudPersistent = '';
-    this.hint.setAttribute('role', 'status');
+    this.hint.setAttribute('aria-hidden', 'true'); // A reminder, not a status.
     this.hint.dataset.visible = 'true';
     this.element.append(this.hint);
     this.notice = node(doc, 'div', 'sl-card sl-hud__recording');
@@ -323,6 +331,13 @@ export class Hud {
    * counts as activity except a resting stick or pedal under the threshold. */
   noteInput(input: Readonly<HudHintInput>, actionCount = 0): void {
     if (isHudInputActive(input, actionCount)) this.activitySinceUpdate = true;
+  }
+
+  /** Words the reminder for the device the driver last used. */
+  setInputDevice(device: 'keyboard' | 'gamepad'): void {
+    if (this.disposed || device === this.hintDevice) return;
+    this.hintDevice = device;
+    write(this.hint.firstChild as Text, HUD_HINT_TEXT[device]);
   }
 
   get hintVisible(): boolean {

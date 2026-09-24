@@ -882,6 +882,7 @@ async function boot(): Promise<void> {
       loop.frame(nowMs);
       pauseMenu.update(nowMs);
       controllerSupport.update(nowMs);
+      hud.setInputDevice(controllerSupport.device);
       audio.update(nowMs);
     } catch (error) {
       replayStopped = true;

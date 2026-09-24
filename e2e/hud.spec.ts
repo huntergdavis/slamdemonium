@@ -45,7 +45,7 @@ test('boots with the HUD off and the reminder at the bottom, which times out, re
   await expect(page.locator('[data-reading="speed"]')).toBeHidden();
   await page.evaluate(() => window.__hudTest.advance(34));
   await expect(hint).toHaveAttribute('data-visible', 'true');
-  await expect(hint).toHaveText('Press H for HUD');
+  await expect(hint).toHaveText('Esc menu · O options · H HUD');
   const viewport = page.viewportSize()!;
   const box = (await hint.boundingBox())!;
   expect(box.y + box.height / 2).toBeGreaterThan(viewport.height * 0.8);

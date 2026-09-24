@@ -27,12 +27,10 @@ const SYMBOLS: Record<number, readonly [string, string]> = {
 export class ControllerPrompts {
   readonly root: HTMLElement;
   private readonly legend: HTMLElement;
-  private readonly driving: HTMLElement;
   private readonly options: HTMLElement;
   private readonly menu: HTMLElement;
   private readonly rows: PromptRow[] = [];
   private readonly hiddenHints: HTMLElement[] = [];
-  private readonly status: Text;
   private readonly hapticStatus: Text;
   private readonly hapticCaption: HTMLElement;
   private keyboardTime = -Infinity;
@@ -65,16 +63,11 @@ export class ControllerPrompts {
       items.append(item);
     }
     this.legend.append(items);
-    this.driving = node(doc, 'div', 'sl-input-prompts');
-    this.add(this.driving, 'Escape: menu', 'Start: menu', '');
-    this.add(this.driving, 'O: Options', 'View / Back: Options', '');
-    this.add(this.driving, 'H: HUD', 'Hold Left bumper: commands', 'lb');
-    const status = node(doc, 'span', 'sl-caption');
-    status.setAttribute('role', 'status');
-    this.status = doc.createTextNode('');
-    status.append(this.status);
-    this.driving.append(status);
-    this.root.append(this.legend, this.driving);
+    // The driving-screen key strip that used to sit here (Escape, O, H and
+    // the controller status) is gone: the HUD's bottom reminder carries the
+    // essential keys, and the controller status lives with the haptics
+    // caption in Options.
+    this.root.append(this.legend);
     host.append(this.root);
     this.hapticCaption = node(doc, 'p', 'sl-caption');
     this.hapticStatus = doc.createTextNode('');
@@ -182,7 +175,6 @@ export class ControllerPrompts {
           : 'Controller connected';
     if (status !== this.lastStatus) {
       this.lastStatus = status;
-      this.status.nodeValue = status;
       this.hapticStatus.nodeValue = status;
     }
   }
