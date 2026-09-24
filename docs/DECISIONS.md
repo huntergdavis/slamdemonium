@@ -642,6 +642,8 @@ A second sweep (radius 10 to 22 at 40 and 50 m/s, lane 14 and 20, with and witho
 
 Below 14 m a loop is unfair rather than hard: the tyres sit past their grip limit on a perfect line, so a perfect entry at the wrong speed still falls, and no surface we can author changes that (grip 1.3 to 2.0 on the 10 m loop left every tolerance at zero; on the 18 m loop a 0.8 to 1.5 sweep moved nothing consistently). At 14 m a loop is fair: it reads as a challenge, not as broken. At 18 m it is forgiving. The rule, held by `MIN_FAIR_LOOP_RADIUS` and `FORGIVING_LOOP_RADIUS` in `src/world/loopDeLoop.ts` and guarded in `tests/maps.test.ts`: no authored loop goes below 14 m; a loop meant to be fun rather than a test starts at 18 m. When the map editor arrives this table is what stops a beautiful tight loop that nobody can finish. Product decisions by the PM: the west loop becomes the hard loop at 14 m rather than being retired, so size still varies while staying fair; the 10 m loop stays on the lab ring as the control; both proving-ground loops carry the tinted surface with `loopGrip` neutral at 1.0 and a range widened to 0.2 to 8 on purpose, so the CTO, who suggested stickiness twice, can push it until it obviously helps or obviously does not and settle that with his own hands rather than on our word.
 
+Re-verified at gravity 20 on 2026-09-23: the R14 fair minimum, R18 forgiving radius and R10 unfair control remain true; the authored tolerance and peak-load measurements stay within the rule above.
+
 ## Phase-one world streaming and the fixed physics heap (2026-09-23)
 
 The Jolt build declares a fixed 2048-page memory with both initial and maximum
