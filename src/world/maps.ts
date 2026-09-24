@@ -170,9 +170,9 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
   ]),
   halfPipes: Object.freeze([
     // The aquifer channel: 16 m radius, 85 degree lips, 60 m floor and 280 m
-    // open length. It is visible from the cross runway and is driven along,
-    // not crossed as a launcher. The 15 m wall ride was measured at 40 to
-    // 60 m/s and gravity 20; launch-and-return at this scale is not reliable.
+    // open length. Its smooth collision arc is contained at 40–50 m/s; at
+    // 60 m/s the car launches laterally, so that speed is outside the ride
+    // window rather than being hidden by faceted collision slabs.
     Object.freeze({
       x: HALF_PIPE_X,
       z: 0,

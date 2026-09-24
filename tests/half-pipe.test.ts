@@ -6,6 +6,7 @@ import type { IPhysicsWorld } from '../src/physics/adapter';
 import {
   DEEP_HALF_PIPE_RADIUS,
   HALF_PIPE_EXIT_ANGLE,
+  HALF_PIPE_SEGMENT_ARC,
   HALF_PIPE_THICKNESS,
   MIN_HALF_PIPE_RADIUS,
   createHalfPipeVisual,
@@ -49,6 +50,8 @@ describe('half-pipe geometry', () => {
       (s) =>
         s.surface === SURFACE_IDS.asphalt && s.halfExtents.x < pipe.width / 2,
     );
+    expect(HALF_PIPE_SEGMENT_ARC).toBeLessThanOrEqual(0.2);
+    expect(walls.length).toBeGreaterThanOrEqual(200);
     const rails = slabs.filter((s) => s.surface === SURFACE_IDS.concrete);
     expect(walls.length).toBeGreaterThanOrEqual(32);
     expect(rails).toHaveLength(2);
