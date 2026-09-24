@@ -2,11 +2,13 @@ import {
   InstancedMesh,
   Matrix4,
   MeshBasicMaterial,
+  MeshStandardMaterial,
   Quaternion,
   Scene,
   Vector3,
 } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { BREAKABLE_PROP_COLOR } from '../src/render/breakablePropsVisual';
 import { createStreamedPropVisual } from '../src/render/streamedPropVisual';
 import type {
   PropStreamRecord,
@@ -112,6 +114,28 @@ describe('streamed far visual', () => {
     mesh.getMatrixAt(1, matrix);
     const q = new Quaternion().setFromRotationMatrix(matrix);
     expect(Math.abs(q.y)).toBeCloseTo(Math.SQRT1_2, 6);
+    visual.dispose();
+  });
+  it('paints the far instances the same colour as the promoted props, so the streaming radius is not a visible edge', () => {
+    const scene = new Scene();
+    const streamer = {
+      records: [],
+      isFarVisible: () => false,
+      copyFarVisibilityChanges: () => 0,
+    } as unknown as PropStreamer;
+    const barrier = new MeshStandardMaterial({ color: 0x6d7779 });
+    const visual = createStreamedPropVisual(
+      scene,
+      streamer,
+      { x: 0.5, y: 0.5, z: 0.5 },
+      barrier,
+    );
+    const far = scene.getObjectByName('streamed-props.far')!
+      .children[0] as InstancedMesh;
+    const material = far.material as MeshStandardMaterial;
+    expect(material).not.toBe(barrier);
+    expect(material.color.getHex()).toBe(BREAKABLE_PROP_COLOR);
+    expect(barrier.color.getHex()).toBe(0x6d7779); // The source is untouched.
     visual.dispose();
   });
 });
