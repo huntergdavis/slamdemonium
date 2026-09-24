@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { BREAKABLE_PROP_PLACEMENTS } from '../src/world/breakablePlacements';
 
 it('keeps the proving-ground banks and gates outside runways and targets', () => {
-  expect(BREAKABLE_PROP_PLACEMENTS).toHaveLength(192);
+  expect(BREAKABLE_PROP_PLACEMENTS).toHaveLength(256);
   for (const placement of BREAKABLE_PROP_PLACEMENTS) {
     const { x, z } = placement.position;
     // Five metres outside each 16 m runway lane.
@@ -27,7 +27,9 @@ it('keeps the proving-ground banks and gates outside runways and targets', () =>
     cellCentres.push(first);
     for (let i = 1; i < 12; i++) {
       const member = BREAKABLE_PROP_PLACEMENTS[cell * 12 + i]!.position;
-      expect(Math.hypot(member.x - first.x, member.z - first.z)).toBeLessThan(20);
+      expect(Math.hypot(member.x - first.x, member.z - first.z)).toBeLessThan(
+        20,
+      );
     }
   }
   for (let i = 0; i < cellCentres.length; i++)
@@ -39,5 +41,6 @@ it('keeps the proving-ground banks and gates outside runways and targets', () =>
   for (const placement of BREAKABLE_PROP_PLACEMENTS.slice(0, 144)) {
     expect(placement.position.y).toBe(0.5);
   }
-  expect(BREAKABLE_PROP_PLACEMENTS.slice(144)).toHaveLength(48);
+  expect(BREAKABLE_PROP_PLACEMENTS.slice(144, 192)).toHaveLength(48);
+  expect(BREAKABLE_PROP_PLACEMENTS.slice(192)).toHaveLength(64);
 });

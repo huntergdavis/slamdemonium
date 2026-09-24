@@ -772,3 +772,11 @@ runtime therefore caps active breakable promotions at 128 while reserving 192
 pool bodies for lifecycle headroom. This cap does not make dense contact cells
 safe: the existing content rule remains roughly 24--32 touching bodies per cell,
 with enough separation that an 80 m/s car cannot merge two contact islands.
+
+## Phase-two content ceiling (2026-09-24)
+
+The final transition-queue implementation was measured with the official sustained performance gate (300-second minimum, two complete replays, manual `stepMany` physics p99, 2 ms limit). The largest passing population is **256 breakable records**: 0.5367 ms average and 1.9000 ms p99, with 0.00% WASM allocator growth. This population contains the authored route variety (scatter cells, clusters and six gates) plus 64 deterministic far-field records; runway and target corridors remain clear.
+
+The next bisection point, 512 records, failed the same official gate at 0.6428 ms average and 2.5000 ms p99. The requested 19,000 records also fit the fixed heap without allocator growth, but failed at 0.5464 ms average and 3.2000 ms p99; the failure is CPU work, not memory capacity. The shortened smoke runs were not used to set this ceiling.
+
+Going higher requires a spatial or level-of-detail path that avoids touching the full far-field candidate/visual set every physics update; further threshold tuning of the current scan is not enough.
