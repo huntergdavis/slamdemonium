@@ -355,10 +355,10 @@ export class Hud {
     this.exportStopped();
     this.updateNotice();
     this.updateScore(this.options.readScore?.());
-    const telemetry = this.options.readTelemetry();
-    this.miniMap?.update(telemetry);
     if (this.mode === 'off' || this.element.dataset.collapsed === 'true')
       return;
+    const telemetry = this.options.readTelemetry();
+    this.miniMap?.update(telemetry);
     const render = this.options.readRenderTelemetry?.();
     const store = this.options.store;
     this.set('timeScale', 'Time ×' + fixed(store.get('timeScale'), 2));
