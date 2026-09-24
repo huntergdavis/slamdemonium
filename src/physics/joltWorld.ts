@@ -328,6 +328,7 @@ export async function createPhysicsWorld(
     creation.mRestitution = desc.restitution ?? 0;
     const body = bodies.CreateBody(creation);
     J.destroy(creation);
+    mesh.AddRef();
     mesh.Release();
     J.destroy(result);
     J.destroy(settings);
