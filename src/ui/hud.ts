@@ -355,10 +355,15 @@ export class Hud {
     this.exportStopped();
     this.updateNotice();
     this.updateScore(this.options.readScore?.());
-    if (this.mode === 'off' || this.element.dataset.collapsed === 'true')
-      return;
+    if (this.mode === 'off') return;
+    const collapsed = this.element.dataset.collapsed === 'true';
+    // The mini-map is HUD-persistent, so keep its position live while the
+    // instrument cards are collapsed. HUDs without a map retain the cheap
+    // collapsed-path early return and do not read telemetry.
+    if (collapsed && !this.miniMap) return;
     const telemetry = this.options.readTelemetry();
     this.miniMap?.update(telemetry);
+    if (collapsed) return;
     const render = this.options.readRenderTelemetry?.();
     const store = this.options.store;
     this.set('timeScale', 'Time ×' + fixed(store.get('timeScale'), 2));
