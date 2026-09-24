@@ -76,7 +76,10 @@ const scratch = {
   axis: new Vector3(),
 };
 
-/** Every static body: ground-level floor, two curved walls and coping rails. */
+/** Every static body: two curved walls and coping rails. The proving-ground
+ * track already supplies the channel floor; duplicating it at Y=0 would
+ * z-fight with the asphalt ground and make the texture shimmer while driving.
+ */
 export function halfPipeSlabDescriptors(
   spec: Readonly<HalfPipeSpec>,
 ): SurfacedStaticBodyDesc[] {
@@ -138,13 +141,9 @@ export function halfPipeSlabDescriptors(
       );
     }
   }
-  scratch.centre.set(spec.x, -HALF_PIPE_THICKNESS / 2, spec.z);
-  pushBox(
-    scratch.centre,
-    { x: spec.width / 2, y: HALF_PIPE_THICKNESS / 2, z: spec.deck / 2 },
-    yaw,
-    surface,
-  );
+  // The map's existing ground collider and mesh are the channel floor. Do
+  // not add a coplanar floor body or mesh: two asphalt surfaces at Y=0
+  // produce depth fighting and visibly jumping ground texture.
   for (const side of [-1, 1]) {
     scratch.centre
       .set(spec.x, H + HALF_PIPE_RAIL.height / 2, spec.z)
