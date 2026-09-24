@@ -227,7 +227,7 @@ describe('proving ground structures', () => {
       { kind: 'ramp' | 'loop' | 'halfPipe'; index: number }
     > = {
       0: { kind: 'ramp', index: 0 },
-      1: { kind: 'halfPipe', index: 0 }, // The spine sits in the cross lane.
+      1: { kind: 'halfPipe', index: 0 }, // The aquifer sits in the cross lane.
       2: { kind: 'loop', index: 0 },
       3: { kind: 'loop', index: 1 },
       4: { kind: 'halfPipe', index: 0 }, // Chevron lanes end at its walls.
@@ -336,7 +336,13 @@ describe('the half-pipe rule', () => {
       for (const pipe of map.halfPipes)
         expect(pipe.radius).toBeGreaterThanOrEqual(MIN_HALF_PIPE_RADIUS);
     const [pipe] = pg.halfPipes;
-    expect(pipe).toMatchObject({ x: HALF_PIPE_X, z: 0, radius: 40, deck: 45 });
+    expect(pipe).toMatchObject({
+      x: HALF_PIPE_X,
+      z: 0,
+      radius: 16,
+      deck: 280,
+      width: 60,
+    });
     expect(runwayLaneClearance(pg.runways[1]!, pipe!.x, pipe!.z)).toBe(0);
     // Both chevron lanes end exactly at a wall's ground edge and face it.
     for (const [lane, side] of [
@@ -344,9 +350,9 @@ describe('the half-pipe rule', () => {
       [pg.runways[5]!, 1],
     ] as const) {
       const f = runwayForward(lane);
-      expect(Math.sign(f.x)).toBe(-side); // Toward the spine.
+      expect(Math.sign(f.x)).toBe(-side); // Toward the channel wall.
       const end = lane.x + f.x * (lane.length / 2);
-      expect(end).toBeCloseTo(pipe!.x + side * 42.5, 9);
+      expect(end).toBeCloseTo(pipe!.x + side * (pipe!.deck / 2), 9);
       expect(lane.markerMeters).toBe(HALF_PIPE_CHEVRON_METERS);
     }
   });
