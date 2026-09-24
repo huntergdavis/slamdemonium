@@ -751,11 +751,24 @@ The final transfer question was measured with two parallel real-Jolt aquifers at
 gravity 20. With the shipped R16/85-degree walls and 60 m floors, physically
 distinct channels begin at 92 m centre separation (zero lip gap). Separations
 of 92, 96, 104, 112 and 120 m were swept at 32, 40, 48, 56 and 60 m/s, with
-steering toward the neighboring channel. Every airborne case landed short of
-the neighboring channel; none landed long or inverted. Peak transition load was
+steering toward the neighboring channel. Every airborne case landed short of the
+neighboring channel; none landed long or inverted. Peak transition load was
 5.3 to 10.2 times static wheel load. A narrower 40 m floor was also tested at
 zero through 28 m lip gaps and remained short, so spacing alone does not create
 a usable human transfer window. Launch-and-return into the same pipe is likewise
 not reliable at the 15 m wall scale. The aquifer is therefore a ride-along wall
 feature, full stop; pipe-to-pipe transfer is not a supported mechanic and should
 not be re-opened by adding more spacing.
+
+## Phase-two active promotion cap (2026-09-24)
+
+The 19,000-record phase-two probe separates authored density from awake physics.
+With dynamic 15 kg boxes in real Jolt, separated active bodies measured below the
+2 ms p99 gate through 128 bodies (1.70 ms p99); 192 bodies reached 3.05 ms p99.
+Dense touching clusters exceeded the budget much earlier: 32 bodies reached
+7.18 ms p99 and 64 reached 16.82 ms. Separated bodies are cheap; dense touching
+contact islands are what break the frame budget, not the total object count. The
+runtime therefore caps active breakable promotions at 128 while reserving 192
+pool bodies for lifecycle headroom. This cap does not make dense contact cells
+safe: the existing content rule remains roughly 24--32 touching bodies per cell,
+with enough separation that an 80 m/s car cannot merge two contact islands.

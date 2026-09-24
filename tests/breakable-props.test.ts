@@ -129,4 +129,32 @@ describe('breakable props', () => {
     pools.dispose();
     expect(active.size).toBe(0);
   });
+
+  it('maps large authored sets onto a bounded non-evicting active pool', () => {
+    const { world } = fakeWorld();
+    const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+    const pools = createPropPools(bodies);
+    const placements = Array.from({ length: 8 }, (_, index) => ({
+      position: { x: index, y: 0.5, z: -10 },
+      rotation: { x: 0, y: 0, z: 0, w: 1 },
+    }));
+    const props = createBreakableProps({
+      physics: world,
+      pools,
+      placements,
+      vehicleBody: 1,
+      maxActiveProps: 4,
+    });
+    expect(
+      placements.slice(0, 4).every((_, index) => props.isActive(index)),
+    ).toBe(true);
+    expect(props.isActive(4)).toBe(false);
+    props.activate(4);
+    expect(props.isActive(0)).toBe(true);
+    expect(props.isActive(4)).toBe(false);
+    props.deactivate(0);
+    expect(props.activate(4)).toBe(true);
+    expect(props.isActive(0)).toBe(false);
+    expect(props.isActive(4)).toBe(true);
+  });
 });

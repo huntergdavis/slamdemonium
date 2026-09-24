@@ -17,6 +17,8 @@ export interface BreakablePropsOptions {
   readonly onBreak?: (severity: number) => void;
   /** Optional phase-one stream seed; omitted means all authored records. */
   readonly initialActiveIndices?: readonly number[];
+  /** Maximum authored records that may hold dynamic promotion slots. */
+  readonly maxActiveProps?: number;
 }
 
 export interface BreakableProps {
@@ -60,6 +62,8 @@ const FRAGMENT_SPACING = 0.25;
 const FRAGMENT_ORIGIN_OFFSET = 0.5;
 const BREAK_APPROACH_SPEED = 3;
 const BREAK_TOTAL_SPEED_FRACTION = 0.5;
+/** Measured promotion ceiling: separated 128-body p99 stayed below 2 ms. */
+export const MAX_ACTIVE_BREAKABLES = 128;
 
 /**
  * Pooled breakables for the smash route. Phase one reserves 192 promotion
@@ -69,12 +73,20 @@ const BREAK_TOTAL_SPEED_FRACTION = 0.5;
 export function createBreakableProps(
   options: BreakablePropsOptions,
 ): BreakableProps {
-  if (options.placements.length > options.pools.breakables.capacity)
-    throw new RangeError('Breakable placements exceed the pool budget.');
-
   const { physics, pools, vehicleBody } = options;
+  const maxActiveProps = options.maxActiveProps ?? pools.breakables.capacity;
+  if (
+    !Number.isSafeInteger(maxActiveProps) ||
+    maxActiveProps <= 0 ||
+    maxActiveProps > pools.breakables.capacity
+  )
+    throw new RangeError('Active breakable cap must fit the breakable pool.');
   const propIds = new Float64Array(pools.breakables.capacity);
   const propActive = new Uint8Array(pools.breakables.capacity);
+  const propPlacement = new Int32Array(pools.breakables.capacity);
+  propPlacement.fill(-1);
+  const placementSlot = new Int32Array(options.placements.length);
+  placementSlot.fill(-1);
   const fragmentIds = new Float64Array(pools.debris.capacity);
   const fragmentActive = new Uint8Array(pools.debris.capacity);
   const fragmentAge = new Float64Array(pools.debris.capacity);
@@ -96,17 +108,25 @@ export function createBreakableProps(
   const contactVelocityY = new Float64Array(contactQueueCapacity);
   const contactVelocityZ = new Float64Array(contactQueueCapacity);
   const contactSeverity = new Float64Array(contactQueueCapacity);
-  const propQueued = new Uint8Array(pools.breakables.capacity);
+  const propQueued = new Uint8Array(options.placements.length);
   const propDestroyed = new Uint8Array(options.placements.length);
   let contactQueueHead = 0;
   let contactQueueTail = 0;
   let contactQueueCount = 0;
+  let activePropCount = 0;
   let disposed = false;
 
   function findProp(body: BodyId): number {
-    for (let index = 0; index < propIds.length; index++) {
-      if (propActive[index] !== 0 && propIds[index] === body) return index;
+    for (let slot = 0; slot < propIds.length; slot++) {
+      if (propActive[slot] !== 0 && propIds[slot] === body)
+        return propPlacement[slot] ?? -1;
     }
+    return -1;
+  }
+
+  function findFreePropSlot(): number {
+    for (let slot = 0; slot < propActive.length; slot++)
+      if (propActive[slot] === 0) return slot;
     return -1;
   }
 
@@ -126,15 +146,28 @@ export function createBreakableProps(
   }
 
   function activateProp(index: number): boolean {
-    if (index < 0 || index >= options.placements.length) return false;
-    if (propActive[index] !== 0 || propDestroyed[index] !== 0) return false;
+    if (
+      index < 0 ||
+      index >= options.placements.length ||
+      activePropCount >= maxActiveProps ||
+      (placementSlot[index] !== undefined && placementSlot[index] >= 0) ||
+      propDestroyed[index] !== 0
+    )
+      return false;
     const placement = options.placements[index];
     if (!placement) return false;
-    propIds[index] = pools.breakables.acquire(
+    const slot = findFreePropSlot();
+    if (slot < 0) return false;
+    const id = pools.breakables.tryAcquire(
       placement.position as V3,
       placement.rotation as Quat,
     );
-    propActive[index] = 1;
+    if (id === undefined) return false;
+    propIds[slot] = id;
+    propPlacement[slot] = index;
+    placementSlot[index] = slot;
+    propActive[slot] = 1;
+    activePropCount++;
     return true;
   }
 
@@ -222,6 +255,9 @@ export function createBreakableProps(
     pools.breakables.releaseAll();
     clearFragments();
     propActive.fill(0);
+    propPlacement.fill(-1);
+    placementSlot.fill(-1);
+    activePropCount = 0;
     propDestroyed.fill(0);
     propQueued.fill(0);
     contactQueueHead = 0;
@@ -231,11 +267,15 @@ export function createBreakableProps(
   }
 
   function deactivateProp(index: number): boolean {
-    if (index < 0 || index >= propActive.length || propActive[index] === 0)
-      return false;
-    const id = propIds[index];
+    if (index < 0 || index >= placementSlot.length) return false;
+    const slot = placementSlot[index];
+    if (slot === undefined || slot < 0 || propActive[slot] === 0) return false;
+    const id = propIds[slot];
     if (id === undefined) return false;
-    propActive[index] = 0;
+    propActive[slot] = 0;
+    propPlacement[slot] = -1;
+    placementSlot[index] = -1;
+    activePropCount--;
     return pools.breakables.release(id);
   }
 
@@ -295,12 +335,17 @@ export function createBreakableProps(
       contactQueueHead = (slot + 1) % contactQueueCapacity;
       contactQueueCount--;
       if (prop === undefined) continue;
-      if (prop < 0 || prop >= propActive.length) continue;
+      if (prop < 0 || prop >= placementSlot.length) continue;
       propQueued[prop] = 0;
-      if (propActive[prop] === 0) continue;
-      const id = propIds[prop];
+      const propSlot = placementSlot[prop];
+      if (propSlot === undefined || propSlot < 0 || propActive[propSlot] === 0)
+        continue;
+      const id = propIds[propSlot];
       if (id === undefined) continue;
-      propActive[prop] = 0;
+      propActive[propSlot] = 0;
+      propPlacement[propSlot] = -1;
+      placementSlot[prop] = -1;
+      activePropCount--;
       propDestroyed[prop] = 1;
       pools.breakables.release(id);
       options.onBreak?.(contactSeverity[slot] ?? 0);
@@ -382,7 +427,8 @@ export function createBreakableProps(
     activate: activateProp,
     deactivate: deactivateProp,
     isActive(index: number): boolean {
-      return index >= 0 && index < propActive.length && propActive[index] !== 0;
+      const slot = placementSlot[index];
+      return slot !== undefined && slot >= 0 && propActive[slot] !== 0;
     },
     isDestroyed(index: number): boolean {
       return (
@@ -391,7 +437,9 @@ export function createBreakableProps(
     },
     getActivePropPosition(index: number, out: V3): boolean {
       if (!this.isActive(index)) return false;
-      const id = propIds[index];
+      const slot = placementSlot[index];
+      if (slot === undefined || slot < 0) return false;
+      const id = propIds[slot];
       if (id === undefined) return false;
       physics.getTransform(id, activePosition, activeRotation);
       out.x = activePosition.x;
@@ -407,6 +455,9 @@ export function createBreakableProps(
       pools.breakables.releaseAll();
       clearFragments();
       propActive.fill(0);
+      propPlacement.fill(-1);
+      placementSlot.fill(-1);
+      activePropCount = 0;
       propDestroyed.fill(0);
       propQueued.fill(0);
       contactQueueHead = 0;
