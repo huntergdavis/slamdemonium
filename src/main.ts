@@ -47,7 +47,6 @@ import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
-import { createWorldLandmarks } from './render/worldLandmarks';
 import type { MiniMapLandmark } from './ui/miniMap';
 import {
   createBreakableProps,
@@ -154,7 +153,6 @@ async function boot(): Promise<void> {
       track.config,
     ),
   );
-  resources.push(createWorldLandmarks(view.scene, map));
   // Phase C props and debris are reserved now so that no body is created or
   // destroyed mid-session; see POOL_BUDGET for the arithmetic.
   const propPools = createPropPools(surfacedBodies);
