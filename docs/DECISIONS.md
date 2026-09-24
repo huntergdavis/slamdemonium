@@ -744,3 +744,18 @@ The resulting candidate was R4–R6 with a near-vertical lip, with R5, a 40 m fl
 The CTO clarified the requested half-pipe as “like driving through an aquifer”: a long, visible channel with a flat floor at world ground and curved walls on both sides. The old 5.4 m spine was retired because it was hard to find and was the wrong convex shape. The shipped recipe is a 16 m transition radius with an 85 degree lip, a 60 m flat floor, and a 280 m open length on the cross runway. At gravity 20, the measured ride-along probe reaches the roughly 15 m wall band at 40–60 m/s, spends about 20–25% of the probe briefly airborne while carving, and peaks at about 14–19 times static wheel load, the same territory as the proven forgiving loops. The 60 m floor contains the ride; 40 m was too narrow.
 
 This is a sustained wall-ride feature, not a promise of a skate-style launcher. The separate launch-and-return sweep found no reliable return for a 15 m wall: R16–R18 launch outside the channel, while only R22–R25 returned marginally at one speed and imposed roughly 34–54 times static load. The channel rule therefore promises a tall, ridable aquifer and explicitly does not promise a repeated airborne transfer. The old spine and the new U use opposite radius strategies: a shallow spine needs a large radius to make a tall wall, while a near-vertical U needs a small radius so its wall remains climbable.
+
+## Pipe-to-pipe transfer is closed (2026-09-24)
+
+The final transfer question was measured with two parallel real-Jolt aquifers at
+gravity 20. With the shipped R16/85-degree walls and 60 m floors, physically
+distinct channels begin at 92 m centre separation (zero lip gap). Separations
+of 92, 96, 104, 112 and 120 m were swept at 32, 40, 48, 56 and 60 m/s, with
+steering toward the neighboring channel. Every airborne case landed short of
+the neighboring channel; none landed long or inverted. Peak transition load was
+5.3 to 10.2 times static wheel load. A narrower 40 m floor was also tested at
+zero through 28 m lip gaps and remained short, so spacing alone does not create
+a usable human transfer window. Launch-and-return into the same pipe is likewise
+not reliable at the 15 m wall scale. The aquifer is therefore a ride-along wall
+feature, full stop; pipe-to-pipe transfer is not a supported mechanic and should
+not be re-opened by adding more spacing.
