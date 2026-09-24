@@ -33,13 +33,22 @@ export function createStreamedPropVisual(
   hidden.updateMatrix();
   transform.scale.set(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
   transform.updateMatrix();
+  // Far records are authored poses, so their matrices are immutable. Only a
+  // promotion/demotion transition needs a matrix write and instance upload.
+  const lastFarVisible = new Int8Array(streamer.records.length);
+  lastFarVisible.fill(-1);
   let disposed = false;
 
   function update(): void {
     if (disposed) return;
+    let changed = false;
     for (let index = 0; index < streamer.records.length; index++) {
       const record = streamer.records[index];
-      if (!record || !streamer.isFarVisible(index)) {
+      const farVisible = record && streamer.isFarVisible(index) ? 1 : 0;
+      if (lastFarVisible[index] === farVisible) continue;
+      lastFarVisible[index] = farVisible;
+      changed = true;
+      if (!record || farVisible === 0) {
         mesh.setMatrixAt(index, hidden.matrix);
         continue;
       }
@@ -56,7 +65,7 @@ export function createStreamedPropVisual(
       );
       mesh.setMatrixAt(index, transform.matrix);
     }
-    mesh.instanceMatrix.needsUpdate = true;
+    if (changed) mesh.instanceMatrix.needsUpdate = true;
   }
 
   update();
