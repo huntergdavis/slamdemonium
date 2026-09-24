@@ -96,7 +96,7 @@ test('schema controls update in place, preserve typed precision, validate, reset
     .locator('.sl-options__groups')
     .getByRole('button', { name: 'Reset Gravity', exact: true })
     .click();
-  await expect(number).toHaveValue('14.7');
+  await expect(number).toHaveValue('20');
   await page.getByRole('searchbox').fill('physicsHz');
   await expect(page.locator('#group-physicsHz-number')).toBeVisible();
   await expect(page.locator('#group-physicsHz-range')).toHaveAttribute(
@@ -127,7 +127,7 @@ test('game Tab swaps slots, panel Tab navigates, pointer sliders return driving 
   await expect(canvas).toBeFocused();
   expect(
     await page.evaluate(() => window.__optionsTest.store.get('gravity')),
-  ).toBe(14.7);
+  ).toBe(20);
   await page.keyboard.press('Tab');
   await expect(
     page.getByRole('button', { name: 'Activate slot A' }),
@@ -249,7 +249,7 @@ test('presets, JSON, share links, autosave and reset preserve named tunes and co
   await page.waitForFunction(() => Boolean(window.__optionsTest));
   expect(
     await page.evaluate(() => window.__optionsTest.store.get('gravity')),
-  ).toBe(14.7);
+  ).toBe(20);
   await page.getByRole('button', { name: '⚙ Options' }).click();
   await page
     .getByRole('combobox', { name: 'Preset', exact: true })
