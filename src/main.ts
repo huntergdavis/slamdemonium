@@ -43,6 +43,7 @@ import { createTestTrack, installTrackColliders } from './world/track';
 import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
 import { createLoopVisual, installLoops } from './world/loopDeLoop';
+import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
 import { createBreakableProps } from './world/breakableProps';
@@ -128,6 +129,16 @@ async function boot(): Promise<void> {
     map.loops,
   );
   resources.push(loopVisual);
+  // Half-pipes: quarter-pipe walls, a deck and coping rails, data through
+  // the same facade, each slab in its surface's material.
+  installHalfPipes(surfacedBodies, map.halfPipes);
+  resources.push(
+    createHalfPipeVisual(
+      view.scene,
+      (surface) => track.materials.forSurface(surface),
+      map.halfPipes,
+    ),
+  );
   // Runways are paint on the infield collider: one instanced draw, no bodies.
   resources.push(
     createRunwayVisual(
