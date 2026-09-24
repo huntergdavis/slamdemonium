@@ -34,7 +34,7 @@ Results and per-scenario wall times are written to `scratch/wp9b-integration.jso
 ## First measured outcomes
 
 - Acceleration: 100 km/h in 2.208 s; 55 m/s in 6.750 s.
-- Brake approach: 59.999519 m/s; first stop after 72.399 m and 2.517 s.
+- Brake approach: 59.999519 m/s; first stop after 71.353 m and 2.517 s at the gravity-20 default (the prior 14.7 baseline was 72.399 m).
 - Circle: 1,800 settled samples, all four wheels grounded, 7.532 rad heading travel, 20.198 m/s² peak lateral acceleration.
 - Handbrake: both rear wheels locked for 60 steps; grip reached 0.35 and recovered to 1.
 - Determinism: identical 64-digit SHA-256 state hashes; different seed produced a different hash.

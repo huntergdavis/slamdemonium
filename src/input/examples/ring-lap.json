@@ -16,7 +16,7 @@
     }
   },
   "tuning": {
-    "gravity": 14.7,
+    "gravity": 20,
     "timeScale": 1,
     "surfaceGrip": 1,
     "loopGrip": 1,
