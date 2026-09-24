@@ -7,7 +7,6 @@ import {
   DEEP_HALF_PIPE_RADIUS,
   HALF_PIPE_EXIT_ANGLE,
   HALF_PIPE_SEGMENT_ARC,
-  HALF_PIPE_THICKNESS,
   MIN_HALF_PIPE_RADIUS,
   createHalfPipeVisual,
   halfPipeFootprint,
@@ -45,7 +44,6 @@ describe('half-pipe geometry', () => {
     );
     expect(halfPipeHalfLength(pipe)).toBeCloseTo(180, 9);
     const slabs = halfPipeSlabDescriptors(pipe);
-    const floor = slabs.find((s) => s.halfExtents.x === pipe.width / 2)!;
     const walls = slabs.filter(
       (s) =>
         s.surface === SURFACE_IDS.asphalt && s.halfExtents.x < pipe.width / 2,
@@ -55,8 +53,15 @@ describe('half-pipe geometry', () => {
     const rails = slabs.filter((s) => s.surface === SURFACE_IDS.concrete);
     expect(walls.length).toBeGreaterThanOrEqual(32);
     expect(rails).toHaveLength(2);
-    expect(floor.center.y + HALF_PIPE_THICKNESS / 2).toBeCloseTo(0, 9);
-    expect(floor.halfExtents.z).toBeCloseTo(pipe.deck / 2, 9);
+    // The track's ground mesh/collider is the channel floor. A second
+    // coplanar asphalt floor would z-fight and make the texture shimmer.
+    expect(
+      slabs.some(
+        (s) =>
+          s.surface === SURFACE_IDS.asphalt &&
+          s.halfExtents.x === pipe.width / 2,
+      ),
+    ).toBe(false);
     expect(
       walls.every((s) => Math.abs(s.center.z - pipe.z) > pipe.width / 2),
     ).toBe(true);
