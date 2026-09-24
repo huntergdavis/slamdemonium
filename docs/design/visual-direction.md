@@ -156,7 +156,7 @@ Right drawer: **380 px wide**, max-width 100vw, full viewport height; 12 px inte
 | [Search label or key_________________________] |
 +-----------------------------------------------+
 | v QUICK TUNE (14)                              |  pinned top region
-| Gravity          m/s²   [14.7] [reset] [?]      |  internally scrolls
+| Gravity          m/s²   [20] [reset] [?]      |  internally scrolls
 | [----------o---------------------]             |  all 14 quick controls
 | ...                                           |
 +-----------------------------------------------+

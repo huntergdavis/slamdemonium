@@ -10,7 +10,7 @@ describe('TuningStore', () => {
     const snapshot = first.snapshot();
     snapshot.gravity = 30;
     expect(first.get('gravity')).toBe(20);
-    expect(second.get('gravity')).toBe(14.7);
+    expect(second.get('gravity')).toBe(20);
     expect(first.getRadians('steerMaxLowSpeed')).toBeCloseTo(
       (32 * Math.PI) / 180,
     );
@@ -43,17 +43,17 @@ describe('TuningStore', () => {
     const changes: TuningChange[] = [];
     const observe = vi.fn((change: TuningChange) => {
       expect(store.get('mass')).toBe(2000);
-      expect(store.get('gravity')).toBe(20);
+      expect(store.get('gravity')).toBe(21);
       changes.push(change);
     });
     const off = store.onChange(observe);
-    store.patch({ gravity: 20, mass: 2000 });
+    store.patch({ gravity: 21, mass: 2000 });
     expect(changes).toEqual([
       {
         timestamp: 1234,
         key: 'gravity',
-        old: 14.7,
-        new: 20,
+        old: 20,
+        new: 21,
         source: 'input',
         needsRebuild: false,
       },
@@ -66,7 +66,7 @@ describe('TuningStore', () => {
         needsRebuild: true,
       },
     ]);
-    store.set('gravity', 20);
+    store.set('gravity', 21);
     expect(observe).toHaveBeenCalledTimes(2);
     off();
     store.resetAll();

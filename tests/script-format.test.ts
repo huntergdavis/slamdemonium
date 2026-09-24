@@ -89,7 +89,7 @@ it('fails on tuning edits during playback and rejects duplicate sampling or comp
   player.sampleInto(emptySample());
   expect(() => player.sampleInto(emptySample())).toThrow(/twice/);
   player.afterStep();
-  store.set('gravity', 20);
+  store.set('gravity', 21);
   expect(() => player.progress()).toThrow(/tuning changed/);
   player.cancel();
   expect(player.progress()).toEqual({
