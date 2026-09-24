@@ -143,7 +143,7 @@ With the defaults, these are the numbers the car should roughly hit. If a tune d
 | O   | Options page                                                                        |
 | T   | Slow motion (0.25x), to watch a drift catch frame by frame                          |
 | Tab | Swap A/B slots (game focused; use the panel's A/B buttons when the panel has focus) |
-| H   | Cycle HUD: full / minimal / off                                                     |
+| H   | Cycle HUD: full / minimal / off (the game starts with it off; the map stays)        |
 | G   | Debug gizmos (forces, contact points)                                               |
 | F9  | Start/stop a telemetry CSV recording                                                |
 | R   | Respawn                                                                             |

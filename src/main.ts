@@ -298,6 +298,12 @@ async function boot(): Promise<void> {
   let replayStopped = false;
   let replayActive = false;
   let respawnRequested = false;
+  let actionsThisStep = 0;
+  const countActions = (actions: Readonly<ActionCounts>): number => {
+    let total = 0;
+    for (const count of Object.values(actions)) total += count;
+    return total;
+  };
   const renderTelemetry = {
     cameraFov: 70,
     cameraFovRequested: 70,
@@ -338,6 +344,7 @@ async function boot(): Promise<void> {
         const live = input.sampleForStep();
         sampled = injected ? requested : live;
         source = injected ? 'keyboard' : live.source;
+        actionsThisStep = countActions(live.actions);
         dispatchActions(live.actions);
       },
       preStep(dt) {
@@ -368,6 +375,9 @@ async function boot(): Promise<void> {
         }
         skids.sample(vehicle.telemetry.wheels, loop.simulationSeconds + dt);
         hud.recordStep(vehicle.telemetry, dt, renderTelemetry);
+        // What the driver is doing this step, for the HUD reminder's idle
+        // timer: driving input or any keypress counts, a resting stick does not.
+        hud.noteInput(sampled, actionsThisStep);
         // A counted landing kicks camera, rumble and a surface crunch through
         // the same severity record as a wall hit. The counter is monotonic, so
         // this catches every landing regardless of steps per frame; the

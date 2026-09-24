@@ -19,7 +19,8 @@ test('controller command legend drives the real HUD, camera, slow motion, A/B, g
   ).toBeVisible();
   await expect(page.locator('.sl-controller-legend__item')).toHaveCount(8);
   await tap(page, [4, 12]);
-  await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'minimal');
+  // Boots off, so the first HUD command turns it on.
+  await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'full');
   await tap(page, [4, 15]);
   expect(
     await page.evaluate(() => window.__game.getTelemetry().cameraPreset),

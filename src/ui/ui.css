@@ -760,6 +760,31 @@
       var(--sl-chain-progress, 0%)
   );
 }
+.sl-hud__hint {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  align-self: end;
+  justify-self: center;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: var(--sl-radius);
+  background: var(--sl-hud-surface);
+  border: 1px solid var(--sl-border);
+  color: var(--sl-muted);
+  font: 13px/1.4 var(--sl-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.sl-hud__hint[data-visible='true'] {
+  opacity: 1;
+}
+/* The hint only exists to bring the HUD back: hide it whenever the HUD is on. */
+.sl-hud:not([data-mode='off']) .sl-hud__hint {
+  display: none;
+}
 .sl-hud__recording {
   grid-column: 2;
   grid-row: 2;
