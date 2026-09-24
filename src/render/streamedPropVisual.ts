@@ -1,4 +1,11 @@
-import { BoxGeometry, Group, InstancedMesh, Object3D } from 'three';
+import {
+  BoxGeometry,
+  Group,
+  InstancedMesh,
+  MeshStandardMaterial,
+  Object3D,
+} from 'three';
+import { BREAKABLE_PROP_COLOR } from './breakablePropsVisual';
 import type { Material, Scene } from 'three';
 import type { PropStreamer } from '../world/propStreaming';
 
@@ -18,7 +25,11 @@ export function createStreamedPropVisual(
   const root = new Group();
   root.name = 'streamed-props.far';
   const geometry = new BoxGeometry(1, 1, 1);
+  // Same colour as the promoted prop: the far representation must be the
+  // near one at a distance, or the streaming radius becomes a visible edge.
   const farMaterial = material.clone();
+  if (farMaterial instanceof MeshStandardMaterial)
+    farMaterial.color.setHex(BREAKABLE_PROP_COLOR);
   const mesh = new InstancedMesh(
     geometry,
     farMaterial,

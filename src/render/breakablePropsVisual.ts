@@ -20,6 +20,12 @@ const FRAGMENT_SCALE_Y = [0.78, 0.56, 0.92, 0.64, 0.7, 0.88, 0.6, 0.82];
 const FRAGMENT_SCALE_Z = [0.9, 0.7, 0.58, 0.84, 0.66, 0.96, 0.74, 0.62];
 
 /** Pooled painted props and visibly irregular, contrasting debris. */
+/** The intact prop colour. The far streamed instances use the same one so a
+ * prop looks identical before and after it becomes a physics body; the swap
+ * at the streaming radius used to turn a grey speck orange, which read as
+ * pop-in. */
+export const BREAKABLE_PROP_COLOR = 0xc86432;
+
 export function createBreakablePropsVisual(
   scene: Scene,
   physics: IPhysicsWorld,
@@ -35,7 +41,7 @@ export function createBreakablePropsVisual(
   const propMaterial = material.clone();
   const debrisMaterial = material.clone();
   if (propMaterial instanceof MeshStandardMaterial)
-    propMaterial.color.setHex(0xc86432);
+    propMaterial.color.setHex(BREAKABLE_PROP_COLOR);
   if (debrisMaterial instanceof MeshStandardMaterial)
     debrisMaterial.color.setHex(0x455768);
   const propMesh = new InstancedMesh(
@@ -123,11 +129,14 @@ export function createBreakablePropsVisual(
           debrisMesh,
           id,
           index,
-          props.fragmentHalfExtents.x * 2 *
+          props.fragmentHalfExtents.x *
+            2 *
             (FRAGMENT_SCALE_X[index % FRAGMENT_SCALE_X.length] ?? 1),
-          props.fragmentHalfExtents.y * 2 *
+          props.fragmentHalfExtents.y *
+            2 *
             (FRAGMENT_SCALE_Y[index % FRAGMENT_SCALE_Y.length] ?? 1),
-          props.fragmentHalfExtents.z * 2 *
+          props.fragmentHalfExtents.z *
+            2 *
             (FRAGMENT_SCALE_Z[index % FRAGMENT_SCALE_Z.length] ?? 1),
         );
     }
