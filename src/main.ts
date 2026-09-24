@@ -48,7 +48,10 @@ import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
 import { createWorldLandmarks } from './render/worldLandmarks';
-import { createBreakableProps } from './world/breakableProps';
+import {
+  createBreakableProps,
+  MAX_ACTIVE_BREAKABLES,
+} from './world/breakableProps';
 import { BREAKABLE_PROP_PLACEMENTS } from './world/breakablePlacements';
 import {
   createPropStreamRecords,
@@ -175,6 +178,7 @@ async function boot(): Promise<void> {
     vehicleBody: vehicle.body,
     onBreak: (severity) => crashScore.recordBreakSeverity(severity),
     initialActiveIndices: [],
+    maxActiveProps: MAX_ACTIVE_BREAKABLES,
   });
   const propStreamRecords = createPropStreamRecords(BREAKABLE_PROP_PLACEMENTS);
   const propStreamer = createPropStreamer({

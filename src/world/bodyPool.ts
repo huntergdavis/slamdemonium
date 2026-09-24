@@ -13,7 +13,9 @@ import type { SurfacedBodies, SurfacedPooledBoxDesc } from './surfacedBodies';
  * Debris: 768 fragments is 96 smashed props with 8 fragments each alive at
  * the same time. When the pool is exhausted the oldest active fragment is
  * retired and reused, so a long chain degrades gracefully instead of failing.
- * Breakables: 192 promotion slots sized for the phase-one streamed world.
+ * Breakables: 192 reserved promotion slots sized for the phase-one streamed
+ * world; the runtime active cap is measured separately so phase two can hold
+ * more authored records without allowing every nearby record to wake at once.
  * The current authored map uses fewer records. Phase C decides shapes and
  * masses; the placeholders below only reserve the bodies at boot so that no
  * body is ever created or destroyed mid-session, which is what keeps the
@@ -83,6 +85,21 @@ export class BodyPool {
     this.stamps[slot] = ++this.stamp;
     this.bodies.activate(id, pos, quat);
     return id;
+  }
+
+  /** Activates a free body without evicting an existing active body. */
+  tryAcquire(pos: V3, quat: Quat): BodyId | undefined {
+    if (this.disposed) throw new Error('Body pool is disposed.');
+    for (let slot = 0; slot < this.ids.length; slot++) {
+      if (this.active[slot] !== 0) continue;
+      const id = this.ids[slot]!;
+      this.active[slot] = 1;
+      this.activeCount++;
+      this.stamps[slot] = ++this.stamp;
+      this.bodies.activate(id, pos, quat);
+      return id;
+    }
+    return undefined;
   }
 
   /** Deactivates the body; false if it is not an active member. */
