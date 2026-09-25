@@ -57,6 +57,11 @@ export function createStreamedPropVisual(
       record.rotation.z,
       record.rotation.w,
     );
+    // An Object3D outside the scene never recomputes its matrix on its own:
+    // without this every far record was uploaded with the construction
+    // matrix and drawn at the world origin, so props appeared from nothing
+    // at the 90 m promotion radius.
+    transform.updateMatrix();
     mesh.setMatrixAt(index, transform.matrix);
   }
 
