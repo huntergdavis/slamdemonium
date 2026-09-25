@@ -55,6 +55,7 @@ describe('event-owned keyboard input', () => {
       KeyL: 'latencyProbe',
       Tab: 'swapAB',
       F9: 'recordTelemetry',
+      KeyB: 'fillBoost',
     } as const;
     for (const [code, action] of Object.entries(commands)) {
       keyEvent(target, 'keydown', code);

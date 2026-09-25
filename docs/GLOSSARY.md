@@ -138,7 +138,7 @@ Units are metric throughout: meters, kilograms, seconds. Speeds show in km/h on 
 
 ## The Options page
 
-**Parameter.** One tunable number with a name, unit, default, range and help text. There are 69 of them, grouped as World, Chassis, Engine, Brakes, Tires, Steering, Suspension, Boost & Drift, Collision and Camera. Design 7.1, 7.2.
+**Parameter.** One tunable number with a name, unit, default, range and help text. There are 70 of them, grouped as World, Chassis, Engine, Brakes, Tires, Steering, Suspension, Boost & Drift, Collision and Camera. Design 7.1, 7.2.
 
 **Quick Tune.** The pinned section at the top of the Options page with the 14 sliders that change the feel most. Design 7.2, 8.1.
 

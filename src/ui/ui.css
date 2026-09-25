@@ -713,12 +713,20 @@
   right: 0;
   min-width: 9rem;
 }
-.sl-mini-map {
+.sl-mini-map,
+.sl-hud__drive {
   position: absolute;
   top: 72px;
   right: 0;
   width: 180px;
   padding: 8px;
+}
+.sl-hud__drive {
+  top: 300px;
+  padding: 8px 10px;
+}
+.sl-drive__value {
+  font: 700 34px/1 var(--sl-mono);
 }
 .sl-mini-map .sl-card__title {
   margin-bottom: 4px;
@@ -727,7 +735,6 @@
   display: block;
   width: 180px;
   height: 180px;
-  image-rendering: auto;
 }
 .sl-hud__score [data-reading='scoreTotal'] {
   display: block;
@@ -890,6 +897,16 @@
     position: static;
     grid-column: 1 / -1;
     grid-row: auto;
+  }
+  /* Off, the dock is only the hint tall: pin the persistent instruments to the viewport. */
+  .sl-mini-map,
+  .sl-hud__drive {
+    position: fixed;
+    top: 88px;
+    right: var(--sl-safe);
+  }
+  .sl-hud__drive {
+    top: 316px;
   }
   .sl-hud__controls {
     grid-row: 1;

@@ -1,4 +1,5 @@
 import { SURFACE_IDS } from '../content/surfaces';
+import type { BoostPadSpec } from './boostPads';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
@@ -29,6 +30,8 @@ export interface MapDefinition {
   readonly loops: readonly LoopSpec[];
   readonly halfPipes: readonly HalfPipeSpec[];
   readonly runways: readonly RunwaySpec[];
+  /** Accelerator triangles: a speed kick and boost when driven over. */
+  readonly boostPads: readonly BoostPadSpec[];
 }
 export type MapName = 'lab' | 'proving-ground';
 
@@ -67,6 +70,7 @@ export const LAB_MAP: MapDefinition = Object.freeze({
   loops: LOOP_LAYOUT,
   halfPipes: Object.freeze([]),
   runways: Object.freeze([]),
+  boostPads: Object.freeze([]),
 });
 
 /** Where the proving ground's three targets share one line: the car spawns
@@ -181,6 +185,20 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       deck: 280,
       width: 60,
     }),
+  ]),
+  boostPads: Object.freeze([
+    // Accelerator triangles, 12 m long and 6 m wide, set 10 m off the main
+    // runway's centreline on alternating sides so hitting one is a small,
+    // deliberate lane change rather than the default line; a fourth sits on
+    // the east branch for the big-loop run. They point along the runway.
+    // The first one is the exception: dead on the centreline 40 m ahead of
+    // spawn, so the mechanic can be judged without hunting for a pad. It
+    // moves off the line once the kick and the economy are settled.
+    Object.freeze({ x: 0, z: -300, heading: NORTH, length: 12, width: 6 }),
+    Object.freeze({ x: -10, z: -280, heading: NORTH, length: 12, width: 6 }),
+    Object.freeze({ x: 10, z: -200, heading: NORTH, length: 12, width: 6 }),
+    Object.freeze({ x: -10, z: -120, heading: NORTH, length: 12, width: 6 }),
+    Object.freeze({ x: 42, z: -150, heading: NORTH, length: 12, width: 6 }),
   ]),
   runways: Object.freeze([
     // Main: north-south through the centre, spawn at its south end.

@@ -635,6 +635,27 @@ export class Vehicle {
     s.driftLatched = this.drift.side !== 0;
     s.driftTarget = this.drift.target;
   }
+  /** An accelerator pad: add `kick` m/s along the car's heading, on the
+   * ground plane, and grant `boost` of the bar. Called from boot between
+   * physics steps, never inside the engine's step. */
+  applyPad(kick: number, boost: number): void {
+    const s = this.telemetry;
+    if (Number.isFinite(kick) && kick > 0) {
+      this.world.getLinearVelocity(this.body, this.padVelocity);
+      const fx = this.forward.x,
+        fz = this.forward.z;
+      const norm = Math.hypot(fx, fz) || 1;
+      this.padVelocity.x += (fx / norm) * kick;
+      this.padVelocity.z += (fz / norm) * kick;
+      this.world.setLinearVelocity(this.body, this.padVelocity);
+    }
+    if (Number.isFinite(boost) && boost > 0) {
+      this.meter = Math.min(1, this.meter + boost);
+      s.boostMeter = s.driftMeter = this.meter;
+    }
+  }
+  private readonly padVelocity: V3 = { x: 0, y: 0, z: 0 };
+
   private updateMeter(dt: number): void {
     const t = this.tuning,
       s = this.telemetry;
@@ -656,6 +677,11 @@ export class Vehicle {
             (s.speed / 40) *
             dt,
       );
+    // Flight earns too: airborne is last step's derived state (airState runs
+    // below), so a jump charges from its second step, at the same slow rate
+    // family as drifting. Every present source is a slow fill by decision.
+    if (s.airborne)
+      this.meter = Math.min(1, this.meter + t.get('airChargeRate') * dt);
     s.boostMeter = s.driftMeter = this.meter;
     s.boostEnvelope = this.boostEnvelope;
     s.throttle = this.controls.throttle;

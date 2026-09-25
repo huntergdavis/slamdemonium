@@ -46,6 +46,7 @@ const MAPPINGS: readonly (readonly [string, string, string])[] = [
   ['Camera / slow motion', 'C / T', 'LB + D-pad Right / Down'],
   ['A/B tune swap', 'Tab while driving', 'LB + D-pad Left; Options A / B'],
   ['Latency probe / telemetry CSV', 'L / F9', 'LB + Y / LB + A'],
+  ['Fill the boost bar (test cheat)', 'B', '—'],
 ];
 
 export class PauseMenu {

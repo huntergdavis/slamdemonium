@@ -80,6 +80,7 @@ Keyboard and controller both work, at the same time, with nothing to switch. A c
 | Latency probe | L |
 | A/B tuning swap | Tab |
 | Telemetry recording (CSV) | F9 |
+| Fill the boost bar (test cheat) | B |
 
 ### Controller
 

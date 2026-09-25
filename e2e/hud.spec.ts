@@ -45,6 +45,21 @@ test('boots with the HUD off and the reminder at the bottom, which times out, re
   // The instruments are hidden; the persistent mini-map is asserted on the
   // real game in runtime.spec (this harness mounts no map).
   await expect(page.locator('[data-reading="speed"]')).toBeHidden();
+  // The two persistent driving instruments stay up and keep reading with
+  // the HUD off: speed in mph and the boost bar.
+  const drive = page.locator('.sl-hud__drive');
+  await expect(drive).toBeVisible();
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    api.telemetry.speed = 44.704; // 100 mph
+    api.telemetry.boostMeter = 0.35;
+    api.advance(34);
+  });
+  await expect(page.locator('[data-reading="driveMph"]')).toHaveText('100');
+  await expect(drive.locator('.sl-meter')).toHaveAttribute(
+    'aria-valuenow',
+    '0.35',
+  );
   await page.evaluate(() => window.__hudTest.advance(34));
   await expect(hint).toHaveAttribute('data-visible', 'true');
   await expect(hint).toHaveText('Esc menu · O options · H HUD');
@@ -348,13 +363,23 @@ test('gates both getters before reading, cycles H, and keeps recording independe
       render = api.state.renderReads;
     api.hud.setMode('off');
     for (let i = 0; i < 1000; i++) api.advance(1);
-    return { full, render, afterOff: api.state.reads, noOpWrites };
+    return {
+      full,
+      render,
+      afterOff: api.state.reads,
+      renderAfterOff: api.state.renderReads,
+      noOpWrites,
+    };
   });
   expect(reads.noOpWrites).toBe(0);
   expect(reads.full).toBeGreaterThan(0);
   expect(reads.full).toBeLessThanOrEqual(30);
   expect(reads.render).toBe(reads.full);
-  expect(reads.afterOff).toBe(reads.full);
+  // Off still reads telemetry at the same 30 Hz for the persistent mph and
+  // boost instruments (a cheap object read and two writes); the render
+  // telemetry getter, which only the instrument cards need, is not read.
+  expect(reads.afterOff).toBe(reads.full * 2);
+  expect(reads.renderAfterOff).toBe(reads.render);
   await page.getByLabel('Driving view').focus();
   await page.keyboard.press('KeyH');
   await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'full');
