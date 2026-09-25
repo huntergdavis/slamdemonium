@@ -874,3 +874,25 @@ The pad keeps its speed kick as its real purpose (`padKick` unchanged at 8 m/s);
 **What does not exist yet, and the rule.** The fast earners are slamming other cars, driving on the wrong side of the road and causing accidents. There are no other cars and no traffic, so none of them can be built now. The bar being hard to fill today is correct, not a gap to close: do not make drift, pads or airtime generous to compensate. The CTO will say if it goes too far, and the sliders are there for him to move any rate either way.
 
 **The B key fills the bar.** Keyboard B, listed in the README, the tuning playbook and the pause menu's key list; there is no controller binding, the LB legend is at its eight-slot limit. It ships in every build rather than behind a debug flag: the CTO evaluates production preview builds, which carry no test API, and it belongs to the same family as T (slow motion), F9 (telemetry) and the Options panel, all test affordances the lab ships. If boost ever matters competitively it hides behind the same flag as those.
+## Gravity-20 loop decision closed (2026-09-25)
+
+The CTO's gravity choice is closed at **20 m/s²**. Three official repeat runs at
+16, 17 and 18 were byte-identical within each gravity, so the apparent R14 dip
+is deterministic physics rather than harness noise. The archived 19 and 20 rows
+are the original single official baselines and are labelled as such below.
+
+| gravity | jump distance | R14 tolerance (angle / offset / speed floor) | R18 tolerance (angle / offset / speed floor) |
+| ---: | ---: | --- | --- |
+| 16 | 107.95 m | 30° / 3 m / 16 m/s | 30° / 10 m / 16 m/s |
+| 17 | 87.68 m | 25° / 1 m / 54 m/s | 30° / 10 m / 16 m/s |
+| 18 | 86.37 m | 15° / 3 m / 60 m/s | 30° / 10 m / 16 m/s |
+| 19 (single baseline) | 83.52 m | 30° / 3 m / 16 m/s | 30° / 10 m / 16 m/s |
+| 20 (single baseline) | 83.51 m | 30° / 3 m / 16 m/s | 30° / 10 m / 16 m/s |
+
+There is no useful value between 14.7 and 20 that makes the loops kinder
+without giving up the jump behavior: 17 and 18 make the fair R14 loop worse,
+while 19 and 20 preserve the forgiving loop and nearly identical jump distance.
+Gravity 20 therefore stays. The harder loop is the measured cost of the jump
+distance the CTO chose; lowering gravity makes the loop worse rather than better
+in the 17--18 range. The repeat artifacts are `scratch/loop-g16-r*.json`,
+`loop-g17-r*.json`, and `loop-g18-r*.json`; each triplicate is byte-identical.
