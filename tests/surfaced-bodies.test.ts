@@ -19,6 +19,10 @@ function fakeWorld() {
       active.set(next, true);
       return next++;
     }),
+    createStaticMesh: vi.fn(() => {
+      active.set(next, true);
+      return next++;
+    }),
     createPooledBox: vi.fn(() => {
       active.set(next, false);
       return next++;
@@ -106,6 +110,27 @@ describe('surfaced bodies: registration is part of creation', () => {
       }),
     ).toThrow();
     expect(alive()).toBe(1); // The unregistrable body was destroyed again.
+    bodies.dispose();
+    expect(alive()).toBe(0);
+    expect(registry.size).toBe(0);
+  });
+
+  it('registers a static mesh surface at creation and disposes it with the facade', () => {
+    const { world, alive } = fakeWorld();
+    const registry = createSurfaceRegistry();
+    const bodies = createSurfacedBodies(world, registry);
+    const mesh = bodies.createStaticMesh({
+      center: { x: 0, y: 0, z: 0 },
+      vertices: [
+        { x: -1, y: 0, z: -1 },
+        { x: 1, y: 0, z: -1 },
+        { x: 0, y: 1, z: 1 },
+      ],
+      indices: [0, 1, 2],
+      surface: SURFACE_IDS.asphalt,
+    });
+    expect(registry.get(mesh)).toBe(SURFACE_IDS.asphalt);
+    expect(bodies.count).toBe(1);
     bodies.dispose();
     expect(alive()).toBe(0);
     expect(registry.size).toBe(0);

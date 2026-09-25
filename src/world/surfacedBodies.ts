@@ -2,6 +2,7 @@ import type {
   BodyId,
   IPhysicsWorld,
   PooledBoxDesc,
+  StaticMeshDesc,
   Quat,
   StaticBodyDesc,
   V3,
@@ -10,6 +11,9 @@ import type { SurfaceId } from '../content/surfaces';
 import type { SurfaceRegistry } from './surfaceRegistry';
 
 export type SurfacedStaticBodyDesc = Omit<StaticBodyDesc, 'surfaceId'> & {
+  surface: SurfaceId;
+};
+export type SurfacedStaticMeshDesc = Omit<StaticMeshDesc, 'surfaceId'> & {
   surface: SurfaceId;
 };
 export type SurfacedPooledBoxDesc = PooledBoxDesc & { surface: SurfaceId };
@@ -23,6 +27,7 @@ export type SurfacedPooledBoxDesc = PooledBoxDesc & { surface: SurfaceId };
  * pooled boxes activated per retry) without a second facade. */
 export interface SurfacedBodies {
   createStaticBody(desc: SurfacedStaticBodyDesc): BodyId;
+  createStaticMesh(desc: SurfacedStaticMeshDesc): BodyId;
   createPooledBox(desc: SurfacedPooledBoxDesc): BodyId;
   activate(id: BodyId, pos: V3, quat: Quat): void;
   deactivate(id: BodyId): void;
@@ -54,6 +59,13 @@ export function createSurfacedBodies(
       const { surface, ...body } = desc;
       return own(
         world.createStaticBody({ ...body, surfaceId: surface }),
+        surface,
+      );
+    },
+    createStaticMesh(desc) {
+      const { surface, ...mesh } = desc;
+      return own(
+        world.createStaticMesh({ ...mesh, surfaceId: surface }),
         surface,
       );
     },
