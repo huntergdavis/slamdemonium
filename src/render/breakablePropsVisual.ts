@@ -9,9 +9,12 @@ import {
 import type { Material, Scene } from 'three';
 import type { IPhysicsWorld, Quat, V3 } from '../physics/adapter';
 import type { BreakableProps } from '../world/breakableProps';
+import { applyPropGlow } from './propLook';
 
 export interface BreakablePropsVisual {
   update(): void;
+  /** Self-light on intact props; the far layer must be given the same. */
+  setGlow(glow: number): void;
   dispose(): void;
 }
 
@@ -147,6 +150,9 @@ export function createBreakablePropsVisual(
   update();
   return {
     update,
+    setGlow(glow: number): void {
+      if (!disposed) applyPropGlow(propMaterial, glow);
+    },
     dispose(): void {
       if (disposed) return;
       disposed = true;

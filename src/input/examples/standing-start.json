@@ -20,6 +20,8 @@
     "timeScale": 1,
     "surfaceGrip": 1,
     "loopGrip": 1,
+    "propGlow": 0.35,
+    "propFarScale": 2,
     "physicsHz": 120,
     "mass": 1300,
     "comHeightOffset": -0.2,
