@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   Color,
+  DirectionalLight,
   InstancedMesh,
   LinearMipmapLinearFilter,
   Matrix4,
@@ -17,6 +18,8 @@ import {
   DEFAULT_TRACK_CONFIG,
   installTrackColliders,
   resolveTrackConfig,
+  SHADOW_HALF_SIZE,
+  SHADOW_MAP_SIZE,
 } from '../src/world/track';
 import { SURFACE_IDS } from '../src/content/surfaces';
 import { createTrackLayout } from '../src/world/trackLayout';
@@ -177,6 +180,30 @@ describe('track scene and physics seam', () => {
     expect(track.spawn.position).toEqual({ x: 130, y: 0.86, z: 0 });
     expect(track.spawn.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
     track.dispose();
+  });
+  it('casts shadows inside an 80 m box at 2048, and lets a map override it', () => {
+    const track = createTestTrack(new Scene(), {
+      maxAnisotropy: 1,
+      asphalt: { size: 128 },
+    });
+    const sun = track.root.getObjectByName('track.sun') as DirectionalLight;
+    expect(SHADOW_HALF_SIZE).toBe(80);
+    expect(sun.shadow.camera.left).toBe(-80);
+    expect(sun.shadow.camera.right).toBe(80);
+    expect(sun.shadow.camera.top).toBe(80);
+    expect(sun.shadow.camera.bottom).toBe(-80);
+    expect(sun.shadow.mapSize.width).toBe(SHADOW_MAP_SIZE);
+    expect(sun.shadow.mapSize.width).toBe(2048);
+    track.dispose();
+    const small = createTestTrack(new Scene(), {
+      maxAnisotropy: 1,
+      asphalt: { size: 128 },
+      shadow: { halfSize: 35, mapSize: 1024 },
+    });
+    const sun2 = small.root.getObjectByName('track.sun') as DirectionalLight;
+    expect(sun2.shadow.camera.right).toBe(35);
+    expect(sun2.shadow.mapSize.height).toBe(1024);
+    small.dispose();
   });
   it('places the spawn where a map asks, facing its heading, and only inside the barrier', () => {
     const track = createTestTrack(new Scene(), {
