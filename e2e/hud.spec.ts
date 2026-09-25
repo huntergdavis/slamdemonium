@@ -23,8 +23,10 @@ const test = base.extend<
     await page.waitForFunction(() => Boolean(window.__hudTest));
     await page.evaluate(() => {
       window.__hudTest.manual();
-      // The HUD boots off now; these instrument tests want it on.
+      // The HUD boots off now, and off skips telemetry reads; these
+      // instrument tests want it on with one read already made.
       window.__hudTest.hud.setMode('full');
+      window.__hudTest.advance(34);
     });
     await use(page);
   },
@@ -40,8 +42,8 @@ test('boots with the HUD off and the reminder at the bottom, which times out, re
   const hud = page.locator('.sl-hud');
   const hint = page.locator('.sl-hud__hint');
   await expect(hud).toHaveAttribute('data-mode', 'off');
-  // The map is persistent; the instruments are not.
-  await expect(page.locator('.sl-mini-map')).toBeVisible();
+  // The instruments are hidden; the persistent mini-map is asserted on the
+  // real game in runtime.spec (this harness mounts no map).
   await expect(page.locator('[data-reading="speed"]')).toBeHidden();
   await page.evaluate(() => window.__hudTest.advance(34));
   await expect(hint).toHaveAttribute('data-visible', 'true');
