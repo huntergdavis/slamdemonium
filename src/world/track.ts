@@ -29,6 +29,11 @@ import { getSurfaceDefinition, SURFACE_IDS } from '../content/surfaces';
 export { DEFAULT_TRACK_CONFIG, resolveTrackConfig } from './trackConfig';
 export { installTrackColliders } from './trackPhysics';
 
+/** The sun shadow box: shadows exist inside a square this many metres
+ * either side of the car. See TrackOptions.shadow for the reasoning. */
+export const SHADOW_HALF_SIZE = 80;
+export const SHADOW_MAP_SIZE = 2048;
+
 export interface TrackOptions {
   /** Pass renderer.capabilities.getMaxAnisotropy(), not a guessed hardware limit. */
   maxAnisotropy: number;
@@ -38,6 +43,14 @@ export interface TrackOptions {
    * (centerLineRadius, 0) facing -Z. `heading` is yaw in the ramp convention
    * (0 faces -Z, positive turns left). */
   spawn?: { x: number; z: number; heading: number };
+  /** Half-size in metres of the sun's shadow box around the car and its map
+   * resolution. Default 80 m at 2048 (7.8 cm texels): shadows appear at
+   * 80 m instead of 35, where a 1 m prop is already under six pixels at the
+   * scaler's floor, so nothing loses a shadow a driver could see. Chosen on
+   * today's geometry (494 individual slab meshes make a bigger box
+   * expensive in the shadow pass); worth re-examining once the slabs are
+   * instanced. Measured in docs/DECISIONS.md. */
+  shadow?: { halfSize?: number; mapSize?: number };
 }
 export interface TrackSpawn {
   position: Readonly<WorldPoint>;
@@ -180,9 +193,11 @@ export function createTestTrack(scene: Scene, options: TrackOptions) {
   const sun = new DirectionalLight(0xfff1da, 2.2);
   sun.name = 'track.sun';
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = sun.shadow.camera.bottom = -35;
-  sun.shadow.camera.right = sun.shadow.camera.top = 35;
+  const shadowHalf = options.shadow?.halfSize ?? SHADOW_HALF_SIZE;
+  const shadowMap = options.shadow?.mapSize ?? SHADOW_MAP_SIZE;
+  sun.shadow.mapSize.set(shadowMap, shadowMap);
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -shadowHalf;
+  sun.shadow.camera.right = sun.shadow.camera.top = shadowHalf;
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 200;
   sun.shadow.bias = -0.0002;
