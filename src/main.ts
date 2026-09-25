@@ -203,6 +203,13 @@ async function boot(): Promise<void> {
     propStreamer,
     breakableProps.propHalfExtents,
     track.materials.barrier,
+    {
+      readViewPosition: (out) => {
+        out.x = vehicle.telemetry.position.x;
+        out.y = vehicle.telemetry.position.y;
+        out.z = vehicle.telemetry.position.z;
+      },
+    },
   );
   const breakablePropsVisual = createBreakablePropsVisual(
     view.scene,
@@ -210,6 +217,15 @@ async function boot(): Promise<void> {
     breakableProps,
     track.materials.barrier,
   );
+  // The small-prop visibility prototype: glow goes to near and far alike so
+  // the swap stays invisible; the impostor scale is far-only by design.
+  const applyPropLook = (): void => {
+    const glow = tuning.get('propGlow');
+    breakablePropsVisual.setGlow(glow);
+    streamedPropVisual.setGlow(glow);
+    streamedPropVisual.setFarScale(tuning.get('propFarScale'));
+  };
+  applyPropLook();
   resources.push(
     streamedPropVisual,
     propStreamer,
@@ -472,6 +488,8 @@ async function boot(): Promise<void> {
   });
   resources.push(massRebuild);
   unsubscribe = tuning.onChange((change) => {
+    if (change.key === 'propGlow' || change.key === 'propFarScale')
+      applyPropLook();
     if (
       change.key === 'speedLinesStrength' ||
       change.key === 'vignetteStrength'
