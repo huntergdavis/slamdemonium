@@ -9,10 +9,10 @@ import {
 } from '../src/tuning/schema';
 
 describe('tuning schema: design sections 7.2 and 13.1', () => {
-  it('has all 91 unique keys, valid ranges, labels, units, and help', () => {
-    expect(PARAM_DEFS).toHaveLength(91);
+  it('has all 93 unique keys, valid ranges, labels, units, and help', () => {
+    expect(PARAM_DEFS).toHaveLength(93);
     expect(new Set(PARAM_DEFS.map((definition) => definition.key)).size).toBe(
-      91,
+      93,
     );
     for (const definition of PARAM_DEFS) {
       expect(definition.default).toBeGreaterThanOrEqual(definition.min);
@@ -99,7 +99,7 @@ describe('tuning schema: design sections 7.2 and 13.1', () => {
         expect(value).toBeLessThanOrEqual(PARAM_BY_KEY[key].max);
       }
     }
-    expect(Object.keys(DEFAULT_VALUES)).toHaveLength(91);
+    expect(Object.keys(DEFAULT_VALUES)).toHaveLength(93);
     expect(DEFAULT_VALUES).toMatchObject({
       engineCharacter: 0.75,
       engineRevLift: 1850,
