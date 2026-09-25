@@ -20,6 +20,10 @@ Defaults implement design section 9 and docs/design/visual-direction.md: one 150
 
 [halfPipe.ts](halfPipe.ts) builds a transfer as a spine: a 30 degree quarter-pipe wall up, a solid deck, a mirrored wall down, coping rails outside the lane, open at ground level both ends. `HalfPipeSpec` is `{x, z, heading, radius, deck, width}` with the deck centre at `x`/`z`; wall height is 0.134 x radius, so depth comes from radius (40 m gives 5.4 m walls). The exit angle is fixed at 30 degrees because steeper couples range to landing violence, and nothing is ever built above the lip on the same arc, even as picture (the launch is tangent to it). Gap = launch speed squared / 17. Rule and measurements in docs/DECISIONS.md.
 
+### Boost pads
+
+[boostPads.ts](boostPads.ts): `BoostPadSpec` is a painted triangle (`x`/`z` base centre, `heading`, `length` to the apex, `width` across). `createBoostPadTracker` is an edge-triggered footprint test (fires on entry, re-arms on exit, `reset()` on respawn); boot applies `padKick` and `padBoost` through `Vehicle.applyPad`. `createBoostPadVisual` draws every pad as one self-lit mesh at paint height. No bodies.
+
 ## Bind to the renderer and physics loop
 
 ```ts

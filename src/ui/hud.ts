@@ -21,6 +21,8 @@ import type { TuningSession } from './tuningSession';
 import './ui.css';
 
 export type HudMode = 'full' | 'minimal' | 'off';
+/** The CTO reads speed in mph. */
+export const MPH_PER_MPS = 2.2369362920544;
 
 /** The bottom reminder: the keys a first-time player needs, in a glance. It
  * replaced the driving-screen strip (Escape, O, H, controller status). */
@@ -95,6 +97,8 @@ export class Hud {
    * and the reminder at the bottom. */
   private mode: HudMode = 'off';
   private readonly hint: HTMLElement;
+  private readonly drive: HTMLElement;
+  private readonly driveBoost: Meter;
   private readonly hintState = new HudHintState();
   private activitySinceUpdate = false;
   private hintDevice: 'keyboard' | 'gamepad' = 'keyboard';
@@ -182,6 +186,18 @@ export class Hud {
     this.hint.setAttribute('aria-hidden', 'true'); // A reminder, not a status.
     this.hint.dataset.visible = 'true';
     this.element.append(this.hint);
+    // The two persistent driving instruments, beside the mini-map and outside
+    // the H stack: a speedometer in mph and the boost bar. The game boots
+    // with the HUD off and the driver must still see both.
+    this.drive = node(doc, 'section', 'sl-card sl-hud__drive');
+    this.drive.dataset.hudPersistent = '';
+    this.drive.setAttribute('aria-label', 'Speed and boost');
+    const mph = node(doc, 'div', 'sl-drive__speed');
+    reading(mph, 'driveMph', '0', 'sl-drive__value');
+    mph.append(node(doc, 'span', 'sl-drive__unit', 'mph'));
+    this.drive.append(mph);
+    this.driveBoost = this.meter(this.drive, 'Boost');
+    this.element.append(this.drive);
     this.notice = node(doc, 'div', 'sl-card sl-hud__recording');
     this.notice.dataset.hudPersistent = '';
     this.notice.setAttribute('role', 'status');
@@ -404,10 +420,13 @@ export class Hud {
     // The mini-map is HUD-persistent, so keep its position live while the
     // instrument cards are collapsed or the HUD mode is off. HUDs without a
     // map retain the cheap early return and do not read telemetry.
-    if (collapsed && !this.miniMap) return;
-    if (this.mode === 'off' && !this.miniMap) return;
     const telemetry = this.options.readTelemetry();
     this.miniMap?.update(telemetry);
+    // Persistent instruments read in every mode, including off and collapsed.
+    if (telemetry) {
+      this.set('driveMph', fixed(telemetry.speed * MPH_PER_MPS, 0));
+      this.fill(this.driveBoost, telemetry.boostMeter);
+    }
     if (this.mode === 'off' || collapsed) return;
     const render = this.options.readRenderTelemetry?.();
     const store = this.options.store;

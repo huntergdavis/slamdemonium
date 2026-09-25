@@ -720,6 +720,30 @@
   width: 180px;
   padding: 8px;
 }
+.sl-hud__drive {
+  position: absolute;
+  top: 300px;
+  right: 0;
+  width: 180px;
+  padding: 8px 10px;
+}
+.sl-drive__speed {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.sl-drive__value {
+  font: 700 34px/1 var(--sl-mono);
+  min-width: 0;
+}
+.sl-drive__unit {
+  color: var(--sl-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 .sl-mini-map .sl-card__title {
   margin-bottom: 4px;
 }

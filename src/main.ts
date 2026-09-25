@@ -47,6 +47,7 @@ import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
+import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
 import type { MiniMapLandmark } from './ui/miniMap';
 import {
   createBreakableProps,
@@ -143,6 +144,13 @@ async function boot(): Promise<void> {
       (surface) => track.materials.forSurface(surface),
       map.halfPipes,
     ),
+  );
+  // Accelerator triangles: paint and a footprint test, no bodies. Driving
+  // onto one adds padKick along the heading and padBoost of the bar, once
+  // per visit; with drift charge slowed, this is how boost is earned.
+  const boostPads = createBoostPadTracker(map.boostPads);
+  resources.push(
+    createBoostPadVisual(view.scene, map.boostPads, track.config.paintHeight),
   );
   // Runways are paint on the infield collider: one instanced draw, no bodies.
   resources.push(
@@ -377,6 +385,17 @@ async function boot(): Promise<void> {
       postStep(dt) {
         vehicle.postStep(dt);
         breakableProps.update(dt);
+        {
+          const entered = boostPads.update(
+            vehicle.telemetry.position.x,
+            vehicle.telemetry.position.z,
+          );
+          if (entered > 0)
+            vehicle.applyPad(
+              tuning.get('padKick') * entered,
+              tuning.get('padBoost') * entered,
+            );
+        }
         crashScore.update(dt);
         propStreamer.update();
         history.afterStep();
@@ -458,6 +477,7 @@ async function boot(): Promise<void> {
     },
   );
   function resetPresentation(): void {
+    boostPads.reset();
     history.reset();
     visualHistory.reset();
     cameraRig.reset();

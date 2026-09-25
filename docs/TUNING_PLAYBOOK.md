@@ -124,6 +124,8 @@ The two loops are the loop experiment, and they gave us a rule. The left one is 
 
 Two sliders for the small breakable props, added after the pop-in hunt. `propGlow` self-lights them, near and far alike, so their shaded side reads orange instead of dark brown against the asphalt; measured, this is what makes a far prop visible at all. `propFarScale` draws far props larger than life: true size inside 90 m (where they become physics bodies), the full factor from 200 m, linear between, so a 1 m box reads as 1.5 m at 150 m at the default of 2; set it to 1 for honest sizes everywhere. Your render scale (the HUD's Render x line, 0.6 to 1.0) sets how many pixels a prop gets before either slider applies.
 
+The cyan triangles on the runways are accelerator pads: drive onto one and you get `padKick` metres per second along your heading and `padBoost` of the boost bar, once per visit. Drifting still charges boost, but at `driftChargeRate` 0.1 it is slow; the pads are how you earn it, and they sit off the centreline so hitting one is a line choice. The speed in mph and the boost bar beside the mini-map stay up whatever the HUD mode.
+
 The half-pipe is on the east-west runway, west of the centre: two 5.4 m curved walls with a deck between them, drivable from either end. It wants 20 to 30 m/s, not runway speed: the crossbars tighten over the last 100 m to tell you to slow down. At the right speed you launch off one wall at 30 degrees, cross the deck and come down in the far pipe; too fast and you fly over the whole thing and come down hard, upright, 150 m on, which is your cue: the crossbars were telling you. The giant ramp in the middle of the main runway is a triangle now, so you can hit it from either side without circling back.
 
 ## Sanity references

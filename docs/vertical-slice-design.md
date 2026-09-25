@@ -563,7 +563,7 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 | boostAccelMult | Boost & Drift | x | 1.6 | 1.0 | 3.0 | 0.05 | | Acceleration multiplier while boosting. |
 | boostTopSpeedAdd | Boost & Drift | m/s | 25 | 0 | 60 | 1 | | Extra top speed while boosting. |
 | boostDrainRate | Boost & Drift | 1/s | 0.25 | 0.05 | 2.0 | 0.05 | | Meter used per second of boost. |
-| driftChargeRate | Boost & Drift | 1/s at reference | 0.35 | 0 | 2.0 | 0.05 | | Meter earned per second of a reference drift (30 deg at 40 m/s). |
+| driftChargeRate | Boost & Drift | 1/s at reference | 0.1 | 0 | 2.0 | 0.05 | | Meter earned per second of a reference drift (30 deg at 40 m/s). Much slower than it was (0.35), so the accelerator pads are the main way to earn boost. |
 | driftMinAngle | Boost & Drift | deg | 12 | 3 | 40 | 0.5 | | Slide angle needed to count as a drift. |
 | restitution | Collision | | 0.25 | 0 | 1.0 | 0.01 | | Bounciness of impacts. |
 | wallFriction | Collision | | 0.05 | 0 | 1.0 | 0.01 | | Friction against barriers. Low lets you scrape along walls without stopping. |
