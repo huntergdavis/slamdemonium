@@ -569,7 +569,7 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 | wallFriction | Collision | | 0.05 | 0 | 1.0 | 0.01 | | Friction against barriers. Low lets you scrape along walls without stopping. |
 | maxAngularVelocity | Collision | rad/s | 12 | 3 | 40 | 0.5 | A | Hard cap on rotation speed. |
 | fovBase | Camera | deg | 70 | 40 | 110 | 1 | | Field of view at rest. |
-| fovSpeedGain | Camera | deg | 15 | 0 | 50 | 1 | Q | Extra FOV at top speed. |
+| fovSpeedGain | Camera | deg | 15 | -30 | 50 | 1 | Q | Extra FOV at top speed. Positive widens the lens for peripheral motion and pushes the car visually further away; negative narrows it for a tighter, closer look. |
 | fovBoostKick | Camera | deg | 15 | 0 | 50 | 1 | | Extra FOV while boosting. |
 | camDistance | Camera | m | 7.5 | 3 | 20 | 0.1 | | Chase camera distance behind the car. |
 | camHeight | Camera | m | 2.6 | 0.5 | 8 | 0.1 | | Chase camera height. |

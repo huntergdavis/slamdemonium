@@ -202,6 +202,32 @@ export class CameraRig {
     if (this.referenceUp.y > 1 - 1e-9) this.referenceUp.copy(up);
   }
 
+  /** The camera closes in with speed instead of falling back. A critically
+   * damped follower behind a target moving at v settles v x followTime
+   * behind it, so at the rest distance of 7.5 m the chase camera measured
+   * 22 m from the car at top speed and 28 m under boost, the car 3.4 to 4.8
+   * times smaller on screen; the CTO called it the opposite of fast.
+   * camSpeedPull leads the follow target along the velocity by that fraction
+   * of the lag, so at 1 the camera holds its rest distance at any speed
+   * while transients keep the same spring; camSpeedClose then pulls it
+   * closer than rest by up to that many metres at top speed. Only while the
+   * car moves along the camera's facing direction: reversing, the hold and
+   * the swing run on exactly the old path. */
+  private applySpeedPull(state: VehicleTelemetry, farScale: number): void {
+    const t = this.tuning;
+    const v = state.velocity;
+    const along =
+      v.x * this.direction.x + v.y * this.direction.y + v.z * this.direction.z;
+    if (!(along > 0)) return;
+    const pull = t.get('camSpeedPull');
+    if (pull > 0) this.target.addScaledVector(v, pull * t.get('camFollowTime'));
+    const close = t.get('camSpeedClose');
+    if (close > 0) {
+      const factor = MathUtils.clamp(state.speed / t.get('topSpeed'), 0, 1);
+      this.target.addScaledVector(this.direction, close * factor * farScale);
+    }
+  }
+
   /** Where the camera should look from: the car's heading, blended toward
    * the direction of travel, or swung round to face the reversing path. */
   private updateDirection(
@@ -334,6 +360,7 @@ export class CameraRig {
           t.get('camHeight') * (far ? 1.5 : 1),
         );
     }
+    if (this.preset !== 'hood') this.applySpeedPull(state, far ? 1.6 : 1);
     let compression = 0;
     for (const wheel of state.wheels) compression += wheel.compression * 0.25;
     if (!this.initialized) {

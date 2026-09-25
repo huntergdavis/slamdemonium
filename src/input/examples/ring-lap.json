@@ -81,6 +81,8 @@
     "maxAngularVelocity": 12,
     "fovBase": 70,
     "fovSpeedGain": 15,
+    "camSpeedPull": 1,
+    "camSpeedClose": 1.5,
     "fovBoostKick": 15,
     "camDistance": 7.5,
     "camHeight": 2.6,
