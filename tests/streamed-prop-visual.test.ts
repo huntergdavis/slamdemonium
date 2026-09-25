@@ -1,4 +1,11 @@
-import { InstancedMesh, MeshBasicMaterial, Scene } from 'three';
+import {
+  InstancedMesh,
+  Matrix4,
+  MeshBasicMaterial,
+  Quaternion,
+  Scene,
+  Vector3,
+} from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStreamedPropVisual } from '../src/render/streamedPropVisual';
 import type {
@@ -56,6 +63,55 @@ describe('streamed far visual', () => {
     changedIndex = 1;
     visual.update();
     expect(setMatrixAt).toHaveBeenCalledTimes(1);
+    visual.dispose();
+  });
+
+  it('uploads each far record at its own authored position, not the helper matrix from construction', () => {
+    const records: readonly PropStreamRecord[] = [
+      {
+        id: 'a',
+        cellId: 0,
+        cellSize: 160,
+        placementIndex: 0,
+        position: { x: 120, y: 0.5, z: -280 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+      },
+      {
+        id: 'b',
+        cellId: 0,
+        cellSize: 160,
+        placementIndex: 1,
+        position: { x: -100, y: 0.5, z: 140 },
+        rotation: { x: 0, y: Math.SQRT1_2, z: 0, w: Math.SQRT1_2 },
+      },
+    ];
+    const streamer = {
+      records,
+      isFarVisible: () => true,
+      copyFarVisibilityChanges: () => 0,
+    } as unknown as PropStreamer;
+    const scene = new Scene();
+    const visual = createStreamedPropVisual(
+      scene,
+      streamer,
+      { x: 0.5, y: 0.5, z: 0.5 },
+      new MeshBasicMaterial(),
+    );
+    const mesh = scene.getObjectByName('streamed-props.far')!
+      .children[0] as InstancedMesh;
+    const matrix = new Matrix4();
+    const position = new Vector3();
+    records.forEach((record, index) => {
+      mesh.getMatrixAt(index, matrix);
+      position.setFromMatrixPosition(matrix);
+      expect(position.x).toBeCloseTo(record.position.x, 9);
+      expect(position.y).toBeCloseTo(record.position.y, 9);
+      expect(position.z).toBeCloseTo(record.position.z, 9);
+      expect(new Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(1, 9);
+    });
+    mesh.getMatrixAt(1, matrix);
+    const q = new Quaternion().setFromRotationMatrix(matrix);
+    expect(Math.abs(q.y)).toBeCloseTo(Math.SQRT1_2, 6);
     visual.dispose();
   });
 });
