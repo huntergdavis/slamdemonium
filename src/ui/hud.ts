@@ -192,9 +192,9 @@ export class Hud {
     this.drive = node(doc, 'section', 'sl-card sl-hud__drive');
     this.drive.dataset.hudPersistent = '';
     this.drive.setAttribute('aria-label', 'Speed and boost');
-    const mph = node(doc, 'div', 'sl-drive__speed');
+    const mph = node(doc, 'div', 'sl-speed');
     reading(mph, 'driveMph', '0', 'sl-drive__value');
-    mph.append(node(doc, 'span', 'sl-drive__unit', 'mph'));
+    mph.append(node(doc, 'span', 'sl-caption', 'mph'));
     this.drive.append(mph);
     this.driveBoost = this.meter(this.drive, 'Boost');
     this.element.append(this.drive);
