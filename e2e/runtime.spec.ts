@@ -44,12 +44,20 @@ test('O opens while driving; P pauses and resumes; H and T remain usable while p
   const before = await page.evaluate(
     () => window.__game.getTelemetry().totalSteps,
   );
+  // The game boots with the HUD off with the mini-map still up and the
+  // reminder at the bottom; H cycles full, minimal, off.
+  await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'off');
+  await expect(page.locator('.sl-mini-map')).toBeVisible();
+  await expect(page.locator('.sl-hud__hint')).toHaveAttribute(
+    'data-visible',
+    'true',
+  );
+  await page.keyboard.press('KeyH');
+  await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'full');
   await page.keyboard.press('KeyH');
   await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'minimal');
   await page.keyboard.press('KeyH');
   await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'off');
-  await page.keyboard.press('KeyH');
-  await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'full');
   expect(
     await page.evaluate(() => window.__game.getTelemetry().totalSteps),
   ).toBe(before);

@@ -58,6 +58,11 @@ export class ControllerSupport {
   }
 
   /** Once per RAF, after action polling and pauseMenu.update, including pause. */
+  /** Which device the driver last used; the HUD reminder words its keys for it. */
+  get device(): 'keyboard' | 'gamepad' {
+    return this.prompts.device;
+  }
+
   update(nowMs: number): void {
     this.haptics.update(nowMs);
     this.prompts.update(

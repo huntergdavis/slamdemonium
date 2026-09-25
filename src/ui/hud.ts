@@ -9,6 +9,7 @@ import {
   type HudRenderTelemetry,
 } from './hudTelemetry';
 import { HudPlots } from './hudPlots';
+import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
 import { MiniMap, type MiniMapOptions } from './miniMap';
 import { node } from './paramControl';
 import {
@@ -20,6 +21,13 @@ import type { TuningSession } from './tuningSession';
 import './ui.css';
 
 export type HudMode = 'full' | 'minimal' | 'off';
+
+/** The bottom reminder: the keys a first-time player needs, in a glance. It
+ * replaced the driving-screen strip (Escape, O, H, controller status). */
+export const HUD_HINT_TEXT = Object.freeze({
+  keyboard: 'Esc menu · O options · H HUD',
+  gamepad: 'Start menu · View options · hold LB for commands',
+});
 export interface HudOptions extends RecorderOptions {
   /** Prefer options.root, so the shared Options-open layout applies. */
   host: HTMLElement;
@@ -83,7 +91,13 @@ export class Hud {
   private readonly unsubscribe: () => void;
   private readonly modeButton: HTMLButtonElement;
   private readonly collapseButton: HTMLButtonElement;
-  private mode: HudMode = 'full';
+  /** The game boots with the HUD off: a clean screen, the map persistent,
+   * and the reminder at the bottom. */
+  private mode: HudMode = 'off';
+  private readonly hint: HTMLElement;
+  private readonly hintState = new HudHintState();
+  private activitySinceUpdate = false;
+  private hintDevice: 'keyboard' | 'gamepad' = 'keyboard';
   private lastReadMs = -Infinity;
   private previousFrameMs = NaN;
   private frameMs = NaN;
@@ -98,7 +112,7 @@ export class Hud {
     this.root = node(doc, 'div', 'sl-ui');
     options.host.append(this.root);
     this.element = node(doc, 'section', 'sl-hud');
-    this.element.dataset.mode = 'full';
+    this.element.dataset.mode = 'off';
     this.element.setAttribute('aria-label', 'Driving telemetry');
     this.root.append(this.element);
     this.recorder = new TelemetryRecorder(options.store, options);
@@ -138,7 +152,7 @@ export class Hud {
     this.camera = reading(stats, 'fov');
     const controls = node(doc, 'div', 'sl-hud__controls');
     controls.dataset.hudPersistent = '';
-    this.modeButton = node(doc, 'button', 'sl-button', 'HUD: Full · H');
+    this.modeButton = node(doc, 'button', 'sl-button', 'HUD: Off · H');
     this.modeButton.type = 'button';
     this.modeButton.addEventListener('click', this.cycleFromButton);
     this.collapseButton = node(
@@ -161,6 +175,13 @@ export class Hud {
     this.scoreChainTrack = node(doc, 'span', 'sl-hud__score-chain-track');
     this.scoreChain.append(this.scoreChainTrack);
     this.scoreChain.hidden = true;
+    // The reminder: bottom of the screen, persistent through HUD off, shown
+    // and hidden by the timing in hudHint.ts.
+    this.hint = node(doc, 'p', 'sl-hud__hint', HUD_HINT_TEXT.keyboard);
+    this.hint.dataset.hudPersistent = '';
+    this.hint.setAttribute('aria-hidden', 'true'); // A reminder, not a status.
+    this.hint.dataset.visible = 'true';
+    this.element.append(this.hint);
     this.notice = node(doc, 'div', 'sl-card sl-hud__recording');
     this.notice.dataset.hudPersistent = '';
     this.notice.setAttribute('role', 'status');
@@ -306,6 +327,23 @@ export class Hud {
     );
   }
 
+  /** Called every physics step with what the driver is doing; any input
+   * counts as activity except a resting stick or pedal under the threshold. */
+  noteInput(input: Readonly<HudHintInput>, actionCount = 0): void {
+    if (isHudInputActive(input, actionCount)) this.activitySinceUpdate = true;
+  }
+
+  /** Words the reminder for the device the driver last used. */
+  setInputDevice(device: 'keyboard' | 'gamepad'): void {
+    if (this.disposed || device === this.hintDevice) return;
+    this.hintDevice = device;
+    write(this.hint.firstChild as Text, HUD_HINT_TEXT[device]);
+  }
+
+  get hintVisible(): boolean {
+    return this.hint.dataset.visible === 'true';
+  }
+
   cycleMode(count = 1): void {
     if (!Number.isFinite(count) || Math.trunc(count) % 3 === 0) return;
     const index = this.mode === 'full' ? 0 : this.mode === 'minimal' ? 1 : 2;
@@ -350,6 +388,13 @@ export class Hud {
         ? this.frameMs + (delta - this.frameMs) * 0.1
         : delta;
     this.previousFrameMs = nowMs;
+    if (this.activitySinceUpdate) {
+      this.activitySinceUpdate = false;
+      this.hintState.noteActivity(nowMs);
+    }
+    const hintVisible = this.hintState.update(nowMs, this.mode === 'off');
+    if (hintVisible !== this.hintVisible)
+      this.hint.dataset.visible = hintVisible ? 'true' : 'false';
     if (nowMs - this.lastReadMs < HUD_INTERVAL_MS) return;
     this.lastReadMs = nowMs;
     this.exportStopped();

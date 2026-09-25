@@ -21,9 +21,80 @@ const test = base.extend<
   hudPage: async ({ page, hudBuild }, use) => {
     await page.goto(hudBuild.url);
     await page.waitForFunction(() => Boolean(window.__hudTest));
-    await page.evaluate(() => window.__hudTest.manual());
+    await page.evaluate(() => {
+      window.__hudTest.manual();
+      // The HUD boots off now, and off skips telemetry reads; these
+      // instrument tests want it on with one read already made.
+      window.__hudTest.hud.setMode('full');
+      window.__hudTest.advance(34);
+    });
     await use(page);
   },
+});
+
+test('boots with the HUD off and the reminder at the bottom, which times out, returns when idle and vanishes on input', async ({
+  page,
+  hudBuild,
+}) => {
+  await page.goto(hudBuild.url);
+  await page.waitForFunction(() => Boolean(window.__hudTest));
+  await page.evaluate(() => window.__hudTest.manual());
+  const hud = page.locator('.sl-hud');
+  const hint = page.locator('.sl-hud__hint');
+  await expect(hud).toHaveAttribute('data-mode', 'off');
+  // The instruments are hidden; the persistent mini-map is asserted on the
+  // real game in runtime.spec (this harness mounts no map).
+  await expect(page.locator('[data-reading="speed"]')).toBeHidden();
+  await page.evaluate(() => window.__hudTest.advance(34));
+  await expect(hint).toHaveAttribute('data-visible', 'true');
+  await expect(hint).toHaveText('Esc menu · O options · H HUD');
+  const viewport = page.viewportSize()!;
+  const box = (await hint.boundingBox())!;
+  expect(box.y + box.height / 2).toBeGreaterThan(viewport.height * 0.8);
+  // Times out after five seconds on its own.
+  await page.evaluate(() => window.__hudTest.advance(5000));
+  await expect(hint).toHaveAttribute('data-visible', 'false');
+  // Comes back after five idle seconds and stays.
+  await page.evaluate(() => window.__hudTest.advance(5000));
+  await expect(hint).toHaveAttribute('data-visible', 'true');
+  await page.evaluate(() => window.__hudTest.advance(30000));
+  await expect(hint).toHaveAttribute('data-visible', 'true');
+  // Any driving input hides it at once; a resting stick does not count.
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    api.hud.noteInput({
+      throttle: 0,
+      brake: 0,
+      steer: 0.03,
+      handbrake: false,
+      boost: false,
+    });
+    api.advance(34);
+  });
+  await expect(hint).toHaveAttribute('data-visible', 'true');
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    api.hud.noteInput({
+      throttle: 1,
+      brake: 0,
+      steer: 0,
+      handbrake: false,
+      boost: false,
+    });
+    api.advance(34);
+  });
+  await expect(hint).toHaveAttribute('data-visible', 'false');
+  await page.evaluate(() => window.__hudTest.advance(5000));
+  await expect(hint).toHaveAttribute('data-visible', 'true');
+  // With the HUD on, the reminder is gone entirely.
+  await page.getByLabel('Driving telemetry').focus();
+  await page.evaluate(() => {
+    window.__hudTest.hud.cycleMode(1);
+    window.__hudTest.advance(34);
+  });
+  await expect(hud).toHaveAttribute('data-mode', 'full');
+  await expect(hint).toBeHidden();
+  await expect(page.locator('[data-reading="speed"]')).toBeVisible();
 });
 
 test('capacity and live rate changes stop visibly and explain the stop in the CSV header', async ({
