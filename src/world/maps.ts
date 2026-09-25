@@ -191,6 +191,10 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
     // runway's centreline on alternating sides so hitting one is a small,
     // deliberate lane change rather than the default line; a fourth sits on
     // the east branch for the big-loop run. They point along the runway.
+    // The first one is the exception: dead on the centreline 40 m ahead of
+    // spawn, so the mechanic can be judged without hunting for a pad. It
+    // moves off the line once the kick and the economy are settled.
+    Object.freeze({ x: 0, z: -300, heading: NORTH, length: 12, width: 6 }),
     Object.freeze({ x: -10, z: -280, heading: NORTH, length: 12, width: 6 }),
     Object.freeze({ x: 10, z: -200, heading: NORTH, length: 12, width: 6 }),
     Object.freeze({ x: -10, z: -120, heading: NORTH, length: 12, width: 6 }),

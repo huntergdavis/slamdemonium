@@ -47,7 +47,16 @@ test('O opens while driving; P pauses and resumes; H and T remain usable while p
   // The game boots with the HUD off with the mini-map still up and the
   // reminder at the bottom; H cycles full, minimal, off.
   await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'off');
-  await expect(page.locator('.sl-mini-map')).toBeVisible();
+  // On screen, not merely rendered: at this 720 px viewport the short-
+  // viewport dock is only the hint tall, and the instruments once hung
+  // below it, off the bottom of the screen.
+  await expect(page.locator('.sl-mini-map')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('.sl-hud__drive')).toBeInViewport({ ratio: 1 });
+  // B is the test cheat: a full bar without earning it.
+  await page.keyboard.press('KeyB');
+  await expect
+    .poll(() => page.evaluate(() => window.__game.getTelemetry().boostMeter))
+    .toBe(1);
   await expect(page.locator('.sl-hud__hint')).toHaveAttribute(
     'data-visible',
     'true',

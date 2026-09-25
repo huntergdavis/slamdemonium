@@ -677,6 +677,11 @@ export class Vehicle {
             (s.speed / 40) *
             dt,
       );
+    // Flight earns too: airborne is last step's derived state (airState runs
+    // below), so a jump charges from its second step, at the same slow rate
+    // family as drifting. Every present source is a slow fill by decision.
+    if (s.airborne)
+      this.meter = Math.min(1, this.meter + t.get('airChargeRate') * dt);
     s.boostMeter = s.driftMeter = this.meter;
     s.boostEnvelope = this.boostEnvelope;
     s.throttle = this.controls.throttle;

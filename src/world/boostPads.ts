@@ -108,18 +108,21 @@ export function createBoostPadVisual(
   const positions = new Float32Array(specs.length * 9);
   specs.forEach((spec, i) => {
     const [a, b, c] = boostPadCorners(spec);
-    // Counter-clockwise seen from above so the face points up.
+    // Left, right, apex: counter-clockwise seen from above, so the face
+    // normal is +Y and the default front-face culling keeps it on screen.
+    // (Left, apex, right winds the other way: a pad that exists in the
+    // scene graph and is culled from every frame.)
     positions.set(
       [
         a[0],
         paintHeight,
         a[1],
-        c[0],
-        paintHeight,
-        c[1],
         b[0],
         paintHeight,
         b[1],
+        c[0],
+        paintHeight,
+        c[1],
       ],
       i * 9,
     );

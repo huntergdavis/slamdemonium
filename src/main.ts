@@ -717,6 +717,10 @@ async function boot(): Promise<void> {
     if (actions.swapAB % 2) options.session.swapSlots();
     if (actions.gizmos % 2) carVisual.toggleDebug();
     if (actions.camera > 0) cameraRig.cyclePreset(actions.camera);
+    // Test cheat: B fills the boost bar so boost behaviour can be judged
+    // without earning it. Shipped in every build, like T and F9: the CTO
+    // evaluates production preview builds, which carry no test API.
+    if (actions.fillBoost > 0) vehicle.setDriftMeter(1);
     if (actions.slowMotion % 2)
       tuning.set('timeScale', tuning.get('timeScale') === 0.25 ? 1 : 0.25);
     if (actions.pause % 2) {

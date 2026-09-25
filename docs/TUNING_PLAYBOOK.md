@@ -151,5 +151,6 @@ With the defaults, these are the numbers the car should roughly hit. If a tune d
 | G   | Debug gizmos (forces, contact points)                                               |
 | F9  | Start/stop a telemetry CSV recording                                                |
 | R   | Respawn                                                                             |
+| B   | Fill the boost bar at once (a test cheat, so boost can be judged without earning it) |
 
 Slow motion changes how many physics steps run per second, never the step length, so what you see at 0.25x is exactly what happens at full speed.

@@ -16,7 +16,7 @@ it('gives one kick and one boost grant per crossing, and re-arms on respawn', as
     const kick = store.get('padKick');
     const grant = store.get('padBoost');
     expect(kick).toBe(8);
-    expect(grant).toBe(0.35);
+    expect(grant).toBe(0.05);
     vehicle.respawn({ x: 130, y: 0.86, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -20 });
     setPad({
