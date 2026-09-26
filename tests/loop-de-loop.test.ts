@@ -137,6 +137,7 @@ describe('loop through the facade', () => {
     const world = {
       createStaticBox: vi.fn(() => next++),
       createStaticBody: vi.fn(() => next++),
+      createStaticMesh: vi.fn(() => next++),
       destroyBody: vi.fn(),
     } as unknown as IPhysicsWorld;
     const registry = createSurfaceRegistry();
@@ -155,7 +156,7 @@ describe('loop through the facade', () => {
     });
     const bodies = createSurfacedBodies(world, registry);
     const ids = installLoops(bodies, [loop]);
-    expect(ids).toHaveLength(loop.segments);
+    expect(ids).toHaveLength(1);
     for (const id of ids) {
       expect(
         resolve(true, {
@@ -169,21 +170,13 @@ describe('loop through the facade', () => {
     }
   });
 
-  it('builds one mesh per slab from the same descriptors as the colliders', () => {
+  it('builds one mesh from the same tessellation as the collider', () => {
     const scene = new Scene();
     const dispose = vi.fn();
     const material = { dispose } as unknown as Material;
     const visual = createLoopVisual(scene, material, [loop]);
-    const slabs = loopSlabDescriptors(loop);
-    expect(visual.root.children).toHaveLength(slabs.length);
-    slabs.forEach((slab, index) => {
-      const mesh = visual.root.children[index]!;
-      expect(mesh.position.y).toBeCloseTo(slab.center.y, 9);
-      const q = slab.rotation!;
-      expect(
-        mesh.quaternion.angleTo(new Quaternion(q.x, q.y, q.z, q.w)),
-      ).toBeCloseTo(0, 6);
-    });
+    expect(visual.root.children).toHaveLength(1);
+    expect(visual.root.children[0]!.position.length()).toBe(0);
     visual.dispose();
     expect(scene.children).toHaveLength(0);
     expect(dispose).not.toHaveBeenCalled();
@@ -205,12 +198,10 @@ describe('loop through the facade', () => {
     };
     const visual = createLoopVisual(scene, materialFor, [loop, east]);
     const meshes = visual.root.children as Mesh[];
-    expect(meshes).toHaveLength(loop.segments + east.segments * 3);
-    for (let i = 0; i < loop.segments; i++)
-      expect(meshes[i]!.material).toBe(plain);
-    for (let i = loop.segments; i < meshes.length; i++)
-      expect(meshes[i]!.material).toBe(sticky);
-    expect(materialFor).toHaveBeenCalledTimes(meshes.length);
+    expect(meshes).toHaveLength(2);
+    expect(meshes[0]!.material).toBe(plain);
+    expect(meshes[1]!.material).toBe(sticky);
+    expect(materialFor).toHaveBeenCalledTimes(2);
     visual.dispose();
   });
 });
