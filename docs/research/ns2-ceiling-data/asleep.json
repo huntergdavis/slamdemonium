@@ -1,0 +1,511 @@
+[
+ {
+  "name": "resident-dyn128",
+  "scenario": "resident dynamic 128",
+  "bodies": 128,
+  "active": [
+   128,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 2.3538,
+   "p50": 2.3911,
+   "p95": 3.3672,
+   "p99": 6.0651,
+   "max": 6.0651
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0069,
+   "p50": 0.0066,
+   "p95": 0.0071,
+   "p99": 0.0174,
+   "max": 0.0185
+  }
+ },
+ {
+  "name": "resident-dyn512",
+  "scenario": "resident dynamic 512",
+  "bodies": 512,
+  "active": [
+   512,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 6.186,
+   "p50": 5.3929,
+   "p95": 8.181,
+   "p99": 36.5177,
+   "max": 36.5177
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0056,
+   "p50": 0.0053,
+   "p95": 0.0059,
+   "p99": 0.014,
+   "max": 0.0281
+  }
+ },
+ {
+  "name": "resident-dyn1024",
+  "scenario": "resident dynamic 1024",
+  "bodies": 1024,
+  "active": [
+   1024,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 14.5229,
+   "p50": 11.3662,
+   "p95": 19.6467,
+   "p99": 112.0979,
+   "max": 112.0979
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0049,
+   "p50": 0.0048,
+   "p95": 0.0049,
+   "p99": 0.005,
+   "max": 0.0145
+  }
+ },
+ {
+  "name": "resident-dyn2048",
+  "scenario": "resident dynamic 2048",
+  "bodies": 2048,
+  "active": [
+   2048,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 31.1853,
+   "p50": 24.7041,
+   "p95": 42.6816,
+   "p99": 211.7637,
+   "max": 211.7637
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0054,
+   "p50": 0.0048,
+   "p95": 0.005,
+   "p99": 0.0181,
+   "max": 0.1176
+  }
+ },
+ {
+  "name": "resident-dyn4096",
+  "scenario": "resident dynamic 4096",
+  "bodies": 4096,
+  "active": [
+   4096,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 71.3986,
+   "p50": 49.3728,
+   "p95": 83.2978,
+   "p99": 780.1509,
+   "max": 780.1509
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0049,
+   "p50": 0.0048,
+   "p95": 0.0049,
+   "p99": 0.005,
+   "max": 0.0191
+  }
+ },
+ {
+  "name": "resident-dyn7000",
+  "scenario": "resident dynamic 7000",
+  "bodies": 7000,
+  "active": [
+   7000,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 140.219,
+   "p50": 87.797,
+   "p95": 114.7388,
+   "p99": 1727.2604,
+   "max": 1727.2604
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0069,
+   "p50": 0.0062,
+   "p95": 0.0109,
+   "p99": 0.0156,
+   "max": 0.0353
+  }
+ },
+ {
+  "name": "resident-static1024",
+  "scenario": "resident static 1024",
+  "bodies": 1024,
+  "active": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 0.016,
+   "p50": 0.0062,
+   "p95": 0.0068,
+   "p99": 0.5132,
+   "max": 0.5132
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0077,
+   "p50": 0.0062,
+   "p95": 0.0132,
+   "p99": 0.0156,
+   "max": 0.0337
+  }
+ },
+ {
+  "name": "resident-static4096",
+  "scenario": "resident static 4096",
+  "bodies": 4096,
+  "active": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 0.039,
+   "p50": 0.0062,
+   "p95": 0.0347,
+   "p99": 1.8533,
+   "max": 1.8533
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0082,
+   "p50": 0.0062,
+   "p95": 0.015,
+   "p99": 0.0161,
+   "max": 0.0336
+  }
+ },
+ {
+  "name": "resident-static7000",
+  "scenario": "resident static 7000",
+  "bodies": 7000,
+  "active": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "wake0_60": {
+   "n": 60,
+   "avg": 0.0641,
+   "p50": 0.0051,
+   "p95": 0.0055,
+   "p99": 3.4761,
+   "max": 3.4761
+  },
+  "rest240_480": {
+   "n": 240,
+   "avg": 0.0051,
+   "p50": 0.005,
+   "p95": 0.0051,
+   "p99": 0.0053,
+   "max": 0.0203
+  }
+ },
+ {
+  "name": "churn10",
+  "scenario": "promotion churn 10/s, window 128",
+  "promotionsPerSecond": 10,
+  "active": [
+   0,
+   5,
+   5,
+   5,
+   5,
+   5
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.0757,
+   "p50": 0.0722,
+   "p95": 0.1102,
+   "p99": 0.1153,
+   "max": 0.1209
+  }
+ },
+ {
+  "name": "churnAsleep10",
+  "scenario": "promotion churn 10/s, window 128, sleep after 0.05 s",
+  "promotionsPerSecond": 10,
+  "active": [
+   0,
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.0335,
+   "p50": 0.0371,
+   "p95": 0.0858,
+   "p99": 0.1298,
+   "max": 0.1701
+  }
+ },
+ {
+  "name": "churn30",
+  "scenario": "promotion churn 30/s, window 128",
+  "promotionsPerSecond": 30,
+  "active": [
+   0,
+   15,
+   15,
+   15,
+   15,
+   15
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.1798,
+   "p50": 0.1717,
+   "p95": 0.2292,
+   "p99": 0.2647,
+   "max": 0.3576
+  }
+ },
+ {
+  "name": "churnAsleep30",
+  "scenario": "promotion churn 30/s, window 128, sleep after 0.05 s",
+  "promotionsPerSecond": 30,
+  "active": [
+   0,
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.0685,
+   "p50": 0.0472,
+   "p95": 0.1058,
+   "p99": 0.1659,
+   "max": 4.4539
+  }
+ },
+ {
+  "name": "churn60",
+  "scenario": "promotion churn 60/s, window 128",
+  "promotionsPerSecond": 60,
+  "active": [
+   0,
+   30,
+   30,
+   30,
+   30,
+   30
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.4868,
+   "p50": 0.4565,
+   "p95": 0.7659,
+   "p99": 0.9045,
+   "max": 0.9753
+  }
+ },
+ {
+  "name": "churnAsleep60",
+  "scenario": "promotion churn 60/s, window 128, sleep after 0.05 s",
+  "promotionsPerSecond": 60,
+  "active": [
+   0,
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.1176,
+   "p50": 0.1248,
+   "p95": 0.1875,
+   "p99": 0.2283,
+   "max": 0.3067
+  }
+ },
+ {
+  "name": "churn120",
+  "scenario": "promotion churn 120/s, window 128",
+  "promotionsPerSecond": 120,
+  "active": [
+   1,
+   60,
+   60,
+   60,
+   60,
+   60
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.996,
+   "p50": 0.9112,
+   "p95": 1.4517,
+   "p99": 1.6423,
+   "max": 1.734
+  }
+ },
+ {
+  "name": "churnAsleep120",
+  "scenario": "promotion churn 120/s, window 128, sleep after 0.05 s",
+  "promotionsPerSecond": 120,
+  "active": [
+   1,
+   5,
+   5,
+   5,
+   5,
+   5
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.216,
+   "p50": 0.1928,
+   "p95": 0.3298,
+   "p99": 0.3694,
+   "max": 0.3834
+  }
+ },
+ {
+  "name": "churn240",
+  "scenario": "promotion churn 240/s, window 128",
+  "promotionsPerSecond": 240,
+  "active": [
+   2,
+   120,
+   120,
+   120,
+   120,
+   120
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 1.8204,
+   "p50": 1.6981,
+   "p95": 2.903,
+   "p99": 3.5543,
+   "max": 5.2303
+  }
+ },
+ {
+  "name": "churnAsleep240",
+  "scenario": "promotion churn 240/s, window 128, sleep after 0.05 s",
+  "promotionsPerSecond": 240,
+  "active": [
+   2,
+   10,
+   10,
+   10,
+   10,
+   10
+  ],
+  "steady240_720": {
+   "n": 480,
+   "avg": 0.2345,
+   "p50": 0.2118,
+   "p95": 0.3406,
+   "p99": 0.4649,
+   "max": 0.5554
+  }
+ },
+ {
+  "name": "wakeOnHit",
+  "scenario": "sleeping island of 64 hit by one box at 30 m/s",
+  "activeBeforeEvery60": [
+   64,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "asleepCost": {
+   "n": 240,
+   "avg": 0.0067,
+   "p50": 0.0062,
+   "p95": 0.0083,
+   "p99": 0.0145,
+   "max": 0.0407
+  },
+  "activeAfterEvery30": [
+   1,
+   65,
+   65,
+   65,
+   64,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "hit0_120": {
+   "n": 120,
+   "avg": 2.8082,
+   "p50": 2.9859,
+   "p95": 4.902,
+   "p99": 5.799,
+   "max": 8.1694
+  },
+  "hit120_480": {
+   "n": 360,
+   "avg": 0.2622,
+   "p50": 0.0061,
+   "p95": 2.5968,
+   "p99": 4.0427,
+   "max": 4.4295
+  }
+ }
+]

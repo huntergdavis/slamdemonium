@@ -1,0 +1,67 @@
+[
+ {
+  "records": 256,
+  "perMetre": 0.026,
+  "within90m": 5,
+  "promotedAtEnd": 4,
+  "farChangesPerStep": 0.03,
+  "update": {
+   "avg": 0.03,
+   "p50": 0.0206,
+   "p99": 0.0954,
+   "max": 4.3621
+  }
+ },
+ {
+  "records": 1024,
+  "perMetre": 0.102,
+  "within90m": 18,
+  "promotedAtEnd": 18,
+  "farChangesPerStep": 0.11,
+  "update": {
+   "avg": 0.0433,
+   "p50": 0.0305,
+   "p99": 0.1505,
+   "max": 5.5699
+  }
+ },
+ {
+  "records": 4096,
+  "perMetre": 0.41,
+  "within90m": 74,
+  "promotedAtEnd": 88,
+  "farChangesPerStep": 0.42,
+  "update": {
+   "avg": 0.0311,
+   "p50": 0.0271,
+   "p99": 0.0727,
+   "max": 0.3851
+  }
+ },
+ {
+  "records": 19000,
+  "perMetre": 1.9,
+  "within90m": 342,
+  "promotedAtEnd": 128,
+  "farChangesPerStep": 0.9,
+  "update": {
+   "avg": 0.0447,
+   "p50": 0.0216,
+   "p99": 0.3435,
+   "max": 1.1369
+  }
+ },
+ {
+  "records": 60000,
+  "perMetre": 6,
+  "within90m": 1080,
+  "promotedAtEnd": 128,
+  "farChangesPerStep": 1.02,
+  "update": {
+   "avg": 0.0242,
+   "p50": 0.0143,
+   "p99": 0.1921,
+   "max": 0.9373
+  }
+ }
+]
