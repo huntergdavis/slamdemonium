@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reason": "F1 normal feature-only content addition, PM-approved after an independent clean production build of 76ac6de2e781088138cb38899d4a0da51bfcda92 matched all 19 canonical asset records by raw bytes, gzip bytes and SHA-256. The ten newly recorded audio entries add 117,086 raw / 82,749 gzip bytes: seven OGG sounds (engine, tyre, boost attack/loop and asphalt/concrete/kerb impacts) total 74,921 raw / 70,761 gzip; the Howler backend is 40,469 raw / 10,984 gzip; the Howler and Kenney notices total 1,696 raw / 1,004 gzip. Player benefit: telemetry-driven engine, tyre, boost and surface-impact feedback makes grip, acceleration and collisions audible, with independent master mute and shipped licence notices. The backend and bank are gated behind genuine browser activation plus two animation frames, giving the driving view a paint opportunity before their requests. An independent Chromium probe used raw CDP Runtime.evaluate with userGesture:false for all pre-unlock observation and explicitly verified navigator.userActivation.hasBeenActive=false: the game was ready with 288 physics steps and zero backend/bank requests; synthetic click/key/pointer events also requested nothing. A genuine keypress was followed by two observed frame boundaries before the backend request, then all seven OGG files returned 200 and audio became ready with no page errors. This verifies the gate against actual browser activation state, avoiding Playwright evaluation silently granting activation. The accepted bank/backend cost is shipped bytes and post-activation loading, with no audio network competition during unactivated startup; it does not prove the still-unverified five-second broadband time-to-drive criterion or zero CPU cost for boot-side audio wiring. Only these ten new entries and their exact aggregate contribution are added. Every prior asset measurement, every allowance and allowance rationale, and the original O6 revision/method/toolchain remain unchanged; the source revision above identifies this scoped addition. Other accumulated growth remains charged: 45,314 raw / 13,649 gzip bytes against the resulting 3,807,260 raw / 1,153,806 gzip baseline. The 5 percent cumulative total cap remains an unreviewed-growth guard, with per-asset and new-asset gates intact. This records a planned measured inventory and its player benefit through the normal review path; it does not raise policy limits or refresh unrelated growth. Scoped update for PR #92: pooled instanced placeholder visuals for the 32 breakable props and bounded debris pool add the visible crash-slice route. The player benefit is that collisions and debris are visible and match their physics colliders. Reachability confirmed only the intended visual modules; the measured main-chunk contribution is +18,871 gzip bytes.",
+  "reason": "F1 normal feature-only content addition, PM-approved after an independent clean production build of 76ac6de2e781088138cb38899d4a0da51bfcda92 matched all 19 canonical asset records by raw bytes, gzip bytes and SHA-256. The ten newly recorded audio entries add 117,086 raw / 82,749 gzip bytes: seven OGG sounds (engine, tyre, boost attack/loop and asphalt/concrete/kerb impacts) total 74,921 raw / 70,761 gzip; the Howler backend is 40,469 raw / 10,984 gzip; the Howler and Kenney notices total 1,696 raw / 1,004 gzip. Player benefit: telemetry-driven engine, tyre, boost and surface-impact feedback makes grip, acceleration and collisions audible, with independent master mute and shipped licence notices. The backend and bank are gated behind genuine browser activation plus two animation frames, giving the driving view a paint opportunity before their requests. An independent Chromium probe used raw CDP Runtime.evaluate with userGesture:false for all pre-unlock observation and explicitly verified navigator.userActivation.hasBeenActive=false: the game was ready with 288 physics steps and zero backend/bank requests; synthetic click/key/pointer events also requested nothing. A genuine keypress was followed by two observed frame boundaries before the backend request, then all seven OGG files returned 200 and audio became ready with no page errors. This verifies the gate against actual browser activation state, avoiding Playwright evaluation silently granting activation. The accepted bank/backend cost is shipped bytes and post-activation loading, with no audio network competition during unactivated startup; it does not prove the still-unverified five-second broadband time-to-drive criterion or zero CPU cost for boot-side audio wiring. Only these ten new entries and their exact aggregate contribution are added. Every prior asset measurement, every allowance and allowance rationale, and the original O6 revision/method/toolchain remain unchanged; the source revision above identifies this scoped addition. Other accumulated growth remains charged: 45,314 raw / 13,649 gzip bytes against the resulting 3,807,260 raw / 1,153,806 gzip baseline. The 5 percent cumulative total cap remains an unreviewed-growth guard, with per-asset and new-asset gates intact. This records a planned measured inventory and its player benefit through the normal review path; it does not raise policy limits or refresh unrelated growth. Scoped update for PR #92: pooled instanced placeholder visuals for the 32 breakable props and bounded debris pool add the visible crash-slice route. The player benefit is that collisions and debris are visible and match their physics colliders. Reachability confirmed only the intended visual modules; the measured main-chunk contribution is +18,871 gzip bytes. Scoped update for the stylesheet only, PM-approved, from a clean production build of main at 5d0b8b4b (#147 merged): generated:assets/index.css is re-recorded at 26,741 raw / 6,200 gzip bytes, up 4,072 raw / 777 gzip from the 22,669 / 5,423 recorded at 7ba37bc (#65). The growth is seven merged, player-approved interface features, each measured by building the stylesheet at its merge commit: #69 telemetry-driven audio with the master mute control +1,105; #75 RPM tachometer +1,465; #77 tachometer identity +51; #120 free-drive crash scoring with the chain readout +639; #134 persistent mini-map +199; #140 HUD off at boot with the press-H reminder +431; #147 accelerator pads, the persistent mph and boost card and the short-viewport pin +182. None of these was recorded when it merged, so by #147 the stylesheet stood 24 bytes under its 4 KiB small-asset floor and the next interface change of any size would have failed the gate on accumulated, already-reviewed growth rather than on its own bytes. The new number is the honest base for that gate: the next feature is measured against what the UI weighs today, and the 4 KiB floor again means one interface increment, as the allowance rationale intends. Only this asset's record and its exact contribution to the recorded total change; every other asset measurement, every allowance and the allowance rationale, and the original revision, method and toolchain remain unchanged. Other accumulated growth (the JavaScript chunks) remains charged against the cumulative cap.",
   "allowance": {
     "totalPercent": 5,
     "assetPercent": 10,
@@ -22,7 +22,9 @@
       "level": 6,
       "mtime": 0,
       "aggregation": "sum of independently compressed files",
-      "excludedInstrumentation": [".vite/manifest.json"]
+      "excludedInstrumentation": [
+        ".vite/manifest.json"
+      ]
     },
     "toolchain": {
       "node": "v22.22.1",
@@ -38,10 +40,10 @@
         "sha256": "3c95f6d625564b67f2369c9e6a9324e58d83ee43447b7bf68bd9a5a790839946"
       },
       "generated:assets/index.css": {
-        "file": "assets/index-Cc103fAj.css",
-        "rawBytes": 22669,
-        "gzipBytes": 5423,
-        "sha256": "01f9acbe0704477c68218f20c989d8c7314825662d6132a44b640c55a7ee8355"
+        "file": "assets/index-C30lhNBv.css",
+        "rawBytes": 26741,
+        "gzipBytes": 6200,
+        "sha256": "4ab19b492d7002ba73c2af80eb433bfba7a180885486e61a5febebb75ef94962"
       },
       "source:index.html": {
         "file": "assets/index-ScsoAzmP.js",
@@ -129,8 +131,8 @@
       }
     },
     "total": {
-      "rawBytes": 3867169,
-      "gzipBytes": 1172677
+      "rawBytes": 3871241,
+      "gzipBytes": 1173454
     }
   }
 }
