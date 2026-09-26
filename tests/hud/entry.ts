@@ -67,7 +67,18 @@ const panel = mountOptionsPanel({
   readTelemetry: () => telemetry,
   persistenceOptions: { storage: null, hash: '' },
 });
+/** Crash score state the tests set by hand; the real game reads its model. */
+const score = {
+  total: 0,
+  chainCount: 0,
+  multiplier: 1,
+  chainRemainingSeconds: 0,
+  lastAward: 0,
+  awardAgeSeconds: Infinity,
+  awardSerial: 0,
+};
 const hudOptions: HudOptions = {
+  readScore: () => score,
   host: panel.root,
   store,
   session: panel.session,
@@ -140,6 +151,7 @@ const api = {
   render,
   state,
   sample,
+  score,
   manual: () => {
     state.automatic = false;
     state.capture = true;
