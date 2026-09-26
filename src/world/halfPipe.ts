@@ -1,8 +1,20 @@
-import { BoxGeometry, Group, Mesh, Quaternion, Vector3 } from 'three';
+import {
+  BoxGeometry,
+  BufferGeometry,
+  Float32BufferAttribute,
+  Group,
+  Mesh,
+  Quaternion,
+  Vector3,
+} from 'three';
 import type { Material, Scene } from 'three';
 import { SURFACE_IDS, type SurfaceId } from '../content/surfaces';
 import type { BodyId, V3 } from '../physics/adapter';
-import type { SurfacedBodies, SurfacedStaticBodyDesc } from './surfacedBodies';
+import type {
+  SurfacedBodies,
+  SurfacedStaticBodyDesc,
+  SurfacedStaticMeshDesc,
+} from './surfacedBodies';
 
 /** A long, ground-level U channel: the floor stays at world ground and two
  * curved walls rise on either side of the travel lane. The car drives through
@@ -165,6 +177,91 @@ export function halfPipeSlabDescriptors(
   return out;
 }
 
+/** One indexed solid mesh for both curved walls. Vertices are authored in
+ * world coordinates so physics and rendering consume the same tessellation. */
+export function halfPipeWallMeshDescriptor(
+  spec: Readonly<HalfPipeSpec>,
+): SurfacedStaticMeshDesc {
+  const surface = spec.surface ?? SURFACE_IDS.asphalt;
+  const f = scratch.forward.set(
+    -Math.sin(spec.heading),
+    0,
+    -Math.cos(spec.heading),
+  );
+  const l = scratch.left.set(0, 1, 0).cross(f).normalize();
+  const R = spec.radius;
+  const thickness = HALF_PIPE_THICKNESS;
+  const n = Math.max(
+    32,
+    Math.ceil((R * HALF_PIPE_EXIT_ANGLE) / HALF_PIPE_SEGMENT_ARC),
+  );
+  const d = HALF_PIPE_EXIT_ANGLE / n;
+  const vertices: V3[] = [];
+  const indices: number[] = [];
+  const add = (p: Vector3): number => {
+    vertices.push({ x: p.x, y: p.y, z: p.z });
+    return vertices.length - 1;
+  };
+  const quad = (a: number, b: number, c: number, d: number): void => {
+    indices.push(a, b, c, a, c, d);
+  };
+  for (const side of [-1, 1]) {
+    const rings: number[][] = [];
+    for (let i = 0; i <= n; i++) {
+      const phi = i * d;
+      const across = side * (spec.width / 2 + R * Math.sin(phi));
+      const y = R * (1 - Math.cos(phi));
+      const normal = new Vector3()
+        .copy(l)
+        .multiplyScalar(side * Math.sin(phi))
+        .setY(Math.cos(phi))
+        .normalize();
+      const top = new Vector3();
+      const bottom = new Vector3();
+      const ring: number[] = [];
+      for (const along of [-1, 1]) {
+        top
+          .set(spec.x, y, spec.z)
+          .addScaledVector(l, across)
+          .addScaledVector(f, (along * spec.deck) / 2);
+        bottom.copy(top).addScaledVector(normal, -thickness);
+        ring.push(add(top), add(bottom));
+      }
+      rings.push(ring);
+    }
+    for (let i = 0; i < n; i++) {
+      const a = rings[i]!;
+      const b = rings[i + 1]!;
+      // top and underside strips
+      quad(a[0]!, b[0]!, b[2]!, a[2]!);
+      quad(a[3]!, b[3]!, b[1]!, a[1]!);
+      // outer and inner curved edges
+      quad(a[0]!, a[1]!, b[1]!, b[0]!);
+      quad(a[2]!, b[2]!, b[3]!, a[3]!);
+    }
+    const first = rings[0]!;
+    const last = rings[n]!;
+    quad(first[0]!, first[2]!, first[3]!, first[1]!);
+    quad(last[0]!, last[1]!, last[3]!, last[2]!);
+  }
+  return {
+    center: { x: 0, y: 0, z: 0 },
+    vertices,
+    indices,
+    friction: 0.5,
+    restitution: 0,
+    surface,
+  };
+}
+
+function railDescriptors(
+  spec: Readonly<HalfPipeSpec>,
+): SurfacedStaticBodyDesc[] {
+  return halfPipeSlabDescriptors(spec).filter(
+    (slab) => slab.surface === SURFACE_IDS.concrete,
+  );
+}
+
 /** Ground-plane footprint of the whole channel and its wall lips. */
 export function halfPipeFootprint(spec: Readonly<HalfPipeSpec>): {
   x: number;
@@ -186,9 +283,11 @@ export function installHalfPipes(
   specs: readonly HalfPipeSpec[],
 ): readonly BodyId[] {
   const ids: BodyId[] = [];
-  for (const spec of specs)
-    for (const slab of halfPipeSlabDescriptors(spec))
-      ids.push(bodies.createStaticBody(slab));
+  for (const spec of specs) {
+    ids.push(bodies.createStaticMesh(halfPipeWallMeshDescriptor(spec)));
+    for (const rail of railDescriptors(spec))
+      ids.push(bodies.createStaticBody(rail));
+  }
   return ids;
 }
 
@@ -197,7 +296,7 @@ export interface HalfPipeVisual {
   dispose(): void;
 }
 
-/** One box mesh per slab, each in the material of its own surface. */
+/** One curved wall mesh plus two concrete coping meshes per pipe. */
 export function createHalfPipeVisual(
   scene: Scene,
   materialFor: (surface: SurfaceId) => Material,
@@ -205,9 +304,24 @@ export function createHalfPipeVisual(
 ): HalfPipeVisual {
   const root = new Group();
   root.name = 'half-pipes';
-  const geometries: BoxGeometry[] = [];
-  for (const spec of specs)
-    for (const slab of halfPipeSlabDescriptors(spec)) {
+  const geometries: BufferGeometry[] = [];
+  for (const spec of specs) {
+    const wall = halfPipeWallMeshDescriptor(spec);
+    const geometry = new BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new Float32BufferAttribute(
+        wall.vertices.flatMap((v) => [v.x, v.y, v.z]),
+        3,
+      ),
+    );
+    geometry.setIndex([...wall.indices]);
+    geometry.computeVertexNormals();
+    geometries.push(geometry);
+    const mesh = new Mesh(geometry, materialFor(wall.surface));
+    mesh.castShadow = mesh.receiveShadow = true;
+    root.add(mesh);
+    for (const slab of railDescriptors(spec)) {
       const geometry = new BoxGeometry(
         slab.halfExtents.x * 2,
         slab.halfExtents.y * 2,
@@ -221,6 +335,7 @@ export function createHalfPipeVisual(
       mesh.castShadow = mesh.receiveShadow = true;
       root.add(mesh);
     }
+  }
   scene.add(root);
   return {
     root,

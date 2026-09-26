@@ -85,11 +85,12 @@ describe('half-pipe geometry', () => {
 });
 
 describe('half-pipe through the facade', () => {
-  it('registers every slab with its surface and builds one mesh per slab in that surface material', () => {
+  it('registers one shared wall mesh plus two rail bodies and renders the same mesh', () => {
     let next = 900;
     const world = {
       createStaticBox: vi.fn(() => next++),
       createStaticBody: vi.fn(() => next++),
+      createStaticMesh: vi.fn(() => next++),
       destroyBody: vi.fn(),
     } as unknown as IPhysicsWorld;
     const registry = createSurfaceRegistry();
@@ -108,9 +109,20 @@ describe('half-pipe through the facade', () => {
     });
     const bodies = createSurfacedBodies(world, registry);
     const ids = installHalfPipes(bodies, [pipe]);
-    const slabs = halfPipeSlabDescriptors(pipe);
-    expect(ids).toHaveLength(slabs.length);
-    ids.forEach((id, i) => {
+    const rails = halfPipeSlabDescriptors(pipe).filter(
+      (slab) => slab.surface === SURFACE_IDS.concrete,
+    );
+    expect(ids).toHaveLength(rails.length + 1);
+    expect(
+      resolve(true, {
+        distance: 0.3,
+        point: { x: 0, y: 3, z: 0 },
+        normal: { x: 0, y: 1, z: 0 },
+        bodyId: ids[0]!,
+        surfaceId: 99,
+      }),
+    ).toBe(SURFACE_IDS.asphalt);
+    ids.slice(1).forEach((id, i) => {
       const hit = {
         distance: 0.3,
         point: { x: 0, y: 3, z: 0 },
@@ -120,7 +132,7 @@ describe('half-pipe through the facade', () => {
       };
       // The registry reports the authored surface; the rails are concrete
       // (a contact surface the tyre model then treats as no grip).
-      expect(resolve(true, hit)).toBe(slabs[i]!.surface);
+      expect(resolve(true, hit)).toBe(rails[i]!.surface);
     });
     const scene = new Scene();
     const asphalt = { name: 'a' } as unknown as Material;
@@ -130,15 +142,16 @@ describe('half-pipe through the facade', () => {
       (s) => (s === SURFACE_IDS.concrete ? concrete : asphalt),
       [pipe],
     );
-    expect(visual.root.children).toHaveLength(slabs.length);
-    slabs.forEach((slab, i) => {
-      const mesh = visual.root.children[i] as unknown as {
+    expect(visual.root.children).toHaveLength(rails.length + 1);
+    expect(
+      (visual.root.children[0] as unknown as { material: Material }).material,
+    ).toBe(asphalt);
+    rails.forEach((slab, i) => {
+      const mesh = visual.root.children[i + 1] as unknown as {
         material: Material;
         position: Vector3;
       };
-      expect(mesh.material).toBe(
-        slab.surface === SURFACE_IDS.concrete ? concrete : asphalt,
-      );
+      expect(mesh.material).toBe(concrete);
       expect(mesh.position.y).toBeCloseTo(slab.center.y, 9);
     });
     visual.dispose();
