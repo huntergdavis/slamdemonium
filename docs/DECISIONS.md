@@ -896,3 +896,17 @@ Gravity 20 therefore stays. The harder loop is the measured cost of the jump
 distance the CTO chose; lowering gravity makes the loop worse rather than better
 in the 17--18 range. The repeat artifacts are `scratch/loop-g16-r*.json`,
 `loop-g17-r*.json`, and `loop-g18-r*.json`; each triplicate is byte-identical.
+
+## The score appears only when it is happening (2026-09-25)
+
+The CTO asked what "free-drive score" and "chaining" meant, because he had never seen either. They shipped in #120 as a card in the HUD stack, and #140, the change he asked for, boots the HUD off; so the scoring he was being asked about had been invisible to him all day. His decision: not a fourth permanent element ("I don't want it too busy"), and not left in the HUD stack. The score fades in when he smashes something, stays while the chain is alive, and fades out a few seconds after it dies.
+
+**What it shows, and why in that order.** The chain window is 2 s and the multiplier caps at 4x, so the parts that carry tension are the multiplier and how much of the window is left: "I am on 3x and it is about to lapse". The readout is the multiplier large, the window as a bar draining under it (the same track style as the tuning card's chain line), the last award while it is fresh (under 0.9 s, as on the card), and the running total small. It sits fixed at the top-centre of the screen, in the eye line at speed, in every layout and HUD mode; it rides the same persistence seam as the map and the drive card, so it survives HUD off. It fades with the reminder's own rule: the hint's data-visible fade became one shared rule for everything transient on the driving screen, rather than a second animation.
+
+**Timing** (`src/ui/hudChain.ts`, pure state, tested without a DOM): visible while `chainCount > 0` and `chainRemainingSeconds > 0`; when the chain dies, by lapse or by respawn, it lingers 3 s and then fades. A new smash during the linger keeps it up. The 30 Hz HUD read drives it, which is enough for a 2 s bar.
+
+**Open for the CTO:** whether the last-award pop (+500) belongs on the transient readout or only the multiplier and window. The preview carries the pop so he judges it with his eyes; removing it is one hidden element.
+
+**Why it matters beyond the screen:** NS3, the timed run, is built on this scoring, and until he can see the multiplier while driving nobody can say whether a chain is sustainable at speed. The full HUD's crash score card stays where it is for the tuning lab.
+
+**Stylesheet:** +569 B, measured against the re-recorded baseline (#150), which had to land first: main sat 24 B under the floor.

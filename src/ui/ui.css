@@ -782,11 +782,52 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   pointer-events: none;
+}
+/* One fade for everything transient on the driving screen: the reminder
+   and the chain readout. */
+.sl-hud [data-visible] {
   opacity: 0;
   transition: opacity 300ms ease;
 }
-.sl-hud__hint[data-visible='true'] {
+.sl-hud [data-visible='true'] {
   opacity: 1;
+}
+/* The score only when it is happening: fixed top-centre in the eye line at
+   speed, in every layout and HUD mode; hudChain.ts times it. */
+.sl-hud__chain {
+  position: fixed;
+  top: 88px;
+  left: 50%;
+  width: 150px;
+  padding: 6px 10px 8px;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+.sl-chain__mult {
+  display: block;
+  font: 800 40px/1 var(--sl-mono);
+  color: var(--sl-warning);
+}
+.sl-hud__chain[data-max='true'] .sl-chain__mult {
+  color: var(--sl-accent);
+}
+.sl-chain__track {
+  height: 0.3rem;
+  margin-top: 6px;
+  color: var(--sl-warning);
+}
+.sl-chain__award {
+  display: block;
+  min-height: 1.2em;
+  color: var(--sl-accent);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+.sl-chain__total {
+  display: block;
+  color: var(--sl-muted);
+  font: 12px var(--sl-mono);
 }
 /* The hint only exists to bring the HUD back: hide it whenever the HUD is on. */
 .sl-hud:not([data-mode='off']) .sl-hud__hint {

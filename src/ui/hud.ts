@@ -1,5 +1,9 @@
 import type { TuningStore } from '../tuning/store';
-import type { CrashScoreState } from '../core/crashScore';
+import {
+  CRASH_CHAIN_WINDOW_SECONDS,
+  CRASH_MAX_MULTIPLIER,
+  type CrashScoreState,
+} from '../core/crashScore';
 import { steeringLock } from '../vehicle/controls';
 import {
   HudHistory,
@@ -9,6 +13,7 @@ import {
   type HudRenderTelemetry,
 } from './hudTelemetry';
 import { HudPlots } from './hudPlots';
+import { HudChainState, isChainAlive } from './hudChain';
 import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
 import { MiniMap, type MiniMapOptions } from './miniMap';
 import { node } from './paramControl';
@@ -88,6 +93,12 @@ export class Hud {
   private readonly scoreChain: HTMLElement;
   private readonly scoreChainText: Text;
   private readonly scoreChainTrack: HTMLElement;
+  private readonly chain: HTMLElement;
+  private readonly chainMult: Text;
+  private readonly chainTrack: HTMLElement;
+  private readonly chainAward: HTMLElement;
+  private readonly chainTotal: Text;
+  private readonly chainState = new HudChainState();
   private readonly plots: HudPlots;
   private readonly miniMap?: MiniMap;
   private readonly unsubscribe: () => void;
@@ -204,6 +215,27 @@ export class Hud {
     this.notice.hidden = true;
     reading(this.notice, 'recording', '');
     this.element.append(this.notice);
+    // The transient chain readout: the score only when it is happening.
+    // Persistent like the map and the drive card, fixed top-centre, faded
+    // by the shared data-visible rule and timed by hudChain.ts. The full
+    // HUD's crash score card stays as the tuning lab's detail view.
+    this.chain = node(doc, 'section', 'sl-card sl-hud__chain');
+    this.chain.dataset.hudPersistent = '';
+    this.chain.dataset.visible = 'false';
+    this.chain.setAttribute('aria-hidden', 'true'); // The card announces awards.
+    this.chainMult = reading(this.chain, 'chainMult', '×1', 'sl-chain__mult')
+      .firstChild as Text;
+    this.chainTrack = node(
+      doc,
+      'span',
+      'sl-hud__score-chain-track sl-chain__track',
+    );
+    this.chain.append(this.chainTrack);
+    this.chainAward = reading(this.chain, 'chainAward', '', 'sl-chain__award');
+    this.chainAward.hidden = true;
+    this.chainTotal = reading(this.chain, 'chainTotal', '0', 'sl-chain__total')
+      .firstChild as Text;
+    this.element.append(this.chain);
     if (options.miniMap)
       this.miniMap = new MiniMap({ host: this.element, ...options.miniMap });
     this.plots = new HudPlots(this.root);
@@ -415,7 +447,7 @@ export class Hud {
     this.lastReadMs = nowMs;
     this.exportStopped();
     this.updateNotice();
-    this.updateScore(this.options.readScore?.());
+    this.updateScore(nowMs, this.options.readScore?.());
     const collapsed = this.element.dataset.collapsed === 'true';
     // The mini-map is HUD-persistent, so keep its position live while the
     // instrument cards are collapsed or the HUD mode is off. HUDs without a
@@ -547,8 +579,12 @@ export class Hud {
     this.plots.draw(this.history, nowMs / 1000, reference);
   }
 
-  private updateScore(score: Readonly<CrashScoreState> | undefined): void {
+  private updateScore(
+    nowMs: number,
+    score: Readonly<CrashScoreState> | undefined,
+  ): void {
     if (!score) return;
+    this.updateChain(nowMs, score);
     write(this.scoreTotal, score.total.toLocaleString('en-US'));
     const showAward = score.awardAgeSeconds < 0.9 && score.lastAward > 0;
     this.scoreAward.hidden = !showAward;
@@ -573,6 +609,32 @@ export class Hud {
         (score.chainRemainingSeconds / 2) * 100 + '%',
       );
     }
+  }
+
+  /** The transient readout carries the tension: the multiplier large, the
+   * two-second window draining under it, the last award while it is fresh,
+   * the running total small. */
+  private updateChain(nowMs: number, score: Readonly<CrashScoreState>): void {
+    const visible = this.chainState.update(nowMs, score);
+    if (this.chain.dataset.visible !== String(visible))
+      this.chain.dataset.visible = String(visible);
+    if (!visible) return;
+    write(this.chainMult, '×' + score.multiplier);
+    this.chain.dataset.max = String(score.multiplier >= CRASH_MAX_MULTIPLIER);
+    this.chainTrack.style.setProperty(
+      '--sl-chain-progress',
+      (isChainAlive(score)
+        ? (score.chainRemainingSeconds / CRASH_CHAIN_WINDOW_SECONDS) * 100
+        : 0) + '%',
+    );
+    const showAward = score.awardAgeSeconds < 0.9 && score.lastAward > 0;
+    this.chainAward.hidden = !showAward;
+    if (showAward)
+      write(
+        this.chainAward.firstChild as Text,
+        '+' + score.lastAward.toLocaleString('en-US'),
+      );
+    write(this.chainTotal, score.total.toLocaleString('en-US'));
   }
 
   private fill(meter: Meter, value: number, maximum = 1): void {

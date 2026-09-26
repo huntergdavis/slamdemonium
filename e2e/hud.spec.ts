@@ -404,3 +404,72 @@ test('gates both getters before reading, cycles H, and keeps recording independe
   await expect(page.locator('.sl-hud__recording')).toContainText('5 samples');
   await expect(page.locator('.sl-hud__recording')).toBeVisible();
 });
+
+test('the chain readout shows the score only when it is happening: in with the first smash, up while the chain lives, out three seconds after it dies, HUD off throughout', async ({
+  page,
+  hudBuild,
+}) => {
+  await page.goto(hudBuild.url);
+  await page.waitForFunction(() => Boolean(window.__hudTest));
+  await page.evaluate(() => window.__hudTest.manual());
+  const chain = page.locator('.sl-hud__chain');
+  await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'off');
+  await page.evaluate(() => window.__hudTest.advance(34));
+  await expect(chain).toHaveAttribute('data-visible', 'false');
+  // First smash: 500 points, a fresh two-second window.
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    Object.assign(api.score, {
+      total: 500,
+      chainCount: 1,
+      multiplier: 1,
+      chainRemainingSeconds: 2,
+      lastAward: 500,
+      awardAgeSeconds: 0,
+      awardSerial: 1,
+    });
+    api.advance(34);
+  });
+  await expect(chain).toHaveAttribute('data-visible', 'true');
+  await expect(chain).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('[data-reading="chainMult"]')).toHaveText('×1');
+  await expect(page.locator('[data-reading="chainAward"]')).toHaveText('+500');
+  await expect(page.locator('[data-reading="chainTotal"]')).toHaveText('500');
+  // Third hit in the window: on 3x with half a second left, the award faded.
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    Object.assign(api.score, {
+      total: 3300,
+      chainCount: 3,
+      multiplier: 3,
+      chainRemainingSeconds: 0.5,
+      lastAward: 1500,
+      awardAgeSeconds: 1.5,
+      awardSerial: 3,
+    });
+    api.advance(34);
+  });
+  await expect(page.locator('[data-reading="chainMult"]')).toHaveText('×3');
+  await expect(page.locator('[data-reading="chainAward"]')).toBeHidden();
+  await expect(page.locator('.sl-chain__track')).toHaveAttribute(
+    'style',
+    /--sl-chain-progress:\s*25%/,
+  );
+  await expect(chain).toHaveAttribute('data-max', 'false');
+  // The window lapses: the model zeroes the chain; the readout lingers.
+  await page.evaluate(() => {
+    const api = window.__hudTest;
+    Object.assign(api.score, {
+      chainCount: 0,
+      multiplier: 1,
+      chainRemainingSeconds: 0,
+      awardAgeSeconds: 2,
+    });
+    api.advance(34);
+  });
+  await expect(chain).toHaveAttribute('data-visible', 'true');
+  await page.evaluate(() => window.__hudTest.advance(2900));
+  await expect(chain).toHaveAttribute('data-visible', 'true');
+  await page.evaluate(() => window.__hudTest.advance(100));
+  await expect(chain).toHaveAttribute('data-visible', 'false');
+});
