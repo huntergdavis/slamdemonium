@@ -1,8 +1,20 @@
-import { BoxGeometry, Group, Matrix4, Mesh, Quaternion, Vector3 } from 'three';
+import {
+  BufferGeometry,
+  Float32BufferAttribute,
+  Group,
+  Matrix4,
+  Mesh,
+  Quaternion,
+  Vector3,
+} from 'three';
 import type { Material, Scene } from 'three';
 import { SURFACE_IDS, type SurfaceId } from '../content/surfaces';
 import type { BodyId, V3 } from '../physics/adapter';
-import type { SurfacedBodies, SurfacedStaticBodyDesc } from './surfacedBodies';
+import type {
+  SurfacedBodies,
+  SurfacedStaticBodyDesc,
+  SurfacedStaticMeshDesc,
+} from './surfacedBodies';
 
 /** One authored loop-de-loop. `x`/`z` is the centre of the entry lane where
  * it meets the ground; `heading` is the entry direction in the ramp
@@ -242,6 +254,90 @@ export function loopSlabDescriptors(
   return slabs;
 }
 
+/** One continuous indexed surface for the lane and optional shoulders. */
+export function loopMeshDescriptor(
+  spec: Readonly<LoopSpec>,
+): SurfacedStaticMeshDesc {
+  const surface = spec.surface ?? SURFACE_IDS.asphalt;
+  const vertices: V3[] = [];
+  const indices: number[] = [];
+  const add = (p: Vector3): number => {
+    vertices.push({ x: p.x, y: p.y, z: p.z });
+    return vertices.length - 1;
+  };
+  const quad = (a: number, b: number, c: number, d: number): void => {
+    indices.push(a, b, c, a, c, d);
+  };
+  const thickness = LOOP_THICKNESS;
+  const n = Math.max(8, spec.segments);
+  const strips: Array<{ left: number; right: number; bank: number }> = [
+    { left: -spec.width / 2, right: spec.width / 2, bank: 0 },
+  ];
+  if (spec.shoulder) {
+    strips.push(
+      {
+        left: -spec.width / 2 - spec.shoulder.width,
+        right: -spec.width / 2,
+        bank: -spec.shoulder.bank,
+      },
+      {
+        left: spec.width / 2,
+        right: spec.width / 2 + spec.shoulder.width,
+        bank: spec.shoulder.bank,
+      },
+    );
+  }
+  for (const strip of strips) {
+    const rings: number[][] = [];
+    for (let i = 0; i <= n; i++) {
+      const theta = (i * 2 * Math.PI) / n;
+      const frame = laneFrame(spec, theta);
+      const ring: number[] = [];
+      for (const lateral of [strip.left, strip.right]) {
+        const point = new Vector3()
+          .copy(frame.point)
+          .addScaledVector(
+            scratch.right.crossVectors(frame.up, frame.tangent).normalize(),
+            lateral,
+          );
+        let normal = frame.up.clone();
+        if (strip.bank !== 0) {
+          const right = scratch.right;
+          const cos = Math.cos(strip.bank);
+          const sin = Math.sin(strip.bank);
+          normal = scratch.up
+            .copy(frame.up)
+            .multiplyScalar(cos)
+            .addScaledVector(right, -sin)
+            .normalize()
+            .clone();
+        }
+        ring.push(
+          add(point),
+          add(point.clone().addScaledVector(normal, -thickness)),
+        );
+      }
+      rings.push(ring);
+    }
+    for (let i = 0; i < n; i++) {
+      const a = rings[i]!;
+      const b = rings[i + 1]!;
+      quad(a[0]!, b[0]!, b[2]!, a[2]!);
+      quad(a[3]!, b[3]!, b[1]!, a[1]!);
+      quad(a[0]!, a[1]!, b[1]!, b[0]!);
+      quad(a[2]!, b[2]!, b[3]!, a[3]!);
+    }
+  }
+  return {
+    center: { x: 0, y: 0, z: 0 },
+    vertices,
+    indices,
+    friction: 0.5,
+    restitution: 0,
+    surface,
+  };
+}
+
 /** Ground-plane footprint for clearance checks: centre and radius of a
  * circle that contains every slab's footprint. */
 export function loopFootprint(spec: Readonly<LoopSpec>): {
@@ -277,16 +373,14 @@ export function loopExit(spec: Readonly<LoopSpec>): {
   };
 }
 
-/** Installs every loop through the facade so each slab registers asphalt in
- * the call that creates it. */
+/** Installs one shared mesh per loop through the surfaced facade. */
 export function installLoops(
   bodies: SurfacedBodies,
   specs: readonly LoopSpec[] = LOOP_LAYOUT,
 ): readonly BodyId[] {
   const ids: BodyId[] = [];
   for (const spec of specs)
-    for (const slab of loopSlabDescriptors(spec))
-      ids.push(bodies.createStaticBody(slab));
+    ids.push(bodies.createStaticMesh(loopMeshDescriptor(spec)));
   return ids;
 }
 
@@ -295,10 +389,7 @@ export interface LoopVisual {
   dispose(): void;
 }
 
-/** One box mesh per slab from the same descriptors the colliders use. Each
- * slab takes the material of its own surface (`materialFor`, normally the
- * track's `materials.forSurface`), so a loop with its own surface is
- * visibly its own; the materials stay owned by whoever supplied them. */
+/** One curved mesh per loop from the same tessellation as the collider. */
 export function createLoopVisual(
   scene: Scene,
   materialFor: Material | ((surface: SurfaceId) => Material),
@@ -306,24 +397,26 @@ export function createLoopVisual(
 ): LoopVisual {
   const root = new Group();
   root.name = 'loops';
-  const geometries: BoxGeometry[] = [];
+  const geometries: BufferGeometry[] = [];
   const pick =
     typeof materialFor === 'function' ? materialFor : () => materialFor;
-  for (const spec of specs)
-    for (const slab of loopSlabDescriptors(spec)) {
-      const geometry = new BoxGeometry(
-        slab.halfExtents.x * 2,
-        slab.halfExtents.y * 2,
-        slab.halfExtents.z * 2,
-      );
-      geometries.push(geometry);
-      const mesh = new Mesh(geometry, pick(slab.surface as SurfaceId));
-      mesh.position.set(slab.center.x, slab.center.y, slab.center.z);
-      const q = slab.rotation!;
-      mesh.quaternion.set(q.x, q.y, q.z, q.w);
-      mesh.castShadow = mesh.receiveShadow = true;
-      root.add(mesh);
-    }
+  for (const spec of specs) {
+    const meshDesc = loopMeshDescriptor(spec);
+    const geometry = new BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new Float32BufferAttribute(
+        meshDesc.vertices.flatMap((v) => [v.x, v.y, v.z]),
+        3,
+      ),
+    );
+    geometry.setIndex([...meshDesc.indices]);
+    geometry.computeVertexNormals();
+    geometries.push(geometry);
+    const mesh = new Mesh(geometry, pick(meshDesc.surface));
+    mesh.castShadow = mesh.receiveShadow = true;
+    root.add(mesh);
+  }
   scene.add(root);
   return {
     root,
