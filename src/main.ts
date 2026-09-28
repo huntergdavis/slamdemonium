@@ -47,7 +47,9 @@ import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
+import { createTimedRun } from './core/timedRun';
 import { createAwakeBudget } from './world/awakeBudget';
+import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
 import type { MiniMapLandmark } from './ui/miniMap';
 import {
@@ -149,6 +151,28 @@ async function boot(): Promise<void> {
   // Accelerator triangles: paint and a footprint test, no bodies. Driving
   // onto one adds padKick along the heading and padBoost of the bar, once
   // per visit; with drift charge slowed, this is how boost is earned.
+  // The timed run (NS3): the start line is a thing in the world he drives
+  // into; the clock runs to the goal; Enter is the retry, onto the line.
+  const timedRun = createTimedRun(map.runs?.[0]);
+  const runStartGate = map.runs?.[0]?.gates[0];
+  const runStart = runStartGate
+    ? {
+        position: {
+          x: runStartGate.x,
+          y: track.spawn.position.y,
+          z: runStartGate.z,
+        },
+        rotation: {
+          x: 0,
+          y: Math.sin(runStartGate.heading / 2),
+          z: 0,
+          w: Math.cos(runStartGate.heading / 2),
+        },
+      }
+    : track.spawn;
+  resources.push(
+    createRunGateVisual(view.scene, map.runs?.[0], track.config.paintHeight),
+  );
   const boostPads = createBoostPadTracker(map.boostPads);
   resources.push(
     createBoostPadVisual(view.scene, map.boostPads, track.config.paintHeight),
@@ -411,6 +435,12 @@ async function boot(): Promise<void> {
             );
         }
         crashScore.update(dt);
+        timedRun.update(
+          dt,
+          vehicle.telemetry.position.x,
+          vehicle.telemetry.position.z,
+          vehicle.telemetry.speed,
+        );
         propStreamer.update();
         awakeBudget.update(
           tuning.get('awakeBudget'),
@@ -517,6 +547,7 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     vehicle.respawn(track.spawn.position, track.spawn.rotation);
     resetPresentation();
+    timedRun.abandon();
     scripts.noteRespawn(track.spawn, 0);
     syncPause();
   }
@@ -526,8 +557,18 @@ async function boot(): Promise<void> {
    * on the same step the key is read, so "again" is one press and no wait. */
   function retry(): void {
     retryRequested = false;
-    respawn();
+    respawnRequested = false;
+    scripts.cancel();
+    replayStopped = replayActive = false;
+    massRebuild.flush();
+    // Onto the start line itself: the next step is an arrival and the
+    // countdown begins at once.
+    vehicle.respawn(runStart.position, runStart.rotation);
+    resetPresentation();
     crashScore.reset();
+    timedRun.reset();
+    scripts.noteRespawn(runStart, 0);
+    syncPause();
   }
   const massRebuild = new DebouncedMassRebuild(tuning, () => {
     vehicle.rebuildMassProperties();
@@ -624,6 +665,7 @@ async function boot(): Promise<void> {
     session: options.session,
     readTelemetry: () => vehicle.telemetry,
     readScore: () => crashScore.state,
+    readRun: () => timedRun.state,
     readRenderTelemetry: () => renderTelemetry,
     miniMap: {
       landmarks: miniMapLandmarks,

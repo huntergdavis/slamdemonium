@@ -1,5 +1,6 @@
 import { SURFACE_IDS } from '../content/surfaces';
 import type { BoostPadSpec } from './boostPads';
+import type { RunRouteSpec } from '../core/timedRun';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
@@ -32,6 +33,8 @@ export interface MapDefinition {
   readonly runways: readonly RunwaySpec[];
   /** Accelerator triangles: a speed kick and boost when driven over. */
   readonly boostPads: readonly BoostPadSpec[];
+  /** Timed-run routes (NS3); the first is the one on offer. */
+  readonly runs?: readonly RunRouteSpec[];
 }
 export type MapName = 'lab' | 'proving-ground';
 
@@ -199,6 +202,43 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
     Object.freeze({ x: 10, z: -200, heading: NORTH, length: 12, width: 6 }),
     Object.freeze({ x: -10, z: -120, heading: NORTH, length: 12, width: 6 }),
     Object.freeze({ x: 42, z: -150, heading: NORTH, length: 12, width: 6 }),
+  ]),
+  runs: Object.freeze([
+    // The first timed run: the start line 20 m ahead of the spawn on the main
+    // runway (boot shows it; retry lands on it), ease right onto the east
+    // branch, through the checkpoint before the forgiving 18 m loop (the one
+    // he called great), round it, and 200 m up its exit lane to the goal.
+    // About 750 m and one loop: a clean line and a clock, nothing to hunt.
+    // The checkpoint is what stops a straight run up the infield counting.
+    Object.freeze({
+      name: 'East loop',
+      gates: Object.freeze([
+        Object.freeze({
+          kind: 'start' as const,
+          x: 0,
+          z: PROVING_GROUND_SPAWN_Z + 20,
+          heading: NORTH,
+          width: 20,
+          length: 8,
+        }),
+        Object.freeze({
+          kind: 'checkpoint' as const,
+          x: 36,
+          z: -10,
+          heading: NORTH,
+          width: 24,
+          length: 8,
+        }),
+        Object.freeze({
+          kind: 'goal' as const,
+          x: 63,
+          z: 240,
+          heading: NORTH,
+          width: 30,
+          length: 8,
+        }),
+      ]),
+    }),
   ]),
   runways: Object.freeze([
     // Main: north-south through the centre, spawn at its south end.

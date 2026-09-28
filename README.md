@@ -70,7 +70,7 @@ Keyboard and controller both work, at the same time, with nothing to switch. A c
 | Handbrake | Space |
 | Boost | Left Shift |
 | Respawn (keeps the score) | R |
-| Retry: again from the start, score cleared | Enter |
+| Retry: onto the start line, score and run cleared | Enter |
 | Pause menu (resume, restart, options) | Escape |
 | Pause, without the menu | P |
 | Options panel, directly | O |

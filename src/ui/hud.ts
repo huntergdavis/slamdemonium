@@ -13,6 +13,7 @@ import {
   type HudRenderTelemetry,
 } from './hudTelemetry';
 import { HudPlots } from './hudPlots';
+import type { TimedRunState } from '../core/timedRun';
 import { HudChainState, isChainAlive } from './hudChain';
 import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
 import { MiniMap, type MiniMapOptions } from './miniMap';
@@ -45,6 +46,8 @@ export interface HudOptions extends RecorderOptions {
   >;
   readTelemetry: () => HudTelemetry | undefined;
   readScore?: () => Readonly<CrashScoreState>;
+  /** The timed run (NS3): countdown, clock and finish on the persistent seam. */
+  readRun?: () => Readonly<TimedRunState>;
   miniMap?: Omit<MiniMapOptions, 'host'>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
   /** Optional export sink for tests/integration. Default downloads a CSV. */
@@ -55,6 +58,15 @@ interface Meter {
   value: Text;
   load: Text;
   flags: Text;
+}
+
+/** m:ss.hh, the way a stopwatch reads; under a minute just ss.hh. */
+export function formatRunClock(seconds: number): string {
+  const total = Math.max(0, seconds);
+  const minutes = Math.floor(total / 60);
+  const rest = total - minutes * 60;
+  const body = rest.toFixed(2).padStart(minutes > 0 ? 5 : 4, '0');
+  return minutes > 0 ? `${minutes}:${body}` : body;
 }
 
 function write(text: Text, value: string): void {
@@ -99,6 +111,9 @@ export class Hud {
   private readonly chainAward: HTMLElement;
   private readonly chainTotal: Text;
   private readonly chainState = new HudChainState();
+  private readonly run: HTMLElement;
+  private readonly runClock: Text;
+  private readonly runLabel: Text;
   private readonly plots: HudPlots;
   private readonly miniMap?: MiniMap;
   private readonly unsubscribe: () => void;
@@ -236,6 +251,18 @@ export class Hud {
     this.chainTotal = reading(this.chain, 'chainTotal', '0', 'sl-chain__total')
       .firstChild as Text;
     this.element.append(this.chain);
+    // The timed run's readout: countdown, then the clock, then the finish
+    // time; shown only while a run is on, top-left, on the persistent seam.
+    this.run = node(doc, 'section', 'sl-card sl-hud__run');
+    this.run.dataset.hudPersistent = '';
+    this.run.dataset.visible = 'false';
+    this.run.dataset.phase = 'idle';
+    this.run.setAttribute('aria-live', 'polite');
+    this.runClock = reading(this.run, 'runClock', '', 'sl-run__clock')
+      .firstChild as Text;
+    this.runLabel = reading(this.run, 'runLabel', '', 'sl-run__label')
+      .firstChild as Text;
+    this.element.append(this.run);
     if (options.miniMap)
       this.miniMap = new MiniMap({ host: this.element, ...options.miniMap });
     this.plots = new HudPlots(this.root);
@@ -448,6 +475,7 @@ export class Hud {
     this.exportStopped();
     this.updateNotice();
     this.updateScore(nowMs, this.options.readScore?.());
+    this.updateRun(this.options.readRun?.());
     const collapsed = this.element.dataset.collapsed === 'true';
     // The mini-map is HUD-persistent, so keep its position live while the
     // instrument cards are collapsed or the HUD mode is off. HUDs without a
@@ -614,6 +642,32 @@ export class Hud {
   /** The transient readout carries the tension: the multiplier large, the
    * two-second window draining under it, the last award while it is fresh,
    * the running total small. */
+  private updateRun(run: Readonly<TimedRunState> | undefined): void {
+    if (!run) return;
+    const visible = run.phase !== 'idle';
+    if (this.run.dataset.visible !== String(visible))
+      this.run.dataset.visible = String(visible);
+    if (this.run.dataset.phase !== run.phase)
+      this.run.dataset.phase = run.phase;
+    if (!visible) return;
+    if (run.phase === 'countdown') {
+      write(this.runClock, String(Math.ceil(run.countdown)));
+      write(this.runLabel, 'READY');
+      return;
+    }
+    // GO flashes for the first moments of the clock, then the clock reads.
+    const go = run.phase === 'running' && run.clock < 0.8;
+    write(this.runClock, go ? 'GO' : formatRunClock(run.clock));
+    write(
+      this.runLabel,
+      run.phase === 'finished'
+        ? 'FINISH'
+        : run.gatesTaken > 1
+          ? `GATE ${run.gatesTaken - 1} of ${run.gateCount - 1}`
+          : 'RUN',
+    );
+  }
+
   private updateChain(nowMs: number, score: Readonly<CrashScoreState>): void {
     const visible = this.chainState.update(nowMs, score);
     if (this.chain.dataset.visible !== String(visible))

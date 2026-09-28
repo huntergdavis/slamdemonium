@@ -51,3 +51,35 @@ test('the e2e build boots the lab ring, and ?map=proving-ground boots the provin
   expect((back.position as { x: number }).x).toBeCloseTo(130, 1);
   expect(errors).toEqual([]);
 });
+
+test('on the proving ground, Enter puts the car on the start line and the run counts down, runs, and abandons on respawn', async ({
+  page,
+}) => {
+  await page.goto('./?map=proving-ground');
+  await page.waitForFunction(() => window.__game?.ready);
+  await page.evaluate(() => window.__game.perf!.pauseSimulation(true));
+  const run = page.locator('.sl-hud__run');
+  await expect(run).toHaveAttribute('data-phase', 'idle');
+  // Retry: onto the line, and the arrival starts the countdown at once.
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => window.__game.stepMany(2));
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const p = window.__game.getTelemetry().position as { z: number };
+        return Math.round(p.z);
+      }),
+    )
+    .toBe(-320);
+  await expect(run).toHaveAttribute('data-phase', 'countdown');
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText('3');
+  await page.evaluate(() => window.__game.stepMany(360));
+  await expect(run).toHaveAttribute('data-phase', 'running');
+  await page.evaluate(() => window.__game.stepMany(120));
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText('1.00');
+  // R is the respawn that keeps the score and abandons the run.
+  await page.keyboard.press('KeyR');
+  await page.evaluate(() => window.__game.stepMany(2));
+  await expect(run).toHaveAttribute('data-phase', 'idle');
+  await expect(run).toHaveAttribute('data-visible', 'false');
+});

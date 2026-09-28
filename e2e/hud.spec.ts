@@ -473,3 +473,40 @@ test('the chain readout shows the score only when it is happening: in with the f
   await page.evaluate(() => window.__hudTest.advance(100));
   await expect(chain).toHaveAttribute('data-visible', 'false');
 });
+
+test('the run readout shows only while a run is on: countdown, GO, the clock with gates, the finish, then gone, HUD off throughout', async ({
+  page,
+  hudBuild,
+}) => {
+  await page.goto(hudBuild.url);
+  await page.waitForFunction(() => Boolean(window.__hudTest));
+  await page.evaluate(() => window.__hudTest.manual());
+  const run = page.locator('.sl-hud__run');
+  await expect(page.locator('.sl-hud')).toHaveAttribute('data-mode', 'off');
+  await page.evaluate(() => window.__hudTest.advance(34));
+  await expect(run).toHaveAttribute('data-visible', 'false');
+  const set = (patch: Record<string, unknown>) =>
+    page.evaluate((p) => {
+      Object.assign(window.__hudTest.run, p);
+      window.__hudTest.advance(34);
+    }, patch);
+  await set({ phase: 'countdown', countdown: 2.4, gatesTaken: 1 });
+  await expect(run).toHaveAttribute('data-visible', 'true');
+  await expect(run).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText('3');
+  await expect(page.locator('[data-reading="runLabel"]')).toHaveText('READY');
+  await set({ phase: 'running', countdown: 0, clock: 0.2 });
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText('GO');
+  await set({ clock: 12.345, gatesTaken: 2 });
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText('12.35');
+  await expect(page.locator('[data-reading="runLabel"]')).toHaveText(
+    'GATE 1 of 2',
+  );
+  await set({ clock: 75.5 });
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText('1:15.50');
+  await set({ phase: 'finished', gatesTaken: 3, clock: 41.07 });
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText('41.07');
+  await expect(page.locator('[data-reading="runLabel"]')).toHaveText('FINISH');
+  await set({ phase: 'idle', clock: 0, gatesTaken: 0 });
+  await expect(run).toHaveAttribute('data-visible', 'false');
+});
