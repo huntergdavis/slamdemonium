@@ -146,7 +146,7 @@ export function poseAt(path: RoadPath, station: number): RoadPose {
   const b = samples[hi]!;
   const span = b.s - a.s;
   const t = span > 0 ? (s - a.s) / span : 0;
-  let dh = b.heading - a.heading;
+  const dh = b.heading - a.heading;
   return {
     x: a.x + (b.x - a.x) * t,
     z: a.z + (b.z - a.z) * t,
