@@ -107,6 +107,13 @@ export class VehicleTelemetry {
   airTime = 0;
   lastAirTime = 0;
   landingCount = 0;
+  /** Reused seam record for systems that need the exact grounded-to-airborne
+   * transition. Captured before the physics step from the suspension result. */
+  readonly airLaunch = {
+    active: false,
+    position: new Vector3(),
+    velocity: new Vector3(),
+  };
   /** 0..1 authority the air control applied this step; 0 whenever grounded. */
   airControlWeight = 0;
   /** Shared impact severity of the most recent counted landing: closing
