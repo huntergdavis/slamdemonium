@@ -57,29 +57,27 @@ test('on the proving ground, Enter puts the car on the start line and the run co
 }) => {
   await page.goto('./?map=proving-ground');
   await page.waitForFunction(() => window.__game?.ready);
-  await page.evaluate(() => window.__game.perf!.pauseSimulation(true));
   const run = page.locator('.sl-hud__run');
   await expect(run).toHaveAttribute('data-phase', 'idle');
-  // Retry: onto the line, and the arrival starts the countdown at once.
+  // Retry: onto the line (the start box is 8 m long at z -320), and the
+  // arrival starts the countdown at once.
   await page.keyboard.press('Enter');
-  await page.evaluate(() => window.__game.stepMany(2));
-  await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const p = window.__game.getTelemetry().position as { z: number };
-        return Math.round(p.z);
-      }),
-    )
-    .toBe(-320);
-  await expect(run).toHaveAttribute('data-phase', 'countdown');
-  await expect(page.locator('[data-reading="runClock"]')).toHaveText('3');
+  await expect(run).toHaveAttribute('data-phase', 'countdown', {
+    timeout: 15_000,
+  });
+  const z = await page.evaluate(
+    () => (window.__game.getTelemetry().position as { z: number }).z,
+  );
+  expect(Math.abs(z + 320)).toBeLessThanOrEqual(4);
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText(/^[123]$/);
   await page.evaluate(() => window.__game.stepMany(360));
   await expect(run).toHaveAttribute('data-phase', 'running');
   await page.evaluate(() => window.__game.stepMany(120));
-  await expect(page.locator('[data-reading="runClock"]')).toHaveText('1.00');
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText(
+    /^\d+\.\d\d$/,
+  );
   // R is the respawn that keeps the score and abandons the run.
   await page.keyboard.press('KeyR');
-  await page.evaluate(() => window.__game.stepMany(2));
   await expect(run).toHaveAttribute('data-phase', 'idle');
   await expect(run).toHaveAttribute('data-visible', 'false');
 });

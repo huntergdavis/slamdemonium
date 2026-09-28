@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { CrashScoreState } from '../src/core/crashScore';
-import { HUD_CHAIN_LINGER_MS, HudChainState, isChainAlive } from '../src/ui/hudChain';
+import {
+  HUD_CHAIN_LINGER_MS,
+  HudChainState,
+  isChainAlive,
+} from '../src/ui/hudChain';
 
 const quiet: CrashScoreState = {
   total: 0,
@@ -36,9 +40,15 @@ describe('the transient chain readout', () => {
   it('stays while the chain is alive and fades out three seconds after it dies', () => {
     const chain = new HudChainState();
     chain.update(0, smash({}));
-    expect(chain.update(1500, smash({ chainRemainingSeconds: 0.5 }))).toBe(true);
+    expect(chain.update(1500, smash({ chainRemainingSeconds: 0.5 }))).toBe(
+      true,
+    );
     // The window lapses: the model zeroes the chain.
-    const dead = smash({ chainCount: 0, multiplier: 1, chainRemainingSeconds: 0 });
+    const dead = smash({
+      chainCount: 0,
+      multiplier: 1,
+      chainRemainingSeconds: 0,
+    });
     expect(chain.update(2000, dead)).toBe(true);
     expect(chain.update(2000 + HUD_CHAIN_LINGER_MS - 1, dead)).toBe(true);
     expect(chain.update(2000 + HUD_CHAIN_LINGER_MS, dead)).toBe(false);
@@ -54,6 +64,16 @@ describe('the transient chain readout', () => {
     chain.update(6000, dead);
     expect(chain.update(6000 + HUD_CHAIN_LINGER_MS - 1, dead)).toBe(true);
     expect(chain.update(6000 + HUD_CHAIN_LINGER_MS, dead)).toBe(false);
+  });
+
+  it('ends the linger on the read it is due even when the wall clock carries fractions', () => {
+    const chain = new HudChainState();
+    const t0 = 962.1 + 34 + 34; // A real requestAnimationFrame clock plus two reads.
+    chain.update(t0, smash({}));
+    const dead = smash({ chainCount: 0, chainRemainingSeconds: 0 });
+    chain.update(t0 + 34, dead);
+    chain.update(t0 + 34 + 2900, dead);
+    expect(chain.update(t0 + 34 + 2900 + 100, dead)).toBe(false);
   });
 
   it('a respawn ends the chain like a lapse, and a bad clock changes nothing', () => {
