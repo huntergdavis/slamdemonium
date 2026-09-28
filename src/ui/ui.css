@@ -1180,6 +1180,12 @@
   z-index: 3;
   width: min(420px, 100%);
 }
+/* The map list: plain stacked entries, nothing sticky. */
+.sl-pause .sl-pause__maps > .sl-button {
+  position: static;
+  display: block;
+  margin: 6px auto;
+}
 .sl-pause
   :is(
     .sl-pause__entry,

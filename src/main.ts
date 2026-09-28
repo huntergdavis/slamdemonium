@@ -45,7 +45,14 @@ import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
 import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
-import { MAPS, resolveMapName } from './world/maps';
+import { MAPS } from './world/maps';
+import {
+  chooseMapName,
+  mapUrl,
+  readStoredMapName,
+  shouldOfferMapsAtBoot,
+  storeMapName,
+} from './world/mapChoice';
 import { createRunwayVisual } from './world/runways';
 import { createTimedRun } from './core/timedRun';
 import { createAwakeBudget } from './world/awakeBudget';
@@ -93,8 +100,28 @@ async function boot(): Promise<void> {
   // The world is a named map: the proving ground by default, the lab ring
   // with `?map=lab` (and in the e2e build). Every structure below is the
   // map's data.
-  const map =
-    MAPS[resolveMapName(location.search, import.meta.env.VITE_DEFAULT_MAP)];
+  const mapStorage = (() => {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  })();
+  const storedMapName = readStoredMapName(mapStorage);
+  const mapName = chooseMapName(
+    location.search,
+    import.meta.env.VITE_DEFAULT_MAP,
+    storedMapName,
+  );
+  const offerMapsAtBoot = shouldOfferMapsAtBoot(
+    location.search,
+    import.meta.env.VITE_DEFAULT_MAP,
+    storedMapName,
+  );
+  // An explicit URL switch is a choice too: the plain URL keeps it next time.
+  if (new URLSearchParams(location.search).get('map') === mapName)
+    storeMapName(mapStorage, mapName);
+  const map = MAPS[mapName];
   const track = createTestTrack(view.scene, {
     maxAnisotropy: view.renderer.capabilities.getMaxAnisotropy(),
     config: {
@@ -658,7 +685,28 @@ async function boot(): Promise<void> {
     readGamepad: () => input.gamepad.state,
     readAudioState: () => menuAudio?.state,
     onToggleAudioMute: () => menuAudio?.toggleMasterMute(),
+    maps: {
+      current: mapName,
+      entries: Object.entries(MAPS).map(([name, entry]) => ({
+        name,
+        label: entry.label,
+      })),
+      onSelect(name) {
+        if (name === mapName) {
+          pauseMenu.setOpen(false);
+          return;
+        }
+        if (Object.hasOwn(MAPS, name)) {
+          storeMapName(mapStorage, name as keyof typeof MAPS);
+          location.assign(mapUrl(location.pathname, name as keyof typeof MAPS));
+        }
+      },
+    },
   });
+  if (offerMapsAtBoot)
+    // The first boot ever offers the list, once; every boot after that goes
+    // straight to the remembered map. The e2e build's default never prompts.
+    requestAnimationFrame(() => pauseMenu.openMaps());
   const hud = mountHud({
     host: options.root,
     store: tuning,

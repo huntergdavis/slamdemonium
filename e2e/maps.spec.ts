@@ -81,3 +81,40 @@ test('on the proving ground, Enter puts the car on the start line and the run co
   await expect(run).toHaveAttribute('data-phase', 'idle');
   await expect(run).toHaveAttribute('data-visible', 'false');
 });
+
+test('the pause menu lists the maps, marks the current one, and picking another boots it', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.waitForFunction(() => window.__game?.ready);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Pause menu' })).toBeVisible();
+  await page.getByRole('button', { name: /^Map · Lab ring/ }).click();
+  const list = page.getByRole('dialog', { name: 'Map', exact: true });
+  await expect(list).toBeVisible();
+  await expect(list.locator('button[data-map]')).toHaveCount(3);
+  await expect(list.locator('button[data-map="lab"]')).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
+  await list.locator('button[data-map="circuit"]').click();
+  await page.waitForURL(/\?map=circuit$/);
+  await page.waitForFunction(() => window.__game?.ready);
+  const spawn = await page.evaluate(
+    () => window.__game.getTelemetry().position as { x: number; z: number },
+  );
+  // The circuit's spawn: 40 m short of its start line on the west side.
+  expect(Math.abs(spawn.x + 850)).toBeLessThan(60);
+  expect(Math.hypot(spawn.x, spawn.z)).toBeGreaterThan(1000);
+  await expect(page.locator('.sl-hud__run')).toHaveAttribute(
+    'data-phase',
+    'idle',
+  );
+  // The choice is remembered: the plain URL boots the circuit now.
+  await page.goto('./');
+  await page.waitForFunction(() => window.__game?.ready);
+  const again = await page.evaluate(
+    () => window.__game.getTelemetry().position as { x: number; z: number },
+  );
+  expect(Math.hypot(again.x, again.z)).toBeGreaterThan(1000);
+});
