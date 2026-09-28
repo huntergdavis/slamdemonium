@@ -206,7 +206,7 @@ async function boot(): Promise<void> {
   const breakableProps = createBreakableProps({
     physics,
     pools: propPools,
-    placements: BREAKABLE_PROP_PLACEMENTS,
+    placements: map.placements ?? BREAKABLE_PROP_PLACEMENTS,
     vehicleBody: vehicle.body,
     onBreak: (severity) => crashScore.recordBreakSeverity(severity),
     initialActiveIndices: [],
@@ -225,7 +225,7 @@ async function boot(): Promise<void> {
     },
   });
   const propStreamRecords = createPropStreamRecords(
-    BREAKABLE_PROP_PLACEMENTS,
+    map.placements ?? BREAKABLE_PROP_PLACEMENTS,
     32,
   );
   const propStreamer = createPropStreamer({
@@ -669,6 +669,7 @@ async function boot(): Promise<void> {
     readRenderTelemetry: () => renderTelemetry,
     miniMap: {
       landmarks: miniMapLandmarks,
+      route: map.route,
       halfSize: Math.max(
         track.config.pavedRadius,
         track.config.barrierInnerRadius,

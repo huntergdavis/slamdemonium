@@ -138,7 +138,11 @@ describe('map selection', () => {
     expect(resolveMapName('?map=moon', 'lab')).toBe('lab');
     expect(resolveMapName('', 'moon')).toBe(DEFAULT_MAP_NAME);
     expect(resolveMapName('')).toBe('proving-ground');
-    expect(Object.keys(MAPS).sort()).toEqual(['lab', 'proving-ground']);
+    expect(Object.keys(MAPS).sort()).toEqual([
+      'circuit',
+      'lab',
+      'proving-ground',
+    ]);
   });
 
   it('keeps the lab exactly as the fixtures know it', () => {

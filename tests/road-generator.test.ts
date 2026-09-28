@@ -6,7 +6,7 @@ import {
   sampleRoad,
   shoulderPlacements,
   type RoadSegment,
-} from '../scripts/track/roadGenerator';
+} from '../src/world/roadGenerator';
 import { runwayLaneClearance } from '../src/world/runways';
 
 const NORTH = Math.PI;

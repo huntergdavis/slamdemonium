@@ -1,6 +1,8 @@
 import { SURFACE_IDS } from '../content/surfaces';
 import type { BoostPadSpec } from './boostPads';
 import type { RunRouteSpec } from '../core/timedRun';
+import type { BreakablePlacement } from './breakableProps';
+import { createCircuitMap } from './circuit';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
@@ -35,8 +37,13 @@ export interface MapDefinition {
   readonly boostPads: readonly BoostPadSpec[];
   /** Timed-run routes (NS3); the first is the one on offer. */
   readonly runs?: readonly RunRouteSpec[];
+  /** The map's own breakable props; without them the shared phase-two
+   * placements are used (the lab ring and the proving ground). */
+  readonly placements?: readonly BreakablePlacement[];
+  /** A polyline the mini-map draws as the route, for maps that are a road. */
+  readonly route?: readonly { readonly x: number; readonly z: number }[];
 }
-export type MapName = 'lab' | 'proving-ground';
+export type MapName = 'lab' | 'proving-ground' | 'circuit';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -299,6 +306,7 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
 export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   lab: LAB_MAP,
   'proving-ground': PROVING_GROUND_MAP,
+  circuit: createCircuitMap(),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 

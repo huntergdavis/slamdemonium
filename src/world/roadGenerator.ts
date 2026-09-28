@@ -1,6 +1,6 @@
-import type { Quat, V3 } from '../../src/physics/adapter';
-import type { BreakablePlacement } from '../../src/world/breakableProps';
-import type { RunwaySpec } from '../../src/world/runways';
+import type { Quat, V3 } from '../physics/adapter';
+import type { BreakablePlacement } from './breakableProps';
+import type { RunwaySpec } from './runways';
 
 /** Authoring 10 km of road as data (NS2). A plan is straights and arcs;
  * sampling it gives a centreline with a heading at every few metres, and

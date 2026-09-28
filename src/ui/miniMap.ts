@@ -12,6 +12,9 @@ export interface MiniMapOptions {
   readonly landmarks: readonly MiniMapLandmark[];
   /** Half-width of the square world view, in metres. */
   readonly halfSize: number;
+  /** A route to draw as a closed outline: the road on a map that is one. */
+  readonly route?:
+    readonly { readonly x: number; readonly z: number }[] | undefined;
 }
 
 /** A fixed HUD map. Its canvas and landmark list are created once; update()
@@ -21,6 +24,8 @@ export class MiniMap {
   private readonly canvas: HTMLCanvasElement;
   private readonly context: CanvasRenderingContext2D | null;
   private readonly landmarks: readonly MiniMapLandmark[];
+  private readonly route:
+    readonly { readonly x: number; readonly z: number }[] | undefined;
   private readonly halfSize: number;
   private disposed = false;
 
@@ -42,6 +47,7 @@ export class MiniMap {
     options.host.append(this.root);
     this.context = this.canvas.getContext('2d');
     this.landmarks = options.landmarks;
+    this.route = options.route;
     if (!Number.isFinite(options.halfSize) || options.halfSize <= 0)
       throw new RangeError('Mini-map half-size must be positive.');
     this.halfSize = options.halfSize;
@@ -67,6 +73,19 @@ export class MiniMap {
     ctx.lineTo(size - margin, center);
     ctx.stroke();
 
+    if (this.route && this.route.length > 1) {
+      ctx.strokeStyle = 'rgba(190, 210, 220, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      this.route.forEach((p, i) => {
+        const x = center + p.x * scale;
+        const y = center - p.z * scale;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+    }
     for (const landmark of this.landmarks) {
       const x = center + landmark.x * scale;
       const y = center - landmark.z * scale;

@@ -1,15 +1,18 @@
-import { SURFACE_IDS } from '../../src/content/surfaces';
-import type { RunGateSpec, RunRouteSpec } from '../../src/core/timedRun';
-import type { BoostPadSpec } from '../../src/world/boostPads';
-import type { BreakablePlacement } from '../../src/world/breakableProps';
-import type { HalfPipeSpec } from '../../src/world/halfPipe';
+import { SURFACE_IDS } from '../content/surfaces';
+import type { RunGateSpec, RunRouteSpec } from '../core/timedRun';
+import type { BoostPadSpec } from './boostPads';
+import type { BreakablePlacement } from './breakableProps';
+import type { HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
   MIN_FAIR_LOOP_RADIUS,
+  loopFootprint,
+  loopLanePose,
   type LoopSpec,
-} from '../../src/world/loopDeLoop';
-import type { MapDefinition } from '../../src/world/maps';
-import type { RampSpec } from '../../src/world/ramps';
+} from './loopDeLoop';
+import type { MapDefinition } from './maps';
+import { rampFootprint, type RampSpec } from './ramps';
+import { runwayLaneClearance, type RunwaySpec } from './runways';
 import {
   clusterPlacements,
   lanesAlong,
@@ -77,8 +80,7 @@ export const CIRCUIT_STATIONS = Object.freeze({
   checkpoints: [2500, 5000, 7500],
 });
 
-/** Not in the map list until the CTO chooses it; the name is its own. */
-export interface CircuitMap extends Omit<MapDefinition, 'name'> {
+export interface CircuitMap extends MapDefinition {
   readonly name: 'circuit';
   readonly path: RoadPath;
   readonly placements: readonly BreakablePlacement[];
@@ -158,18 +160,86 @@ export function createCircuitMap(): CircuitMap {
       width: 60,
     },
   ];
-  const lanes = lanesAlong(path, CIRCUIT_LANE_WIDTH, 20);
-  const placements: BreakablePlacement[] = [
-    ...shoulderPlacements(path, {
-      density: 1.5,
-      nearest: 11,
-      farthest: 24,
-      seed: 11,
-    }),
-  ];
-  CIRCUIT_STATIONS.clusters.forEach((s, i) =>
-    placements.push(...clusterPlacements(path, s, i % 2 ? 1 : -1, 16)),
+  const lanes: RunwaySpec[] = lanesAlong(path, CIRCUIT_LANE_WIDTH, 20);
+  /** A straight lane from one ground point to another, no crossbars. */
+  const link = (
+    ax: number,
+    az: number,
+    bx: number,
+    bz: number,
+    width: number,
+  ): RunwaySpec => {
+    const dx = bx - ax;
+    const dz = bz - az;
+    return {
+      x: (ax + bx) / 2,
+      z: (az + bz) / 2,
+      heading: Math.atan2(-dx, -dz),
+      length: Math.hypot(dx, dz),
+      width,
+      markerMeters: 0,
+    };
+  };
+  // Each loop exits its helix one shift to the side; a lane leads the car
+  // back to the centreline over 200 m.
+  for (const [spec, station] of [
+    [loops[0]!, CIRCUIT_STATIONS.forgivingLoop],
+    [loops[1]!, CIRCUIT_STATIONS.hardLoop],
+  ] as const) {
+    const exit = loopLanePose(spec, 2 * Math.PI).point;
+    const back = at(station + 260);
+    lanes.push(link(exit.x, exit.z, back.x, back.z, spec.width));
+  }
+  // The aquifer: a lane off the road into the channel's mouth, and one out
+  // of its far end back to the road.
+  const mouth = at(CIRCUIT_STATIONS.halfPipe - 110);
+  const tail = at(CIRCUIT_STATIONS.halfPipe + 110);
+  const off = at(CIRCUIT_STATIONS.halfPipe - 360);
+  const on = at(CIRCUIT_STATIONS.halfPipe + 360);
+  lanes.push(
+    link(off.x, off.z, mouth.x + left.x * 60, mouth.z + left.z * 60, 14),
+    link(tail.x + left.x * 60, tail.z + left.z * 60, on.x, on.z, 14),
   );
+  const scattered: BreakablePlacement[] = shoulderPlacements(path, {
+    density: 1.5,
+    nearest: 11,
+    farthest: 24,
+    seed: 11,
+  });
+  CIRCUIT_STATIONS.clusters.forEach((s, i) =>
+    scattered.push(...clusterPlacements(path, s, i % 2 ? 1 : -1, 16)),
+  );
+  // Nothing inside a structure's footprint, in the aquifer's cut, or on a
+  // link lane: the shoulders are clear where something else stands.
+  const footprints = [
+    ...loops.map((l) => ({
+      ...loopFootprint(l),
+      radius: loopFootprint(l).radius + 2,
+    })),
+    ...ramps.map((r) => ({
+      ...rampFootprint(r),
+      radius: rampFootprint(r).radius + 2,
+    })),
+  ];
+  const links = lanes.slice(Math.round(path.length / 20));
+  const pipeBox = { along: halfPipes[0]!.deck / 2 + 60, across: 60 };
+  const inPipe = (x: number, z: number) => {
+    const f = { x: -Math.sin(pipe.heading), z: -Math.cos(pipe.heading) };
+    const dx = x - halfPipes[0]!.x;
+    const dz = z - halfPipes[0]!.z;
+    const along = dx * f.x + dz * f.z;
+    const across = dx * f.z - dz * f.x;
+    return (
+      Math.abs(along) <= pipeBox.along && Math.abs(across) <= pipeBox.across
+    );
+  };
+  const placements = scattered.filter((p) => {
+    const { x, z } = p.position;
+    if (footprints.some((f) => Math.hypot(x - f.x, z - f.z) <= f.radius))
+      return false;
+    if (inPipe(x, z)) return false;
+    return links.every((lane) => runwayLaneClearance(lane, x, z) > 2);
+  });
   const gates: RunGateSpec[] = [
     gate(path, 0, 'start'),
     ...CIRCUIT_STATIONS.checkpoints.map((s) => gate(path, s, 'checkpoint')),
@@ -177,6 +247,9 @@ export function createCircuitMap(): CircuitMap {
   ];
   const runs: RunRouteSpec[] = [{ name: 'Circuit lap', gates }];
   const spawn = at(path.length - 40); // 40 m short of the start line, facing it.
+  const route = path.samples
+    .filter((_s, i) => i % 12 === 0)
+    .map((s) => ({ x: s.x, z: s.z }));
   return {
     name: 'circuit',
     label: 'Circuit (10 km)',
@@ -198,6 +271,7 @@ export function createCircuitMap(): CircuitMap {
     runways: lanes,
     boostPads: pads,
     runs,
+    route,
     path,
     placements,
   };
