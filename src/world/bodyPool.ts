@@ -6,25 +6,32 @@ import type { SurfacedBodies, SurfacedPooledBoxDesc } from './surfacedBodies';
  *
  * Body budget: Jolt is initialised with 8192 bodies. The default track uses
  * 130 (one ground, 128 barrier segments, one car), four ramps and 48 loop
- * slabs. This phase-one pool adds 960 (192 breakables and 768 debris), for
- * 1142 bodies total and about 7050 spare. A denser smash route is a change to these two
- * numbers, not to the lifecycle mechanism.
+ * slabs. The pools add 2816 (2048 breakables and 768 debris), for 2998
+ * bodies total and about 5190 spare. A denser smash route is a change to
+ * these two numbers, not to the lifecycle mechanism.
+ *
+ * Breakables: 2048 resident slots, promoted ASLEEP. Measured 2026-09-25
+ * (docs/research/ns2-physics-ceiling.md): a sleeping body in the
+ * simulation costs nothing (7000 resident asleep: 0.007 ms a step) and the
+ * first contact wakes it, so the resident count is a memory and boot-time
+ * budget, not a step-time one. The step-time budget is the awake count,
+ * held by the awake budget (awakeBudget.ts). The old 192-slot, 128-awake
+ * cap existed only because promotion woke every body it placed.
  *
  * Debris: 768 fragments is 96 smashed props with 8 fragments each alive at
  * the same time. When the pool is exhausted the oldest active fragment is
  * retired and reused, so a long chain degrades gracefully instead of failing.
- * Breakables: 192 reserved promotion slots sized for the phase-one streamed
- * world; the runtime active cap is measured separately so phase two can hold
- * more authored records without allowing every nearby record to wake at once.
- * The current authored map uses fewer records. Phase C decides shapes and
- * masses; the placeholders below only reserve the bodies at boot so that no
- * body is ever created or destroyed mid-session, which is what keeps the
- * WebAssembly heap regression exactly equal to its 60 second baseline. */
-export const POOL_BUDGET = Object.freeze({ breakables: 192, debris: 768 });
+ * Phase C decides shapes and masses; the placeholders below only reserve
+ * the bodies at boot so that no body is ever created or destroyed
+ * mid-session, which is what keeps the WebAssembly heap regression exactly
+ * equal to its 60 second baseline. */
+export const POOL_BUDGET = Object.freeze({ breakables: 2048, debris: 768 });
 
 export interface BodyPoolSpec {
   readonly count: number;
   readonly desc: SurfacedPooledBoxDesc;
+  /** Acquired bodies join the simulation sleeping (see POOL_BUDGET). */
+  readonly asleep?: boolean;
 }
 
 /** Fixed-capacity pool over pre-created bodies. acquire/release allocate
@@ -83,7 +90,7 @@ export class BodyPool {
       this.activeCount++;
     }
     this.stamps[slot] = ++this.stamp;
-    this.bodies.activate(id, pos, quat);
+    this.bodies.activate(id, pos, quat, this.spec.asleep === true);
     return id;
   }
 
@@ -96,7 +103,7 @@ export class BodyPool {
       this.active[slot] = 1;
       this.activeCount++;
       this.stamps[slot] = ++this.stamp;
-      this.bodies.activate(id, pos, quat);
+      this.bodies.activate(id, pos, quat, this.spec.asleep === true);
       return id;
     }
     return undefined;
@@ -146,6 +153,7 @@ export interface PropPools {
 export function createPropPools(bodies: SurfacedBodies): PropPools {
   const breakables = new BodyPool(bodies, {
     count: POOL_BUDGET.breakables,
+    asleep: true,
     desc: {
       // Small scenery must give way to the car. Keeping these pooled bodies
       // dynamic avoids an immovable-wall response before deferred breakage

@@ -29,7 +29,7 @@ export interface SurfacedBodies {
   createStaticBody(desc: SurfacedStaticBodyDesc): BodyId;
   createStaticMesh(desc: SurfacedStaticMeshDesc): BodyId;
   createPooledBox(desc: SurfacedPooledBoxDesc): BodyId;
-  activate(id: BodyId, pos: V3, quat: Quat): void;
+  activate(id: BodyId, pos: V3, quat: Quat, asleep?: boolean): void;
   deactivate(id: BodyId): void;
   isActive(id: BodyId): boolean;
   /** Scoped removal: unregisters and destroys. Not for the hot path. */
@@ -76,8 +76,8 @@ export function createSurfacedBodies(
         surface,
       );
     },
-    activate(id, pos, quat) {
-      world.activateBody(id, pos, quat);
+    activate(id, pos, quat, asleep = false) {
+      world.activateBody(id, pos, quat, asleep);
     },
     deactivate(id) {
       world.deactivateBody(id);

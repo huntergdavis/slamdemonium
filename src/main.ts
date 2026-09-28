@@ -47,11 +47,12 @@ import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { MAPS, resolveMapName } from './world/maps';
 import { createRunwayVisual } from './world/runways';
+import { createAwakeBudget } from './world/awakeBudget';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
 import type { MiniMapLandmark } from './ui/miniMap';
 import {
   createBreakableProps,
-  MAX_ACTIVE_BREAKABLES,
+  MAX_RESIDENT_BREAKABLES,
 } from './world/breakableProps';
 import { BREAKABLE_PROP_PLACEMENTS } from './world/breakablePlacements';
 import {
@@ -185,7 +186,19 @@ async function boot(): Promise<void> {
     vehicleBody: vehicle.body,
     onBreak: (severity) => crashScore.recordBreakSeverity(severity),
     initialActiveIndices: [],
-    maxActiveProps: MAX_ACTIVE_BREAKABLES,
+    maxActiveProps: MAX_RESIDENT_BREAKABLES,
+  });
+  // Promoted props sleep until touched; the step-time budget is how many
+  // are awake, and this puts the farthest back to sleep when it is exceeded.
+  const awakeBudget = createAwakeBudget({
+    physics,
+    props: breakableProps,
+    readVehiclePosition: (out) => {
+      const p = vehicle.telemetry.position;
+      out.x = p.x;
+      out.y = p.y;
+      out.z = p.z;
+    },
   });
   const propStreamRecords = createPropStreamRecords(
     BREAKABLE_PROP_PLACEMENTS,
@@ -197,7 +210,7 @@ async function boot(): Promise<void> {
     // Dense phase-two fields need a tighter promotion window: at 60–80 m/s
     // this still gives roughly one second to promote before contact while
     // keeping the candidate query inside the active-content budget.
-    maxPromoted: MAX_ACTIVE_BREAKABLES,
+    maxPromoted: MAX_RESIDENT_BREAKABLES,
     enterRadius: 90,
     exitRadius: 130,
     readVehiclePosition: (out) => {
@@ -398,6 +411,10 @@ async function boot(): Promise<void> {
         }
         crashScore.update(dt);
         propStreamer.update();
+        awakeBudget.update(
+          tuning.get('awakeBudget'),
+          tuning.get('awakeKeepRadius'),
+        );
         history.afterStep();
         track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;

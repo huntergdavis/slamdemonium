@@ -5,7 +5,7 @@
 import { performance } from 'node:perf_hooks';
 import { writeFileSync } from 'node:fs';
 import { it } from 'vitest';
-import { activeBodies } from './joltProbe';
+import { createAwakeBudget } from '../../../src/world/awakeBudget';
 import { scriptVehicleHarness } from '../../../tests/scriptVehicleHarness';
 import type { BodyId } from '../../../src/physics/adapter';
 import { SURFACE_IDS } from '../../../src/content/surfaces';
@@ -45,10 +45,22 @@ const PAD = {
 };
 
 /** Field: `count` boxes scattered in a 40 m wide lane over `length` m ahead of the spawn line at z=0 (car spawns at z=-80 driving +z), plus one heap of `heap` boxes at z = length/2 dead ahead. All sleep before the run. */
-async function drive(count: number, heap: number, speed: number, length = 400) {
+interface BudgetOpts {
+  budget: number;
+  keepRadius: number;
+  exemptFasterThan?: number;
+}
+async function drive(
+  count: number,
+  heap: number,
+  speed: number,
+  length = 400,
+  budgetOpts?: BudgetOpts,
+) {
   const rig = await scriptVehicleHarness({ flatPlane: true });
   const { vehicle, loop, setPad, surfacedBodies, world } = rig;
   const s = vehicle.telemetry;
+  const activeBodies = () => world.awakeBodyCount();
   let seed = 11;
   const rnd = () =>
     (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
@@ -73,6 +85,28 @@ async function drive(count: number, heap: number, speed: number, length = 400) {
       Q,
     );
   }
+  const budget = budgetOpts
+    ? createAwakeBudget({
+        physics: world,
+        props: {
+          propCapacity: ids.length,
+          fragmentCapacity: 0,
+          propHalfExtents: DESC.halfExtents,
+          fragmentHalfExtents: DESC.halfExtents,
+          copyActivePropIds(out) {
+            for (let i = 0; i < ids.length; i++) out[i] = ids[i]!;
+            return ids.length;
+          },
+          copyActiveFragmentIds() {
+            return 0;
+          },
+        },
+        readVehiclePosition: (out) => Object.assign(out, s.position),
+        exemptFasterThan: budgetOpts.exemptFasterThan,
+      })
+    : undefined;
+  let sleptTotal = 0;
+  let nearestSlept = Infinity;
   // Let everything settle and sleep (car stationary at spawn).
   vehicle.respawn({ x: 0, y: 0.86, z: -80 }, { x: 0, y: 1, z: 0, w: 0 });
   for (let i = 0; i < 240; i++) loop.stepMany(1);
@@ -87,6 +121,10 @@ async function drive(count: number, heap: number, speed: number, length = 400) {
   for (let step = 0; step < steps; step++) {
     const t0 = performance.now();
     loop.stepMany(1);
+    if (budget) {
+      sleptTotal += budget.update(budgetOpts!.budget, budgetOpts!.keepRadius);
+      nearestSlept = Math.min(nearestSlept, budget.nearestSleptDistance);
+    }
     samples.push(performance.now() - t0);
     if (step % 60 === 0) {
       active.push(activeBodies());
@@ -99,12 +137,21 @@ async function drive(count: number, heap: number, speed: number, length = 400) {
   for (let step = 0; step < 600; step++) {
     const t0 = performance.now();
     loop.stepMany(1);
+    if (budget)
+      sleptTotal += budget.update(budgetOpts!.budget, budgetOpts!.keepRadius);
     after.push(performance.now() - t0);
     if (step % 120 === 0) activeAfter.push(activeBodies());
   }
   rig.dispose();
   return {
-    scenario: `car at ${speed} m/s through ${count} sleeping boxes over ${length} m and a heap of ${heap}`,
+    scenario:
+      `car at ${speed} m/s through ${count} sleeping boxes over ${length} m and a heap of ${heap}` +
+      (budgetOpts
+        ? ` budget ${budgetOpts.budget} keep ${budgetOpts.keepRadius} m exempt>${budgetOpts.exemptFasterThan ?? 3} m/s`
+        : ''),
+    budget: budgetOpts ?? null,
+    sleptTotal,
+    nearestSlept,
     awakeBeforeRun: asleep,
     activeEvery60: active,
     carZEvery60: zs,
@@ -130,6 +177,69 @@ it('NS2 car pileup probe', async () => {
     ['car-heap64-30', () => drive(0, 64, 30)],
     ['car-heap128-30', () => drive(0, 128, 30)],
     ['car-field1024-heap64-40', () => drive(1024, 64, 40)],
+    [
+      'budget-heap128-96-keep30-all',
+      () =>
+        drive(0, 128, 30, 400, {
+          budget: 96,
+          keepRadius: 30,
+          exemptFasterThan: Infinity,
+        }),
+    ],
+    [
+      'budget-heap128-96-keep30-ex3',
+      () =>
+        drive(0, 128, 30, 400, {
+          budget: 96,
+          keepRadius: 30,
+          exemptFasterThan: 3,
+        }),
+    ],
+    [
+      'budget-heap128-96-keep30-ex1',
+      () =>
+        drive(0, 128, 30, 400, {
+          budget: 96,
+          keepRadius: 30,
+          exemptFasterThan: 1,
+        }),
+    ],
+    [
+      'budget-heap128-96-keep50-ex3',
+      () =>
+        drive(0, 128, 30, 400, {
+          budget: 96,
+          keepRadius: 50,
+          exemptFasterThan: 3,
+        }),
+    ],
+    [
+      'budget-heap128-64-keep30-ex3',
+      () =>
+        drive(0, 128, 30, 400, {
+          budget: 64,
+          keepRadius: 30,
+          exemptFasterThan: 3,
+        }),
+    ],
+    [
+      'budget-field1024-heap64-40-96-ex3',
+      () =>
+        drive(1024, 64, 40, 400, {
+          budget: 96,
+          keepRadius: 30,
+          exemptFasterThan: 3,
+        }),
+    ],
+    [
+      'budget-field1024-heap64-40-96-all',
+      () =>
+        drive(1024, 64, 40, 400, {
+          budget: 96,
+          keepRadius: 30,
+          exemptFasterThan: Infinity,
+        }),
+    ],
   ];
   const results: unknown[] = [];
   for (const [name, fn] of cases) {

@@ -109,11 +109,23 @@ export interface IPhysicsWorld {
   /** Boot only: creates the body but does not add it to the simulation. */
   createPooledBox(desc: PooledBoxDesc): BodyId;
   /** Places an inactive pooled body and adds it to the simulation with zero
-   * velocity. Idempotent for an already active body (it is moved). */
-  activateBody(id: BodyId, pos: V3, quat: Quat): void;
+   * velocity. Idempotent for an already active body (it is moved). With
+   * `asleep`, a dynamic body joins the simulation sleeping: it costs nothing
+   * until something touches it, and the first contact wakes it. Measured
+   * 2026-09-25 (docs/research/ns2-physics-ceiling.md): asleep bodies are
+   * free at any count; awake ones cost about 17 us each per step. */
+  activateBody(id: BodyId, pos: V3, quat: Quat, asleep?: boolean): void;
   /** Removes a body from the simulation without destroying it. */
   deactivateBody(id: BodyId): void;
   isBodyActive(id: BodyId): boolean;
+  /** True while Jolt is simulating the body (in the simulation and awake). */
+  isBodyAwake(id: BodyId): boolean;
+  /** Puts an awake body to sleep in place, keeping it in the simulation;
+   * the next contact wakes it. The awake-body budget's lever. */
+  sleepBody(id: BodyId): void;
+  /** Rigid bodies Jolt is simulating this step, the car and its debris
+   * included. O(1). */
+  awakeBodyCount(): number;
   /** Scoped removal for teardown: destroys the body. Never on the hot path. */
   destroyBody(id: BodyId): void;
   updateMassProperties(id: BodyId, desc: MassDesc): void;
