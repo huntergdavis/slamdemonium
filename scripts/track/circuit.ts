@@ -21,17 +21,18 @@ import {
 } from './roadGenerator';
 
 /** The 10 km circuit (NS2), authored as a plan and stations. A rounded
- * rectangle, 3.6 by 1.7 km with 300 m corners, plus one lane-change
- * chicane pair on the first long straight: 10.08 km, about three minutes
- * flat out. Everything on it is placed by station along the centreline so
+ * rectangle, 3.7 by 1.7 km with 400 m corners (flat out at 60 m/s), plus
+ * one lane-change chicane pair on the first long straight: 10.1 km, about
+ * three minutes flat out. Everything on it is placed by station along the centreline so
  * moving a set piece is one number. The timed run is one lap: the start
  * box at station 0, three checkpoints, the goal 20 m short of the start. */
 const DEG = Math.PI / 180;
 const NORTH = Math.PI;
 export const CIRCUIT_LANE_WIDTH = 16;
-const LONG = 3600;
+const LONG = 3700;
 const SHORT = 1700;
-const CORNER = 300;
+/** 400 m: flat out at 60 m/s (0.9 g), the CTO's choice; the lap is won on speed and boost, not braking. */
+const CORNER = 400;
 const CHICANE_RADIUS = 200;
 const CHICANE_ANGLE = 30 * DEG;
 
@@ -69,10 +70,10 @@ const START = { x: -(SHORT / 2), z: -(LONG / 2 - CORNER), heading: NORTH };
 export const CIRCUIT_STATIONS = Object.freeze({
   pads: [300, 400, 500, 5300, 5400, 5500],
   giantRamp: 2000,
-  forgivingLoop: 4050,
+  forgivingLoop: 3900, // First short side: 2,900 to 3,800 after corner one's exit at 3,528.
   halfPipe: 6600,
-  hardLoop: 8650,
-  clusters: [850, 1750, 2250, 6000, 7000, 9500],
+  hardLoop: 8900, // Second short side, from 8,484.
+  clusters: [800, 1800, 2250, 6000, 7000, 9600],
   checkpoints: [2500, 5000, 7500],
 });
 
