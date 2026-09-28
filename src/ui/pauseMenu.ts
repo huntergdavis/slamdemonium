@@ -140,7 +140,12 @@ export class PauseMenu {
         'Map · ' + (current?.label ?? deps.maps.current),
         () => this.showView('maps'),
       );
-      navigationHint.before(entry);
+      // Before Controls, which stays the last entry: controller wrap-up
+      // from Resume lands on Controls, and the e2e counts on it.
+      const controlsEntry = [...this.menu.querySelectorAll('button')].find(
+        (b) => b.textContent === 'Controls',
+      );
+      (controlsEntry ?? navigationHint).before(entry);
       this.maps.append(node(doc, 'h2', 'sl-heading', 'Map'));
       for (const map of deps.maps.entries) {
         const isCurrent = map.name === deps.maps.current;
