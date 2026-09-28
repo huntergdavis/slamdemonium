@@ -131,6 +131,52 @@ describe('phase-one prop streaming', () => {
     expect(active[0]).toBe(0);
   });
 
+  it('spreads promotions over updates so boot and respawn never add hundreds of bodies in one step', () => {
+    // 300 records within 20 m of the car: today's boot would promote them all at once.
+    const records = createPropStreamRecords(
+      Array.from({ length: 300 }, (_, index) => ({
+        position: {
+          x: (index % 20) - 10,
+          y: 0.5,
+          z: Math.floor(index / 20) - 7,
+        },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+      })),
+      64,
+    );
+    const { props, getActivateCalls } = fakeProps(records.length);
+    const car = { x: 0, y: 0, z: 0 };
+    const stream = createPropStreamer({
+      props,
+      records,
+      readVehiclePosition: (out) => Object.assign(out, car),
+      enterRadius: 20,
+      exitRadius: 40,
+      maxPromotionsPerUpdate: 32,
+    });
+    expect(getActivateCalls()).toBe(32); // Construction: one update's worth.
+    const promoted = () =>
+      records.reduce((n, _r, i) => n + (stream.isPromoted(i) ? 1 : 0), 0);
+    expect(promoted()).toBe(32);
+    for (let step = 0; step < 8; step++) stream.update();
+    expect(promoted()).toBe(288);
+    stream.update();
+    expect(promoted()).toBe(300); // Ten updates for 300, then nothing more to add.
+    stream.update();
+    expect(getActivateCalls()).toBe(300);
+    // Respawn drains the same way: everything far again, then 32 a step.
+    stream.reset();
+    expect(promoted()).toBe(32);
+    expect(() =>
+      createPropStreamer({
+        props,
+        records,
+        readVehiclePosition: (out) => Object.assign(out, car),
+        maxPromotionsPerUpdate: 0,
+      }),
+    ).toThrow(RangeError);
+  });
+
   it('indexes sparse records by nearby cells instead of scanning the record set', () => {
     const records = createPropStreamRecords(
       Array.from({ length: 1000 }, (_, index) => ({

@@ -66,9 +66,21 @@ export function createPropStreamer(options: {
   readonly readVehiclePosition: (out: V3) => void;
   /** Maximum simultaneous promotions; full pools skip far candidate scans. */
   readonly maxPromoted?: number;
+  /** New promotions per update. Adding bodies to the simulation has a
+   * per-step cliff (128 at once measured 8.5 ms, 1024 112 ms), so boot,
+   * respawn and a fast car through dense content all drain over a few
+   * steps instead of one. Default 32: a 300-record field is resident in
+   * ten steps, 83 ms, well inside the 90 m promotion radius at 80 m/s. */
+  readonly maxPromotionsPerUpdate?: number;
   readonly enterRadius?: number;
   readonly exitRadius?: number;
 }): PropStreamer {
+  const maxPromotionsPerUpdate = options.maxPromotionsPerUpdate ?? 32;
+  if (
+    !Number.isSafeInteger(maxPromotionsPerUpdate) ||
+    maxPromotionsPerUpdate <= 0
+  )
+    throw new RangeError('Promotions per update must be a positive integer.');
   const enterRadius = options.enterRadius ?? PROP_STREAM_ENTER_RADIUS;
   const exitRadius = options.exitRadius ?? PROP_STREAM_EXIT_RADIUS;
   const maxPromoted = options.maxPromoted ?? options.records.length;
@@ -163,6 +175,7 @@ export function createPropStreamer(options: {
   }
 
   let candidateCount = 0;
+  let promotionsThisUpdate = 0;
 
   function process(index: number): void {
     const record = options.records[index];
@@ -173,9 +186,11 @@ export function createPropStreamer(options: {
     if (promoted[index] === 0) {
       if (
         authoredDistanceSquared <= enterSquared &&
+        promotionsThisUpdate < maxPromotionsPerUpdate &&
         options.props.activate(record.placementIndex)
       ) {
         promoted[index] = 1;
+        promotionsThisUpdate++;
         addPromoted(index);
         queueFarChange(index);
       }
@@ -207,6 +222,7 @@ export function createPropStreamer(options: {
 
   function update(): void {
     if (disposed) return;
+    promotionsThisUpdate = 0;
     options.readVehiclePosition(vehiclePosition);
     // Demote active records first. Once the promotion cap is full, the active
     // list is the only set that can change; skipping candidate cells avoids
@@ -231,7 +247,10 @@ export function createPropStreamer(options: {
     for (let cellX = minCellX; cellX <= maxCellX; cellX++)
       for (let cellZ = minCellZ; cellZ <= maxCellZ; cellZ++)
         markCell(cellX * 100000 + cellZ);
-    for (let i = 0; i < candidateCount; i++) process(candidateIndices[i]!);
+    for (let i = 0; i < candidateCount; i++) {
+      if (promotionsThisUpdate >= maxPromotionsPerUpdate) break;
+      process(candidateIndices[i]!);
+    }
   }
 
   function reset(): void {

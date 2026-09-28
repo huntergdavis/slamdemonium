@@ -862,18 +862,19 @@ The CTO, driving #147 with drift charge already 3.5 times slower than before: "t
 
 **The economy now.** Every present source is a slow fill, on a slider:
 
-| Source | Key | Was | Now | A full bar costs |
-| --- | --- | --- | --- | --- |
-| Drift, reference 30 deg at 40 m/s | driftChargeRate | 0.10 /s | 0.02 /s | 50 s of reference drifting, about 100 s of realistic sliding |
-| Accelerator pad, on entry | padBoost | 0.35 | 0.05 | 20 pads |
-| Airtime (new), past the kerb-hop gate | airChargeRate | none | 0.02 /s | 50 s of flight; one giant-ramp jump (1.6 s) is 0.03 |
-| Drain while boosting | boostDrainRate | 0.25 /s | unchanged | a full bar is 4 s of boost |
+| Source                                | Key             | Was     | Now       | A full bar costs                                             |
+| ------------------------------------- | --------------- | ------- | --------- | ------------------------------------------------------------ |
+| Drift, reference 30 deg at 40 m/s     | driftChargeRate | 0.10 /s | 0.02 /s   | 50 s of reference drifting, about 100 s of realistic sliding |
+| Accelerator pad, on entry             | padBoost        | 0.35    | 0.05      | 20 pads                                                      |
+| Airtime (new), past the kerb-hop gate | airChargeRate   | none    | 0.02 /s   | 50 s of flight; one giant-ramp jump (1.6 s) is 0.03          |
+| Drain while boosting                  | boostDrainRate  | 0.25 /s | unchanged | a full bar is 4 s of boost                                   |
 
 The pad keeps its speed kick as its real purpose (`padKick` unchanged at 8 m/s); the charge is incidental.
 
 **What does not exist yet, and the rule.** The fast earners are slamming other cars, driving on the wrong side of the road and causing accidents. There are no other cars and no traffic, so none of them can be built now. The bar being hard to fill today is correct, not a gap to close: do not make drift, pads or airtime generous to compensate. The CTO will say if it goes too far, and the sliders are there for him to move any rate either way.
 
 **The B key fills the bar.** Keyboard B, listed in the README, the tuning playbook and the pause menu's key list; there is no controller binding, the LB legend is at its eight-slot limit. It ships in every build rather than behind a debug flag: the CTO evaluates production preview builds, which carry no test API, and it belongs to the same family as T (slow motion), F9 (telemetry) and the Options panel, all test affordances the lab ships. If boost ever matters competitively it hides behind the same flag as those.
+
 ## Gravity-20 loop decision closed (2026-09-25)
 
 The CTO's gravity choice is closed at **20 m/s²**. Three official repeat runs at
@@ -881,13 +882,13 @@ The CTO's gravity choice is closed at **20 m/s²**. Three official repeat runs a
 is deterministic physics rather than harness noise. The archived 19 and 20 rows
 are the original single official baselines and are labelled as such below.
 
-| gravity | jump distance | R14 tolerance (angle / offset / speed floor) | R18 tolerance (angle / offset / speed floor) |
-| ---: | ---: | --- | --- |
-| 16 | 107.95 m | 30° / 3 m / 16 m/s | 30° / 10 m / 16 m/s |
-| 17 | 87.68 m | 25° / 1 m / 54 m/s | 30° / 10 m / 16 m/s |
-| 18 | 86.37 m | 15° / 3 m / 60 m/s | 30° / 10 m / 16 m/s |
-| 19 (single baseline) | 83.52 m | 30° / 3 m / 16 m/s | 30° / 10 m / 16 m/s |
-| 20 (single baseline) | 83.51 m | 30° / 3 m / 16 m/s | 30° / 10 m / 16 m/s |
+|              gravity | jump distance | R14 tolerance (angle / offset / speed floor) | R18 tolerance (angle / offset / speed floor) |
+| -------------------: | ------------: | -------------------------------------------- | -------------------------------------------- |
+|                   16 |      107.95 m | 30° / 3 m / 16 m/s                           | 30° / 10 m / 16 m/s                          |
+|                   17 |       87.68 m | 25° / 1 m / 54 m/s                           | 30° / 10 m / 16 m/s                          |
+|                   18 |       86.37 m | 15° / 3 m / 60 m/s                           | 30° / 10 m / 16 m/s                          |
+| 19 (single baseline) |       83.52 m | 30° / 3 m / 16 m/s                           | 30° / 10 m / 16 m/s                          |
+| 20 (single baseline) |       83.51 m | 30° / 3 m / 16 m/s                           | 30° / 10 m / 16 m/s                          |
 
 There is no useful value between 14.7 and 20 that makes the loops kinder
 without giving up the jump behavior: 17 and 18 make the fair R14 loop worse,
@@ -910,3 +911,31 @@ The CTO asked what "free-drive score" and "chaining" meant, because he had never
 **Why it matters beyond the screen:** NS3, the timed run, is built on this scoring, and until he can see the multiplier while driving nobody can say whether a chain is sustainable at speed. The full HUD's crash score card stays where it is for the tuning lab.
 
 **Stylesheet:** +569 B, measured against the re-recorded baseline (#150), which had to land first: main sat 24 B under the floor.
+
+## Props sleep until touched, and an awake-body budget bounds the pileup (2026-09-27)
+
+The CTO chose routes A and B from the NS2 measurement (docs/research/ns2-physics-ceiling.md), together: A because it unlocks a populated 10 km track at close to no cost, B because he wants pileups bounded rather than hoped small, knowing the visible cost (a box that stops rolling some way behind him).
+
+**A: promoted props join the simulation asleep.** One flag through the adapter (`activateBody(..., asleep)`, `EActivation_DontActivate`), set by the breakable pool. A sleeping body costs nothing until something touches it, and the first contact wakes it (measured, and pinned by a real-Jolt test). The breakable pool grows from 192 to 2048 slots and the promotion cap from 128 to the whole pool: the resident count is now a memory and boot-time budget, not a step-time one. The streamer promotes at most 32 records per update, so boot, respawn and a fast car through dense content drain over a few steps instead of one; adding bodies has a cliff (128 at once measured 8.5 ms, 1024 measured 112 ms) and the old streamer paid it on every boot and respawn. The 2048 and 32 are constants, not sliders: nothing about them is feel.
+
+**B: an awake-body budget** (`src/world/awakeBudget.ts`). Every step, if Jolt reports more awake bodies than the budget (the car excluded), every grounded prop and fragment beyond the keep radius goes back to sleep in place, together; nothing inside the keep radius is touched and nothing airborne is frozen mid-air. Two sliders, his to tune: `awakeBudget` (default 96 bodies: the trigger, about 3 ms of step time at the measured 30 us per awake body in a pileup) and `awakeKeepRadius` (default 30 m: the survivor, the crash he is looking at plays out and only bodies beyond it stop).
+
+**Why a block and not the excess, and why stillness rather than height.** Measured 2026-09-27 (20:37 to 20:46 PDT) under the real car on a 128-box heap at 30 m/s, budget 96, keep radius 30 m, `scripts/perf/probes/car-pileup.probe.ts`:
+
+| Policy                                                      | Awake at 1, 2, 5 s after the hit | Step avg / p99 through the run | 5 s after               |
+| ----------------------------------------------------------- | -------------------------------- | ------------------------------ | ----------------------- |
+| no budget                                                   | 129, 129, 115                    | 1.74 / 6.2 ms                  | 7 awake                 |
+| sleep only the farthest few (the excess)                    | 124, 104, 87                     | 2.43 / 6.3                     | 85 awake, never settles |
+| block beyond 30 m, height as the "airborne" test            | 124, 104, 87                     | 2.41 / 6.3                     | 85 awake, never settles |
+| block beyond 30 m, everything                               | 80, 22, 17                       | 1.11 / 6.6                     | 7 awake                 |
+| block beyond 30 m, exempt bodies moving over 3 m/s (chosen) | 97, 29, 17                       | 1.07 / 7.5                     | 7 awake                 |
+| the same at keep radius 50 m                                | 129, 33, 17                      | 0.92 / 5.5                     | 7 awake                 |
+| the same with budget 64                                     | 97, 29, 17                       | 0.84 / 4.2                     | 7 awake                 |
+
+Jolt wakes a sleeping body the moment an awake neighbour touches it, so a shell one body thick is undone every step: the excess policy held the heap awake for the whole run and stopped it ever settling, worse than no budget. Height is no test of flight either: a box resting on another box sat above the "ground" line, stayed awake, and woke the block under it, with the same result. What sticks is a block of still bodies: everything beyond the keep radius that is not moving hard sleeps together, a body whose neighbours are all asleep has nothing to wake it, and the heap falls to the bodies inside the keep radius within a second. The p99 hardly moves because the first second after the hit, everything inside 30 m and everything still flying, is the payoff and is left alone. The pinned real-Jolt test shows both halves of the wake-on-touch behaviour. So the budget is a trigger, the keep radius is what survives, and the freeze beyond it is all-or-nothing by nature, not by choice.
+
+**Boot and respawn** (`promotion.probe.ts`, 20:38 PDT): with 300 records inside the promotion radius, the old path's first step after boot was 77 ms and after respawn 19 ms; with 1000 records, 60 ms and 73 ms. Promoted asleep and 32 per update: about 1 ms at both counts, worst step 2.6 ms. Creating the 2816 pooled bodies at boot costs 70 to 200 ms once.
+
+**The pileup stays a pileup.** The CTO accepted a two to three second hitch on a 128-body heap as the price of the payoff. B is meant to bound it, not to hide it; the keep radius exists so the crash in front of him is never touched by the budget. If B makes a pileup feel dead at his numbers, that is a finding for the PM, and the sliders are the first answer.
+
+Raw results: `docs/research/ns2-ceiling-data/car-pileup-budget.json` and `promotion.json`.

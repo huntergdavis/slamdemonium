@@ -275,9 +275,15 @@ export async function createPhysicsWorld(
       desc.indices.length < 3 ||
       desc.indices.length % 3 !== 0
     )
-      throw new RangeError('Static mesh needs vertices and complete triangles.');
+      throw new RangeError(
+        'Static mesh needs vertices and complete triangles.',
+      );
     for (const index of desc.indices) {
-      if (!Number.isInteger(index) || index < 0 || index >= desc.vertices.length)
+      if (
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= desc.vertices.length
+      )
         throw new RangeError('Static mesh index is out of range.');
     }
     const triangles = new J.TriangleList();
@@ -444,7 +450,7 @@ export async function createPhysicsWorld(
           )
         : createDynamic(desc, origin, desc.surfaceId ?? 0, false);
     },
-    activateBody(id, pos, quat) {
+    activateBody(id, pos, quat, asleep = false) {
       assertAlive();
       const entry = record(id);
       position.Set(pos.x, pos.y, pos.z);
@@ -459,13 +465,17 @@ export async function createPhysicsWorld(
         vector.Set(0, 0, 0);
         bodies.SetLinearAndAngularVelocity(entry.id, vector, vector);
       }
+      const activation =
+        entry.dynamic && !asleep
+          ? J.EActivation_Activate
+          : J.EActivation_DontActivate;
       if (!entry.added) {
-        bodies.AddBody(
-          entry.id,
-          entry.dynamic ? J.EActivation_Activate : J.EActivation_DontActivate,
-        );
+        bodies.AddBody(entry.id, activation);
         entry.added = true;
-      } else if (entry.dynamic) bodies.ActivateBody(entry.id);
+      } else if (entry.dynamic) {
+        if (asleep) bodies.DeactivateBody(entry.id);
+        else bodies.ActivateBody(entry.id);
+      }
     },
     deactivateBody(id) {
       assertAlive();
@@ -476,6 +486,19 @@ export async function createPhysicsWorld(
     },
     isBodyActive(id) {
       return record(id).added;
+    },
+    isBodyAwake(id) {
+      const entry = record(id);
+      return entry.added && bodies.IsActive(entry.id);
+    },
+    sleepBody(id) {
+      assertAlive();
+      const entry = record(id);
+      if (entry.added && entry.dynamic) bodies.DeactivateBody(entry.id);
+    },
+    awakeBodyCount() {
+      assertAlive();
+      return physics.GetNumActiveBodies(J.EBodyType_RigidBody);
     },
     destroyBody(id) {
       assertAlive();

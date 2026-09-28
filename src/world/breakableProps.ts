@@ -62,8 +62,11 @@ const FRAGMENT_SPACING = 0.25;
 const FRAGMENT_ORIGIN_OFFSET = 0.5;
 const BREAK_APPROACH_SPEED = 3;
 const BREAK_TOTAL_SPEED_FRACTION = 0.5;
-/** Measured promotion ceiling: separated 128-body p99 stayed below 2 ms. */
-export const MAX_ACTIVE_BREAKABLES = 128;
+/** Resident breakables: the whole pool, since promoted props sleep until
+ * touched and a sleeping body costs nothing. The step-time limit is the
+ * awake count (awakeBudget.ts), not this number. Was 128 while promotion
+ * woke every body it placed (docs/research/ns2-physics-ceiling.md). */
+export const MAX_RESIDENT_BREAKABLES = 2048;
 
 /**
  * Pooled breakables for the smash route. Phase one reserves 192 promotion

@@ -338,6 +338,50 @@ describe('phase A foundations: quaternion statics, pooled lifecycle, scoped remo
     expect(Math.hypot(v.x, v.y, v.z)).toBe(0); // Re-activation zeroes velocity.
   });
 
+  it('adds a pooled body asleep on request, wakes it on contact, and can put it back to sleep in place', async () => {
+    const w = await world();
+    w.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 50, y: 0.5, z: 50 });
+    const sleeper = w.createPooledBox({ motion: 'dynamic', ...box() });
+    const before = w.awakeBodyCount();
+    w.activateBody(sleeper, { x: 0, y: 3, z: 0 }, quat(), true);
+    expect(w.isBodyActive(sleeper)).toBe(true);
+    expect(w.isBodyAwake(sleeper)).toBe(false);
+    expect(w.awakeBodyCount()).toBe(before);
+    for (let i = 0; i < 60; i++) w.step(1 / 120);
+    const p = vec();
+    w.getTransform(sleeper, p, quat());
+    expect(p.y).toBeCloseTo(3, 6); // Asleep: it hangs in the air untouched.
+    // A dropped body lands on it and wakes it.
+    const hitter = w.createPooledBox({ motion: 'dynamic', ...box() });
+    w.activateBody(hitter, { x: 0, y: 6, z: 0 }, quat());
+    expect(w.isBodyAwake(hitter)).toBe(true);
+    for (let i = 0; i < 60; i++) w.step(1 / 120);
+    expect(w.isBodyAwake(sleeper)).toBe(true);
+    w.getTransform(sleeper, p, quat());
+    expect(p.y).toBeLessThan(3); // Knocked down.
+    // The budget's lever, sleeping it in place, does not stick while an
+    // awake body is touching it: Jolt wakes a sleeping body on contact with
+    // an awake one every step. This is why the budget freezes the far part
+    // of a heap as a block rather than one body at a time.
+    w.sleepBody(sleeper);
+    expect(w.isBodyAwake(sleeper)).toBe(false);
+    w.step(1 / 120);
+    expect(w.isBodyAwake(sleeper)).toBe(true);
+    // With the toucher gone it freezes where it is, even mid-air.
+    w.deactivateBody(hitter);
+    w.sleepBody(sleeper);
+    const frozen = vec();
+    w.getTransform(sleeper, frozen, quat());
+    for (let i = 0; i < 30; i++) w.step(1 / 120);
+    w.getTransform(sleeper, p, quat());
+    expect(p.y).toBeCloseTo(frozen.y, 3);
+    expect(w.isBodyAwake(sleeper)).toBe(false);
+    w.sleepBody(sleeper); // Idempotent.
+    w.deactivateBody(sleeper);
+    w.sleepBody(sleeper); // Not in the simulation: nothing to do.
+    w.dispose();
+  });
+
   it('cycles pooled bodies in and out of the simulation with the heap exactly unchanged after warm-up', async () => {
     const w = await world();
     w.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 50, y: 0.5, z: 50 });

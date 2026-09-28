@@ -1,0 +1,266 @@
+[
+  {
+    "scenario": "300 records around spawn, awake, all at once",
+    "poolCreateMs": 204.3,
+    "streamerConstructMs": 28.52,
+    "bootFirst10Steps": [
+      76.82, 20.95, 19.41, 12.48, 16.9, 14.62, 14.6, 10.79, 11.64, 8
+    ],
+    "bootSteps0_30": {
+      "n": 30,
+      "avg": 11.206,
+      "p99": 76.82,
+      "max": 76.82
+    },
+    "promotedAfterBoot": 300,
+    "awakeAfterBoot": 301,
+    "idle": {
+      "n": 60,
+      "avg": 0.9774,
+      "p99": 1.5831,
+      "max": 1.5831
+    },
+    "resetCallMs": 7.72,
+    "respawnFirst10Steps": [
+      19.44, 8.08, 8.14, 7.99, 8.64, 6.44, 6.11, 6.31, 6.37, 6.09
+    ],
+    "respawnSteps0_30": {
+      "n": 30,
+      "avg": 6.9526,
+      "p99": 19.4372,
+      "max": 19.4372
+    },
+    "promotedAfterRespawn": 300
+  },
+  {
+    "scenario": "300 records around spawn, awake, 32 per update",
+    "poolCreateMs": 158,
+    "streamerConstructMs": 2.56,
+    "bootFirst10Steps": [
+      3.85, 3.89, 4.06, 4.91, 5.74, 6.66, 7.47, 7.65, 6.83, 8.06
+    ],
+    "bootSteps0_30": {
+      "n": 30,
+      "avg": 5.327,
+      "p99": 8.0617,
+      "max": 8.0617
+    },
+    "promotedAfterBoot": 300,
+    "awakeAfterBoot": 301,
+    "idle": {
+      "n": 60,
+      "avg": 1.0846,
+      "p99": 1.371,
+      "max": 1.371
+    },
+    "resetCallMs": 3.19,
+    "respawnFirst10Steps": [
+      3.44, 3.47, 4.6, 8.1, 6.54, 8.05, 7.33, 8.1, 8.71, 7.74
+    ],
+    "respawnSteps0_30": {
+      "n": 30,
+      "avg": 6.5464,
+      "p99": 9.6549,
+      "max": 9.6549
+    },
+    "promotedAfterRespawn": 300
+  },
+  {
+    "scenario": "300 records around spawn, asleep, all at once",
+    "poolCreateMs": 82.7,
+    "streamerConstructMs": 6.71,
+    "bootFirst10Steps": [
+      1.3, 1.27, 0.94, 1.03, 0.83, 0.82, 0.8, 0.78, 0.82, 0.78
+    ],
+    "bootSteps0_30": {
+      "n": 30,
+      "avg": 0.8542,
+      "p99": 1.2956,
+      "max": 1.2956
+    },
+    "promotedAfterBoot": 300,
+    "awakeAfterBoot": 1,
+    "idle": {
+      "n": 60,
+      "avg": 0.4931,
+      "p99": 0.6647,
+      "max": 0.6647
+    },
+    "resetCallMs": 3.73,
+    "respawnFirst10Steps": [
+      1.08, 0.58, 0.59, 0.91, 0.98, 0.93, 0.91, 0.85, 0.55, 0.45
+    ],
+    "respawnSteps0_30": {
+      "n": 30,
+      "avg": 0.565,
+      "p99": 1.076,
+      "max": 1.076
+    },
+    "promotedAfterRespawn": 300
+  },
+  {
+    "scenario": "300 records around spawn, asleep, 32 per update",
+    "poolCreateMs": 73.3,
+    "streamerConstructMs": 0.59,
+    "bootFirst10Steps": [
+      1.04, 0.94, 0.85, 0.89, 0.91, 0.96, 0.97, 1.02, 0.85, 0.64
+    ],
+    "bootSteps0_30": {
+      "n": 30,
+      "avg": 0.7174,
+      "p99": 1.0421,
+      "max": 1.0421
+    },
+    "promotedAfterBoot": 300,
+    "awakeAfterBoot": 1,
+    "idle": {
+      "n": 60,
+      "avg": 0.4093,
+      "p99": 0.6559,
+      "max": 0.6559
+    },
+    "resetCallMs": 0.71,
+    "respawnFirst10Steps": [
+      0.8, 0.77, 1.54, 0.9, 0.86, 0.83, 0.94, 0.9, 0.7, 0.55
+    ],
+    "respawnSteps0_30": {
+      "n": 30,
+      "avg": 0.6386,
+      "p99": 1.5399,
+      "max": 1.5399
+    },
+    "promotedAfterRespawn": 300
+  },
+  {
+    "scenario": "1000 records around spawn, awake, all at once",
+    "poolCreateMs": 71.4,
+    "streamerConstructMs": 17.65,
+    "bootFirst10Steps": [
+      60.12, 61.92, 28.52, 27.9, 27.72, 26, 33.65, 26.84, 28.45, 35.23
+    ],
+    "bootSteps0_30": {
+      "n": 30,
+      "avg": 27.4641,
+      "p99": 61.9228,
+      "max": 61.9228
+    },
+    "promotedAfterBoot": 1000,
+    "awakeAfterBoot": 1001,
+    "idle": {
+      "n": 60,
+      "avg": 0.6047,
+      "p99": 1.2196,
+      "max": 1.2196
+    },
+    "resetCallMs": 17.65,
+    "respawnFirst10Steps": [
+      73.02, 35.23, 24.93, 23.94, 21.57, 20.06, 22.3, 22.86, 22.87, 20.27
+    ],
+    "respawnSteps0_30": {
+      "n": 30,
+      "avg": 21.9066,
+      "p99": 73.0238,
+      "max": 73.0238
+    },
+    "promotedAfterRespawn": 1000
+  },
+  {
+    "scenario": "1000 records around spawn, awake, 32 per update",
+    "poolCreateMs": 69.4,
+    "streamerConstructMs": 1.23,
+    "bootFirst10Steps": [
+      2.8, 5.53, 7.11, 8.36, 6.72, 7.69, 8.25, 8.67, 9.52, 13.62
+    ],
+    "bootSteps0_30": {
+      "n": 30,
+      "avg": 15.0405,
+      "p99": 24.8819,
+      "max": 24.8819
+    },
+    "promotedAfterBoot": 992,
+    "awakeAfterBoot": 993,
+    "idle": {
+      "n": 60,
+      "avg": 0.4055,
+      "p99": 0.76,
+      "max": 0.76
+    },
+    "resetCallMs": 1.15,
+    "respawnFirst10Steps": [
+      1.98, 2.48, 3.04, 3.65, 4.14, 5.5, 8.72, 7.24, 7.69, 8.86
+    ],
+    "respawnSteps0_30": {
+      "n": 30,
+      "avg": 11.2642,
+      "p99": 18.719,
+      "max": 18.719
+    },
+    "promotedAfterRespawn": 992
+  },
+  {
+    "scenario": "1000 records around spawn, asleep, all at once",
+    "poolCreateMs": 76.2,
+    "streamerConstructMs": 23.29,
+    "bootFirst10Steps": [
+      3.03, 2.6, 1.19, 1.21, 1.55, 1.17, 1.13, 1.13, 1.12, 1.1
+    ],
+    "bootSteps0_30": {
+      "n": 30,
+      "avg": 1.1713,
+      "p99": 3.0311,
+      "max": 3.0311
+    },
+    "promotedAfterBoot": 1000,
+    "awakeAfterBoot": 1,
+    "idle": {
+      "n": 60,
+      "avg": 0.6315,
+      "p99": 1.4959,
+      "max": 1.4959
+    },
+    "resetCallMs": 18.09,
+    "respawnFirst10Steps": [
+      1.98, 0.48, 0.45, 0.42, 0.48, 0.41, 0.48, 0.41, 0.45, 0.42
+    ],
+    "respawnSteps0_30": {
+      "n": 30,
+      "avg": 0.5008,
+      "p99": 1.9832,
+      "max": 1.9832
+    },
+    "promotedAfterRespawn": 1000
+  },
+  {
+    "scenario": "1000 records around spawn, asleep, 32 per update",
+    "poolCreateMs": 76.6,
+    "streamerConstructMs": 1.12,
+    "bootFirst10Steps": [
+      1.06, 0.91, 0.81, 0.92, 0.85, 0.9, 0.97, 1.15, 1.81, 2.01
+    ],
+    "bootSteps0_30": {
+      "n": 30,
+      "avg": 1.5208,
+      "p99": 2.6018,
+      "max": 2.6018
+    },
+    "promotedAfterBoot": 992,
+    "awakeAfterBoot": 1,
+    "idle": {
+      "n": 60,
+      "avg": 0.3805,
+      "p99": 0.6938,
+      "max": 0.6938
+    },
+    "resetCallMs": 1.03,
+    "respawnFirst10Steps": [
+      0.55, 0.53, 0.54, 0.61, 0.61, 0.85, 0.77, 1.01, 1.18, 1.22
+    ],
+    "respawnSteps0_30": {
+      "n": 30,
+      "avg": 1.1061,
+      "p99": 1.6139,
+      "max": 1.6139
+    },
+    "promotedAfterRespawn": 992
+  }
+]

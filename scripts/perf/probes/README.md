@@ -12,13 +12,14 @@ PROBE_FILTER=island64 npx vitest run --config vitest.probes.config.ts island
 
 Run them on an idle host, one at a time: they time wall-clock steps.
 
-Two readings need the raw Jolt system (active-body count, solver settings),
-which the adapter deliberately does not expose. For those, apply this local,
+Solver-setting levers need the raw Jolt system, which the adapter
+deliberately does not expose (the awake count is `world.awakeBodyCount()`). For those, apply this local,
 uncommitted line in `src/physics/joltWorld.ts` after `physics.SetPhysicsSettings(physicsSettings);`:
 
 ```ts
 (globalThis as unknown as { __joltProbe?: unknown }).__joltProbe = { physics, J };
 ```
 
-Without it the probes still run; active counts read as -1 and solver levers
-are skipped. Findings: `docs/research/ns2-physics-ceiling.md`.
+Without it the probes still run; the island probe's solver levers are skipped.
+`car-pileup` also drives the awake budget (route B) at several settings and
+`promotion` times boot and respawn through the real promotion path (route A). Findings: `docs/research/ns2-physics-ceiling.md`.
