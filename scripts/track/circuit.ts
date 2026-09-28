@@ -1,15 +1,15 @@
-import { SURFACE_IDS } from '../content/surfaces';
-import type { RunGateSpec, RunRouteSpec } from '../core/timedRun';
-import type { BoostPadSpec } from './boostPads';
-import type { BreakablePlacement } from './breakableProps';
-import type { HalfPipeSpec } from './halfPipe';
+import { SURFACE_IDS } from '../../src/content/surfaces';
+import type { RunGateSpec, RunRouteSpec } from '../../src/core/timedRun';
+import type { BoostPadSpec } from '../../src/world/boostPads';
+import type { BreakablePlacement } from '../../src/world/breakableProps';
+import type { HalfPipeSpec } from '../../src/world/halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
   MIN_FAIR_LOOP_RADIUS,
   type LoopSpec,
-} from './loopDeLoop';
-import type { MapDefinition } from './maps';
-import type { RampSpec } from './ramps';
+} from '../../src/world/loopDeLoop';
+import type { MapDefinition } from '../../src/world/maps';
+import type { RampSpec } from '../../src/world/ramps';
 import {
   clusterPlacements,
   lanesAlong,

@@ -13,12 +13,12 @@ import {
   createBreakableProps,
   MAX_RESIDENT_BREAKABLES,
 } from '../../../src/world/breakableProps';
-import { createCircuitMap } from '../../../src/world/circuit';
+import { createCircuitMap } from '../../track/circuit';
 import {
   createPropStreamer,
   createPropStreamRecords,
 } from '../../../src/world/propStreaming';
-import { poseAt } from '../../../src/world/roadGenerator';
+import { poseAt } from '../../track/roadGenerator';
 import { runwayInstances } from '../../../src/world/runways';
 import {
   DEFAULT_TRACK_CONFIG,

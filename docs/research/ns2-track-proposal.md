@@ -1,6 +1,6 @@
 # NS2, the 10 km track: a proposal in four answers
 
-The CTO's requirement: a track "much, much longer... it should take a full 3 minutes to drive it at full speed". At cruise that is about 10 km. Nothing here is built into the game yet: the road generator and the circuit exist as data (`src/world/roadGenerator.ts`, `src/world/circuit.ts`), the numbers below are measured on them, and the map is wired in only after he chooses. Written 2026-09-28; measurements 05:52 to 05:54 PDT.
+The CTO's requirement: a track "much, much longer... it should take a full 3 minutes to drive it at full speed". At cruise that is about 10 km. Nothing here is built into the game yet: the road generator and the circuit exist as data (`scripts/track/roadGenerator.ts`, `scripts/track/circuit.ts`, outside the runtime until he chooses: the reachability gate rightly refuses unwired features in src), the numbers below are measured on them, and the map is wired in only after he chooses. Written 2026-09-28; measurements 05:52 to 05:54 PDT.
 
 ## 1. The shape: a circuit, and the lap is the timed run
 

@@ -6,12 +6,12 @@ import { writeFileSync } from 'node:fs';
 import { MeshStandardMaterial, Scene } from 'three';
 import { it } from 'vitest';
 import { createStreamedPropVisual } from '../../../src/render/streamedPropVisual';
-import { createCircuitMap } from '../../../src/world/circuit';
+import { createCircuitMap } from '../../track/circuit';
 import {
   createPropStreamer,
   createPropStreamRecords,
 } from '../../../src/world/propStreaming';
-import { poseAt } from '../../../src/world/roadGenerator';
+import { poseAt } from '../../track/roadGenerator';
 import type { BreakableProps } from '../../../src/world/breakableProps';
 
 function stats(samples: number[]) {

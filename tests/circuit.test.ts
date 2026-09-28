@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CIRCUIT_STATIONS, createCircuitMap } from '../src/world/circuit';
+import { CIRCUIT_STATIONS, createCircuitMap } from '../scripts/track/circuit';
 import { runGateContains } from '../src/core/timedRun';
 import { runwayLaneClearance } from '../src/world/runways';
-import { poseAt } from '../src/world/roadGenerator';
+import { poseAt } from '../scripts/track/roadGenerator';
 
 describe('the 10 km circuit', () => {
   const map = createCircuitMap();
