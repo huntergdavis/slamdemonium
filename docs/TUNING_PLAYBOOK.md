@@ -142,15 +142,16 @@ With the defaults, these are the numbers the car should roughly hit. If a tune d
 
 ## Useful keys while tuning
 
-| Key | Does                                                                                |
-| --- | ----------------------------------------------------------------------------------- |
-| O   | Options page                                                                        |
-| T   | Slow motion (0.25x), to watch a drift catch frame by frame                          |
-| Tab | Swap A/B slots (game focused; use the panel's A/B buttons when the panel has focus) |
-| H   | Cycle HUD: full / minimal / off (the game starts with it off; the map stays)        |
-| G   | Debug gizmos (forces, contact points)                                               |
-| F9  | Start/stop a telemetry CSV recording                                                |
-| R   | Respawn                                                                             |
-| B   | Fill the boost bar at once (a test cheat, so boost can be judged without earning it) |
+| Key   | Does                                                                                 |
+| ----- | ------------------------------------------------------------------------------------ |
+| O     | Options page                                                                         |
+| T     | Slow motion (0.25x), to watch a drift catch frame by frame                           |
+| Tab   | Swap A/B slots (game focused; use the panel's A/B buttons when the panel has focus)  |
+| H     | Cycle HUD: full / minimal / off (the game starts with it off; the map stays)         |
+| G     | Debug gizmos (forces, contact points)                                                |
+| F9    | Start/stop a telemetry CSV recording                                                 |
+| R     | Respawn (keeps the free-drive score)                                                 |
+| Enter | Retry: the whole run again from the start, score cleared                             |
+| B     | Fill the boost bar at once (a test cheat, so boost can be judged without earning it) |
 
 Slow motion changes how many physics steps run per second, never the step length, so what you see at 0.25x is exactly what happens at full speed.

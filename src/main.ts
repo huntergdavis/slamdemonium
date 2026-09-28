@@ -335,6 +335,7 @@ async function boot(): Promise<void> {
   let replayStopped = false;
   let replayActive = false;
   let respawnRequested = false;
+  let retryRequested = false;
   let actionsThisStep = 0;
   const countActions = (actions: Readonly<ActionCounts>): number => {
     let total = 0;
@@ -454,7 +455,8 @@ async function boot(): Promise<void> {
         controllerSupport.afterStep(dt);
         audio.afterStep(dt);
         scripts.afterStep();
-        if (respawnRequested) respawn();
+        if (retryRequested) retry();
+        else if (respawnRequested) respawn();
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -517,6 +519,15 @@ async function boot(): Promise<void> {
     resetPresentation();
     scripts.noteRespawn(track.spawn, 0);
     syncPause();
+  }
+  /** Instant retry (NS3): a respawn that also forgets the run. Respawn keeps
+   * the free-drive score and ends the chain; retry zeroes the score, and
+   * whatever the timed run adds (its clock) resets here too. It is applied
+   * on the same step the key is read, so "again" is one press and no wait. */
+  function retry(): void {
+    retryRequested = false;
+    respawn();
+    crashScore.reset();
   }
   const massRebuild = new DebouncedMassRebuild(tuning, () => {
     vehicle.rebuildMassProperties();
@@ -728,6 +739,8 @@ async function boot(): Promise<void> {
     if (actions.pauseMenu % 2) pauseMenu.toggle();
     if (menuOwnsBatch) return;
     if (actions.respawn > 0) respawnRequested = true;
+    // Again: the whole run from the start line, nothing kept. One key, no menu.
+    if (actions.retry > 0) retryRequested = true;
     if (actions.options % 2) options.toggle();
     hud.cycleMode(actions.hud);
     if (actions.recordTelemetry % 2) hud.toggleRecording();
@@ -936,7 +949,8 @@ async function boot(): Promise<void> {
       // Active replays still need this command path to close their pause menu.
       if (isPaused() || tuning.get('timeScale') === 0) {
         dispatchActions(input.sampleActions());
-        if (respawnRequested) respawn();
+        if (retryRequested) retry();
+        else if (respawnRequested) respawn();
       }
       loop.frame(nowMs);
       pauseMenu.update(nowMs);

@@ -34,6 +34,7 @@ const MAPPINGS: readonly (readonly [string, string, string])[] = [
   ['Handbrake', 'Space', 'A / bottom face button'],
   ['Boost', 'Left Shift', 'X / left face button'],
   ['Restart / respawn', 'R', 'Y / top face button'],
+  ['Retry: again from the start, score cleared', 'Enter', '—'],
   ['Pause menu', 'Escape', 'Start / Menu'],
   [
     'Mute all audio',

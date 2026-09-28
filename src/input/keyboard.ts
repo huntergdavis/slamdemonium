@@ -28,6 +28,7 @@ const KEY_ACTIONS = {
   F9: 'recordTelemetry',
   KeyM: 'muteAudio',
   KeyB: 'fillBoost',
+  Enter: 'retry',
 } as const satisfies Record<string, InputAction | null>;
 export type InputKeyCode = keyof typeof KEY_ACTIONS;
 export const PROBE_QUEUE_CAPACITY = 128;
