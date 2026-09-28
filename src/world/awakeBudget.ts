@@ -46,7 +46,7 @@ export interface AwakeBudgetOptions {
    * flight or rolling hard is not frozen; it sleeps once it slows. Height
    * is no test of that, a box resting on another box is as still as one on
    * the ground. Infinity freezes everything beyond the keep radius. */
-  readonly exemptFasterThan?: number;
+  readonly exemptFasterThan?: number | undefined;
 }
 
 export interface AwakeBudget {
