@@ -136,3 +136,14 @@ The CTO retired the half-pipe as a play structure after driving it. Verbatim: "I
 - [ ] NS7 | dev-claude | **Big air charges boost more (CTO).** "Let's have jumping for big air fill up your boost meter more than it does now." Airtime charging is 0.02/s today. The operative word is BIG air, not any air, so consider whether a flat per-second rate is the right shape at all or whether height or airtime should scale it — a committed launch should pay meaningfully more than a kerb bounce. Use the grounded-to-airborne launch seam from #158 rather than building a second airborne detector. This is a change to ONE term: pads and drifting stay near zero and danger remains the fast earner.
 
 Note for whoever picks these up: jumping is being promoted from an accident to a central, repeatable verb. The CTO calls it "a nice jump mechanic" as the eventual goal, so NS5, NS6 and NS7 are one feature seen from three sides, not three unrelated tickets.
+
+## Found while proving the jump (2026-09-29)
+
+- [ ] DEFECT | dev-claude | **A car on its side counts as airborne and fills the boost bar to 100%.** Measured twice on the #165 preview: an off-centre landing rolls the car, it then slides on its side for 200 m at 40 m/s still reading `airborne`, and because the NS7 payout is quadratic in `airTime` it runs to the cap. An earlier run sat on its side for 14 s and filled the bar the same way. This is an exploit in shipped code (#166, merged as ad53a2a): lie down, slide, earn a full bar. The airborne state needs to end when the car is no longer flying, not merely when the wheels find ground. Raised by the PM 2026-09-29 00:20; not started.
+- [ ] DEFECT | codex | **Recovery never fires for a car resting on its side.** The same runs slid 200 m without the recovery system intervening. Pre-existing, independent of the jump, and the reason the boost exploit above can run so long. Not started.
+- [ ] NS8 | unassigned | **Landing off-centre off the jump is unrecoverable (CTO's hands to judge).** The deck is 20 m wide and a 3 s flight covers 190 m, so about 3 degrees of yaw at the lip lands the car beside the landing hill rather than on it, where the hill is only 1.5 m tall and the car rolls. Centred it never happens. This may be the right difficulty for a signature jump or it may be a trap; the CTO decides before anyone widens the hill.
+- [ ] NOTE | unassigned | **Steering in the air rolls the car on landing**; neutral input lands clean. Skill mechanic or trap is the CTO's call. Measured 2026-09-28.
+- [ ] NOTE | unassigned | **About 100 m of infield past the hill's foot before the proving-ground barrier** — 1.3 s at 79 m/s. Fine today; worth remembering if the run-out grows.
+
+Measurement convention agreed 2026-09-29: report landing CLOSING SPEED in m/s, not `impactSeverity`. That estimator saturates at 18.8 m/s, and every landing off this jump is 23-35 m/s, so the 0..1 reading is pegged and says nothing. It is a clamped scale, not a verdict on feel.
+
