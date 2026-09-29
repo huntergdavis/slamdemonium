@@ -23,6 +23,32 @@ BASELINE = ROOT / '.github/bundle-baseline.json'
 MANIFEST = '.vite/manifest.json'
 ARTIFACT = 'bundle-size-results'
 METRICS = ('rawBytes', 'gzipBytes')
+
+# Self-reporting budget (2026-09-28). Twice a reviewed budget failed a feature
+# PR on growth that had already merged unrecorded: the stylesheet (seven
+# features, re-recorded in #150) and the main JavaScript chunk (eighteen
+# features, +16,967 gzip bytes, re-recorded in #159). Each time the accounting
+# had to be rebuilt by hand, building the asset at every merge. On a main push
+# this script now writes that ledger as it happens: every asset that moved,
+# which merge moved it, and how much headroom is left. It never moves a
+# budget. The written reason IS the budget; a job that quietly re-recorded the
+# number would destroy the review it exists to force. Do not add that here.
+#
+# A merge that consumes more than this share of the headroom its asset had
+# left is flagged: four such merges exhaust an allowance, and every large
+# step in both incidents (#122 +2,257, #99 +1,673, #147 +1,351 on a 20 KB
+# allowance) would have been named the day it landed.
+HEADROOM_WARN_CONSUMED_SHARE = 0.25
+# An asset with less than this share of its allowance left is flagged on
+# every main push until it is re-recorded: at the measured sizes one ordinary
+# feature is 5 to 10 percent of an allowance and the timed run plus the
+# circuit were 20 percent together, so 15 percent means "one more feature and
+# the gate fails on accumulated growth", which is when to schedule the
+# reviewed re-record, with this ledger as its accounting.
+HEADROOM_WARN_REMAINING_SHARE = 0.15
+# The standing tracking issue the main-push ledger appends to.
+LEDGER_ISSUE_TITLE = 'Bundle budget headroom'
+LEDGER_ISSUE_LABEL = 'bundle-budget'
 METHOD = {'basePath': '/slamdemonium/', 'compression': 'gzip', 'level': 6,
           'mtime': 0, 'aggregation': 'sum of independently compressed files',
           'excludedInstrumentation': [MANIFEST]}
@@ -207,6 +233,132 @@ def evaluate(measurement, baseline):
                              'baseline': old, 'actual': actual, 'limit': limit,
                              'delta': actual - old, 'excess': actual - limit})
     return failures
+
+
+def headroom(measurement, baseline, previous=None):
+    """Per asset and metric: the limit, what is left under it, and what the
+    step from the previous main measurement consumed. Never changes a budget."""
+    rows = []
+    old_assets = baseline['measurement']['assets']
+    prior_assets = (previous or {}).get('assets', {})
+    for identity, asset in sorted(measurement['assets'].items()):
+        for metric in METRICS:
+            limit = asset_limit(identity, metric, baseline)
+            recorded = old_assets.get(identity, {}).get(metric, 0)
+            allowance = max(limit - recorded, 1)
+            left = limit - asset[metric]
+            row = {'file': asset['file'], 'identity': identity, 'metric': metric, 'actual': asset[metric],
+                   'limit': limit, 'headroom': left, 'remainingShare': left / allowance,
+                   'consumed': None, 'consumedShare': None, 'flags': []}
+            if identity in prior_assets:
+                before = prior_assets[identity][metric]
+                consumed = asset[metric] - before
+                row['consumed'] = consumed
+                had = limit - before
+                row['consumedShare'] = consumed / had if had > 0 else (1.0 if consumed > 0 else 0.0)
+                if consumed > 0 and row['consumedShare'] > HEADROOM_WARN_CONSUMED_SHARE:
+                    row['flags'].append('consumed')
+            if row['remainingShare'] < HEADROOM_WARN_REMAINING_SHARE:
+                row['flags'].append('remaining')
+            rows.append(row)
+    return rows
+
+
+def share(value):
+    return '—' if value is None else f'{value * 100:.0f}%'
+
+
+def render_headroom(rows, merge=None):
+    """The ledger table: on a PR the headroom left; on a main push also what
+    this merge consumed, with the merge named."""
+    moved = [row for row in rows if row['consumed']]
+    flagged = [row for row in rows if row['flags']]
+    lines = ['### Budget headroom', '']
+    if merge:
+        lines.append(f"Merge `{merge['sha'][:7]}` {safe(merge['title'])}: "
+                     f"{len(moved)} asset measurement(s) moved, {len(flagged)} flagged.")
+    else:
+        lines.append('Headroom under each reviewed limit; the main-push run names what each merge consumed.')
+    lines += ['', 'Budgets never move here. A flag means schedule a reviewed re-record with a written reason, '
+              'using this ledger as the accounting.', '',
+              '| File | Metric | Actual | Limit | Headroom left | Consumed by this merge | Flag |',
+              '|---|---|---:|---:|---:|---:|---|']
+    shown = flagged + [row for row in moved if not row['flags']]
+    if not shown:
+        shown = [row for row in rows if row['metric'] == 'gzipBytes']
+    for row in shown:
+        consumed = '—' if row['consumed'] is None else f"{row['consumed']:+,} B ({share(row['consumedShare'])})"
+        flag = ' '.join('⚠ ' + f for f in row['flags']) or ''
+        lines.append(f"| {safe(row['file'])} | {row['metric']} | {row['actual']:,} B | {row['limit']:,} B "
+                     f"| {row['headroom']:,} B ({share(row['remainingShare'])}) | {consumed} | {flag} |")
+    return '\n'.join(lines) + '\n'
+
+
+def annotations(rows):
+    """GitHub workflow warning lines for flagged rows; one per flag."""
+    out = []
+    for row in rows:
+        for flag in row['flags']:
+            if flag == 'consumed':
+                out.append(f"::warning title=Bundle budget::{row['file']} {row['metric']}: this merge consumed "
+                           f"{row['consumed']:+,} B, {share(row['consumedShare'])} of the headroom it had; "
+                           f"{row['headroom']:,} B left under {row['limit']:,} B.")
+            else:
+                out.append(f"::warning title=Bundle budget::{row['file']} {row['metric']}: {row['headroom']:,} B "
+                           f"({share(row['remainingShare'])}) left under {row['limit']:,} B; schedule a reviewed re-record.")
+    return out
+
+
+def ledger_comment(rows, merge):
+    """One comment per main push that moved anything: which merge, which assets, how much."""
+    moved = [row for row in rows if row['consumed']]
+    if not moved:
+        return None
+    lines = [f"**{merge['sha'][:7]}** {safe(merge['title'])}", '',
+             '| File | Metric | Consumed | Headroom left | Flag |', '|---|---|---:|---:|---|']
+    for row in sorted(moved, key=lambda r: -abs(r['consumed'])):
+        flag = ' '.join('⚠ ' + f for f in row['flags'])
+        lines.append(f"| {safe(row['file'])} | {row['metric']} | {row['consumed']:+,} B ({share(row['consumedShare'])}) "
+                     f"| {row['headroom']:,} B ({share(row['remainingShare'])}) | {flag} |")
+    return '\n'.join(lines) + '\n'
+
+
+def update_ledger(repo, rows, merge):
+    """Appends this merge's line to the standing issue, creating it once. The
+    issue is the continuous version of the by-hand accounting that #150 and
+    #159 needed; it records, it never re-records."""
+    body = ledger_comment(rows, merge)
+    if body is None or not repo or not os.environ.get('GH_TOKEN'):
+        return 'Ledger not updated: nothing moved or no token/repository.'
+    try:
+        issues = gh(f'repos/{repo}/issues?state=open&labels={LEDGER_ISSUE_LABEL}&per_page=5')
+        issue = next((i for i in issues if i.get('title') == LEDGER_ISSUE_TITLE), None)
+        if issue is None:
+            intro = ('Continuous accounting of the reviewed bundle budget: one comment per main push that moved an '
+                     'asset, naming the merge and what it consumed, so a re-record has its accounting ready. '
+                     'Budgets never move automatically; a flag here means schedule a reviewed re-record with a written '
+                     'reason in `.github/bundle-baseline.json`.')
+            issue = gh_post(f'repos/{repo}/issues', {'title': LEDGER_ISSUE_TITLE, 'body': intro,
+                                                     'labels': [LEDGER_ISSUE_LABEL]})
+        gh_post(f"repos/{repo}/issues/{issue['number']}/comments", {'body': body})
+        return f"Ledger updated: issue #{issue['number']}."
+    except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as error:
+        return f'Ledger not updated: {type(error).__name__}.'
+
+
+def gh_post(path, payload):
+    value = subprocess.check_output(['gh', 'api', path, '-X', 'POST', '--input', '-'], input=json.dumps(payload).encode(),
+                                    timeout=15, stderr=subprocess.PIPE)
+    return read_json(value)
+
+
+def merge_identity():
+    sha = os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    try:
+        title = subprocess.check_output(['git', 'log', '-1', '--format=%s', sha], text=True, timeout=10).strip()
+    except (OSError, subprocess.SubprocessError):
+        title = ''
+    return {'sha': sha, 'title': title}
 
 
 def validate_report(report):
@@ -396,7 +548,18 @@ def main():
                   'measurement': measurement, 'baseline': baseline, 'baselineFingerprint': digest(baseline),
                   'failures': failures, 'passed': not failures}
         prior, warnings = ([], []) if args.no_history else history(os.environ.get('GITHUB_REPOSITORY'), os.environ.get('GITHUB_RUN_ID'))
-        write_outputs(report, render(report, prior, warnings), args.output)
+        on_main = (os.environ.get('GITHUB_EVENT_NAME') == 'push'
+                   and os.environ.get('GITHUB_REF') == 'refs/heads/main')
+        previous = prior[0]['report']['measurement'] if (on_main and prior) else None
+        rows = headroom(measurement, baseline, previous)
+        merge = merge_identity() if on_main else None
+        report['headroom'] = rows
+        summary = render(report, prior, warnings) + '\n' + render_headroom(rows, merge)
+        if on_main:
+            for line in annotations(rows):
+                print(line)
+            summary += '\n' + safe(update_ledger(os.environ.get('GITHUB_REPOSITORY'), rows, merge)) + '\n'
+        write_outputs(report, summary, args.output)
         print(f"Bundle size {'FAIL' if failures else 'PASS'}: {measurement['total']['rawBytes']:,} B raw / "
               f"{measurement['total']['gzipBytes']:,} B gzip across {len(measurement['assets'])} files.")
         for failure in failures:

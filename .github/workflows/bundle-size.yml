@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
   actions: read
+  # The main-push ledger appends one comment per merge to the standing
+  # "Bundle budget headroom" issue; it never edits the budget file.
+  issues: write
 
 concurrency:
   group: bundle-size-${{ github.event.pull_request.number || github.ref }}
@@ -47,6 +50,9 @@ jobs:
         timeout-minutes: 2
         env:
           GH_TOKEN: ${{ github.token }}
+        # On a push to main the script also writes the headroom ledger: which
+        # merge consumed what, warning annotations past the thresholds, and a
+        # comment on the standing tracking issue. Budgets never move here.
         run: python3 .github/scripts/bundle_size.py
 
       - name: Retain measurements and summary
