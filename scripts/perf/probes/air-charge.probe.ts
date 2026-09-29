@@ -45,7 +45,6 @@ async function flight(rampIndex: number, speed: number) {
       launchY = 0,
       apex = -Infinity,
       launched = false;
-    let hopSeconds = 0; // Time airborne in flights the kerb-hop gate does not count.
     for (let step = 0; step < 10 * HZ; step++) {
       loop.stepMany(1);
       if (s.airLaunch.active) {
@@ -67,7 +66,6 @@ async function flight(rampIndex: number, speed: number) {
       apexAboveLaunch: +(apex - launchY).toFixed(2),
       airTime: +airTime.toFixed(3),
       landed: s.landingCount > 0,
-      hopSeconds,
     };
   } finally {
     rig.dispose();
