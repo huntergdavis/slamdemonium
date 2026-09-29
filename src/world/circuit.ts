@@ -168,6 +168,7 @@ export function createCircuitMap(): CircuitMap {
     bx: number,
     bz: number,
     width: number,
+    markerMeters = 0,
   ): RunwaySpec => {
     const dx = bx - ax;
     const dz = bz - az;
@@ -177,7 +178,7 @@ export function createCircuitMap(): CircuitMap {
       heading: Math.atan2(-dx, -dz),
       length: Math.hypot(dx, dz),
       width,
-      markerMeters: 0,
+      markerMeters,
     };
   };
   // Each loop exits its helix one shift to the side; a lane leads the car
@@ -194,10 +195,20 @@ export function createCircuitMap(): CircuitMap {
   // of its far end back to the road.
   const mouth = at(CIRCUIT_STATIONS.halfPipe - 110);
   const tail = at(CIRCUIT_STATIONS.halfPipe + 110);
-  const off = at(CIRCUIT_STATIONS.halfPipe - 360);
+  // The entry starts one 110 m braking approach before the mouth. Repeated
+  // ground crossbars make the optional slowdown legible at circuit speed;
+  // the racing line remains on the road beside it and has no drag.
+  const off = at(CIRCUIT_STATIONS.halfPipe - 220);
   const on = at(CIRCUIT_STATIONS.halfPipe + 360);
   lanes.push(
-    link(off.x, off.z, mouth.x + left.x * 60, mouth.z + left.z * 60, 14),
+    link(
+      off.x,
+      off.z,
+      mouth.x + left.x * 60,
+      mouth.z + left.z * 60,
+      14,
+      20,
+    ),
     link(tail.x + left.x * 60, tail.z + left.z * 60, on.x, on.z, 14),
   );
   const scattered: BreakablePlacement[] = shoulderPlacements(path, {

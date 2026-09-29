@@ -43,6 +43,17 @@ describe('the 10 km circuit', () => {
       Math.hypot(ahead.x - gates[0]!.x, ahead.z - gates[0]!.z),
     ).toBeLessThan(1);
   });
+
+  it('marks the optional aquifer braking approach without moving the racing line', () => {
+    const aquiferEntry = map.runways.at(-2)!;
+    expect(aquiferEntry.markerMeters).toBe(20);
+    expect(aquiferEntry.width).toBe(14);
+    expect(aquiferEntry.length).toBeGreaterThan(110);
+    expect(aquiferEntry.length).toBeLessThan(130);
+    expect(map.runways.slice(0, Math.round(map.path.length / 20))).toContainEqual(
+      expect.objectContaining({ markerMeters: 0 }),
+    );
+  });
   it('carries about thirteen thousand props, all off the road', () => {
     expect(map.placements.length).toBeGreaterThan(12_000);
     expect(map.placements.length).toBeLessThan(16_000);
