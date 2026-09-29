@@ -2,7 +2,7 @@ name: Build PR Preview
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, claude/ns2-track]
     types: [opened, synchronize, reopened]
 
 permissions:
