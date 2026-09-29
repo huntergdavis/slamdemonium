@@ -1,6 +1,6 @@
 import { BufferGeometry, Float32BufferAttribute, Group, Mesh } from 'three';
 import type { Material, Scene } from 'three';
-import { SURFACE_IDS } from '../content/surfaces';
+import { SURFACE_IDS, type SurfaceId } from '../content/surfaces';
 import type { BodyId, V3 } from '../physics/adapter';
 import type { SurfacedBodies, SurfacedStaticMeshDesc } from './surfacedBodies';
 
@@ -13,7 +13,7 @@ export interface JumpRampSpec {
   readonly gap: number;
   readonly landingLength: number;
   readonly width: number;
-  readonly surface?: number;
+  readonly surface?: SurfaceId;
 }
 
 const THICKNESS = 0.3;
@@ -98,7 +98,7 @@ export interface JumpRampVisual {
 }
 export function createJumpRampVisual(
   scene: Scene,
-  materialFor: (surface: number) => Material,
+  materialFor: (surface: SurfaceId) => Material,
   specs: readonly JumpRampSpec[],
 ): JumpRampVisual {
   const root = new Group();
