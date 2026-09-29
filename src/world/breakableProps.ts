@@ -52,8 +52,8 @@ export interface BreakableProps {
 
 const FRAGMENTS_PER_BREAK = 8;
 const FRAGMENT_SETTLE_SPEED = 0.35;
-const FRAGMENT_SETTLE_SECONDS = 0.75;
-const FRAGMENT_TTL_SECONDS = 8;
+const FRAGMENT_SETTLE_SECONDS = 0.4;
+const FRAGMENT_TTL_SECONDS = 3;
 // A fast, wide burst makes the replacement read as destruction rather than a
 // pile being nudged. The prop remains pooled and the contact stays deferred.
 const FRAGMENT_SPEED = 4.5;
