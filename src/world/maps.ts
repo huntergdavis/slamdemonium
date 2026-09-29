@@ -187,13 +187,15 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
   ]),
   jumpRamps: Object.freeze([
     Object.freeze({
-      x: 0,
-      z: -40,
+      // East infield: a long northbound approach offset right of spawn. The
+      // 150 m hill clears the centre ramp, both loops and the west aquifer.
+      x: 125,
+      z: 30,
       heading: NORTH,
-      launchLength: 10,
-      launchHeight: 1.5,
+      launchHeight: 8,
+      launchAngle: 22 * DEG,
       gap: 3,
-      landingLength: 100,
+      landingLength: 150,
       width: 20,
     }),
   ]),

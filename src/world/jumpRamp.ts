@@ -8,8 +8,9 @@ export interface JumpRampSpec {
   readonly x: number;
   readonly z: number;
   readonly heading: number;
-  readonly launchLength: number;
   readonly launchHeight: number;
+  /** Exit tangent in radians; the launch arc starts flat at ground level. */
+  readonly launchAngle: number;
   readonly gap: number;
   readonly landingLength: number;
   readonly width: number;
@@ -17,28 +18,39 @@ export interface JumpRampSpec {
 }
 
 const THICKNESS = 0.3;
+export const JUMP_LAUNCH_SEGMENTS = 128;
+const LANDING_SEGMENTS = 150;
+
+export function jumpRampLaunchLength(s: Readonly<JumpRampSpec>): number {
+  const radius = s.launchHeight / (1 - Math.cos(s.launchAngle));
+  return radius * Math.sin(s.launchAngle);
+}
+
 const launchProfile = (s: JumpRampSpec): [number, number][] => {
   const out: [number, number][] = [];
-  for (let i = 0; i <= 24; i++) {
-    const t = i / 24;
-    const z = -s.launchLength * t;
-    const y = s.launchHeight * (t * t * (3 - 2 * t));
-    out.push([z, y]);
+  const radius = s.launchHeight / (1 - Math.cos(s.launchAngle));
+  for (let i = 0; i <= JUMP_LAUNCH_SEGMENTS; i++) {
+    const angle = (s.launchAngle * i) / JUMP_LAUNCH_SEGMENTS;
+    out.push([-radius * Math.sin(angle), radius * (1 - Math.cos(angle))]);
   }
   return out;
 };
 const landingProfile = (s: JumpRampSpec): [number, number][] => {
   const out: [number, number][] = [];
-  for (let i = 0; i <= 64; i++) {
-    const t = i / 64;
-    const z = -s.launchLength - s.gap - s.landingLength * t;
-    const y = s.launchHeight * (1 - t * t * (3 - 2 * t));
+  const launchLength = jumpRampLaunchLength(s);
+  for (let i = 0; i <= LANDING_SEGMENTS; i++) {
+    const t = i / LANDING_SEGMENTS;
+    const z = -launchLength - s.gap - s.landingLength * t;
+    // Descends immediately from the far edge, then levels onto ground.
+    const y = s.launchHeight * (1 - t) * (1 - t);
     out.push([z, y]);
   }
   return out;
 };
 
-function meshDescriptor(s: JumpRampSpec): SurfacedStaticMeshDesc {
+export function jumpRampMeshDescriptor(
+  s: JumpRampSpec,
+): SurfacedStaticMeshDesc {
   const surface = s.surface ?? SURFACE_IDS.asphalt;
   const profiles = [launchProfile(s), landingProfile(s)];
   const vertices: V3[] = [];
@@ -89,7 +101,7 @@ export function installJumpRamps(
   bodies: SurfacedBodies,
   specs: readonly JumpRampSpec[],
 ): readonly BodyId[] {
-  return specs.map((s) => bodies.createStaticMesh(meshDescriptor(s)));
+  return specs.map((s) => bodies.createStaticMesh(jumpRampMeshDescriptor(s)));
 }
 
 export interface JumpRampVisual {
@@ -105,7 +117,7 @@ export function createJumpRampVisual(
   root.name = 'jump-ramps';
   const geometries: BufferGeometry[] = [];
   for (const s of specs) {
-    const d = meshDescriptor(s);
+    const d = jumpRampMeshDescriptor(s);
     const g = new BufferGeometry();
     g.setAttribute(
       'position',
