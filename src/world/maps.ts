@@ -13,6 +13,7 @@ import {
 import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import type { RunwaySpec } from './runways';
 import type { TrackConfig } from './trackConfig';
+import type { JumpRampSpec } from './jumpRamp';
 
 /** A named world: track geometry overrides, where the car starts, and the
  * structures built on it. Every placement is data in absolute metres, so a
@@ -32,6 +33,7 @@ export interface MapDefinition {
   readonly ramps: readonly RampSpec[];
   readonly loops: readonly LoopSpec[];
   readonly halfPipes: readonly HalfPipeSpec[];
+  readonly jumpRamps: readonly JumpRampSpec[];
   readonly runways: readonly RunwaySpec[];
   /** Accelerator triangles: a speed kick and boost when driven over. */
   readonly boostPads: readonly BoostPadSpec[];
@@ -79,6 +81,7 @@ export const LAB_MAP: MapDefinition = Object.freeze({
   ramps: RAMP_LAYOUT,
   loops: LOOP_LAYOUT,
   halfPipes: Object.freeze([]),
+  jumpRamps: Object.freeze([]),
   runways: Object.freeze([]),
   boostPads: Object.freeze([]),
 });
@@ -180,6 +183,18 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
       segments: 64,
       surface: SURFACE_IDS.stickyAsphalt,
       shoulder: Object.freeze({ width: 3, bank: 12 * DEG }),
+    }),
+  ]),
+  jumpRamps: Object.freeze([
+    Object.freeze({
+      x: 0,
+      z: -40,
+      heading: NORTH,
+      launchLength: 10,
+      launchHeight: 1.5,
+      gap: 3,
+      landingLength: 100,
+      width: 20,
     }),
   ]),
   halfPipes: Object.freeze([
