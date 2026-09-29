@@ -27,7 +27,7 @@ it('launches from an 8 m circular arc at the authored 22 degree tangent', () => 
   const landingEnd = vertices[vertices.length - 4]!;
   expect(landingStart.y).toBeCloseTo(8, 9);
   expect(landingEnd.y).toBeCloseTo(0, 9);
-  expect(spec.landingLength).toBe(150);
+  expect(spec.landingLength).toBe(270);
 });
 
 it('faces every launch and landing top triangle upward for wheel raycasts', () => {

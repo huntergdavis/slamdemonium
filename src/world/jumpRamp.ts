@@ -19,7 +19,7 @@ export interface JumpRampSpec {
 
 const THICKNESS = 0.3;
 export const JUMP_LAUNCH_SEGMENTS = 128;
-export const JUMP_LANDING_SEGMENTS = 150;
+export const JUMP_LANDING_SEGMENTS = 270;
 
 export function jumpRampLaunchLength(s: Readonly<JumpRampSpec>): number {
   const radius = s.launchHeight / (1 - Math.cos(s.launchAngle));
