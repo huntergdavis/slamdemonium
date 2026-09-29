@@ -1,0 +1,82 @@
+{
+ "counts": {
+  "records": 15227,
+  "cells": 825,
+  "lanes": 505,
+  "paintInstances": 2020,
+  "barrierBoxes": 1800,
+  "ramps": 1,
+  "loops": 2,
+  "halfPipes": 1,
+  "pads": 6,
+  "gates": 5,
+  "lapMetres": 10103.8
+ },
+ "bootMs": {
+  "map": 92,
+  "records": 44.3,
+  "pools": 280,
+  "streamer": 19.8
+ },
+ "memory": {
+  "before": {
+   "heapBytes": 134217728,
+   "freeBytes": 113803400
+  },
+  "afterBoot": {
+   "heapBytes": 134217728,
+   "freeBytes": 112526800
+  },
+  "afterLap": {
+   "heapBytes": 134217728,
+   "freeBytes": 112395712
+  }
+ },
+ "lap": {
+  "steps": 20208,
+  "seconds": 168.4,
+  "step": {
+   "n": 20208,
+   "avg": 0.6191,
+   "p50": 0.5205,
+   "p99": 1.5499,
+   "max": 61.4976
+  },
+  "promotedEvery10s": [
+   327,
+   327,
+   338,
+   326,
+   326,
+   325,
+   324,
+   332,
+   327,
+   338,
+   325,
+   327,
+   327,
+   327,
+   325,
+   337
+  ],
+  "awakeEvery10s": [
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1
+  ]
+ }
+}

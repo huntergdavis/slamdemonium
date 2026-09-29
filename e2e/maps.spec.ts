@@ -51,3 +51,69 @@ test('the e2e build boots the lab ring, and ?map=proving-ground boots the provin
   expect((back.position as { x: number }).x).toBeCloseTo(130, 1);
   expect(errors).toEqual([]);
 });
+
+test('on the proving ground, Enter puts the car on the start line and the run counts down, runs, and abandons on respawn', async ({
+  page,
+}) => {
+  await page.goto('./?map=proving-ground');
+  await page.waitForFunction(() => window.__game?.ready);
+  const run = page.locator('.sl-hud__run');
+  await expect(run).toHaveAttribute('data-phase', 'idle');
+  // Retry: onto the line (the start box is 8 m long at z -320), and the
+  // arrival starts the countdown at once.
+  await page.keyboard.press('Enter');
+  await expect(run).toHaveAttribute('data-phase', 'countdown', {
+    timeout: 15_000,
+  });
+  const z = await page.evaluate(
+    () => (window.__game.getTelemetry().position as { z: number }).z,
+  );
+  expect(Math.abs(z + 320)).toBeLessThanOrEqual(4);
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText(/^[123]$/);
+  await page.evaluate(() => window.__game.stepMany(360));
+  await expect(run).toHaveAttribute('data-phase', 'running');
+  await page.evaluate(() => window.__game.stepMany(120));
+  await expect(page.locator('[data-reading="runClock"]')).toHaveText(
+    /^\d+\.\d\d$/,
+  );
+  // R is the respawn that keeps the score and abandons the run.
+  await page.keyboard.press('KeyR');
+  await expect(run).toHaveAttribute('data-phase', 'idle');
+  await expect(run).toHaveAttribute('data-visible', 'false');
+});
+
+test('the pause menu lists the maps, marks the current one, and picking another boots it', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.waitForFunction(() => window.__game?.ready);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Pause menu' })).toBeVisible();
+  await page.getByRole('button', { name: /^Map · Lab ring/ }).click();
+  const list = page.getByRole('dialog', { name: 'Map', exact: true });
+  await expect(list).toBeVisible();
+  await expect(list.locator('button[data-map]')).toHaveCount(3);
+  await expect(list.locator('button[data-map="lab"]')).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
+  await list.locator('button[data-map="circuit"]').click();
+  await page.waitForURL(/\?map=circuit$/);
+  await page.waitForFunction(() => window.__game?.ready);
+  const spawn = await page.evaluate(
+    () => window.__game.getTelemetry().position as { x: number; z: number },
+  );
+  // The circuit's spawn: 40 m short of its start line on the west side.
+  expect(Math.abs(spawn.x + 850)).toBeLessThan(60);
+  expect(Math.hypot(spawn.x, spawn.z)).toBeGreaterThan(1000);
+  await expect(page.locator('.sl-hud__run')).toHaveAttribute(
+    'data-phase',
+    'idle',
+  );
+  // The choice is remembered. (In this e2e build the build default wins
+  // over the memory by design, so the plain URL still boots the lab; the
+  // precedence is unit-tested in map-choice.test.ts.)
+  expect(
+    await page.evaluate(() => localStorage.getItem('slamdemonium.map')),
+  ).toBe('circuit');
+});

@@ -45,9 +45,18 @@ import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
 import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
-import { MAPS, resolveMapName } from './world/maps';
+import { MAPS } from './world/maps';
+import {
+  chooseMapName,
+  mapUrl,
+  readStoredMapName,
+  shouldOfferMapsAtBoot,
+  storeMapName,
+} from './world/mapChoice';
 import { createRunwayVisual } from './world/runways';
+import { createTimedRun } from './core/timedRun';
 import { createAwakeBudget } from './world/awakeBudget';
+import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
 import type { MiniMapLandmark } from './ui/miniMap';
 import {
@@ -91,8 +100,28 @@ async function boot(): Promise<void> {
   // The world is a named map: the proving ground by default, the lab ring
   // with `?map=lab` (and in the e2e build). Every structure below is the
   // map's data.
-  const map =
-    MAPS[resolveMapName(location.search, import.meta.env.VITE_DEFAULT_MAP)];
+  const mapStorage = (() => {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  })();
+  const storedMapName = readStoredMapName(mapStorage);
+  const mapName = chooseMapName(
+    location.search,
+    import.meta.env.VITE_DEFAULT_MAP,
+    storedMapName,
+  );
+  const offerMapsAtBoot = shouldOfferMapsAtBoot(
+    location.search,
+    import.meta.env.VITE_DEFAULT_MAP,
+    storedMapName,
+  );
+  // An explicit URL switch is a choice too: the plain URL keeps it next time.
+  if (new URLSearchParams(location.search).get('map') === mapName)
+    storeMapName(mapStorage, mapName);
+  const map = MAPS[mapName];
   const track = createTestTrack(view.scene, {
     maxAnisotropy: view.renderer.capabilities.getMaxAnisotropy(),
     config: {
@@ -149,6 +178,28 @@ async function boot(): Promise<void> {
   // Accelerator triangles: paint and a footprint test, no bodies. Driving
   // onto one adds padKick along the heading and padBoost of the bar, once
   // per visit; with drift charge slowed, this is how boost is earned.
+  // The timed run (NS3): the start line is a thing in the world he drives
+  // into; the clock runs to the goal; Enter is the retry, onto the line.
+  const timedRun = createTimedRun(map.runs?.[0]);
+  const runStartGate = map.runs?.[0]?.gates[0];
+  const runStart = runStartGate
+    ? {
+        position: {
+          x: runStartGate.x,
+          y: track.spawn.position.y,
+          z: runStartGate.z,
+        },
+        rotation: {
+          x: 0,
+          y: Math.sin(runStartGate.heading / 2),
+          z: 0,
+          w: Math.cos(runStartGate.heading / 2),
+        },
+      }
+    : track.spawn;
+  resources.push(
+    createRunGateVisual(view.scene, map.runs?.[0], track.config.paintHeight),
+  );
   const boostPads = createBoostPadTracker(map.boostPads);
   resources.push(
     createBoostPadVisual(view.scene, map.boostPads, track.config.paintHeight),
@@ -182,7 +233,7 @@ async function boot(): Promise<void> {
   const breakableProps = createBreakableProps({
     physics,
     pools: propPools,
-    placements: BREAKABLE_PROP_PLACEMENTS,
+    placements: map.placements ?? BREAKABLE_PROP_PLACEMENTS,
     vehicleBody: vehicle.body,
     onBreak: (severity) => crashScore.recordBreakSeverity(severity),
     initialActiveIndices: [],
@@ -201,7 +252,7 @@ async function boot(): Promise<void> {
     },
   });
   const propStreamRecords = createPropStreamRecords(
-    BREAKABLE_PROP_PLACEMENTS,
+    map.placements ?? BREAKABLE_PROP_PLACEMENTS,
     32,
   );
   const propStreamer = createPropStreamer({
@@ -335,6 +386,7 @@ async function boot(): Promise<void> {
   let replayStopped = false;
   let replayActive = false;
   let respawnRequested = false;
+  let retryRequested = false;
   let actionsThisStep = 0;
   const countActions = (actions: Readonly<ActionCounts>): number => {
     let total = 0;
@@ -410,6 +462,12 @@ async function boot(): Promise<void> {
             );
         }
         crashScore.update(dt);
+        timedRun.update(
+          dt,
+          vehicle.telemetry.position.x,
+          vehicle.telemetry.position.z,
+          vehicle.telemetry.speed,
+        );
         propStreamer.update();
         awakeBudget.update(
           tuning.get('awakeBudget'),
@@ -454,7 +512,8 @@ async function boot(): Promise<void> {
         controllerSupport.afterStep(dt);
         audio.afterStep(dt);
         scripts.afterStep();
-        if (respawnRequested) respawn();
+        if (retryRequested) retry();
+        else if (respawnRequested) respawn();
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -515,7 +574,27 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     vehicle.respawn(track.spawn.position, track.spawn.rotation);
     resetPresentation();
+    timedRun.abandon();
     scripts.noteRespawn(track.spawn, 0);
+    syncPause();
+  }
+  /** Instant retry (NS3): a respawn that also forgets the run. Respawn keeps
+   * the free-drive score and ends the chain; retry zeroes the score, and
+   * whatever the timed run adds (its clock) resets here too. It is applied
+   * on the same step the key is read, so "again" is one press and no wait. */
+  function retry(): void {
+    retryRequested = false;
+    respawnRequested = false;
+    scripts.cancel();
+    replayStopped = replayActive = false;
+    massRebuild.flush();
+    // Onto the start line itself: the next step is an arrival and the
+    // countdown begins at once.
+    vehicle.respawn(runStart.position, runStart.rotation);
+    resetPresentation();
+    crashScore.reset();
+    timedRun.reset();
+    scripts.noteRespawn(runStart, 0);
     syncPause();
   }
   const massRebuild = new DebouncedMassRebuild(tuning, () => {
@@ -606,16 +685,39 @@ async function boot(): Promise<void> {
     readGamepad: () => input.gamepad.state,
     readAudioState: () => menuAudio?.state,
     onToggleAudioMute: () => menuAudio?.toggleMasterMute(),
+    maps: {
+      current: mapName,
+      entries: Object.entries(MAPS).map(([name, entry]) => ({
+        name,
+        label: entry.label,
+      })),
+      onSelect(name) {
+        if (name === mapName) {
+          pauseMenu.setOpen(false);
+          return;
+        }
+        if (Object.hasOwn(MAPS, name)) {
+          storeMapName(mapStorage, name as keyof typeof MAPS);
+          location.assign(mapUrl(location.pathname, name as keyof typeof MAPS));
+        }
+      },
+    },
   });
+  if (offerMapsAtBoot)
+    // The first boot ever offers the list, once; every boot after that goes
+    // straight to the remembered map. The e2e build's default never prompts.
+    requestAnimationFrame(() => pauseMenu.openMaps());
   const hud = mountHud({
     host: options.root,
     store: tuning,
     session: options.session,
     readTelemetry: () => vehicle.telemetry,
     readScore: () => crashScore.state,
+    readRun: () => timedRun.state,
     readRenderTelemetry: () => renderTelemetry,
     miniMap: {
       landmarks: miniMapLandmarks,
+      route: map.route,
       halfSize: Math.max(
         track.config.pavedRadius,
         track.config.barrierInnerRadius,
@@ -728,6 +830,8 @@ async function boot(): Promise<void> {
     if (actions.pauseMenu % 2) pauseMenu.toggle();
     if (menuOwnsBatch) return;
     if (actions.respawn > 0) respawnRequested = true;
+    // Again: the whole run from the start line, nothing kept. One key, no menu.
+    if (actions.retry > 0) retryRequested = true;
     if (actions.options % 2) options.toggle();
     hud.cycleMode(actions.hud);
     if (actions.recordTelemetry % 2) hud.toggleRecording();
@@ -936,7 +1040,8 @@ async function boot(): Promise<void> {
       // Active replays still need this command path to close their pause menu.
       if (isPaused() || tuning.get('timeScale') === 0) {
         dispatchActions(input.sampleActions());
-        if (respawnRequested) respawn();
+        if (retryRequested) retry();
+        else if (respawnRequested) respawn();
       }
       loop.frame(nowMs);
       pauseMenu.update(nowMs);

@@ -130,6 +130,22 @@ test('Tab swaps tuning slots and C/G/R drive the mounted scene while paused', as
   await expect
     .poll(() => page.evaluate(() => window.__game.getTelemetry().speed))
     .toBe(0);
+  // Enter is the instant retry: back on the start line with the run
+  // forgotten, on the step the key is read.
+  await page.evaluate(() => {
+    window.__game.setInput({ throttle: 1 });
+    window.__game.stepMany(120);
+  });
+  await page.keyboard.press('Enter');
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const t = window.__game.getTelemetry();
+        const p = t.position as { x: number; z: number };
+        return [Math.round(p.x), Math.round(p.z), t.speed];
+      }),
+    )
+    .toEqual([130, 0, 0]);
 });
 
 test('a live slider changes acceleration and F9 downloads real physics CSV', async ({

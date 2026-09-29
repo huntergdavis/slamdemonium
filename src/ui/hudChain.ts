@@ -27,7 +27,10 @@ export class HudChainState {
     }
     if (!this.visible) return false;
     if (Number.isNaN(this.diedAt)) this.diedAt = nowMs;
-    if (nowMs - this.diedAt >= HUD_CHAIN_LINGER_MS) {
+    // The wall clock carries fractions (962.1 + 34 + ... - 1064.1 can land a
+    // hair under 3000), so the linger ends on the step it is due, not one
+    // 33 ms read later.
+    if (nowMs - this.diedAt >= HUD_CHAIN_LINGER_MS - 1e-6) {
       this.visible = false;
       this.diedAt = NaN;
     }

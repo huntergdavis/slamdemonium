@@ -77,8 +77,19 @@ const score = {
   awardAgeSeconds: Infinity,
   awardSerial: 0,
 };
+/** Timed-run state the tests set by hand; the real game reads its model. */
+const run = {
+  phase: 'idle' as 'idle' | 'countdown' | 'running' | 'finished',
+  countdown: 0,
+  clock: 0,
+  gatesTaken: 0,
+  gateCount: 3,
+  sinceFinish: 0,
+  changed: false,
+};
 const hudOptions: HudOptions = {
   readScore: () => score,
+  readRun: () => run,
   host: panel.root,
   store,
   session: panel.session,
@@ -152,6 +163,7 @@ const api = {
   state,
   sample,
   score,
+  run,
   manual: () => {
     state.automatic = false;
     state.capture = true;

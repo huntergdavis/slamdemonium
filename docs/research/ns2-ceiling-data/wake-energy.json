@@ -1,0 +1,1392 @@
+{
+  "wakeEnergy": [
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "natural",
+      "seed": 1,
+      "beforeSleep": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step120": {
+          "ke": 0,
+          "maxSpeed": 0
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 1, 45],
+      "peak": {
+        "ke": 8.58,
+        "maxSpeed": 1.054,
+        "step": 59
+      },
+      "energyRatio": 1.1
+    },
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "natural",
+      "seed": 2,
+      "beforeSleep": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0.28,
+          "maxSpeed": 0.142
+        },
+        "step120": {
+          "ke": 0,
+          "maxSpeed": 0
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 45, 45],
+      "peak": {
+        "ke": 15.69,
+        "maxSpeed": 1.012,
+        "step": 74
+      },
+      "energyRatio": 2.1
+    },
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "natural",
+      "seed": 3,
+      "beforeSleep": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0.54,
+          "maxSpeed": 0.238
+        },
+        "step2": {
+          "ke": 0.15,
+          "maxSpeed": 0.051
+        },
+        "step3": {
+          "ke": 0.08,
+          "maxSpeed": 0.049
+        },
+        "step5": {
+          "ke": 0.04,
+          "maxSpeed": 0.039
+        },
+        "step10": {
+          "ke": 0.01,
+          "maxSpeed": 0.024
+        },
+        "step30": {
+          "ke": 0.06,
+          "maxSpeed": 0.041
+        },
+        "step120": {
+          "ke": 0.01,
+          "maxSpeed": 0.02
+        }
+      },
+      "awakeAtSamples": [42, 42, 42, 42, 42, 42, 44],
+      "peak": {
+        "ke": 4.95,
+        "maxSpeed": 0.727,
+        "step": 81
+      },
+      "energyRatio": 0.7
+    },
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "block0.5",
+      "seed": 1,
+      "beforeSleep": {
+        "ke": 24518.49,
+        "maxSpeed": 10
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 5.19,
+          "maxSpeed": 0.556
+        },
+        "step10": {
+          "ke": 43.43,
+          "maxSpeed": 1.326
+        },
+        "step30": {
+          "ke": 183.12,
+          "maxSpeed": 3.988
+        },
+        "step120": {
+          "ke": 1127.03,
+          "maxSpeed": 8.213
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 5, 5, 10, 35],
+      "peak": {
+        "ke": 1388.28,
+        "maxSpeed": 7.833,
+        "step": 101
+      },
+      "energyRatio": 185.1
+    },
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "block0.5",
+      "seed": 2,
+      "beforeSleep": {
+        "ke": 20952.98,
+        "maxSpeed": 10.635
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step120": {
+          "ke": 834.68,
+          "maxSpeed": 6.98
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 1, 28],
+      "peak": {
+        "ke": 834.68,
+        "maxSpeed": 6.98,
+        "step": 120
+      },
+      "energyRatio": 111.3
+    },
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "block0.5",
+      "seed": 3,
+      "beforeSleep": {
+        "ke": 14841.71,
+        "maxSpeed": 10.825
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 9.25,
+          "maxSpeed": 1.11
+        },
+        "step10": {
+          "ke": 47.2,
+          "maxSpeed": 2.009
+        },
+        "step30": {
+          "ke": 622.86,
+          "maxSpeed": 5.294
+        },
+        "step120": {
+          "ke": 1456.19,
+          "maxSpeed": 7.861
+        }
+      },
+      "awakeAtSamples": [1, 1, 2, 2, 19, 21, 55],
+      "peak": {
+        "ke": 2229.87,
+        "maxSpeed": 8.532,
+        "step": 56
+      },
+      "energyRatio": 297.3
+    },
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "block1",
+      "seed": 1,
+      "beforeSleep": {
+        "ke": 3221.02,
+        "maxSpeed": 9.737
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step120": {
+          "ke": 376.15,
+          "maxSpeed": 6.368
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 1, 43],
+      "peak": {
+        "ke": 376.15,
+        "maxSpeed": 6.368,
+        "step": 120
+      },
+      "energyRatio": 50.2
+    },
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "block1",
+      "seed": 2,
+      "beforeSleep": {
+        "ke": 3677.6,
+        "maxSpeed": 9.508
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step120": {
+          "ke": 664.58,
+          "maxSpeed": 5.397
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 1, 49],
+      "peak": {
+        "ke": 696.52,
+        "maxSpeed": 5.761,
+        "step": 113
+      },
+      "energyRatio": 92.9
+    },
+    {
+      "kind": "prop",
+      "count": 64,
+      "sleep": "block1",
+      "seed": 3,
+      "beforeSleep": {
+        "ke": 2375,
+        "maxSpeed": 8.079
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 7.5,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 119.83,
+          "maxSpeed": 1.782
+        },
+        "step120": {
+          "ke": 166.64,
+          "maxSpeed": 2.687
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 52, 56],
+      "peak": {
+        "ke": 410.42,
+        "maxSpeed": 4.61,
+        "step": 78
+      },
+      "energyRatio": 54.7
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "natural",
+      "seed": 1,
+      "beforeSleep": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0.69,
+          "maxSpeed": 0.185
+        },
+        "step30": {
+          "ke": 0.13,
+          "maxSpeed": 0.156
+        },
+        "step120": {
+          "ke": 0.19,
+          "maxSpeed": 0.238
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 189, 189, 187],
+      "peak": {
+        "ke": 1.59,
+        "maxSpeed": 0.713,
+        "step": 19
+      },
+      "energyRatio": 0.8
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "natural",
+      "seed": 2,
+      "beforeSleep": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0.04,
+          "maxSpeed": 0.1
+        },
+        "step120": {
+          "ke": 0,
+          "maxSpeed": 0
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 176, 0],
+      "peak": {
+        "ke": 1.09,
+        "maxSpeed": 0.378,
+        "step": 19
+      },
+      "energyRatio": 0.5
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "natural",
+      "seed": 3,
+      "beforeSleep": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0.03,
+          "maxSpeed": 0.055
+        },
+        "step120": {
+          "ke": 0,
+          "maxSpeed": 0.001
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 209, 208],
+      "peak": {
+        "ke": 0.82,
+        "maxSpeed": 0.294,
+        "step": 20
+      },
+      "energyRatio": 0.4
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "block0.5",
+      "seed": 1,
+      "beforeSleep": {
+        "ke": 38377.94,
+        "maxSpeed": 10
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 12.65,
+          "maxSpeed": 2.496
+        },
+        "step120": {
+          "ke": 4680.7,
+          "maxSpeed": 10.328
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 5, 71],
+      "peak": {
+        "ke": 4680.7,
+        "maxSpeed": 10.328,
+        "step": 120
+      },
+      "energyRatio": 2340.3
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "block0.5",
+      "seed": 2,
+      "beforeSleep": {
+        "ke": 41505.91,
+        "maxSpeed": 10
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step120": {
+          "ke": 3469.13,
+          "maxSpeed": 11.822
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 1, 51],
+      "peak": {
+        "ke": 3469.13,
+        "maxSpeed": 11.822,
+        "step": 120
+      },
+      "energyRatio": 1734.6
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "block0.5",
+      "seed": 3,
+      "beforeSleep": {
+        "ke": 41270.43,
+        "maxSpeed": 10
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 4.27,
+          "maxSpeed": 1.462
+        },
+        "step30": {
+          "ke": 50.28,
+          "maxSpeed": 4.633
+        },
+        "step120": {
+          "ke": 4058.92,
+          "maxSpeed": 10.679
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 2, 4, 77],
+      "peak": {
+        "ke": 4058.92,
+        "maxSpeed": 10.679,
+        "step": 120
+      },
+      "energyRatio": 2029.5
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "block1",
+      "seed": 1,
+      "beforeSleep": {
+        "ke": 5134.76,
+        "maxSpeed": 12.662
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 32.6,
+          "maxSpeed": 0.867
+        },
+        "step120": {
+          "ke": 104.09,
+          "maxSpeed": 3.826
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 195, 236],
+      "peak": {
+        "ke": 318,
+        "maxSpeed": 4.911,
+        "step": 87
+      },
+      "energyRatio": 159
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "block1",
+      "seed": 2,
+      "beforeSleep": {
+        "ke": 5227.65,
+        "maxSpeed": 14.755
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step120": {
+          "ke": 112.46,
+          "maxSpeed": 2.742
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 1, 222],
+      "peak": {
+        "ke": 282.61,
+        "maxSpeed": 5.102,
+        "step": 90
+      },
+      "energyRatio": 141.3
+    },
+    {
+      "kind": "debris",
+      "count": 256,
+      "sleep": "block1",
+      "seed": 3,
+      "beforeSleep": {
+        "ke": 3650.92,
+        "maxSpeed": 11.596
+      },
+      "awakeBefore": 0,
+      "asleepKe": {
+        "ke": 0,
+        "maxSpeed": 0
+      },
+      "inputKe": 2,
+      "after": {
+        "step1": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step2": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step3": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step5": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step10": {
+          "ke": 0,
+          "maxSpeed": 0
+        },
+        "step30": {
+          "ke": 36.72,
+          "maxSpeed": 0.961
+        },
+        "step120": {
+          "ke": 22.88,
+          "maxSpeed": 1.941
+        }
+      },
+      "awakeAtSamples": [1, 1, 1, 1, 1, 191, 219],
+      "peak": {
+        "ke": 131.39,
+        "maxSpeed": 5.469,
+        "step": 93
+      },
+      "energyRatio": 65.7
+    }
+  ],
+  "carIntoHeap": [
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 1,
+      "speed": 30,
+      "maxTiltDeg": 0.7,
+      "maxCarUpSpeed": 0.15,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 6.47
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 2,
+      "speed": 30,
+      "maxTiltDeg": 2.2,
+      "maxCarUpSpeed": 0.19,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 2.27
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 3,
+      "speed": 30,
+      "maxTiltDeg": 1.4,
+      "maxCarUpSpeed": 0.14,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.86
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 4,
+      "speed": 30,
+      "maxTiltDeg": 1.9,
+      "maxCarUpSpeed": 0.1,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.5
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 5,
+      "speed": 30,
+      "maxTiltDeg": 0.5,
+      "maxCarUpSpeed": 0.08,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.82
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 6,
+      "speed": 30,
+      "maxTiltDeg": 3.8,
+      "maxCarUpSpeed": 0.31,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 5.26
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "block0.5",
+      "seed": 1,
+      "speed": 30,
+      "maxTiltDeg": 0.8,
+      "maxCarUpSpeed": 0.12,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 1.86
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "block0.5",
+      "seed": 2,
+      "speed": 30,
+      "maxTiltDeg": 1.6,
+      "maxCarUpSpeed": 0.2,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 5.16
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "block0.5",
+      "seed": 3,
+      "speed": 30,
+      "maxTiltDeg": 1.2,
+      "maxCarUpSpeed": 0.12,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.15
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "block0.5",
+      "seed": 4,
+      "speed": 30,
+      "maxTiltDeg": 2.8,
+      "maxCarUpSpeed": 0.17,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.89
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "block0.5",
+      "seed": 5,
+      "speed": 30,
+      "maxTiltDeg": 0.6,
+      "maxCarUpSpeed": 0.14,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 2.77
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "block0.5",
+      "seed": 6,
+      "speed": 30,
+      "maxTiltDeg": 2.5,
+      "maxCarUpSpeed": 0.15,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.33
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 1,
+      "speed": 30,
+      "maxTiltDeg": 0.7,
+      "maxCarUpSpeed": 0.15,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.72
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 2,
+      "speed": 30,
+      "maxTiltDeg": 2.2,
+      "maxCarUpSpeed": 0.19,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.33
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 3,
+      "speed": 30,
+      "maxTiltDeg": 1.4,
+      "maxCarUpSpeed": 0.14,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 6.01
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 4,
+      "speed": 30,
+      "maxTiltDeg": 1.9,
+      "maxCarUpSpeed": 0.1,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.94
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 5,
+      "speed": 30,
+      "maxTiltDeg": 0.5,
+      "maxCarUpSpeed": 0.08,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.54
+    },
+    {
+      "kind": "prop",
+      "count": 48,
+      "sleep": "natural",
+      "seed": 6,
+      "speed": 30,
+      "maxTiltDeg": 3.8,
+      "maxCarUpSpeed": 0.31,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 3.39
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 1,
+      "speed": 30,
+      "maxTiltDeg": 40.2,
+      "maxCarUpSpeed": 10.13,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 14.12
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 2,
+      "speed": 30,
+      "maxTiltDeg": 36.3,
+      "maxCarUpSpeed": 8.46,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 16.85
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 3,
+      "speed": 30,
+      "maxTiltDeg": 25.8,
+      "maxCarUpSpeed": 14.18,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 12.26
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 4,
+      "speed": 30,
+      "maxTiltDeg": 21.9,
+      "maxCarUpSpeed": 8.38,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 10.58
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 5,
+      "speed": 30,
+      "maxTiltDeg": 42.3,
+      "maxCarUpSpeed": 9.41,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 11.26
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 6,
+      "speed": 30,
+      "maxTiltDeg": 34.5,
+      "maxCarUpSpeed": 14.17,
+      "recoveries": 0,
+      "landings": 2,
+      "maxStepMs": 13.3
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "block0.5",
+      "seed": 1,
+      "speed": 30,
+      "maxTiltDeg": 55.1,
+      "maxCarUpSpeed": 7.62,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 6.18
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "block0.5",
+      "seed": 2,
+      "speed": 30,
+      "maxTiltDeg": 43.5,
+      "maxCarUpSpeed": 5.84,
+      "recoveries": 0,
+      "landings": 2,
+      "maxStepMs": 5.53
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "block0.5",
+      "seed": 3,
+      "speed": 30,
+      "maxTiltDeg": 90.7,
+      "maxCarUpSpeed": 5.16,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 8.38
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "block0.5",
+      "seed": 4,
+      "speed": 30,
+      "maxTiltDeg": 28.6,
+      "maxCarUpSpeed": 5.79,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 6.81
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "block0.5",
+      "seed": 5,
+      "speed": 30,
+      "maxTiltDeg": 27.1,
+      "maxCarUpSpeed": 3.34,
+      "recoveries": 0,
+      "landings": 0,
+      "maxStepMs": 6
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "block0.5",
+      "seed": 6,
+      "speed": 30,
+      "maxTiltDeg": 20.8,
+      "maxCarUpSpeed": 15.32,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 6.09
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 1,
+      "speed": 30,
+      "maxTiltDeg": 40.2,
+      "maxCarUpSpeed": 10.13,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 16.55
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 2,
+      "speed": 30,
+      "maxTiltDeg": 36.3,
+      "maxCarUpSpeed": 8.46,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 14.2
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 3,
+      "speed": 30,
+      "maxTiltDeg": 25.8,
+      "maxCarUpSpeed": 14.18,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 14.71
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 4,
+      "speed": 30,
+      "maxTiltDeg": 21.9,
+      "maxCarUpSpeed": 8.38,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 14.99
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 5,
+      "speed": 30,
+      "maxTiltDeg": 42.3,
+      "maxCarUpSpeed": 9.41,
+      "recoveries": 0,
+      "landings": 1,
+      "maxStepMs": 11.42
+    },
+    {
+      "kind": "debris",
+      "count": 192,
+      "sleep": "natural",
+      "seed": 6,
+      "speed": 30,
+      "maxTiltDeg": 34.5,
+      "maxCarUpSpeed": 14.17,
+      "recoveries": 0,
+      "landings": 2,
+      "maxStepMs": 13.15
+    }
+  ]
+}

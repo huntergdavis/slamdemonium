@@ -75,6 +75,24 @@ export function createStreamedPropVisual(
   // streamer queues only promotion/demotion/destroyed transitions; after the
   // initial upload this avoids scanning thousands of records every frame.
   const farChanges = new Int32Array(streamer.records.length);
+  // The impostor scale varies only inside the far radius of the view, so the
+  // per-frame rescale walks the streamer's cells there, not every record:
+  // on a 15,000-record track the full walk cost 3.7 ms a frame (measured
+  // 2026-09-28, scripts/perf/probes/far-visual.probe.ts). Records that leave
+  // the band are written once at the constant far scale.
+  const cellSize = streamer.records[0]?.cellSize ?? 160;
+  const cellIndices = new Map<number, number[]>();
+  streamer.records.forEach((record, index) => {
+    const id =
+      Math.floor(record.position.x / cellSize) * 100000 +
+      Math.floor(record.position.z / cellSize);
+    const list = cellIndices.get(id);
+    if (list) list.push(index);
+    else cellIndices.set(id, [index]);
+  });
+  const bandStamp = new Uint32Array(streamer.records.length);
+  let bandIndices: number[] = [];
+  let frame = 0;
   let initialized = false;
   let disposed = false;
 
@@ -96,6 +114,7 @@ export function createStreamedPropVisual(
     }
     const scale = scaleFor(index);
     written[index] = scale;
+    mesh.instanceMatrix.addUpdateRange(index * 16, 16);
     transform.scale.set(
       halfExtents.x * 2 * scale,
       halfExtents.y * 2 * scale,
@@ -128,6 +147,7 @@ export function createStreamedPropVisual(
     if (!initialized) {
       for (let index = 0; index < streamer.records.length; index++)
         writeFar(index);
+      mesh.instanceMatrix.clearUpdateRanges(); // One full upload at boot.
       initialized = true;
       changed = true;
     } else {
@@ -136,16 +156,41 @@ export function createStreamedPropVisual(
         writeFar(farChanges[index]!);
         changed = true;
       }
-      if (farScale > 1)
-        for (let index = 0; index < streamer.records.length; index++) {
+      if (farScale > 1) {
+        frame++;
+        const reach = farRadius + cellSize;
+        const minX = Math.floor((view.x - reach) / cellSize);
+        const maxX = Math.floor((view.x + reach) / cellSize);
+        const minZ = Math.floor((view.z - reach) / cellSize);
+        const maxZ = Math.floor((view.z + reach) / cellSize);
+        const nextBand: number[] = [];
+        for (let cx = minX; cx <= maxX; cx++)
+          for (let cz = minZ; cz <= maxZ; cz++) {
+            const list = cellIndices.get(cx * 100000 + cz);
+            if (!list) continue;
+            for (const index of list) {
+              bandStamp[index] = frame;
+              nextBand.push(index);
+              const last = written[index]!;
+              if (last === 0) continue; // Hidden.
+              const next = scaleFor(index);
+              if (Math.abs(next - last) > 0.02 * last) {
+                writeFar(index);
+                changed = true;
+              }
+            }
+          }
+        // Left the band since last frame: settle at the far scale once.
+        for (const index of bandIndices) {
+          if (bandStamp[index] === frame) continue;
           const last = written[index]!;
-          if (last === 0) continue; // Hidden.
-          const next = scaleFor(index);
-          if (Math.abs(next - last) > 0.02 * last) {
+          if (last !== 0 && Math.abs(farScale - last) > 0.02 * last) {
             writeFar(index);
             changed = true;
           }
         }
+        bandIndices = nextBand;
+      }
     }
     if (changed) mesh.instanceMatrix.needsUpdate = true;
   }
@@ -159,9 +204,10 @@ export function createStreamedPropVisual(
     setFarScale(scale: number): void {
       if (disposed || !Number.isFinite(scale)) return;
       farScale = Math.max(1, scale);
-      // Rewrite every visible instance at the new curve.
+      // Rewrite every visible instance at the new curve, as one upload.
       for (let index = 0; index < streamer.records.length; index++)
         if (written[index] !== 0) writeFar(index);
+      mesh.instanceMatrix.clearUpdateRanges();
       mesh.instanceMatrix.needsUpdate = true;
     },
     dispose(): void {

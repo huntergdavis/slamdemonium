@@ -804,6 +804,34 @@
   text-align: center;
   pointer-events: none;
 }
+/* The timed run's readout: top-left, only while a run is on. */
+.sl-hud__run {
+  position: fixed;
+  top: 88px;
+  left: var(--sl-safe);
+  width: 150px;
+  padding: 6px 10px 8px;
+  text-align: center;
+  pointer-events: none;
+}
+.sl-run__clock {
+  display: block;
+  font: 800 34px/1 var(--sl-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--sl-accent);
+}
+.sl-hud__run[data-phase='countdown'] .sl-run__clock {
+  font-size: 48px;
+  color: var(--sl-warning);
+}
+.sl-run__label {
+  display: block;
+  margin-top: 4px;
+  color: var(--sl-muted);
+  font: 12px var(--sl-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .sl-chain__mult {
   display: block;
   font: 800 40px/1 var(--sl-mono);
@@ -1151,6 +1179,12 @@
   top: 12px;
   z-index: 3;
   width: min(420px, 100%);
+}
+/* The map list: plain stacked entries, nothing sticky. */
+.sl-pause .sl-pause__maps > .sl-button {
+  position: static;
+  display: block;
+  margin: 6px auto;
 }
 .sl-pause
   :is(

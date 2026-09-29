@@ -7,6 +7,16 @@ import { createAudioCredits } from './audioCredits';
 import './ui.css';
 
 export interface PauseMenuOptions {
+  /** The level select (NS2): one button per map, the current one marked;
+   * picking one reloads into it. Absent, the menu has no Map entry. */
+  readonly maps?: {
+    readonly current: string;
+    readonly entries: readonly {
+      readonly name: string;
+      readonly label: string;
+    }[];
+    onSelect(name: string): void;
+  };
   host: HTMLElement;
   drivingSurface: HTMLElement;
   readPaused: () => boolean;
@@ -34,6 +44,7 @@ const MAPPINGS: readonly (readonly [string, string, string])[] = [
   ['Handbrake', 'Space', 'A / bottom face button'],
   ['Boost', 'Left Shift', 'X / left face button'],
   ['Restart / respawn', 'R', 'Y / top face button'],
+  ['Retry: again from the start, score cleared', 'Enter', '—'],
   ['Pause menu', 'Escape', 'Start / Menu'],
   [
     'Mute all audio',
@@ -54,13 +65,14 @@ export class PauseMenu {
   readonly element: HTMLDialogElement;
   private readonly menu: HTMLDivElement;
   private readonly controls: HTMLDivElement;
+  private readonly maps: HTMLDivElement;
   private readonly resume: HTMLButtonElement;
   private readonly muteAudio: HTMLButtonElement;
   private readonly message: Text;
   private selected: HTMLElement | null = null;
   private opened = false;
   private externalOptionsNavigation = false;
-  private view: 'menu' | 'controls' | 'options' = 'menu';
+  private view: 'menu' | 'controls' | 'options' | 'maps' = 'menu';
   private optionsParent: Node | null = null;
   private optionsNext: Node | null = null;
   private confirm = 0;
@@ -116,6 +128,37 @@ export class PauseMenu {
       this.button('Controls', () => this.showView('controls')),
       navigationHint,
     );
+    // The level select: the smallest thing that does the job, a list of
+    // maps in this menu's own style; a third map is a data line, not UI.
+    this.maps = node(doc, 'div', 'sl-pause__controls sl-pause__maps');
+    this.maps.hidden = true;
+    if (deps.maps) {
+      const current = deps.maps.entries.find(
+        (e) => e.name === deps.maps!.current,
+      );
+      const entry = this.button(
+        'Map · ' + (current?.label ?? deps.maps.current),
+        () => this.showView('maps'),
+      );
+      // Before Controls, which stays the last entry: controller wrap-up
+      // from Resume lands on Controls, and the e2e counts on it.
+      const controlsEntry = [...this.menu.querySelectorAll('button')].find(
+        (b) => b.textContent === 'Controls',
+      );
+      (controlsEntry ?? navigationHint).before(entry);
+      this.maps.append(node(doc, 'h2', 'sl-heading', 'Map'));
+      for (const map of deps.maps.entries) {
+        const isCurrent = map.name === deps.maps.current;
+        const button = this.button(
+          map.label + (isCurrent ? ' · current' : ''),
+          () => deps.maps!.onSelect(map.name),
+        );
+        button.dataset.map = map.name;
+        if (isCurrent) button.setAttribute('aria-current', 'true');
+        this.maps.append(button);
+      }
+      this.maps.append(this.button('Back', () => this.showView('menu')));
+    }
     if (deps.buildLabel) {
       this.menu.append(
         node(doc, 'p', 'sl-caption sl-pause__build', deps.buildLabel),
@@ -163,7 +206,7 @@ export class PauseMenu {
       ),
       createAudioCredits(doc),
     );
-    this.element.append(this.menu, this.controls);
+    this.element.append(this.menu, this.controls, this.maps);
     this.element.addEventListener('focusin', this.focusin);
     this.element.addEventListener('keydown', this.keydown);
     this.element.addEventListener('cancel', this.cancel);
@@ -179,6 +222,12 @@ export class PauseMenu {
 
   navigateBack(): void {
     this.goBack();
+  }
+
+  /** The first boot ever: the menu opens on the map list. */
+  openMaps(): void {
+    this.setOpen(true);
+    if (this.deps.maps) this.showView('maps');
   }
 
   get isOpen(): boolean {
@@ -340,7 +389,9 @@ export class PauseMenu {
       ? this.deps.options.element
       : this.view === 'controls'
         ? this.controls
-        : this.menu;
+        : this.view === 'maps'
+          ? this.maps
+          : this.menu;
   }
 
   private showOptions(): void {
@@ -364,7 +415,7 @@ export class PauseMenu {
     this.optionsParent = this.optionsNext = null;
   }
 
-  private showView(view: 'menu' | 'controls' | 'options'): void {
+  private showView(view: 'menu' | 'controls' | 'options' | 'maps'): void {
     if (this.view === 'options' && view !== 'options') {
       this.deps.options.setOpen(false);
       this.restoreOptions();
@@ -381,14 +432,22 @@ export class PauseMenu {
         ? 'Pause menu'
         : view === 'options'
           ? 'Paused — Options'
-          : 'Controls',
+          : view === 'maps'
+            ? 'Map'
+            : 'Controls',
     );
     this.menu.hidden = view !== 'menu';
     this.controls.hidden = view !== 'controls';
+    this.maps.hidden = view !== 'maps';
     if (view === 'menu') this.resume.focus();
     else if (view === 'controls')
       this.controls.querySelector('button')?.focus({ preventScroll: true });
-    if (view === 'controls') this.element.scrollTop = 0;
+    else if (view === 'maps')
+      (
+        this.maps.querySelector<HTMLButtonElement>('button[aria-current]') ??
+        this.maps.querySelector<HTMLButtonElement>('button')
+      )?.focus({ preventScroll: true });
+    if (view === 'controls' || view === 'maps') this.element.scrollTop = 0;
     this.resetPad();
   }
 

@@ -69,7 +69,8 @@ Keyboard and controller both work, at the same time, with nothing to switch. A c
 | Steer | A / D, Left / Right |
 | Handbrake | Space |
 | Boost | Left Shift |
-| Respawn | R |
+| Respawn (keeps the score) | R |
+| Retry: onto the start line, score and run cleared | Enter |
 | Pause menu (resume, restart, options) | Escape |
 | Pause, without the menu | P |
 | Options panel, directly | O |
