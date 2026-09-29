@@ -13,7 +13,7 @@ const PAD = {
   boost: false,
   source: 'gamepad' as const,
 };
-it('stops charging boost the moment the car lands on its side, even while it slides on', async () => {
+it('stops charging boost on a side landing and rights the moving car', async () => {
   const rig = await scriptVehicleHarness({ flatPlane: true });
   try {
     const { vehicle, loop, setPad, world } = rig;
@@ -37,6 +37,8 @@ it('stops charging boost the moment the car lands on its side, even while it sli
     world.setAngularVelocity(vehicle.body, { x: 0, y: 0, z: 0 });
     let meterAtTouchdown = -1;
     let touchdownStep = -1;
+    let uprightStep = -1;
+    let uprightSpeed = 0;
     let meterInFlight = 0;
     for (let step = 0; step < 4 * HZ; step++) {
       loop.stepMany(1);
@@ -47,12 +49,20 @@ it('stops charging boost the moment the car lands on its side, even while it sli
           meterAtTouchdown = s.boostMeter;
         }
       } else if (step - touchdownStep === 3 * HZ) break;
+      if (touchdownStep >= 0 && uprightStep < 0 && s.groundedWheels >= 3) {
+        uprightStep = step;
+        uprightSpeed = s.speed;
+      }
     }
     expect(touchdownStep).toBeGreaterThan(0);
     expect(meterInFlight).toBeGreaterThan(0); // The launch armed the payout.
-    // Three seconds on its side at speed: not flying, and the bar is still.
+    // The side landing ends flight and its payout immediately. Recovery now
+    // rights the still-moving car rather than leaving it on its door.
     expect(s.speed).toBeGreaterThan(15);
-    expect(s.groundedWheels).toBe(0);
+    expect(uprightStep).toBeGreaterThan(touchdownStep);
+    expect(uprightStep - touchdownStep).toBeLessThan(3 * HZ);
+    expect(uprightSpeed).toBeGreaterThan(3);
+    expect(s.groundedWheels).toBe(4);
     expect(s.airborne).toBe(false);
     expect(s.airTime).toBe(0);
     expect(s.boostMeter).toBeCloseTo(meterAtTouchdown, 2);
