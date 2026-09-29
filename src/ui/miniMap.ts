@@ -60,6 +60,15 @@ export class MiniMap {
     const center = size / 2;
     const margin = 10;
     const scale = (size - margin * 2) / (this.halfSize * 2);
+    // World to canvas. The world is y-up and right-handed with north as +z,
+    // so a driver facing north has +x on the LEFT (right = forward x up =
+    // (-1, 0, 0)). North up on the map means -x to the right. The map once
+    // put +x on the right, a mirror on one axis: turning right moved the
+    // marker left, in every direction of travel, for two days of builds
+    // (2026-09-27 to 28). The forward vector from the rotation is correct
+    // and so is the triangle's perpendicular; only this axis was wrong.
+    const mapX = (worldX: number) => center - worldX * scale;
+    const mapY = (worldZ: number) => center - worldZ * scale;
     ctx.clearRect(0, 0, size, size);
     ctx.fillStyle = '#07111c';
     ctx.fillRect(0, 0, size, size);
@@ -78,8 +87,8 @@ export class MiniMap {
       ctx.lineWidth = 2;
       ctx.beginPath();
       this.route.forEach((p, i) => {
-        const x = center + p.x * scale;
-        const y = center - p.z * scale;
+        const x = mapX(p.x);
+        const y = mapY(p.z);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
@@ -87,8 +96,8 @@ export class MiniMap {
       ctx.stroke();
     }
     for (const landmark of this.landmarks) {
-      const x = center + landmark.x * scale;
-      const y = center - landmark.z * scale;
+      const x = mapX(landmark.x);
+      const y = mapY(landmark.z);
       if (x < margin || x > size - margin || y < margin || y > size - margin)
         continue;
       ctx.fillStyle = landmark.color;
@@ -103,23 +112,28 @@ export class MiniMap {
     }
 
     if (!telemetry) return;
-    const playerX = center + telemetry.position.x * scale;
-    const playerY = center - telemetry.position.z * scale;
+    const playerX = mapX(telemetry.position.x);
+    const playerY = mapY(telemetry.position.z);
     const q = telemetry.rotation;
+    // The car's forward, the world's -z axis rotated by its orientation.
     const forwardX = -2 * (q.x * q.z + q.y * q.w);
     const forwardZ = -(1 - 2 * (q.x * q.x + q.y * q.y));
+    // The same direction in canvas units: through the same axis mapping as
+    // positions, so the arrow and the motion cannot disagree.
+    const dirX = -forwardX;
+    const dirY = -forwardZ;
     const length = 9;
     const width = 5;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.moveTo(playerX + forwardX * length, playerY - forwardZ * length);
+    ctx.moveTo(playerX + dirX * length, playerY + dirY * length);
     ctx.lineTo(
-      playerX - forwardX * length * 0.5 - forwardZ * width,
-      playerY + forwardZ * length * 0.5 - forwardX * width,
+      playerX - dirX * length * 0.5 - dirY * width,
+      playerY - dirY * length * 0.5 + dirX * width,
     );
     ctx.lineTo(
-      playerX - forwardX * length * 0.5 + forwardZ * width,
-      playerY + forwardZ * length * 0.5 + forwardX * width,
+      playerX - dirX * length * 0.5 + dirY * width,
+      playerY - dirY * length * 0.5 - dirX * width,
     );
     ctx.closePath();
     ctx.fill();
