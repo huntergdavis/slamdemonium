@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import {
+  JUMP_LANDING_SEGMENTS,
   JUMP_LAUNCH_SEGMENTS,
   jumpRampLaunchLength,
   jumpRampMeshDescriptor,
@@ -27,4 +28,28 @@ it('launches from an 8 m circular arc at the authored 22 degree tangent', () => 
   expect(landingStart.y).toBeCloseTo(8, 9);
   expect(landingEnd.y).toBeCloseTo(0, 9);
   expect(spec.landingLength).toBe(150);
+});
+
+it('faces every launch and landing top triangle upward for wheel raycasts', () => {
+  const spec = PROVING_GROUND_MAP.jumpRamps[0]!;
+  const { vertices, indices } = jumpRampMeshDescriptor(spec);
+  // Each segment emits four quads; the first quad is the drivable top.
+  // A capped launch profile precedes the landing profile in the same mesh.
+  const profiles = [
+    { firstIndex: 0, segments: JUMP_LAUNCH_SEGMENTS },
+    {
+      firstIndex: JUMP_LAUNCH_SEGMENTS * 24 + 12,
+      segments: JUMP_LANDING_SEGMENTS,
+    },
+  ];
+  for (const { firstIndex, segments } of profiles)
+    for (let segment = 0; segment < segments; segment++)
+      for (let triangle = 0; triangle < 2; triangle++) {
+        const offset = firstIndex + segment * 24 + triangle * 3;
+        const a = vertices[indices[offset]!]!;
+        const b = vertices[indices[offset + 1]!]!;
+        const c = vertices[indices[offset + 2]!]!;
+        const normalY = (b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z);
+        expect(normalY).toBeGreaterThan(0);
+      }
 });

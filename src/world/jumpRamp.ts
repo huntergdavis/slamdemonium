@@ -19,7 +19,7 @@ export interface JumpRampSpec {
 
 const THICKNESS = 0.3;
 export const JUMP_LAUNCH_SEGMENTS = 128;
-const LANDING_SEGMENTS = 150;
+export const JUMP_LANDING_SEGMENTS = 150;
 
 export function jumpRampLaunchLength(s: Readonly<JumpRampSpec>): number {
   const radius = s.launchHeight / (1 - Math.cos(s.launchAngle));
@@ -38,8 +38,8 @@ const launchProfile = (s: JumpRampSpec): [number, number][] => {
 const landingProfile = (s: JumpRampSpec): [number, number][] => {
   const out: [number, number][] = [];
   const launchLength = jumpRampLaunchLength(s);
-  for (let i = 0; i <= LANDING_SEGMENTS; i++) {
-    const t = i / LANDING_SEGMENTS;
+  for (let i = 0; i <= JUMP_LANDING_SEGMENTS; i++) {
+    const t = i / JUMP_LANDING_SEGMENTS;
     const z = -launchLength - s.gap - s.landingLength * t;
     // Descends immediately from the far edge, then levels onto ground.
     const y = s.launchHeight * (1 - t) * (1 - t);
@@ -62,7 +62,7 @@ export function jumpRampMeshDescriptor(
     return vertices.length - 1;
   };
   const quad = (a: number, b: number, c: number, d: number) =>
-    indices.push(a, b, c, a, c, d);
+    indices.push(a, c, b, a, d, c);
   for (const profile of profiles) {
     const rings: number[][] = [];
     for (const [z, y] of profile) {
