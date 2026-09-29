@@ -46,7 +46,6 @@ import { createRampVisual, installRamps } from './world/ramps';
 import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { createJumpRampVisual, installJumpRamps } from './world/jumpRamp';
-import type { SurfaceId } from './content/surfaces';
 import { MAPS } from './world/maps';
 import {
   chooseMapName,
