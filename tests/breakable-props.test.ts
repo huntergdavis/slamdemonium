@@ -102,7 +102,7 @@ describe('breakable props', () => {
     ).toBe(creates);
 
     for (const id of activated.slice(2)) velocity.set(id, { x: 0, y: 0, z: 0 });
-    props.update(0.75);
+    props.update(0.4);
     expect(pools.debris.liveCount).toBe(0);
     props.reset();
     impact.approachSpeed = 1;
