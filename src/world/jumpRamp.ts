@@ -8,9 +8,12 @@ export interface JumpRampSpec {
   readonly x: number;
   readonly z: number;
   readonly heading: number;
-  readonly launchHeight: number;
+  /** Radius of the constant-curvature middle, not the eased ends. */
+  readonly launchRadius: number;
   /** Exit tangent in radians; the launch arc starts flat at ground level. */
   readonly launchAngle: number;
+  readonly entryEase: number;
+  readonly lipEase: number;
   readonly gap: number;
   readonly landingLength: number;
   readonly width: number;
@@ -19,57 +22,36 @@ export interface JumpRampSpec {
 
 const THICKNESS = 0.3;
 export const JUMP_LAUNCH_SEGMENTS = 128;
-export const JUMP_LANDING_SEGMENTS = 270;
-/** Curvature rises from zero over this distance, then falls to zero at the lip. */
-export const JUMP_EASEMENT_LENGTH = 10;
+export const JUMP_LANDING_SEGMENTS = 300;
 
 export function jumpRampLaunchLength(s: Readonly<JumpRampSpec>): number {
-  const radius = s.launchHeight / (1 - Math.cos(s.launchAngle));
-  return radius * Math.sin(s.launchAngle);
+  return -launchProfile(s)[JUMP_LAUNCH_SEGMENTS]![0];
 }
 
 const launchHeading = (
   distance: number,
   length: number,
-  ease: number,
+  entryEase: number,
+  lipEase: number,
   angle: number,
+  radius: number,
 ): number => {
   // A pair of clothoids around a constant-curvature middle. The tangent and
   // curvature are continuous at both joins, and curvature is zero at each end.
-  const peakCurvature = angle / (length - ease);
-  if (distance < ease)
-    return (peakCurvature * distance * distance) / (2 * ease);
-  if (distance > length - ease) {
+  const peakCurvature = 1 / radius;
+  if (distance < entryEase)
+    return (peakCurvature * distance * distance) / (2 * entryEase);
+  if (distance > length - lipEase) {
     const remaining = length - distance;
-    return angle - (peakCurvature * remaining * remaining) / (2 * ease);
+    return angle - (peakCurvature * remaining * remaining) / (2 * lipEase);
   }
-  return peakCurvature * (distance - ease / 2);
-};
-
-const launchHeightAt = (
-  length: number,
-  ease: number,
-  angle: number,
-): number => {
-  const step = length / JUMP_LAUNCH_SEGMENTS;
-  let height = 0;
-  for (let i = 0; i < JUMP_LAUNCH_SEGMENTS; i++)
-    height +=
-      Math.sin(launchHeading((i + 0.5) * step, length, ease, angle)) * step;
-  return height;
+  return peakCurvature * (distance - entryEase / 2);
 };
 
 const launchProfile = (s: JumpRampSpec): [number, number][] => {
-  const ease = Math.min(JUMP_EASEMENT_LENGTH, jumpRampLaunchLength(s) / 4);
-  let low = 2 * ease;
-  let high = 2 * jumpRampLaunchLength(s);
-  for (let i = 0; i < 48; i++) {
-    const middle = (low + high) / 2;
-    if (launchHeightAt(middle, ease, s.launchAngle) < s.launchHeight)
-      low = middle;
-    else high = middle;
-  }
-  const length = (low + high) / 2;
+  // The ease distances extend the path. Holding the middle radius fixed avoids
+  // making the ramp's steady load larger just to fit a former lip height.
+  const length = s.launchRadius * s.launchAngle + (s.entryEase + s.lipEase) / 2;
   const step = length / JUMP_LAUNCH_SEGMENTS;
   const out: [number, number][] = [[0, 0]];
   let x = 0;
@@ -78,26 +60,27 @@ const launchProfile = (s: JumpRampSpec): [number, number][] => {
     const heading = launchHeading(
       (i + 0.5) * step,
       length,
-      ease,
+      s.entryEase,
+      s.lipEase,
       s.launchAngle,
+      s.launchRadius,
     );
     x += Math.cos(heading) * step;
     y += Math.sin(heading) * step;
     out.push([-x, y]);
   }
-  // Pin the authored lip exactly, so the landing gap and launch join share
-  // coordinates even after floating-point integration of the curve.
-  out[out.length - 1] = [-jumpRampLaunchLength(s), s.launchHeight];
   return out;
 };
-const landingProfile = (s: JumpRampSpec): [number, number][] => {
+const landingProfile = (
+  s: JumpRampSpec,
+  lip: readonly [number, number],
+): [number, number][] => {
   const out: [number, number][] = [];
-  const launchLength = jumpRampLaunchLength(s);
   for (let i = 0; i <= JUMP_LANDING_SEGMENTS; i++) {
     const t = i / JUMP_LANDING_SEGMENTS;
-    const z = -launchLength - s.gap - s.landingLength * t;
+    const z = lip[0] - s.gap - s.landingLength * t;
     // Descends immediately from the far edge, then levels onto ground.
-    const y = s.launchHeight * (1 - t) * (1 - t);
+    const y = lip[1] * (1 - t) * (1 - t);
     out.push([z, y]);
   }
   return out;
@@ -107,7 +90,8 @@ export function jumpRampMeshDescriptor(
   s: JumpRampSpec,
 ): SurfacedStaticMeshDesc {
   const surface = s.surface ?? SURFACE_IDS.asphalt;
-  const profiles = [launchProfile(s), landingProfile(s)];
+  const launch = launchProfile(s);
+  const profiles = [launch, landingProfile(s, launch[JUMP_LAUNCH_SEGMENTS]!)];
   const vertices: V3[] = [];
   const indices: number[] = [];
   const add = (x: number, y: number, z: number): number => {

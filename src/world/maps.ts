@@ -187,15 +187,17 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
   ]),
   jumpRamps: Object.freeze([
     Object.freeze({
-      // East infield: a long northbound approach offset right of spawn. The
-      // 270 m hill catches the boosted flight before the ring racing line.
-      x: 125,
-      z: 30,
+      // East infield: 270 m of northbound run-up after moving right of spawn.
+      // The 300 m hill catches boosted flight before the ring racing line.
+      x: 156,
+      z: -70,
       heading: NORTH,
-      launchHeight: 8,
+      launchRadius: 236,
       launchAngle: 22 * DEG,
+      entryEase: 10,
+      lipEase: 4,
       gap: 3,
-      landingLength: 270,
+      landingLength: 300,
       width: 20,
     }),
   ]),
