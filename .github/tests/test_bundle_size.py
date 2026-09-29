@@ -263,6 +263,90 @@ class BundleTests(unittest.TestCase):
         self.assertTrue(any(f['file'] == 'car.glb' for f in report['failures']))
         self.assertIn('car.glb', (self.root / 'report.md').read_text())
 
+    def test_headroom_reports_what_is_left_and_what_a_merge_consumed_with_reasoned_flags(self):
+        # The game grew 3,000 gzip bytes since the previous main run; the
+        # allowance is 10 percent of 100,000-byte fixture (raw) so it is 10,000.
+        previous = copy.deepcopy(self.measurement)
+        current = copy.deepcopy(self.measurement)
+        game = next(i for i, a in current['assets'].items() if a['file'].startswith('assets/game'))
+        current['assets'][game]['rawBytes'] += 3000
+        self.totals(current)
+        rows = bundle.headroom(current, self.baseline, previous)
+        row = next(r for r in rows if r['identity'] == game and r['metric'] == 'rawBytes')
+        self.assertEqual(row['limit'], 110000)
+        self.assertEqual(row['headroom'], 7000)
+        self.assertAlmostEqual(row['remainingShare'], 0.7)
+        self.assertEqual(row['consumed'], 3000)
+        self.assertAlmostEqual(row['consumedShare'], 0.3)  # 3,000 of the 10,000 it had.
+        self.assertEqual(row['flags'], ['consumed'])  # Over the quarter.
+        # A smaller step is not flagged; nearly exhausted is flagged even when this merge added nothing.
+        current['assets'][game]['rawBytes'] = previous['assets'][game]['rawBytes'] + 1000
+        self.totals(current)
+        row = next(r for r in bundle.headroom(current, self.baseline, previous)
+                   if r['identity'] == game and r['metric'] == 'rawBytes')
+        self.assertEqual(row['flags'], [])
+        previous['assets'][game]['rawBytes'] = current['assets'][game]['rawBytes'] = 109000
+        self.totals(previous); self.totals(current)
+        row = next(r for r in bundle.headroom(current, self.baseline, previous)
+                   if r['identity'] == game and r['metric'] == 'rawBytes')
+        self.assertEqual(row['consumed'], 0)
+        self.assertEqual(row['flags'], ['remaining'])
+        # Without a previous run there is no consumption column, and no new-asset crash.
+        rows = bundle.headroom(current, self.baseline, None)
+        self.assertTrue(all(r['consumed'] is None for r in rows))
+        self.assertEqual(bundle.HEADROOM_WARN_CONSUMED_SHARE, 0.25)
+        self.assertEqual(bundle.HEADROOM_WARN_REMAINING_SHARE, 0.15)
+
+    def test_headroom_section_names_the_merge_and_the_ledger_records_it_without_moving_the_budget(self):
+        previous = copy.deepcopy(self.measurement)
+        current = copy.deepcopy(self.measurement)
+        game = next(i for i, a in current['assets'].items() if a['file'].startswith('assets/game'))
+        current['assets'][game]['rawBytes'] += 3000
+        self.totals(current)
+        rows = bundle.headroom(current, self.baseline, previous)
+        merge = {'sha': 'c' * 40, 'title': 'Add a | feature'}
+        section = bundle.render_headroom(rows, merge)
+        self.assertIn('ccccccc', section)
+        self.assertIn('Add a &#124; feature', section)
+        self.assertIn('+3,000 B (30%)', section)
+        self.assertIn('⚠ consumed', section)
+        self.assertIn('Budgets never move here', section)
+        self.assertTrue(any('this merge consumed +3,000 B' in line for line in bundle.annotations(rows)))
+        comment = bundle.ledger_comment(rows, merge)
+        self.assertIn('assets/game-AbCd1234.js', comment)
+        self.assertIsNone(bundle.ledger_comment(bundle.headroom(previous, self.baseline, previous), merge))
+        posted = []
+        def api(path, binary=False):
+            return []  # No open ledger issue yet.
+        def post(path, payload):
+            posted.append((path, payload))
+            return {'number': 7}
+        with patch.dict(os.environ, {'GH_TOKEN': 'test-token'}), patch.object(bundle, 'gh', side_effect=api), \
+                patch.object(bundle, 'gh_post', side_effect=post):
+            message = bundle.update_ledger('example/repo', rows, merge)
+        self.assertEqual(message, 'Ledger updated: issue #7.')
+        self.assertEqual(posted[0][0], 'repos/example/repo/issues')
+        self.assertEqual(posted[0][1]['title'], bundle.LEDGER_ISSUE_TITLE)
+        self.assertEqual(posted[1][0], 'repos/example/repo/issues/7/comments')
+        self.assertIn('ccccccc', posted[1][1]['body'])
+        self.assertEqual(bundle.update_ledger('example/repo', rows, merge), 'Ledger not updated: nothing moved or no token/repository.')
+        self.assertEqual(self.baseline['measurement']['assets'][game]['rawBytes'], self.measurement['assets'][game]['rawBytes'])
+
+    def test_cli_on_a_main_push_writes_the_headroom_section_and_never_the_budget(self):
+        baseline_path = self.root / 'baseline.json'
+        baseline_path.write_text(json.dumps(self.baseline))
+        before = baseline_path.read_text()
+        with patch.dict(os.environ, {'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/heads/main',
+                                     'GITHUB_SHA': 'd' * 40, 'GITHUB_REPOSITORY': ''}):
+            code, report = self.cli()
+        self.assertEqual(code, 0)
+        self.assertIn('headroom', report)
+        summary = (self.root / 'report.md').read_text()
+        self.assertIn('### Budget headroom', summary)
+        self.assertIn('Merge `ddddddd`', summary)
+        self.assertIn('Ledger not updated', summary)
+        self.assertEqual(baseline_path.read_text(), before)
+
     def test_baseline_update_is_explicit_preserves_policy_and_is_forbidden_in_ci(self):
         self.cli()
         path = self.root / 'baseline.json'
