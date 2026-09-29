@@ -1,10 +1,27 @@
 import { Matrix4, Quaternion, Vector3 } from 'three';
 import { expect, it } from 'vitest';
 import { SURFACE_IDS } from '../../src/content/surfaces';
+import type { IPhysicsWorld } from '../../src/physics/adapter';
+import type { Vehicle } from '../../src/vehicle/vehicle';
 import type { SurfacedStaticBodyDesc } from '../../src/world/surfacedBodies';
 import { scriptVehicleHarness } from '../scriptVehicleHarness';
 
 const HZ = 120;
+
+function forwardChassisContactNormal(
+  world: IPhysicsWorld,
+  vehicle: Vehicle,
+): void {
+  world.onContact((a, b, _impulse, _point, normal) => {
+    if (a !== vehicle.body && b !== vehicle.body) return;
+    const direction = a === vehicle.body ? -1 : 1;
+    vehicle.noteChassisContact({
+      x: normal.x * direction,
+      y: normal.y * direction,
+      z: normal.z * direction,
+    });
+  });
+}
 
 /** A loop of pitched slabs in the vertical plane along -Z, bottom tangent to
  * the ground at z0. Test geometry only; the authored loop is separate data. */
@@ -52,6 +69,7 @@ it('does not fight an inverted car that is riding a loop: no roll rate, no drift
   const rig = await scriptVehicleHarness({ flatPlane: true });
   try {
     const { vehicle, loop, setPad, surfacedBodies, world } = rig;
+    forwardChassisContactNormal(world, vehicle);
     const s = vehicle.telemetry;
     const radius = 8;
     const z0 = -40;
@@ -140,7 +158,8 @@ it('does not fight an inverted car that is riding a loop: no roll rate, no drift
 it('still rights a car that is flipped on flat ground', async () => {
   const rig = await scriptVehicleHarness({ flatPlane: true });
   try {
-    const { vehicle, loop, setPad } = rig;
+    const { vehicle, world, loop, setPad } = rig;
+    forwardChassisContactNormal(world, vehicle);
     const s = vehicle.telemetry;
     setPad({
       throttle: 0,
@@ -171,6 +190,88 @@ it('still rights a car that is flipped on flat ground', async () => {
     }
     expect(uprightAt).toBeGreaterThan(0);
     expect(uprightAt).toBeLessThan(5);
+  } finally {
+    rig.dispose();
+  }
+});
+
+it('rights a motionless car resting on its side against chassis friction', async () => {
+  const rig = await scriptVehicleHarness({ flatPlane: true });
+  try {
+    const { vehicle, world, loop, setPad } = rig;
+    forwardChassisContactNormal(world, vehicle);
+    setPad({
+      throttle: 0,
+      brake: 0,
+      steer: 0,
+      handbrake: false,
+      boost: false,
+      source: 'gamepad',
+    });
+    const q = new Quaternion().setFromAxisAngle(
+      new Vector3(0, 0, 1),
+      Math.PI / 2,
+    );
+    vehicle.respawn(
+      { x: 130, y: 0.9, z: 0 },
+      { x: q.x, y: q.y, z: q.z, w: q.w },
+    );
+    const s = vehicle.telemetry;
+    const bodyUp = new Vector3();
+    let uprightAt = -1;
+    for (let step = 0; step < 6 * HZ; step++) {
+      loop.stepMany(1);
+      bodyUp.set(0, 1, 0).applyQuaternion(s.rotation);
+      if (bodyUp.y > 0.9 && s.groundedWheels >= 3) {
+        uprightAt = step / HZ;
+        break;
+      }
+    }
+    expect(uprightAt).toBeGreaterThan(0);
+    expect(uprightAt).toBeLessThan(6);
+  } finally {
+    rig.dispose();
+  }
+});
+
+it('rights a fast chassis-on-ground side-slide before it slows to walking pace', async () => {
+  const rig = await scriptVehicleHarness({ flatPlane: true });
+  try {
+    const { vehicle, world, loop, setPad } = rig;
+    forwardChassisContactNormal(world, vehicle);
+    setPad({
+      throttle: 0,
+      brake: 0,
+      steer: 0,
+      handbrake: false,
+      boost: false,
+      source: 'gamepad',
+    });
+    const q = new Quaternion().setFromAxisAngle(
+      new Vector3(0, 0, 1),
+      Math.PI / 2,
+    );
+    vehicle.respawn(
+      { x: 130, y: 0.9, z: 0 },
+      { x: q.x, y: q.y, z: q.z, w: q.w },
+    );
+    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: 40 });
+    const s = vehicle.telemetry;
+    const bodyUp = new Vector3();
+    let uprightAt = -1;
+    let uprightSpeed = 0;
+    for (let step = 0; step < 4 * HZ; step++) {
+      loop.stepMany(1);
+      bodyUp.set(0, 1, 0).applyQuaternion(s.rotation);
+      if (bodyUp.y > 0.9 && s.groundedWheels >= 3) {
+        uprightAt = step / HZ;
+        uprightSpeed = s.speed;
+        break;
+      }
+    }
+    expect(uprightAt).toBeGreaterThan(0);
+    expect(uprightAt).toBeLessThan(4);
+    expect(uprightSpeed).toBeGreaterThan(3);
   } finally {
     rig.dispose();
   }

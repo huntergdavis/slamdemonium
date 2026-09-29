@@ -77,6 +77,7 @@ export class Vehicle {
   };
   private readonly inertia = new Vector3();
   private readonly groundNormal = new Vector3();
+  private readonly chassisContactNormal = new Vector3();
   private readonly forward = new Vector3();
   private readonly right = new Vector3();
   private readonly up = new Vector3();
@@ -586,10 +587,10 @@ export class Vehicle {
     }
     // Righting reference. The roll-righting assist exists to rescue a car
     // that is flipped on the ground, so "flipped" is measured against the
-    // ground actually under the car: the mean contact normal when any wheel
-    // touches, world up when none does (a car on its roof has no wheel
-    // contact). Against world up alone, a loop or a banked wall read as a
-    // flipped car and the assist fought them with its full torque.
+    // ground actually under the car: the mean wheel contact normal, then
+    // the static surface supporting its chassis when no wheel touches.
+    // The existing slow-speed rescue remains for a sleeping roofed chassis:
+    // Jolt stops reporting persistent contacts once that body sleeps.
     let contacts = 0;
     this.groundNormal.set(0, 0, 0);
     for (const wheel of s.wheels)
@@ -598,6 +599,8 @@ export class Vehicle {
         contacts++;
       }
     if (contacts > 0) this.groundNormal.normalize();
+    else if (this.chassisContact && this.chassisContactNormal.lengthSq() > 0)
+      this.groundNormal.copy(this.chassisContactNormal).normalize();
     else this.groundNormal.set(0, 1, 0);
     const roll = Math.atan2(
       this.right.dot(this.groundNormal),
@@ -636,7 +639,10 @@ export class Vehicle {
       this.torque.addScaledVector(this.forward, this.airTorques.roll);
     } else this.airTorques.weight = 0;
     s.airControlWeight = this.airTorques.weight;
-    if (Math.abs(roll) > 35 * DEG && (s.speed < 3 || s.groundedWheels > 0)) {
+    if (
+      Math.abs(roll) > 35 * DEG &&
+      (s.speed < 3 || s.groundedWheels > 0 || this.chassisContact)
+    ) {
       const gravityScale = t.get('gravity') / RIGHTING_REFERENCE_GRAVITY;
       const correction = clamp(
         (8 * roll - 2 * s.angularVelocity.dot(this.forward)) * gravityScale,
@@ -674,8 +680,14 @@ export class Vehicle {
   /** The chassis touched a static body during the last physics step; the
    * world's contact hook reports it. It ends a flight (see airState). */
   private chassisContact = false;
-  noteChassisContact(): void {
+  noteChassisContact(normalIntoVehicle?: V3): void {
     this.chassisContact = true;
+    if (normalIntoVehicle)
+      this.chassisContactNormal.set(
+        normalIntoVehicle.x,
+        normalIntoVehicle.y,
+        normalIntoVehicle.z,
+      );
   }
 
   private updateMeter(dt: number): void {
@@ -726,6 +738,7 @@ export class Vehicle {
     const landingsBefore = s.landingCount;
     this.airState.step(dt, s.groundedWheels, this.chassisContact, s);
     this.chassisContact = false;
+    this.chassisContactNormal.set(0, 0, 0);
     if (s.landingCount !== landingsBefore) {
       // A landing is an impact like any other: pre-step velocity against the
       // first grounded wheel's contact normal, through the shared estimator.
@@ -850,6 +863,7 @@ export class Vehicle {
     this.telemetry.airLaunch.active = false;
     this.flightCounts = false;
     this.chassisContact = false;
+    this.chassisContactNormal.set(0, 0, 0);
     this.wheelsOffSeconds = 0;
     this.previousGroundedWheels = 0;
     this.rpmModel.reset(this.telemetry);
