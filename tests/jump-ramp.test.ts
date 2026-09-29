@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import {
+  JUMP_EASEMENT_LENGTH,
   JUMP_LANDING_SEGMENTS,
   JUMP_LAUNCH_SEGMENTS,
   jumpRampLaunchLength,
@@ -7,7 +8,7 @@ import {
 } from '../src/world/jumpRamp';
 import { PROVING_GROUND_MAP } from '../src/world/maps';
 
-it('launches from an 8 m circular arc at the authored 22 degree tangent', () => {
+it('launches from an eased 8 m curve at the authored 22 degree tangent', () => {
   const spec = PROVING_GROUND_MAP.jumpRamps[0]!;
   const vertices = jumpRampMeshDescriptor(spec).vertices;
   const previous = vertices[(JUMP_LAUNCH_SEGMENTS - 1) * 4]!;
@@ -18,6 +19,11 @@ it('launches from an 8 m circular arc at the authored 22 degree tangent', () => 
 
   expect(spec.launchHeight).toBe(8);
   expect(lip.y).toBeCloseTo(8, 9);
+  const foot = vertices[0]!;
+  expect(Math.hypot(lip.x - foot.x, lip.z - foot.z)).toBeCloseTo(
+    jumpRampLaunchLength(spec),
+    8,
+  );
   expect(tangentDegrees).toBeCloseTo(22, 0);
   expect(Math.abs(tangentDegrees - 22)).toBeLessThan(0.2);
   expect(jumpRampLaunchLength(spec)).toBeGreaterThan(40);
@@ -28,6 +34,32 @@ it('launches from an 8 m circular arc at the authored 22 degree tangent', () => 
   expect(landingStart.y).toBeCloseTo(8, 9);
   expect(landingEnd.y).toBeCloseTo(0, 9);
   expect(spec.landingLength).toBe(270);
+});
+
+it('eases curvature on and off the launch instead of stepping it at either end', () => {
+  const spec = PROVING_GROUND_MAP.jumpRamps[0]!;
+  const vertices = jumpRampMeshDescriptor(spec).vertices;
+  const tangents: number[] = [];
+  const lengths: number[] = [];
+  for (let i = 0; i < JUMP_LAUNCH_SEGMENTS; i++) {
+    const a = vertices[i * 4]!;
+    const b = vertices[(i + 1) * 4]!;
+    const horizontal = Math.hypot(b.x - a.x, b.z - a.z);
+    tangents.push(Math.atan2(b.y - a.y, horizontal));
+    lengths.push(Math.hypot(horizontal, b.y - a.y));
+  }
+  const curvatures = tangents
+    .slice(1)
+    .map(
+      (tangent, i) =>
+        (tangent - tangents[i]!) / ((lengths[i]! + lengths[i + 1]!) / 2),
+    );
+  const middle = curvatures[Math.floor(curvatures.length / 2)]!;
+  expect(JUMP_EASEMENT_LENGTH).toBe(10);
+  expect(curvatures[0]!).toBeLessThan(middle * 0.05);
+  expect(curvatures[curvatures.length - 1]!).toBeLessThan(middle * 0.05);
+  expect(Math.max(...curvatures)).toBeLessThan(1 / 80);
+  expect(Math.min(...curvatures)).toBeGreaterThan(0);
 });
 
 it('faces every launch and landing top triangle upward for wheel raycasts', () => {
