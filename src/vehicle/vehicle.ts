@@ -663,6 +663,8 @@ export class Vehicle {
     }
   }
   private readonly padVelocity: V3 = { x: 0, y: 0, z: 0 };
+  /** The current flight launched upward, so it earns boost (see updateMeter). */
+  private flightCounts = false;
 
   private updateMeter(dt: number): void {
     const t = this.tuning,
@@ -685,11 +687,23 @@ export class Vehicle {
             (s.speed / 40) *
             dt,
       );
-    // Flight earns too: airborne is last step's derived state (airState runs
-    // below), so a jump charges from its second step, at the same slow rate
-    // family as drifting. Every present source is a slow fill by decision.
-    if (s.airborne)
-      this.meter = Math.min(1, this.meter + t.get('airChargeRate') * dt);
+    // Big air (2026-09-28): a flight pays quadratically in time aloft,
+    // meter += airChargeRate * airTime * dt, so a committed jump pays four
+    // to eight times a hop and a kerb bounce pays nothing worth counting
+    // (measured: the giant ramp 1.5 to 2.1 s, small ramps 0.7 to 1.0 s,
+    // bounces 0.1 to 0.3 s; airtime barely grows with speed because the
+    // flight is the drop from the lip, so a flat rate could not tell them
+    // apart). Only a flight that LAUNCHED upward counts: the #158 seam's
+    // airLaunch.velocity.y on the step the wheels left; rolling off a ledge
+    // is not a jump. airborne and airTime are last step's derived state
+    // (airState runs below), so charging starts on the flight's second step.
+    if (s.airLaunch.active) this.flightCounts = s.airLaunch.velocity.y > 0;
+    else if (s.groundedWheels > 0) this.flightCounts = false;
+    if (s.airborne && this.flightCounts)
+      this.meter = Math.min(
+        1,
+        this.meter + t.get('airChargeRate') * s.airTime * dt,
+      );
     s.boostMeter = s.driftMeter = this.meter;
     s.boostEnvelope = this.boostEnvelope;
     s.throttle = this.controls.throttle;
@@ -820,6 +834,7 @@ export class Vehicle {
     this.telemetry.longitudinalAcceleration =
       this.telemetry.lateralAcceleration = 0;
     this.telemetry.airLaunch.active = false;
+    this.flightCounts = false;
     this.previousGroundedWheels = 0;
     this.rpmModel.reset(this.telemetry);
     this.airState.reset(this.telemetry);

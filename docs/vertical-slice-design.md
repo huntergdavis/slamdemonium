@@ -461,7 +461,7 @@ Assist C is the least certain part of this document. **Treat it as a research it
 - Boost input drains the meter at `boostDrainRate` per second while it is above zero. `boostEnvelope` eases to 1 while boosting, back to 0 otherwise (0.2 s time constant). Effects: engine curve (6.7.1), FOV kick, camera shake, HUD.
 - Drift meter charge: when `|beta| >= driftMinAngle`, speed above 15 m/s and at least two wheels grounded:
   `meter += driftChargeRate * (|beta| / 30 deg) * (speed / 40) * dt`, clamped to 1.
-- Airtime charge: `meter += airChargeRate * dt` while `airborne` (the kerb-hop gate in airState decides), clamped to 1.
+- Airtime charge, big air: `meter += airChargeRate * airTime * dt` while `airborne`, only for a flight whose launch velocity (the `airLaunch` seam, the step the wheels left) pointed up; the payout is `airChargeRate * airTime^2 / 2`, clamped to 1. A committed jump pays four to eight times a hop; rolling off a ledge pays nothing.
 - Accelerator triangles add `padBoost` on entry (edge-triggered) and kick speed by `padKick` along the heading.
 - Meter persists after the drift ends (no decay in the slice). A visual pip flashes while charging. Every present source is a deliberately slow fill: boost is earned by danger, and the fast earners (traffic, wrong side of the road, crashes) do not exist yet (DECISIONS, 2026-09-25). B fills the bar for testing.
 
@@ -568,7 +568,7 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 | boostTopSpeedAdd | Boost & Drift | m/s | 25 | 0 | 60 | 1 | | Extra top speed while boosting. |
 | boostDrainRate | Boost & Drift | 1/s | 0.25 | 0.05 | 2.0 | 0.05 | | Meter used per second of boost. |
 | driftChargeRate | Boost & Drift | 1/s at reference | 0.02 | 0 | 2.0 | 0.01 | | Meter earned per second of a reference drift (30 deg at 40 m/s). Very slow by design: boost is earned by danger, and the fast earners (traffic, wrong side, crashes) do not exist yet. |
-| airChargeRate | Boost & Drift | 1/s | 0.02 | 0 | 1.0 | 0.01 | | Meter earned per second airborne, once the kerb-hop gate calls it flight. A giant-ramp jump is about a second and a half in the air. |
+| airChargeRate | Boost & Drift | 1/s² | 0.25 | 0 | 2.0 | 0.01 | | Big air: a flight that launched upward pays this times its airtime squared, halved. At 0.25 the giant ramp pays a third of a bar at cruise and half boosted; a small ramp 7 percent; a kerb bounce nothing worth counting. |
 | driftMinAngle | Boost & Drift | deg | 12 | 3 | 40 | 0.5 | | Slide angle needed to count as a drift. |
 | restitution | Collision | | 0.25 | 0 | 1.0 | 0.01 | | Bounciness of impacts. |
 | wallFriction | Collision | | 0.05 | 0 | 1.0 | 0.01 | | Friction against barriers. Low lets you scrape along walls without stopping. |
