@@ -99,6 +99,7 @@ export class Vehicle {
   private readonly rpmModel = new RpmModel(DEFAULT_ENGINE);
   private readonly airState = new AirStateTracker();
   private wasAirborneForControl = false;
+  private previousGroundedWheels = 0;
   private readonly airInputs: AirControlInputs = {
     throttle: 0,
     brake: 0,
@@ -206,6 +207,13 @@ export class Vehicle {
     this.previousVelocity.copy(this.telemetry.velocity);
     this.world.setGravity(this.tuning.get('gravity'));
     this.suspension(dt);
+    this.telemetry.airLaunch.active =
+      this.previousGroundedWheels > 0 && this.telemetry.groundedWheels === 0;
+    if (this.telemetry.airLaunch.active) {
+      this.telemetry.airLaunch.position.copy(this.telemetry.position);
+      this.telemetry.airLaunch.velocity.copy(this.previousVelocity);
+    }
+    this.previousGroundedWheels = this.telemetry.groundedWheels;
     this.steering();
     this.tires(dt);
     this.assists(dt);
@@ -811,6 +819,8 @@ export class Vehicle {
     }
     this.telemetry.longitudinalAcceleration =
       this.telemetry.lateralAcceleration = 0;
+    this.telemetry.airLaunch.active = false;
+    this.previousGroundedWheels = 0;
     this.rpmModel.reset(this.telemetry);
     this.airState.reset(this.telemetry);
     this.readState();
