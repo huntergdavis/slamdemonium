@@ -823,7 +823,8 @@ async function boot(): Promise<void> {
     );
     const otherBody = a === vehicle.body ? b : a;
     // Touching the static world ends a flight; a prop or debris does not.
-    if (surfaceRegistry.has(otherBody)) vehicle.noteChassisContact();
+    if (surfaceRegistry.has(otherBody))
+      vehicle.noteChassisContact(impactNormal);
     // This callback runs inside physics.step: consumers only queue fixed
     // scalars here. Audio output runs after simulation in update().
     impactFeedback.onContact(
