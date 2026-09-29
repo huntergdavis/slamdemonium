@@ -1,10 +1,14 @@
 /** Derived airborne state for presentation, scoring and air control.
  * Computed once per physics step from the suspension's grounded count and
- * written to telemetry; never an input to forces. Landings are a monotonic
+ * the chassis's static-world contacts, written to telemetry; never an input
+ * to forces. Landings are a monotonic
  * counter so a 30 Hz consumer polling 120 Hz physics misses none of them,
  * the same contract as the gearbox shift counters. */
 export interface AirborneState {
-  /** No wheel has ground contact this step. */
+  /** Nothing of the car touches the world: no wheel has ground contact and
+   * the chassis touched no static body this step. A car on its side or roof
+   * is not flying; a prop or debris glancing the car mid-jump does not end
+   * the flight. */
   airborne: boolean;
   /** Seconds since every wheel left the ground; 0 while grounded. */
   airTime: number;
@@ -30,8 +34,13 @@ export class AirStateTracker {
     state.lastAirTime = 0;
   }
 
-  step(dt: number, groundedWheels: number, state: AirborneState): void {
-    const airborne = groundedWheels === 0;
+  step(
+    dt: number,
+    groundedWheels: number,
+    chassisContact: boolean,
+    state: AirborneState,
+  ): void {
+    const airborne = groundedWheels === 0 && !chassisContact;
     if (airborne) this.airTime += dt;
     else if (this.wasAirborne) {
       if (this.airTime >= MIN_COUNTED_AIR_SECONDS) {

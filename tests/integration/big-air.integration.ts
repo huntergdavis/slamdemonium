@@ -66,19 +66,27 @@ async function ledge() {
     vehicle.respawn({ x: 0, y: 3.86, z: 0 }, { x: 0, y: 1, z: 0, w: 0 });
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: 8 });
     setPad({ ...PAD, throttle: 0.3 });
+    // The nose touches down and scrapes before the wheels do, which ends
+    // the flight early: the drop is wheels-off to wheels-down.
     let airTime = 0;
+    let dropTime = 0;
     let launchVy = 0;
     let launched = false;
+    let launchStep = -1;
     for (let step = 0; step < 8 * HZ; step++) {
       loop.stepMany(1);
       if (s.airLaunch.active) {
         launched = true;
         launchVy = s.airLaunch.velocity.y;
+        launchStep = step;
       }
       if (s.airborne) airTime = Math.max(airTime, s.airTime);
-      if (s.landingCount > 0) break;
+      if (launched && s.groundedWheels > 0) {
+        dropTime = (step - launchStep) / HZ;
+        break;
+      }
     }
-    return { airTime, launchVy, launched, meter: s.boostMeter };
+    return { airTime, dropTime, launchVy, launched, meter: s.boostMeter };
   } finally {
     rig.dispose();
   }
@@ -105,6 +113,7 @@ it('big air: rolling off a ledge is a fall, not a jump, and pays nothing', async
   const fall = await ledge();
   expect(fall.launched).toBe(true);
   expect(fall.launchVy).toBeLessThanOrEqual(0);
-  expect(fall.airTime).toBeGreaterThan(0.3); // A real drop (3 m is 0.39 s at gravity 20).
+  expect(fall.dropTime).toBeGreaterThan(0.3); // A real drop (3 m is 0.39 s at gravity 20).
+  expect(fall.airTime).toBeGreaterThan(0.1); // Nose-first: the flight ends on the bumper.
   expect(fall.meter).toBe(0);
 }, 300_000);
