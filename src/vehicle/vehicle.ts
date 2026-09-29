@@ -99,6 +99,10 @@ export class Vehicle {
   private readonly rpmModel = new RpmModel(DEFAULT_ENGINE);
   private readonly airState = new AirStateTracker();
   private wasAirborneForControl = false;
+  /** Seconds with every wheel off the ground, last step's value: the air
+   * control clock. It keeps running on a roof or a door, where the assist
+   * still rights the car, unlike the flight clock (airState). */
+  private wheelsOffSeconds = 0;
   private previousGroundedWheels = 0;
   private readonly airInputs: AirControlInputs = {
     throttle: 0,
@@ -600,14 +604,16 @@ export class Vehicle {
       this.up.dot(this.groundNormal),
     );
     // Air control (design slice B3): pitch and roll authority plus optional
-    // self-levelling once fully airborne past the kerb-hop gate. airTime is
-    // last step's derived value and is 0 whenever any wheel is grounded, so
+    // self-levelling once fully airborne past the kerb-hop gate. The clock
+    // is last step's value and is 0 whenever any wheel is grounded, so
     // intermittent kerb contact never grants authority.
     const airborne = s.groundedWheels === 0;
     if (airborne && !this.wasAirborneForControl)
       this.airInputs.throttleAtTakeoff = this.controls.throttle;
     this.wasAirborneForControl = airborne;
-    if (airborne && s.airTime > 0) {
+    const wheelsOff = this.wheelsOffSeconds;
+    this.wheelsOffSeconds = airborne ? wheelsOff + dt : 0;
+    if (airborne && wheelsOff > 0) {
       this.airInputs.throttle = this.controls.throttle;
       this.airInputs.brake = this.controls.brake;
       this.airInputs.steer = this.controls.steer;
@@ -620,7 +626,7 @@ export class Vehicle {
       this.airTuning.authorityTurnsPerSecond = t.get('airControlAuthority');
       this.airTuning.autoLevel = t.get('airAutoLevel');
       airControlTorques(
-        s.airTime,
+        wheelsOff,
         this.airInputs,
         this.airAttitude,
         this.airTuning,
@@ -665,6 +671,12 @@ export class Vehicle {
   private readonly padVelocity: V3 = { x: 0, y: 0, z: 0 };
   /** The current flight launched upward, so it earns boost (see updateMeter). */
   private flightCounts = false;
+  /** The chassis touched a static body during the last physics step; the
+   * world's contact hook reports it. It ends a flight (see airState). */
+  private chassisContact = false;
+  noteChassisContact(): void {
+    this.chassisContact = true;
+  }
 
   private updateMeter(dt: number): void {
     const t = this.tuning,
@@ -698,7 +710,8 @@ export class Vehicle {
     // is not a jump. airborne and airTime are last step's derived state
     // (airState runs below), so charging starts on the flight's second step.
     if (s.airLaunch.active) this.flightCounts = s.airLaunch.velocity.y > 0;
-    else if (s.groundedWheels > 0) this.flightCounts = false;
+    else if (s.groundedWheels > 0 || this.chassisContact)
+      this.flightCounts = false;
     if (s.airborne && this.flightCounts)
       this.meter = Math.min(
         1,
@@ -711,7 +724,8 @@ export class Vehicle {
     s.handbrake = this.controls.handbrake;
     // Derived after everything physical is final for this step.
     const landingsBefore = s.landingCount;
-    this.airState.step(dt, s.groundedWheels, s);
+    this.airState.step(dt, s.groundedWheels, this.chassisContact, s);
+    this.chassisContact = false;
     if (s.landingCount !== landingsBefore) {
       // A landing is an impact like any other: pre-step velocity against the
       // first grounded wheel's contact normal, through the shared estimator.
@@ -835,6 +849,8 @@ export class Vehicle {
       this.telemetry.lateralAcceleration = 0;
     this.telemetry.airLaunch.active = false;
     this.flightCounts = false;
+    this.chassisContact = false;
+    this.wheelsOffSeconds = 0;
     this.previousGroundedWheels = 0;
     this.rpmModel.reset(this.telemetry);
     this.airState.reset(this.telemetry);

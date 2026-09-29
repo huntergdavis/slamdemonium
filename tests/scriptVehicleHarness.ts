@@ -80,6 +80,11 @@ export async function scriptVehicleHarness(
     ringSpawn.position,
     surfaceResolver,
   );
+  // As boot wires it: the chassis touching the static world ends a flight.
+  world.onContact((a, b) => {
+    if (a !== vehicle.body && b !== vehicle.body) return;
+    if (registry.has(a === vehicle.body ? b : a)) vehicle.noteChassisContact();
+  });
   const keyboard = new KeyboardInput(new EventTarget(), {
     visibilityTarget: null,
   });

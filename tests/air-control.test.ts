@@ -63,7 +63,7 @@ describe('air control authority', () => {
     let maxWeight = 0;
     let torque = 0;
     for (let step = 0; step < 1200; step++) {
-      tracker.step(DT, step % 4 === 3 ? 1 : 0, state);
+      tracker.step(DT, step % 4 === 3 ? 1 : 0, false, state);
       const airTime = state.airborne ? state.airTime : 0;
       const t = airControlTorques(
         airTime,
@@ -82,7 +82,7 @@ describe('air control authority', () => {
     // still never past the gate because contact resets the clock.
     for (let step = 0; step < 1200; step++) {
       const inHop = step % 60 < 48;
-      tracker.step(DT, inHop ? 0 : 4, state);
+      tracker.step(DT, inHop ? 0 : 4, false, state);
       const t = airControlTorques(
         state.airborne ? state.airTime : 0,
         inputs({ brake: 1 }),

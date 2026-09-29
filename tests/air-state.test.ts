@@ -22,8 +22,10 @@ const run = (
   state: AirborneState,
   grounded: number,
   steps: number,
+  chassisContact = false,
 ) => {
-  for (let i = 0; i < steps; i++) tracker.step(DT, grounded, state);
+  for (let i = 0; i < steps; i++)
+    tracker.step(DT, grounded, chassisContact, state);
 };
 
 describe('airborne state', () => {
@@ -62,5 +64,24 @@ describe('airborne state', () => {
     run(tracker, state, 4, 1);
     expect(state.landingCount).toBe(3);
     expect(state.lastAirTime).toBe(0);
+  });
+  it('ends a flight on static chassis contact: a car on its side is not flying, and the touchdown counts', () => {
+    const { tracker, state } = fresh();
+    run(tracker, state, 4, 10);
+    run(tracker, state, 0, 60); // Half a second of real flight.
+    expect(state.airborne).toBe(true);
+    run(tracker, state, 0, 1, true); // Comes down on the chassis, wheels up.
+    expect(state.airborne).toBe(false);
+    expect(state.airTime).toBe(0);
+    expect(state.lastAirTime).toBeCloseTo(0.5, 6);
+    expect(state.landingCount).toBe(4);
+    run(tracker, state, 0, 600, true); // Five seconds sliding on its side.
+    expect(state.airborne).toBe(false);
+    expect(state.airTime).toBe(0);
+    expect(state.landingCount).toBe(4);
+    run(tracker, state, 0, 5); // A bounce on its side: airborne again, a hop.
+    expect(state.airborne).toBe(true);
+    run(tracker, state, 0, 1, true);
+    expect(state.landingCount).toBe(4);
   });
 });
