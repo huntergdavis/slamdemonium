@@ -268,6 +268,7 @@ export function createCircuitMap(): CircuitMap {
     ramps,
     loops,
     halfPipes,
+    jumpRamps: [],
     runways: lanes,
     boostPads: pads,
     runs,

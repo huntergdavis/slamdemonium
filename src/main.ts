@@ -45,6 +45,7 @@ import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
 import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
+import { createJumpRampVisual, installJumpRamps } from './world/jumpRamp';
 import { MAPS } from './world/maps';
 import {
   chooseMapName,
@@ -165,6 +166,14 @@ async function boot(): Promise<void> {
     map.loops,
   );
   resources.push(loopVisual);
+  installJumpRamps(surfacedBodies, map.jumpRamps);
+  resources.push(
+    createJumpRampVisual(
+      view.scene,
+      (surface) => track.materials.forSurface(surface),
+      map.jumpRamps,
+    ),
+  );
   // Half-pipes: quarter-pipe walls, a deck and coping rails, data through
   // the same facade, each slab in its surface's material.
   installHalfPipes(surfacedBodies, map.halfPipes);
