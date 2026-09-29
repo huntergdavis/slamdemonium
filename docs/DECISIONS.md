@@ -1001,3 +1001,9 @@ The CTO's three answers to the NS2 proposal (docs/research/ns2-track-proposal.md
 With the circuit's lap being the timed run (#157) and the run first built on the proving ground (#156), the PM asked whether the proving ground keeps its own short run or the run exists only on the circuit. Decided on the developer's recommendation, without putting it to the CTO: keep a run on both maps, one route each, and change nothing.
 
 The proving ground's 45-second East-loop run is the bench for the run mechanic itself and for the loop rule: a run you can retry twenty times an hour is where the countdown, the gates and Enter get judged, and its loops are where the loop rule was measured. The circuit lap is the game. Removing the short run would leave the map he likes best with a start line and nothing behind it. The run is map data (each map's first route), so the readout, the gates and Enter behave identically on both, and the level select is the only choice he makes. If two runs ever confuse him, the proving ground's is one data line to remove. No default map changes; the level select answers where he starts.
+
+## The circuit aquifer is intentionally giant, with an optional braking approach (2026-09-28)
+
+The circuit aquifer is deliberately radius 40 with roughly 40 m walls, beside the second straight at station 6.6 km. The proving ground keeps the radius-16, roughly 15 m aquifer as the tuning reference; the two scales are intentional because the CTO asked for a visible 50-foot-class spectacle on the long circuit.
+
+A flat-out circuit arrival measured 59.84–60.00 m/s. The giant channel's controlled wall-ride window is about 25–35 m/s; 40–60 m/s exits laterally. The circuit therefore gets an optional, paint-only braking approach: a roughly 125 m off-line lane beginning 110 m before the mouth, with 20 m ground crossbars. It adds no drag or forced slowdown, and the racing line remains available for a full-speed bypass.
