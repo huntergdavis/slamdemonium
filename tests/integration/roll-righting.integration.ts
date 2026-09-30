@@ -276,3 +276,46 @@ it('rights a fast chassis-on-ground side-slide before it slows to walking pace',
     rig.dispose();
   }
 });
+
+it.each([0, 31])(
+  'rights a car exactly flat on its roof from %i m/s',
+  async (initialSpeed) => {
+    const rig = await scriptVehicleHarness({ flatPlane: true });
+    try {
+      const { vehicle, world, loop, setPad } = rig;
+      forwardChassisContactNormal(world, vehicle);
+      setPad({
+        throttle: 0,
+        brake: 0,
+        steer: 0,
+        handbrake: false,
+        boost: false,
+        source: 'gamepad',
+      });
+      // Exact half-turn: a nearly inverted roof has a natural roll direction,
+      // while this pose has none until the righting assist chooses one.
+      vehicle.respawn({ x: 130, y: 0.5, z: 0 }, { x: 0, y: 0, z: 1, w: 0 });
+      world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: initialSpeed });
+      const s = vehicle.telemetry;
+      const bodyUp = new Vector3();
+      bodyUp.set(0, 1, 0).applyQuaternion(s.rotation);
+      expect(bodyUp.y).toBe(-1);
+      let uprightAt = -1;
+      let uprightSpeed = 0;
+      for (let step = 0; step < 3 * HZ; step++) {
+        loop.stepMany(1);
+        bodyUp.set(0, 1, 0).applyQuaternion(s.rotation);
+        if (bodyUp.y > 0.9 && s.groundedWheels >= 3) {
+          uprightAt = step / HZ;
+          uprightSpeed = s.speed;
+          break;
+        }
+      }
+      expect(uprightAt).toBeGreaterThan(0);
+      expect(uprightAt).toBeLessThan(3);
+      if (initialSpeed > 0) expect(uprightSpeed).toBeGreaterThan(15);
+    } finally {
+      rig.dispose();
+    }
+  },
+);
