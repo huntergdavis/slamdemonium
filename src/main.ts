@@ -72,6 +72,7 @@ import {
 } from './world/propStreaming';
 import { createSurfacedBodies } from './world/surfacedBodies';
 import { createSurfaceRegistry } from './world/surfaceRegistry';
+import { createTraffic, createTrafficVisual } from './world/traffic';
 import './style.css';
 
 document.title = GAME_NAME;
@@ -255,6 +256,14 @@ async function boot(): Promise<void> {
   // initial respawn the proving-ground camera starts facing away from every
   // target even though subsequent respawns use the correct rotation.
   vehicle.respawn(track.spawn.position, track.spawn.rotation);
+  const traffic =
+    map.path && map.traffic
+      ? createTraffic(physics, map.path, map.traffic)
+      : undefined;
+  const trafficVisual = traffic
+    ? createTrafficVisual(view.scene, traffic)
+    : undefined;
+  if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
   // cheap far-field instance elsewhere; the record format is shared with a
@@ -470,6 +479,7 @@ async function boot(): Promise<void> {
         visualHistory.beforeStep();
         stepStart = performance.now();
         vehicle.preStep(dt, sampled, source);
+        traffic?.preStep(dt, vehicle.telemetry.position);
       },
       stepPhysics(dt) {
         const engineStarted = performance.now();
@@ -478,6 +488,7 @@ async function boot(): Promise<void> {
       },
       postStep(dt) {
         vehicle.postStep(dt);
+        traffic?.postStep();
         breakableProps.update(dt);
         {
           const entered = boostPads.update(
@@ -573,6 +584,7 @@ async function boot(): Promise<void> {
         const pose = history.interpolate(alpha);
         carVisual.update(visualHistory.interpolate(alpha, pose));
         breakablePropsVisual.update();
+        trafficVisual?.update();
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
@@ -864,6 +876,7 @@ async function boot(): Promise<void> {
       impact,
     );
     const otherBody = a === vehicle.body ? b : a;
+    traffic?.onPlayerContact(otherBody, impact);
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
       vehicle.noteChassisContact(impactNormal);

@@ -14,6 +14,8 @@ import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import type { RunwaySpec } from './runways';
 import type { TrackConfig } from './trackConfig';
 import type { JumpRampSpec } from './jumpRamp';
+import type { RoadPath } from './roadGenerator';
+import type { TrafficCarRecord } from './traffic';
 
 /** A named world: track geometry overrides, where the car starts, and the
  * structures built on it. Every placement is data in absolute metres, so a
@@ -44,6 +46,9 @@ export interface MapDefinition {
   readonly placements?: readonly BreakablePlacement[];
   /** A polyline the mini-map draws as the route, for maps that are a road. */
   readonly route?: readonly { readonly x: number; readonly z: number }[];
+  /** A closed driving path and authored traffic, used by the circuit only. */
+  readonly path?: RoadPath;
+  readonly traffic?: readonly TrafficCarRecord[];
 }
 export type MapName = 'lab' | 'proving-ground' | 'circuit';
 
