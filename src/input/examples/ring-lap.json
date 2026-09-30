@@ -79,7 +79,7 @@
     "padBoost": 0.05,
     "boostDrainRate": 0.25,
     "driftChargeRate": 0.02,
-    "airChargeRate": 0.25,
+    "airChargeRate": 0.15,
     "driftMinAngle": 12,
     "restitution": 0.25,
     "wallFriction": 0.05,

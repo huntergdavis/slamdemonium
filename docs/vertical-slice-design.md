@@ -568,7 +568,7 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 | boostTopSpeedAdd | Boost & Drift | m/s | 25 | 0 | 60 | 1 | | Extra top speed while boosting. |
 | boostDrainRate | Boost & Drift | 1/s | 0.25 | 0.05 | 2.0 | 0.05 | | Meter used per second of boost. |
 | driftChargeRate | Boost & Drift | 1/s at reference | 0.02 | 0 | 2.0 | 0.01 | | Meter earned per second of a reference drift (30 deg at 40 m/s). Very slow by design: boost is earned by danger, and the fast earners (traffic, wrong side, crashes) do not exist yet. |
-| airChargeRate | Boost & Drift | 1/s² | 0.25 | 0 | 2.0 | 0.01 | | Big air: a flight that launched upward pays this times its airtime squared, halved. At 0.25 the giant ramp pays a third of a bar at cruise and half boosted; a small ramp 7 percent; a kerb bounce nothing worth counting. |
+| airChargeRate | Boost & Drift | 1/s² | 0.15 | 0 | 2.0 | 0.01 | | Big air: a flight that launched upward pays this times its airtime squared, halved. At 0.15 the giant ramp pays a fifth of a bar at cruise and a third boosted; a small ramp 4 percent; a kerb bounce nothing worth counting. |
 | driftMinAngle | Boost & Drift | deg | 12 | 3 | 40 | 0.5 | | Slide angle needed to count as a drift. |
 | restitution | Collision | | 0.25 | 0 | 1.0 | 0.01 | | Bounciness of impacts. |
 | wallFriction | Collision | | 0.05 | 0 | 1.0 | 0.01 | | Friction against barriers. Low lets you scrape along walls without stopping. |
