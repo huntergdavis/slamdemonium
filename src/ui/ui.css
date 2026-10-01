@@ -725,6 +725,13 @@
   top: 300px;
   padding: 8px 10px;
 }
+.sl-hud__event {
+  margin-top: 6px;
+  font: 700 13px/1 var(--sl-mono);
+  letter-spacing: 0.08em;
+  color: var(--sl-accent);
+  text-align: right;
+}
 .sl-drive__value {
   font: 700 34px/1 var(--sl-mono);
 }

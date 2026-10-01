@@ -463,7 +463,8 @@ Assist C is the least certain part of this document. **Treat it as a research it
   `meter += driftChargeRate * (|beta| / 30 deg) * (speed / 40) * dt`, clamped to 1.
 - Airtime charge, big air: `meter += airChargeRate * airTime * dt` while `airborne`, only for a flight whose launch velocity (the `airLaunch` seam, the step the wheels left) pointed up; the payout is `airChargeRate * airTime^2 / 2`, clamped to 1. A committed jump pays four to eight times a hop; rolling off a ledge pays nothing.
 - Accelerator triangles add `padBoost` on entry (edge-triggered) and kick speed by `padKick` along the heading.
-- Meter persists after the drift ends (no decay in the slice). A visual pip flashes while charging. Every present source is a deliberately slow fill: boost is earned by danger, and the fast earners (traffic, wrong side of the road, crashes) do not exist yet (DECISIONS, 2026-09-25). B fills the bar for testing.
+- Traffic events, the fast earners (NS4, 2026-09-30): a NEAR MISS (a pass within `nearMissGap` edge to edge at `nearMissClosing` or more, once per car per pass, voided by touching the car) grants `nearMissBoost`; WRONG SIDE (an oncoming car, read off its heading, within `wrongSideReach` ahead and half a lane of the player's line, above 15 m/s) grants `wrongSideRate` per second; a SLAM (a contact with a traffic car) grants `slamBoost` times the shared impact severity, once per car per contact episode. Only awake, unwrecked cars are traffic. The HUD shows one short label for 1.2 s and nothing else.
+- Meter persists after the drift ends (no decay in the slice). A visual pip flashes while charging. Drift, air and pads are deliberately slow fills; the traffic events above are the fast ones (DECISIONS, 2026-09-25 and 2026-09-30). B fills the bar for testing.
 
 ### 6.10 Stability safeguards (all MUST)
 
@@ -567,8 +568,14 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 | boostAccelMult | Boost & Drift | x | 1.6 | 1.0 | 3.0 | 0.05 | | Acceleration multiplier while boosting. |
 | boostTopSpeedAdd | Boost & Drift | m/s | 25 | 0 | 60 | 1 | | Extra top speed while boosting. |
 | boostDrainRate | Boost & Drift | 1/s | 0.25 | 0.05 | 2.0 | 0.05 | | Meter used per second of boost. |
-| driftChargeRate | Boost & Drift | 1/s at reference | 0.02 | 0 | 2.0 | 0.01 | | Meter earned per second of a reference drift (30 deg at 40 m/s). Very slow by design: boost is earned by danger, and the fast earners (traffic, wrong side, crashes) do not exist yet. |
+| driftChargeRate | Boost & Drift | 1/s at reference | 0.02 | 0 | 2.0 | 0.01 | | Meter earned per second of a reference drift (30 deg at 40 m/s). Very slow by design: boost is earned by danger; the fast earners are the traffic events (near miss, wrong side, slam). |
 | airChargeRate | Boost & Drift | 1/s² | 0.15 | 0 | 2.0 | 0.01 | | Big air: a flight that launched upward pays this times its airtime squared, halved. At 0.15 the giant ramp pays a fifth of a bar at cruise and a third boosted; a small ramp 4 percent; a kerb bounce nothing worth counting. |
+| nearMissGap | Boost & Drift | m | 1.5 | 0.5 | 4.0 | 0.1 | | Traffic: passing a car with less than this between the bodywork, edge to edge, is a near miss (once per car per pass; touching the car voids it). |
+| nearMissClosing | Boost & Drift | m/s | 12 | 5 | 40 | 1 | | Traffic: a pass only counts as a near miss at or above this closing speed between the two cars. |
+| nearMissBoost | Boost & Drift | bar | 0.1 | 0.0 | 0.5 | 0.01 | | Traffic: boost bar granted per near miss. At 0.10 four near misses equal one cruise jump off the proving-ground ramp. |
+| wrongSideReach | Boost & Drift | m | 60 | 20 | 150 | 5 | | Traffic: an oncoming car this far ahead, within half a lane of your line, means you are on the wrong side. Oncoming is read off the car's heading, so it works on any road. |
+| wrongSideRate | Boost & Drift | bar/s | 0.08 | 0.0 | 0.3 | 0.01 | | Traffic: boost bar granted per second on the wrong side with oncoming traffic in reach, above 15 m/s. At 0.08 five and a half seconds equal one cruise jump. |
+| slamBoost | Boost & Drift | bar | 0.35 | 0.0 | 1.0 | 0.01 | | Traffic: boost bar granted by hitting a traffic car at full impact severity (18.8 m/s closing), scaled down by severity; once per car per contact. At 0.35 one full slam is three quarters of a cruise jump. |
 | driftMinAngle | Boost & Drift | deg | 12 | 3 | 40 | 0.5 | | Slide angle needed to count as a drift. |
 | restitution | Collision | | 0.25 | 0 | 1.0 | 0.01 | | Bounciness of impacts. |
 | wallFriction | Collision | | 0.05 | 0 | 1.0 | 0.01 | | Friction against barriers. Low lets you scrape along walls without stopping. |

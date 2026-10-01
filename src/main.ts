@@ -59,6 +59,7 @@ import { createTimedRun } from './core/timedRun';
 import { createAwakeBudget } from './world/awakeBudget';
 import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
+import { createTrafficEvents, type TrafficCarView } from './core/trafficEvents';
 import type { MiniMapLandmark } from './ui/miniMap';
 import {
   createBreakableProps,
@@ -231,6 +232,25 @@ async function boot(): Promise<void> {
     track.spawn.position,
     surfaceResolver,
   );
+  // Traffic events (NS4): near misses, wrong-side driving and slams feed the
+  // boost bar. The detector reads the traffic cars' states after physics;
+  // until the traffic module lands on main there are none to read.
+  const trafficEvents = createTrafficEvents();
+  const trafficStates: readonly TrafficCarView[] = [];
+  const trafficTuning = {
+    nearMissGap: 0,
+    nearMissClosing: 0,
+    nearMissBoost: 0,
+    wrongSideReach: 0,
+    wrongSideRate: 0,
+    slamBoost: 0,
+  };
+  const playerView = {
+    position: vehicle.telemetry.position,
+    forward: { x: 0, z: 1 },
+    velocity: vehicle.telemetry.velocity,
+    speed: 0,
+  };
   // Apply the authored map heading before the first frame; without this
   // initial respawn the proving-ground camera starts facing away from every
   // target even though subsequent respawns use the correct rotation.
@@ -470,6 +490,26 @@ async function boot(): Promise<void> {
               tuning.get('padBoost') * entered,
             );
         }
+        {
+          const t = vehicle.telemetry,
+            q = t.rotation;
+          playerView.forward.x = -2 * (q.x * q.z + q.y * q.w);
+          playerView.forward.z = -(1 - 2 * (q.x * q.x + q.y * q.y));
+          playerView.speed = t.speed;
+          trafficTuning.nearMissGap = tuning.get('nearMissGap');
+          trafficTuning.nearMissClosing = tuning.get('nearMissClosing');
+          trafficTuning.nearMissBoost = tuning.get('nearMissBoost');
+          trafficTuning.wrongSideReach = tuning.get('wrongSideReach');
+          trafficTuning.wrongSideRate = tuning.get('wrongSideRate');
+          trafficTuning.slamBoost = tuning.get('slamBoost');
+          const grant = trafficEvents.update(
+            dt,
+            playerView,
+            trafficStates,
+            trafficTuning,
+          );
+          if (grant > 0) vehicle.applyPad(0, grant);
+        }
         crashScore.update(dt);
         timedRun.update(
           dt,
@@ -563,6 +603,7 @@ async function boot(): Promise<void> {
   );
   function resetPresentation(): void {
     boostPads.reset();
+    trafficEvents.reset();
     history.reset();
     visualHistory.reset();
     cameraRig.reset();
@@ -723,6 +764,7 @@ async function boot(): Promise<void> {
     readTelemetry: () => vehicle.telemetry,
     readScore: () => crashScore.state,
     readRun: () => timedRun.state,
+    readTrafficEvents: () => trafficEvents.state,
     readRenderTelemetry: () => renderTelemetry,
     miniMap: {
       landmarks: miniMapLandmarks,
