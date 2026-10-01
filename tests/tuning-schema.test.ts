@@ -9,10 +9,10 @@ import {
 } from '../src/tuning/schema';
 
 describe('tuning schema: design sections 7.2 and 13.1', () => {
-  it('has all 98 unique keys, valid ranges, labels, units, and help', () => {
-    expect(PARAM_DEFS).toHaveLength(98);
+  it('has all 104 unique keys, valid ranges, labels, units, and help', () => {
+    expect(PARAM_DEFS).toHaveLength(104);
     expect(new Set(PARAM_DEFS.map((definition) => definition.key)).size).toBe(
-      98,
+      104,
     );
     for (const definition of PARAM_DEFS) {
       expect(definition.default).toBeGreaterThanOrEqual(definition.min);
@@ -32,7 +32,7 @@ describe('tuning schema: design sections 7.2 and 13.1', () => {
       brief.split('### 7.2 The parameters')[1]?.split('The `quick` set')[0] ??
       '';
     const rows = table.split('\n').filter((row) => /^\| [a-z]/.test(row));
-    expect(rows).toHaveLength(72);
+    expect(rows).toHaveLength(78);
     for (const row of rows) {
       const cells = row
         .split('|')
@@ -99,7 +99,7 @@ describe('tuning schema: design sections 7.2 and 13.1', () => {
         expect(value).toBeLessThanOrEqual(PARAM_BY_KEY[key].max);
       }
     }
-    expect(Object.keys(DEFAULT_VALUES)).toHaveLength(98);
+    expect(Object.keys(DEFAULT_VALUES)).toHaveLength(104);
     expect(DEFAULT_VALUES).toMatchObject({
       engineCharacter: 0.75,
       engineRevLift: 1850,

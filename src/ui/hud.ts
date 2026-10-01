@@ -15,6 +15,7 @@ import {
 import { HudPlots } from './hudPlots';
 import type { TimedRunState } from '../core/timedRun';
 import { HudChainState, isChainAlive } from './hudChain';
+import type { TrafficEventsState } from '../core/trafficEvents';
 import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
 import { MiniMap, type MiniMapOptions } from './miniMap';
 import { node } from './paramControl';
@@ -36,6 +37,15 @@ export const HUD_HINT_TEXT = Object.freeze({
   keyboard: 'Esc menu · O options · H HUD',
   gamepad: 'Start menu · View options · hold LB for commands',
 });
+const TRAFFIC_EVENT_LABELS: Record<
+  NonNullable<TrafficEventsState['lastEvent']>,
+  string
+> = {
+  'near-miss': 'NEAR MISS',
+  oncoming: 'ONCOMING',
+  slam: 'SLAM',
+};
+
 export interface HudOptions extends RecorderOptions {
   /** Prefer options.root, so the shared Options-open layout applies. */
   host: HTMLElement;
@@ -48,6 +58,8 @@ export interface HudOptions extends RecorderOptions {
   readScore?: () => Readonly<CrashScoreState>;
   /** The timed run (NS3): countdown, clock and finish on the persistent seam. */
   readRun?: () => Readonly<TimedRunState>;
+  /** Traffic events: the one short label beside the boost bar. */
+  readTrafficEvents?: () => Readonly<TrafficEventsState>;
   miniMap?: Omit<MiniMapOptions, 'host'>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
   /** Optional export sink for tests/integration. Default downloads a CSV. */
@@ -125,6 +137,8 @@ export class Hud {
   private readonly hint: HTMLElement;
   private readonly drive: HTMLElement;
   private readonly driveBoost: Meter;
+  private readonly driveEvent: HTMLElement;
+  private driveEventShown = '';
   private readonly hintState = new HudHintState();
   private activitySinceUpdate = false;
   private hintDevice: 'keyboard' | 'gamepad' = 'keyboard';
@@ -223,6 +237,12 @@ export class Hud {
     mph.append(node(doc, 'span', 'sl-caption', 'mph'));
     this.drive.append(mph);
     this.driveBoost = this.meter(this.drive, 'Boost');
+    // One short label for a traffic event (near miss, oncoming, slam); it
+    // shows for a moment and never stacks: the CTO does not want it busy.
+    this.driveEvent = node(doc, 'div', 'sl-hud__event');
+    this.driveEvent.setAttribute('role', 'status');
+    this.driveEvent.hidden = true;
+    this.drive.append(this.driveEvent);
     this.element.append(this.drive);
     this.notice = node(doc, 'div', 'sl-card sl-hud__recording');
     this.notice.dataset.hudPersistent = '';
@@ -487,6 +507,7 @@ export class Hud {
       this.set('driveMph', fixed(telemetry.speed * MPH_PER_MPS, 0));
       this.fill(this.driveBoost, telemetry.boostMeter);
     }
+    this.updateTrafficEvent(this.options.readTrafficEvents?.());
     if (this.mode === 'off' || collapsed) return;
     const render = this.options.readRenderTelemetry?.();
     const store = this.options.store;
@@ -691,6 +712,18 @@ export class Hud {
     write(this.chainTotal, score.total.toLocaleString('en-US'));
   }
 
+  private updateTrafficEvent(
+    events: Readonly<TrafficEventsState> | undefined,
+  ): void {
+    const label =
+      events && events.labelSeconds > 0 && events.lastEvent
+        ? TRAFFIC_EVENT_LABELS[events.lastEvent]
+        : '';
+    if (label === this.driveEventShown) return;
+    this.driveEventShown = label;
+    this.driveEvent.textContent = label;
+    this.driveEvent.hidden = label === '';
+  }
   private fill(meter: Meter, value: number, maximum = 1): void {
     const valid = Number.isFinite(value);
     const bounded = valid ? Math.max(0, Math.min(maximum, value)) : 0;
