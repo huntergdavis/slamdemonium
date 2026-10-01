@@ -92,20 +92,20 @@ async function ledge() {
   }
 }
 
-it('big air: the giant ramp pays about a third of a bar at cruise and about half boosted, a small ramp a few percent', async () => {
+it('big air: the giant ramp pays about a fifth of a bar at cruise and about a third boosted, a small ramp a few percent', async () => {
   const cruise = await jump(0, 60);
   expect(cruise.landed).toBe(true);
   expect(cruise.launchVy).toBeGreaterThan(5);
   expect(cruise.airTime).toBeGreaterThan(1.4);
-  // Quadratic in airtime: rate * t^2 / 2 at 0.25, within the step lag.
-  expect(cruise.meter).toBeGreaterThan(0.25);
-  expect(cruise.meter).toBeLessThan(0.42);
+  // Quadratic in airtime: rate * t^2 / 2 at 0.15, within the step lag.
+  expect(cruise.meter).toBeGreaterThan(0.15);
+  expect(cruise.meter).toBeLessThan(0.25);
   const boosted = await jump(0, 85);
   expect(boosted.meter).toBeGreaterThan(cruise.meter);
-  expect(boosted.meter).toBeGreaterThan(0.45);
+  expect(boosted.meter).toBeGreaterThan(0.27);
   const small = await jump(1, 40);
-  expect(small.meter).toBeGreaterThan(0.03);
-  expect(small.meter).toBeLessThan(0.12);
+  expect(small.meter).toBeGreaterThan(0.018);
+  expect(small.meter).toBeLessThan(0.072);
   expect(cruise.meter / small.meter).toBeGreaterThan(3);
 }, 300_000);
 

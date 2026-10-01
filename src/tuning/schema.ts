@@ -762,11 +762,11 @@ const definitions = [
     group: 'Boost & Drift',
     label: 'Air charge rate',
     unit: '1/s²',
-    default: 0.25,
+    default: 0.15,
     min: 0.0,
     max: 2.0,
     step: 0.01,
-    help: 'Big air: a flight that launched upward pays this times its airtime squared, halved. At 0.25 the giant ramp pays a third of a bar at cruise and half boosted; a small ramp 7 percent; a kerb bounce nothing worth counting.',
+    help: 'Big air: a flight that launched upward pays this times its airtime squared, halved. At 0.15 the giant ramp pays a fifth of a bar at cruise and a third boosted; a small ramp 4 percent; a kerb bounce nothing worth counting.',
   },
   {
     key: 'driftMinAngle',
