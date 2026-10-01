@@ -16,6 +16,45 @@ afterEach(() => {
   worlds.length = 0;
 });
 
+it('holds authored traffic speed for ten seconds inside the drive radius', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  world.setGravity(20);
+  world.createStaticBox({ x: 0, y: -0.5, z: -250 }, { x: 300, y: 0.5, z: 400 });
+  const path = sampleRoad([{ kind: 'straight', length: 500 }], {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(world, bodies, path, [
+    { station: 140, laneSide: -1, speed: 19 },
+  ]);
+  try {
+    const player = { x: 3.5, y: 0.6, z: -40 };
+    let lowestCruiseSpeed = Infinity;
+    for (let step = 0; step < 10 * 120; step++) {
+      const car = traffic.states[0];
+      if (car) player.z = car.position.z + 100;
+      traffic.preStep(1 / 120, player);
+      world.step(1 / 120);
+      traffic.postStep();
+      if (step >= 5 * 120)
+        lowestCruiseSpeed = Math.min(
+          lowestCruiseSpeed,
+          traffic.states[0]!.speed,
+        );
+    }
+    expect(traffic.states).toHaveLength(1);
+    expect(lowestCruiseSpeed).toBeGreaterThan(18);
+    expect(traffic.states[0]!.speed).toBeGreaterThan(18);
+    expect(traffic.states[0]!.speed).toBeLessThan(20);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
+});
+
 it('drives a pooled car, yields on a real impact, and preserves wrecks with new encounter ids', async () => {
   const world = await createPhysicsWorld({ wasmPath });
   worlds.push(world);

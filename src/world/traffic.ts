@@ -52,6 +52,7 @@ interface Slot {
   readonly bodyId: BodyId;
   record: RecordState | null;
   readonly state: TrafficCarState;
+  friction: number;
 }
 
 const BODY_HALF = { x: 0.95, y: 0.55, z: 2.1 };
@@ -62,6 +63,11 @@ const EXIT = 300;
 const MAX_DRIVING = 4;
 const POOL_SIZE = 8;
 const BODY_MASS = 1100;
+// A box has no driven wheels: road friction above the 5 m/s² controller cap
+// stops it outright. Restore heavy contact friction after a wreck so it settles.
+const DRIVE_FRICTION = 0.05;
+const WRECK_FRICTION = 0.7;
+const RESTITUTION = 0.05;
 
 function horizontalDistance(a: V3, x: number, z: number): number {
   return Math.hypot(a.x - x, a.z - z);
@@ -109,8 +115,8 @@ export function createTraffic(
       mass: BODY_MASS,
       comOffset: { x: 0, y: -0.15, z: 0 },
       inertiaScale: { x: 1, y: 1, z: 1 },
-      friction: 0.7,
-      restitution: 0.05,
+      friction: DRIVE_FRICTION,
+      restitution: RESTITUTION,
       ccd: true,
       maxAngularVelocity: 9,
       angularDamping: 0.25,
@@ -118,6 +124,7 @@ export function createTraffic(
     slots.push({
       bodyId,
       record: null,
+      friction: DRIVE_FRICTION,
       state: {
         id: 0,
         bodyId,
@@ -180,6 +187,8 @@ export function createTraffic(
           w: Math.cos(pose.heading / 2),
         };
     physics.activateBody(slot.bodyId, position, rotation, true);
+    slot.friction = record.wrecked ? WRECK_FRICTION : DRIVE_FRICTION;
+    physics.setContactProperties(slot.bodyId, slot.friction, RESTITUTION);
     slot.record = record;
     record.slot = slot;
     const state = slot.state;
@@ -240,7 +249,17 @@ export function createTraffic(
         continue;
       }
       // A wreck stays physically free to tumble and settle while nearby.
-      if (record.wrecked) continue;
+      if (record.wrecked) {
+        if (slot.friction !== WRECK_FRICTION) {
+          physics.setContactProperties(
+            slot.bodyId,
+            WRECK_FRICTION,
+            RESTITUTION,
+          );
+          slot.friction = WRECK_FRICTION;
+        }
+        continue;
+      }
       if (distance > DRIVE) {
         if (physics.isBodyAwake(slot.bodyId)) physics.sleepBody(slot.bodyId);
         continue;
