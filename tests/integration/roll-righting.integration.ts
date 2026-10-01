@@ -319,3 +319,43 @@ it.each([0, 31])(
     }
   },
 );
+
+it('finishes a roof lift through the door while still moving', async () => {
+  const rig = await scriptVehicleHarness({ flatPlane: true });
+  try {
+    const { vehicle, world, loop, setPad } = rig;
+    forwardChassisContactNormal(world, vehicle);
+    setPad({
+      throttle: 1,
+      brake: 0,
+      steer: 0,
+      handbrake: false,
+      boost: false,
+      source: 'gamepad',
+    });
+    vehicle.respawn({ x: 130, y: 0.5, z: 0 }, { x: 0, y: 0, z: 1, w: 0 });
+    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: 31 });
+    const s = vehicle.telemetry;
+    const up = new Vector3();
+    let doorAt = -1;
+    let uprightAt = -1;
+    let uprightSpeed = 0;
+    for (let step = 0; step < 4 * HZ; step++) {
+      loop.stepMany(1);
+      up.set(0, 1, 0).applyQuaternion(s.rotation);
+      if (doorAt < 0 && up.y >= 0) doorAt = step / HZ;
+      if (up.y > 0.9 && s.groundedWheels >= 3) {
+        uprightAt = step / HZ;
+        uprightSpeed = s.speed;
+        break;
+      }
+    }
+    expect(doorAt).toBeGreaterThan(0);
+    expect(uprightAt).toBeGreaterThan(doorAt);
+    expect(uprightAt - doorAt).toBeLessThan(1.8);
+    expect(uprightAt).toBeLessThan(3);
+    expect(uprightSpeed).toBeGreaterThan(8);
+  } finally {
+    rig.dispose();
+  }
+});
