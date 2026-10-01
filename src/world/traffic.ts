@@ -9,7 +9,13 @@ import {
 } from 'three';
 import type { ImpactSeverity } from '../core/impactSeverity';
 import type { BodyId, IPhysicsWorld, Quat, V3 } from '../physics/adapter';
-import { poseAt, type RoadPath } from './roadGenerator';
+import type { RoadPath } from './roadGenerator';
+
+interface MutableRoadPose {
+  x: number;
+  z: number;
+  heading: number;
+}
 
 export interface TrafficCarRecord {
   readonly station: number;
@@ -88,6 +94,9 @@ export function createTraffic(
   const force: V3 = { x: 0, y: 0, z: 0 };
   const point: V3 = { x: 0, y: 0, z: 0 };
   const angular: V3 = { x: 0, y: 0, z: 0 };
+  const routeScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
+  const nextScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
+  const wakeVelocity: V3 = { x: 0, y: 0, z: 0 };
 
   for (let i = 0; i < POOL_SIZE; i++) {
     const bodyId = physics.createPooledBox({
@@ -119,21 +128,42 @@ export function createTraffic(
     });
   }
 
-  function routePose(record: RecordState) {
-    const p = poseAt(path, record.station);
-    const leftX = -Math.cos(p.heading);
-    const leftZ = Math.sin(p.heading);
-    return {
-      x: p.x + leftX * record.authored.laneSide * 3.5,
-      z: p.z + leftZ * record.authored.laneSide * 3.5,
-      heading: p.heading,
-    };
+  function routePose(
+    record: RecordState,
+    station: number,
+    out: MutableRoadPose,
+  ): MutableRoadPose {
+    const { samples, length } = path;
+    const s = path.closed
+      ? ((station % length) + length) % length
+      : Math.max(0, Math.min(length, station));
+    let lo = 0;
+    let hi = samples.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (samples[mid]!.s <= s) lo = mid;
+      else hi = mid;
+    }
+    const a = samples[lo]!;
+    const b = samples[hi]!;
+    const span = b.s - a.s;
+    const t = span > 0 ? (s - a.s) / span : 0;
+    out.heading = a.heading + (b.heading - a.heading) * t;
+    out.x =
+      a.x +
+      (b.x - a.x) * t -
+      Math.cos(out.heading) * record.authored.laneSide * 3.5;
+    out.z =
+      a.z +
+      (b.z - a.z) * t +
+      Math.sin(out.heading) * record.authored.laneSide * 3.5;
+    return out;
   }
 
   function promote(record: RecordState): void {
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
-    const pose = routePose(record);
+    const pose = routePose(record, record.station, routeScratch);
     const position = record.wrecked
       ? record.wreckPosition
       : { x: pose.x, y: BODY_HALF.y + 0.04, z: pose.z };
@@ -184,7 +214,7 @@ export function createTraffic(
       const slot = record.slot;
       // Wrecks remain at their final pose; undamaged cars progress only while
       // simulated so there is no large teleport at the streaming boundary.
-      const pose = routePose(record);
+      const pose = routePose(record, record.station, routeScratch);
       const targetX = slot
         ? slot.state.position.x
         : record.wrecked
@@ -212,7 +242,7 @@ export function createTraffic(
         continue;
       }
       const state = slot.state;
-      const next = poseAt(path, record.station + 8);
+      const next = routePose(record, record.station + 8, nextScratch);
       const nextHeading = Math.atan2(-(next.x - pose.x), -(next.z - pose.z));
       const desiredX =
         -Math.sin(nextHeading) * record.authored.speed +
@@ -221,11 +251,10 @@ export function createTraffic(
         -Math.cos(nextHeading) * record.authored.speed +
         Math.max(-3, Math.min(3, (pose.z - state.position.z) * 0.7));
       if (!physics.isBodyAwake(slot.bodyId)) {
-        physics.setLinearVelocity(slot.bodyId, {
-          x: desiredX,
-          y: state.velocity.y,
-          z: desiredZ,
-        });
+        wakeVelocity.x = desiredX;
+        wakeVelocity.y = state.velocity.y;
+        wakeVelocity.z = desiredZ;
+        physics.setLinearVelocity(slot.bodyId, wakeVelocity);
       } else {
         // Soft speed hold, capped at 5 m/s²; a hit wins over the controller.
         force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
