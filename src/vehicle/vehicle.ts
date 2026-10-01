@@ -106,6 +106,10 @@ export class Vehicle {
    * flat on the roof it yields to the lift below: left running there it
    * held the roof down against it. */
   private wheelsOffSeconds = 0;
+  /** A roof lift can settle onto two wheels while road-speed suspension
+   * forces cancel the ordinary righting torque. Keep extra authority only
+   * through that roof-to-upright handoff, never for a standalone door slide. */
+  private recoveringFromRoof = false;
   private previousGroundedWheels = 0;
   private readonly airInputs: AirControlInputs = {
     throttle: 0,
@@ -648,10 +652,15 @@ export class Vehicle {
       (s.speed < 3 || s.groundedWheels > 0 || this.chassisContact)
     ) {
       const gravityScale = t.get('gravity') / RIGHTING_REFERENCE_GRAVITY;
+      const roofDoorHandoff =
+        this.recoveringFromRoof && s.groundedWheels > 0 && s.groundedWheels < 3;
+      const rightingCap = (roofDoorHandoff ? 36 : 12) * gravityScale;
       const correction = clamp(
-        (8 * roll - 2 * s.angularVelocity.dot(this.forward)) * gravityScale,
-        -12 * gravityScale,
-        12 * gravityScale,
+        ((roofDoorHandoff ? 24 : 8) * roll -
+          2 * s.angularVelocity.dot(this.forward)) *
+          gravityScale,
+        -rightingCap,
+        rightingCap,
       );
       this.torque.addScaledVector(this.forward, this.inertia.z * correction);
       // A level roof has no raised edge for that torque to tip over. Lift one
@@ -661,6 +670,7 @@ export class Vehicle {
         Math.abs(roll) > Math.PI - 15 * DEG &&
         (this.chassisContact || (s.speed < 3 && !s.airborne))
       ) {
+        this.recoveringFromRoof = true;
         this.force
           .copy(this.groundNormal)
           .multiplyScalar(this.mass.mass * t.get('gravity') * 0.6);
@@ -670,6 +680,12 @@ export class Vehicle {
         this.world.applyForceAtPoint(this.body, this.force, this.temp);
       }
     }
+    if (
+      this.recoveringFromRoof &&
+      s.groundedWheels >= 3 &&
+      Math.abs(roll) < 35 * DEG
+    )
+      this.recoveringFromRoof = false;
     this.world.applyTorque(this.body, this.torque);
     s.driftLatched = this.drift.side !== 0;
     s.driftTarget = this.drift.target;
@@ -884,6 +900,7 @@ export class Vehicle {
     this.chassisContact = false;
     this.chassisContactNormal.set(0, 0, 0);
     this.wheelsOffSeconds = 0;
+    this.recoveringFromRoof = false;
     this.previousGroundedWheels = 0;
     this.rpmModel.reset(this.telemetry);
     this.airState.reset(this.telemetry);
