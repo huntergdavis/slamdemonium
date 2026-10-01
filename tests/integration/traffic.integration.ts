@@ -47,6 +47,7 @@ it('drives a pooled car, yields on a real impact, and preserves wrecks with new 
   expect(traffic.states).toBe(identity);
   expect(first.position.z).toBeLessThan(-145);
   expect(first.speed).toBeGreaterThan(10);
+  expect(traffic.velocityForBody(first.bodyId)).toBe(first.velocity);
   expect(first.wrecked).toBe(false);
 
   const car = world.createDynamicBox({
@@ -93,6 +94,7 @@ it('drives a pooled car, yields on a real impact, and preserves wrecks with new 
   traffic.preStep(1 / 120, player);
   expect(traffic.states).toHaveLength(0);
   expect(world.isBodyActive(first.bodyId)).toBe(false);
+  expect(traffic.velocityForBody(first.bodyId)).toBeUndefined();
 
   player.x = first.position.x;
   player.z = wreckZ;

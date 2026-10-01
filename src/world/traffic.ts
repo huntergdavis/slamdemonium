@@ -321,12 +321,20 @@ export function createTraffic(
     }
   }
 
+  /** Last post-step velocity, safe to read inside a contact callback. */
+  function velocityForBody(bodyId: BodyId): Readonly<V3> | undefined {
+    for (const slot of slots)
+      if (slot.bodyId === bodyId && slot.record) return slot.state.velocity;
+    return undefined;
+  }
+
   return {
     /** Reused array and records; safe to iterate after physics without allocation. */
     states: activeStates as readonly TrafficCarState[],
     preStep,
     postStep,
     onPlayerContact,
+    velocityForBody,
     dispose() {
       for (const record of authored) demote(record);
       for (const slot of slots) bodies.destroy(slot.bodyId);

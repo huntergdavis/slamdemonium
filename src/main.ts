@@ -840,6 +840,7 @@ async function boot(): Promise<void> {
   // Menu disposal restores the shared Options element before Options removes it.
   resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
+  const relativeImpactVelocity: V3 = { x: 0, y: 0, z: 0 };
   const impact = createImpactSeverity();
   let landingsSeen = vehicle.telemetry.landingCount;
   const impactFeedback = new ImpactFeedback({
@@ -858,9 +859,22 @@ async function boot(): Promise<void> {
     impactNormal.x = normal.x * direction;
     impactNormal.y = normal.y * direction;
     impactNormal.z = normal.z * direction;
+    const otherBody = a === vehicle.body ? b : a;
+    const trafficVelocity = traffic?.velocityForBody(otherBody);
+    const severityVelocity = trafficVelocity
+      ? relativeImpactVelocity
+      : vehicle.telemetry.velocity;
+    if (trafficVelocity) {
+      relativeImpactVelocity.x =
+        vehicle.telemetry.velocity.x - trafficVelocity.x;
+      relativeImpactVelocity.y =
+        vehicle.telemetry.velocity.y - trafficVelocity.y;
+      relativeImpactVelocity.z =
+        vehicle.telemetry.velocity.z - trafficVelocity.z;
+    }
     estimateImpactSeverity(
       impulse,
-      vehicle.telemetry.velocity,
+      severityVelocity,
       impactNormal,
       vehicle.currentMass,
       impact,
@@ -875,7 +889,6 @@ async function boot(): Promise<void> {
       vehicle.telemetry.velocity,
       impact,
     );
-    const otherBody = a === vehicle.body ? b : a;
     traffic?.onPlayerContact(otherBody, impact);
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
