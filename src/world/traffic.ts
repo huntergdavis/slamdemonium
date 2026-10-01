@@ -8,8 +8,10 @@ import {
   type Scene,
 } from 'three';
 import type { ImpactSeverity } from '../core/impactSeverity';
+import { SURFACE_IDS } from '../content/surfaces';
 import type { BodyId, IPhysicsWorld, Quat, V3 } from '../physics/adapter';
 import type { RoadPath } from './roadGenerator';
+import type { SurfacedBodies } from './surfacedBodies';
 
 interface MutableRoadPose {
   x: number;
@@ -74,6 +76,7 @@ function wrapAngle(a: number): number {
  * their last pose by authored record; an encounter id changes on re-promotion. */
 export function createTraffic(
   physics: IPhysicsWorld,
+  bodies: SurfacedBodies,
   path: RoadPath,
   records: readonly TrafficCarRecord[],
 ) {
@@ -99,8 +102,9 @@ export function createTraffic(
   const wakeVelocity: V3 = { x: 0, y: 0, z: 0 };
 
   for (let i = 0; i < POOL_SIZE; i++) {
-    const bodyId = physics.createPooledBox({
+    const bodyId = bodies.createPooledBox({
       motion: 'dynamic',
+      surface: SURFACE_IDS.concrete,
       halfExtents: BODY_HALF,
       mass: BODY_MASS,
       comOffset: { x: 0, y: -0.15, z: 0 },
@@ -325,7 +329,7 @@ export function createTraffic(
     onPlayerContact,
     dispose() {
       for (const record of authored) demote(record);
-      for (const slot of slots) physics.destroyBody(slot.bodyId);
+      for (const slot of slots) bodies.destroy(slot.bodyId);
     },
   };
 }

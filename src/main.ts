@@ -258,7 +258,7 @@ async function boot(): Promise<void> {
   vehicle.respawn(track.spawn.position, track.spawn.rotation);
   const traffic =
     map.path && map.traffic
-      ? createTraffic(physics, map.path, map.traffic)
+      ? createTraffic(physics, surfacedBodies, map.path, map.traffic)
       : undefined;
   const trafficVisual = traffic
     ? createTrafficVisual(view.scene, traffic)

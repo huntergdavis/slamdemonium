@@ -4,6 +4,8 @@ import type { IPhysicsWorld } from '../../src/physics/adapter';
 import { createPhysicsWorld } from '../../src/physics/joltWorld';
 import { sampleRoad } from '../../src/world/roadGenerator';
 import { createTraffic } from '../../src/world/traffic';
+import { createSurfacedBodies } from '../../src/world/surfacedBodies';
+import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
@@ -24,9 +26,11 @@ it('drives a pooled car, yields on a real impact, and preserves wrecks with new 
     z: 0,
     heading: 0,
   });
-  const traffic = createTraffic(world, path, [
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(world, bodies, path, [
     { station: 140, laneSide: -1, speed: 19 },
   ]);
+  expect(bodies.count).toBe(8);
   const player = { x: 3.5, y: 0.6, z: -100 };
   traffic.preStep(1 / 120, player);
   expect(traffic.states).toHaveLength(1);
@@ -98,4 +102,6 @@ it('drives a pooled car, yields on a real impact, and preserves wrecks with new 
   expect(traffic.states[0]!.bodyId).toBe(first.bodyId);
   expect(traffic.states[0]!.wrecked).toBe(true);
   traffic.dispose();
+  expect(bodies.count).toBe(0);
+  bodies.dispose();
 });
