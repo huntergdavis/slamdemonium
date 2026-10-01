@@ -1,6 +1,7 @@
 import {
   BoxGeometry,
   Color,
+  DynamicDrawUsage,
   InstancedMesh,
   MeshStandardMaterial,
   Object3D,
@@ -204,15 +205,21 @@ export function createTraffic(
         demote(record);
         continue;
       }
-      if (record.wrecked || distance > DRIVE) {
+      // A wreck stays physically free to tumble and settle while nearby.
+      if (record.wrecked) continue;
+      if (distance > DRIVE) {
         if (physics.isBodyAwake(slot.bodyId)) physics.sleepBody(slot.bodyId);
         continue;
       }
       const state = slot.state;
       const next = poseAt(path, record.station + 8);
       const nextHeading = Math.atan2(-(next.x - pose.x), -(next.z - pose.z));
-      const desiredX = -Math.sin(nextHeading) * record.authored.speed;
-      const desiredZ = -Math.cos(nextHeading) * record.authored.speed;
+      const desiredX =
+        -Math.sin(nextHeading) * record.authored.speed +
+        Math.max(-3, Math.min(3, (pose.x - state.position.x) * 0.7));
+      const desiredZ =
+        -Math.cos(nextHeading) * record.authored.speed +
+        Math.max(-3, Math.min(3, (pose.z - state.position.z) * 0.7));
       if (!physics.isBodyAwake(slot.bodyId)) {
         physics.setLinearVelocity(slot.bodyId, {
           x: desiredX,
@@ -317,8 +324,11 @@ export function createTrafficVisual(
     body.setColorAt(i, new Color(colors[i % colors.length]!));
   body.castShadow = cabin.castShadow = true;
   body.receiveShadow = cabin.receiveShadow = true;
-  body.instanceMatrix.setUsage(35048);
-  cabin.instanceMatrix.setUsage(35048);
+  // Instance matrices move across a 10 km map; a one-time bounds sphere at
+  // their boot positions would cull the entire draw at a distant station.
+  body.frustumCulled = cabin.frustumCulled = false;
+  body.instanceMatrix.setUsage(DynamicDrawUsage);
+  cabin.instanceMatrix.setUsage(DynamicDrawUsage);
   scene.add(body, cabin);
   function update(): void {
     let i = 0;
