@@ -55,4 +55,11 @@ describe('the 10 km circuit', () => {
     }
     expect(CIRCUIT_STATIONS.checkpoints).toHaveLength(3);
   });
+  it('starts the first traffic car inside its drive radius from spawn', () => {
+    const first = map.traffic[0]!;
+    const p = poseAt(map.path, first.station);
+    const x = p.x - Math.cos(p.heading) * first.laneSide * 3.5;
+    const z = p.z + Math.sin(p.heading) * first.laneSide * 3.5;
+    expect(Math.hypot(x - map.spawn!.x, z - map.spawn!.z)).toBeLessThan(180);
+  });
 });

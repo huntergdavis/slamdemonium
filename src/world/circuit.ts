@@ -255,7 +255,7 @@ export function createCircuitMap(): CircuitMap {
   // First traffic slice: four catchable cars on the opening straight.
   // Later density can add records without changing the eight-body pool.
   const traffic: TrafficCarRecord[] = [
-    { station: 140, laneSide: -1, speed: 19 },
+    { station: 135, laneSide: -1, speed: 19 },
     { station: 260, laneSide: 1, speed: 23 },
     { station: 390, laneSide: -1, speed: 21 },
     { station: 540, laneSide: 1, speed: 25 },
