@@ -11,7 +11,7 @@ import {
   type LoopSpec,
 } from './loopDeLoop';
 import type { MapDefinition } from './maps';
-import type { TrafficCarRecord } from './traffic';
+import { MAX_DRIVING, type TrafficCarRecord } from './traffic';
 import { rampFootprint, type RampSpec } from './ramps';
 import { runwayLaneClearance, type RunwaySpec } from './runways';
 import {
@@ -252,14 +252,44 @@ export function createCircuitMap(): CircuitMap {
   const route = path.samples
     .filter((_s, i) => i % 12 === 0)
     .map((s) => ({ x: s.x, z: s.z }));
-  // First traffic slice: four catchable cars on the opening straight.
-  // Later density can add records without changing the eight-body pool.
+  // At four active cars this is every 130 m; eight would use 65 m without
+  // re-authoring lanes. The 520 m numerator leaves a 40 m buffer across the
+  // 480 m promotion window, so the pool does not hide nearby traffic.
+  const trafficSpacing = 520 / MAX_DRIVING;
+  // The approach and exit corridors around set pieces stay free of authored
+  // traffic so a new car never appears on a launch or loop entry line.
+  const trafficClearance = [
+    { station: CIRCUIT_STATIONS.giantRamp, before: 180, after: 180 },
+    { station: CIRCUIT_STATIONS.forgivingLoop, before: 180, after: 280 },
+    { station: CIRCUIT_STATIONS.hardLoop, before: 180, after: 280 },
+  ];
   const traffic: TrafficCarRecord[] = [
     { station: 140, laneSide: -1, speed: 19 },
     { station: 260, laneSide: 1, speed: 23 },
     { station: 390, laneSide: -1, speed: 21 },
     { station: 540, laneSide: 1, speed: 25 },
   ];
+  for (
+    let station = 700, index = 0;
+    station < path.length - 80;
+    station += trafficSpacing, index++
+  ) {
+    if (
+      trafficClearance.some(
+        (zone) =>
+          station >= zone.station - zone.before &&
+          station <= zone.station + zone.after,
+      )
+    )
+      continue;
+    const direction = index % 2 === 0 ? 1 : -1;
+    traffic.push({
+      station,
+      laneSide: direction,
+      direction,
+      speed: direction > 0 ? 22 : 24,
+    });
+  }
   return {
     name: 'circuit',
     label: 'Circuit (10 km)',

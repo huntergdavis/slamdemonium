@@ -146,3 +146,32 @@ it('drives a pooled car, yields on a real impact, and preserves wrecks with new 
   expect(bodies.count).toBe(0);
   bodies.dispose();
 });
+
+it('drives an oncoming car along its lane with matching forward and velocity', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  world.setGravity(20);
+  world.createStaticBox({ x: 0, y: -0.5, z: -250 }, { x: 300, y: 0.5, z: 400 });
+  const path = sampleRoad([{ kind: 'straight', length: 500 }], {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(world, bodies, path, [
+    { station: 200, laneSide: -1, direction: -1, speed: 24 },
+  ]);
+  const player = { x: 0, y: 0.6, z: -200 };
+  for (let i = 0; i < 100; i++) {
+    traffic.preStep(1 / 120, player);
+    world.step(1 / 120);
+    traffic.postStep();
+  }
+  const car = traffic.states[0]!;
+  expect(car.direction).toBe(-1);
+  expect(car.position.z).toBeGreaterThan(-195);
+  expect(car.forward.z).toBeGreaterThan(0.8);
+  expect(car.velocity.z).toBeGreaterThan(10);
+  traffic.dispose();
+  bodies.dispose();
+});

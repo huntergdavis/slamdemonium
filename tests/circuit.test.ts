@@ -3,6 +3,7 @@ import { CIRCUIT_STATIONS, createCircuitMap } from '../src/world/circuit';
 import { runGateContains } from '../src/core/timedRun';
 import { runwayLaneClearance } from '../src/world/runways';
 import { poseAt } from '../src/world/roadGenerator';
+import { MAX_DRIVING } from '../src/world/traffic';
 
 describe('the 10 km circuit', () => {
   const map = createCircuitMap();
@@ -54,5 +55,30 @@ describe('the 10 km circuit', () => {
       expect(clearance).toBeGreaterThan(1);
     }
     expect(CIRCUIT_STATIONS.checkpoints).toHaveLength(3);
+  });
+  it('spaces traffic around the full lap in both directions and clears set pieces', () => {
+    expect(map.traffic.length).toBeGreaterThan((55 * MAX_DRIVING) / 4);
+    expect(map.traffic.length).toBeLessThan((80 * MAX_DRIVING) / 4);
+    const stations = map.traffic.map((car) => car.station);
+    for (let i = 1; i < stations.length; i++)
+      expect(stations[i]! - stations[i - 1]!).toBeGreaterThanOrEqual(
+        Math.min(120, 520 / MAX_DRIVING),
+      );
+    const added = map.traffic.slice(4);
+    expect(added.some((car) => car.direction === 1)).toBe(true);
+    expect(added.some((car) => car.direction === -1)).toBe(true);
+    for (const car of added) {
+      expect(car.laneSide).toBe(car.direction);
+      expect(car.station).toBeLessThan(map.path.length);
+      expect(
+        Math.abs(car.station - CIRCUIT_STATIONS.giantRamp),
+      ).toBeGreaterThan(180);
+      for (const loop of [
+        CIRCUIT_STATIONS.forgivingLoop,
+        CIRCUIT_STATIONS.hardLoop,
+      ]) {
+        expect(car.station < loop - 180 || car.station > loop + 280).toBe(true);
+      }
+    }
   });
 });
