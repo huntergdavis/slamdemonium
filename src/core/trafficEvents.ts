@@ -88,6 +88,10 @@ interface CarTrack {
   lastContactAt: number;
   /** Sim time this track was last seen in the traffic list. */
   seenAt: number;
+  /** Sim time the car was first seen wrecked; -Infinity while it drives. */
+  wreckedAt: number;
+  /** The car was seen driving at some point: a wreck that follows is a hit. */
+  wasDriving: boolean;
 }
 
 export interface TrafficEvents {
@@ -131,6 +135,8 @@ export function createTrafficEvents(): TrafficEvents {
         passSpent: false,
         lastContactAt: -Infinity,
         seenAt: time,
+        wreckedAt: -Infinity,
+        wasDriving: false,
       };
       tracks.set(car.id, track);
     }
@@ -152,10 +158,17 @@ export function createTrafficEvents(): TrafficEvents {
       state.labelSeconds = Math.max(0, state.labelSeconds - dt);
       bodyToId.clear();
       for (const car of cars) {
-        if (car.wrecked) continue;
         bodyToId.set(car.bodyId, car.id);
         const track = trackFor(car);
         track.seenAt = time;
+        // A wreck is scenery for near misses and wrong side, but the hit
+        // that wrecked it this step is still a slam (the car wrecks in the
+        // same contact callback that reports the hit).
+        if (car.wrecked) {
+          if (track.wreckedAt === -Infinity) track.wreckedAt = time;
+          continue;
+        }
+        track.wasDriving = true;
         const dx = car.position.x - player.position.x;
         const dz = car.position.z - player.position.z;
         const distance = Math.hypot(dx, dz);
@@ -213,6 +226,13 @@ export function createTrafficEvents(): TrafficEvents {
         if (id === undefined) continue; // Asleep or wrecked: an obstacle, not traffic.
         const track = tracks.get(id);
         if (!track) continue;
+        // Scenery, not traffic: a car first seen as a wreck, or one that
+        // was wrecked before this step.
+        if (
+          track.wreckedAt !== -Infinity &&
+          (!track.wasDriving || time - track.wreckedAt > 2 * dt)
+        )
+          continue;
         const armed = time - track.lastContactAt > SLAM_REARM_SECONDS;
         track.lastContactAt = time;
         track.passSpent = true; // Touching the car is not a near miss.

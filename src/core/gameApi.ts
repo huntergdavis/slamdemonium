@@ -30,6 +30,8 @@ export interface GameTestApi {
   setOptionsOpen(open: boolean): void;
   stepMany(steps: number): void;
   getTelemetry(): Readonly<Record<string, unknown>>;
+  /** Traffic cars in play, for headless instruments; absent without traffic. */
+  getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
   respawn(): void;
   runPhysicsSpike?: () => Promise<PhysicsSpikeResult>;
   /** Optional diagnostics; scenario input continues through the standard API. */

@@ -1000,6 +1000,19 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     loop.stepMany(count);
   };
+  game.getTraffic = () =>
+    (traffic?.states ?? []).map((car) => ({
+      id: car.id,
+      bodyId: car.bodyId,
+      x: car.position.x,
+      z: car.position.z,
+      fx: car.forward.x,
+      fz: car.forward.z,
+      vx: car.velocity.x,
+      vz: car.velocity.z,
+      speed: car.speed,
+      wrecked: car.wrecked,
+    }));
   game.getTelemetry = () => {
     const s = vehicle.telemetry;
     return {
