@@ -516,7 +516,7 @@ async function boot(): Promise<void> {
           const grant = trafficEvents.update(
             dt,
             playerView,
-            trafficStates,
+            traffic?.states ?? trafficStates,
             trafficTuning,
           );
           if (grant > 0) vehicle.applyPad(0, grant);
@@ -890,6 +890,7 @@ async function boot(): Promise<void> {
       impact,
     );
     traffic?.onPlayerContact(otherBody, impact);
+    if (trafficVelocity) trafficEvents.noteContact(otherBody, impact.severity);
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
       vehicle.noteChassisContact(impactNormal);
