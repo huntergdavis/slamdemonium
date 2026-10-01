@@ -101,8 +101,10 @@ export class Vehicle {
   private readonly airState = new AirStateTracker();
   private wasAirborneForControl = false;
   /** Seconds with every wheel off the ground, last step's value: the air
-   * control clock. It keeps running on a roof or a door, where the assist
-   * still rights the car, unlike the flight clock (airState). */
+   * control clock. It keeps running on a roof or a door, where it helps the
+   * assist right a leaning car, unlike the flight clock (airState). Dead
+   * flat on the roof it yields to the lift below: left running there it
+   * held the roof down against it. */
   private wheelsOffSeconds = 0;
   private previousGroundedWheels = 0;
   private readonly airInputs: AirControlInputs = {
@@ -616,7 +618,9 @@ export class Vehicle {
     this.wasAirborneForControl = airborne;
     const wheelsOff = this.wheelsOffSeconds;
     this.wheelsOffSeconds = airborne ? wheelsOff + dt : 0;
-    if (airborne && wheelsOff > 0) {
+    const flatOnRoof =
+      this.chassisContact && Math.abs(roll) > Math.PI - 15 * DEG;
+    if (airborne && wheelsOff > 0 && !flatOnRoof) {
       this.airInputs.throttle = this.controls.throttle;
       this.airInputs.brake = this.controls.brake;
       this.airInputs.steer = this.controls.steer;
