@@ -118,6 +118,36 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
   }
 });
 
+it('gives a closer car a physical body when the pool is full', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  const path = sampleRoad([{ kind: 'straight', length: 500 }], {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(world, bodies, path, [
+    ...Array.from({ length: MAX_DRIVING }, (_, i) => ({
+      station: 8 + i * 10,
+      laneSide: -1 as const,
+      speed: 22,
+    })),
+    { station: 1, laneSide: -1, speed: 22 },
+  ]);
+  try {
+    traffic.preStep(1 / 120, { x: 0, y: 0.6, z: 0 });
+    expect(traffic.states.filter((car) => car.bodyId !== -1)).toHaveLength(
+      MAX_DRIVING,
+    );
+    expect(traffic.states.at(-1)!.bodyId).not.toBe(-1);
+    expect(traffic.states[MAX_DRIVING - 1]!.bodyId).toBe(-1);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
+});
+
 it('drives a pooled car, yields on impact, and keeps its identity through visual hand-offs', async () => {
   const world = await createPhysicsWorld({ wasmPath });
   worlds.push(world);

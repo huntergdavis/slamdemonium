@@ -231,6 +231,29 @@ export function createTraffic(
     physicalCount--;
   }
 
+  function makeRoomFor(player: V3, candidateDistanceSquared: number): void {
+    if (physicalCount < MAX_DRIVING) return;
+    // A closer intact car takes a body from a farther one. Hysteresis keeps
+    // two cars at the edge from swapping bodies every step.
+    const threshold = Math.sqrt(candidateDistanceSquared) + 20;
+    let farthest = threshold * threshold;
+    let victim: RecordState | null = null;
+    for (const slot of slots) {
+      const record = slot.record;
+      if (!record || record.wrecked) continue;
+      const distance = horizontalDistanceSquared(
+        player,
+        record.state.position.x,
+        record.state.position.z,
+      );
+      if (distance > farthest) {
+        farthest = distance;
+        victim = record;
+      }
+    }
+    if (victim) demote(victim);
+  }
+
   function preStep(dt: number, player: V3): void {
     visualStates.length = 0;
     for (const record of authored) {
@@ -256,12 +279,10 @@ export function createTraffic(
         updateVisualPose(record);
         continue;
       }
-      if (
-        !record.slot &&
-        distanceSquared <= ENTER * ENTER &&
-        physicalCount < MAX_DRIVING
-      )
-        promote(record);
+      if (!record.slot && distanceSquared <= ENTER * ENTER) {
+        makeRoomFor(player, distanceSquared);
+        if (physicalCount < MAX_DRIVING) promote(record);
+      }
       const slot = record.slot;
       if (!slot) continue;
       // Wrecks remain physically free to tumble and settle while nearby.
