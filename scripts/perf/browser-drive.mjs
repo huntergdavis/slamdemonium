@@ -25,6 +25,9 @@ const TARGET_SPEED = 35;
 const here = dirname(fileURLToPath(import.meta.url));
 const route = JSON.parse(readFileSync(join(here, 'circuit-path.json'), 'utf8'));
 
+// A loaded box makes every number a lie: read the 1-minute load average
+// before the browser itself adds to it, and say so loudly in the summary.
+const loadBefore = loadavg()[0];
 const browser = await chromium.launch({
   headless: false,
   args: ['--use-angle=vulkan', '--enable-features=Vulkan', '--ignore-gpu-blocklist', `--window-size=${W},${H}`],
@@ -86,9 +89,6 @@ await page.evaluate(([route, target, seconds]) => {
 // Drain the fixed-capacity recorder every ten seconds so nothing drops.
 const frames = [], steps = [], engine = []; let dropped = 0;
 const drain = async () => { const b = await page.evaluate(() => window.__game.perf.drain()); frames.push(...b.frameMs); steps.push(...b.physicsStepMs); engine.push(...b.engineStepMs); dropped += b.droppedSamples; };
-// A loaded box makes every number a lie: record the 1-minute load average
-// against the core count and say so loudly in the summary.
-const loadBefore = loadavg()[0];
 const started = Date.now();
 while (!(await page.evaluate(() => window.__drive.done))) { await page.waitForTimeout(10000); await drain(); }
 await drain();

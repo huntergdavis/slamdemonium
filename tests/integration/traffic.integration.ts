@@ -188,10 +188,18 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
     expect(tracked).toHaveLength(20);
     const first = traffic.states[0]!;
     visual.update();
-    const bodyMesh = scene.children[0] as InstancedMesh;
-    expect(bodyMesh.count).toBe(20);
+    // The catalogue draws one instanced body mesh per kind: the twenty cars
+    // are spread across them, and the first car sits at index 0 of its kind.
+    const bodyMeshes = scene.children.filter(
+      (child): child is InstancedMesh =>
+        child instanceof InstancedMesh && child.name.endsWith('.body'),
+    );
+    expect(bodyMeshes.reduce((sum, mesh) => sum + mesh.count, 0)).toBe(20);
+    const firstMesh = scene.getObjectByName(
+      `traffic.${first.modelKind}.body`,
+    ) as InstancedMesh;
     const matrix = new Matrix4();
-    bodyMesh.getMatrixAt(0, matrix);
+    firstMesh.getMatrixAt(0, matrix);
     expect(matrix.elements[12]).toBeCloseTo(first.position.x, 1);
     expect(matrix.elements[14]).toBeCloseTo(first.position.z, 1);
     const id = first.id;
@@ -204,7 +212,7 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
     }
     expect(traffic.states).toHaveLength(0);
     visual.update();
-    expect(bodyMesh.count).toBe(0);
+    expect(bodyMeshes.reduce((sum, mesh) => sum + mesh.count, 0)).toBe(0);
     expect(tracked.every((car) => car.bodyId === -1)).toBe(true);
     expect(first.position.z).toBeLessThan(startZ - 219);
     expect(first.position.z).toBeGreaterThan(startZ - 222);
