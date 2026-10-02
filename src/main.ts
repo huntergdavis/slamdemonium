@@ -492,8 +492,8 @@ async function boot(): Promise<void> {
         measurements.recordEngineStep(performance.now() - engineStarted);
       },
       postStep(dt) {
+        traffic?.postStep(vehicle.body, vehicle.currentMass);
         vehicle.postStep(dt);
-        traffic?.postStep();
         breakableProps.update(dt);
         {
           const entered = boostPads.update(
@@ -904,7 +904,7 @@ async function boot(): Promise<void> {
       vehicle.telemetry.velocity,
       impact,
     );
-    traffic?.onPlayerContact(otherBody, impact);
+    traffic?.onPlayerContact(otherBody, impact, impactNormal, severityVelocity);
     if (trafficVelocity) trafficEvents.noteContact(otherBody, impact.severity);
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
