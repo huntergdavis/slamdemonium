@@ -15,6 +15,7 @@ import { chromium } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { loadavg, cpus } from 'node:os';
 
 const URL = process.argv[2] ?? 'http://localhost:4173/';
 const SECONDS = Number(process.argv[3] ?? 45);
@@ -85,6 +86,9 @@ await page.evaluate(([route, target, seconds]) => {
 // Drain the fixed-capacity recorder every ten seconds so nothing drops.
 const frames = [], steps = [], engine = []; let dropped = 0;
 const drain = async () => { const b = await page.evaluate(() => window.__game.perf.drain()); frames.push(...b.frameMs); steps.push(...b.physicsStepMs); engine.push(...b.engineStepMs); dropped += b.droppedSamples; };
+// A loaded box makes every number a lie: record the 1-minute load average
+// against the core count and say so loudly in the summary.
+const loadBefore = loadavg()[0];
 const started = Date.now();
 while (!(await page.evaluate(() => window.__drive.done))) { await page.waitForTimeout(10000); await drain(); }
 await drain();
@@ -96,7 +100,11 @@ const q = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) =
 const mean = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null);
 // The first second of frames is warm-up (shader compiles, first promotions).
 const warm = frames.slice(60);
+const loadAfter = loadavg()[0];
+const cores = cpus().length;
+const quiet = Math.max(loadBefore, loadAfter) < cores * 0.25;
 const report = {
+  box: { cores, loadBefore: +loadBefore.toFixed(2), loadAfter: +loadAfter.toFixed(2), quiet },
   build: build.shortCommit, url, renderer, viewport: `${W}x${H}`, seconds: SECONDS, wallSeconds: +((Date.now() - started) / 1000).toFixed(1), errors,
   route: { targetSpeed: TARGET_SPEED, distance_m: +drive.distance.toFixed(0), recoveries: drive.recoveries, frames: drive.frames },
   traffic: { samples: drive.traffic, max: drive.maxTraffic, inFrame4: { max: drive.maxInFrame4 ?? null, median: q(drive.traffic.map((r) => r[4] ?? 0), 0.5) }, inFrame8: { max: drive.maxInFrame8 ?? null, median: q(drive.traffic.map((r) => r[5] ?? 0), 0.5) } },
@@ -106,5 +114,5 @@ const report = {
   droppedSamples: dropped,
 };
 writeFileSync(OUT, JSON.stringify(report, null, 1));
-console.log(`${report.build} ${report.viewport} ${report.renderer.includes('SwiftShader') ? 'SOFTWARE GL' : 'GPU'} | fps ${report.frame.fps_mean} (frame p50 ${report.frame.ms_p50} p99 ${report.frame.ms_p99} ms) | full step p50 ${report.fullStep.ms_p50} p99 ${report.fullStep.ms_p99} ms | jolt p50 ${report.jolt.ms_p50} p99 ${report.jolt.ms_p99} ms | within 750 m max ${report.traffic.max}, in frame >=4px median ${report.traffic.inFrame4.median} max ${report.traffic.inFrame4.max}, >=8px median ${report.traffic.inFrame8.median} max ${report.traffic.inFrame8.max} | ${report.route.distance_m} m, recoveries ${report.route.recoveries}, dropped ${dropped}, errors ${errors.length}`);
+console.log(`${quiet ? 'QUIET BOX' : `LOADED BOX (load ${report.box.loadBefore}->${report.box.loadAfter} on ${cores} cores): DO NOT QUOTE`} | ${report.build} ${report.viewport} ${report.renderer.includes('SwiftShader') ? 'SOFTWARE GL' : 'GPU'} | fps ${report.frame.fps_mean} (frame p50 ${report.frame.ms_p50} p99 ${report.frame.ms_p99} ms) | full step p50 ${report.fullStep.ms_p50} p99 ${report.fullStep.ms_p99} ms | jolt p50 ${report.jolt.ms_p50} p99 ${report.jolt.ms_p99} ms | within 750 m max ${report.traffic.max}, in frame >=4px median ${report.traffic.inFrame4.median} max ${report.traffic.inFrame4.max}, >=8px median ${report.traffic.inFrame8.median} max ${report.traffic.inFrame8.max} | ${report.route.distance_m} m, recoveries ${report.route.recoveries}, dropped ${dropped}, errors ${errors.length}`);
 console.log(JSON.stringify({ renderer, traffic: report.traffic.samples }));

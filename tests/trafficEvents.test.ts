@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CAR_HALF_WIDTHS,
   EVENT_LABEL_SECONDS,
+  PLAYER_HALF_WIDTH,
   createTrafficEvents,
   type PlayerView,
   type TrafficCarView,
 } from '../src/core/trafficEvents';
+import { carHalfWidth } from '../src/world/carModels';
 
 const DT = 1 / 120;
 const TUNING = {
@@ -63,13 +64,31 @@ describe('traffic events', () => {
     expect(close.events.state.nearMisses).toBe(1);
     expect(close.total).toBeCloseTo(TUNING.nearMissBoost, 9);
     expect(close.events.state.lastEvent).toBe('near-miss');
-    const wide = pass(undefined, { x: CAR_HALF_WIDTHS + 1.6 });
+    const wide = pass(undefined, {
+      x: PLAYER_HALF_WIDTH + carHalfWidth('sedan') + 1.6,
+    });
     expect(wide.events.state.nearMisses).toBe(0);
     expect(wide.total).toBe(0);
     const slow = pass(undefined, { speed: 30, vz: 20 }); // 10 m/s closing.
     expect(slow.events.state.nearMisses).toBe(0);
     const wreck = pass(undefined, { wrecked: true });
     expect(wreck.events.state.nearMisses).toBe(0);
+    // A bus is wider than a sedan: the same centre distance is a near miss
+    // for the bus and not for the sedan.
+    const line = PLAYER_HALF_WIDTH + carHalfWidth('sedan') + 1.6;
+    const sedanWide = pass(undefined, { x: line });
+    expect(sedanWide.events.state.nearMisses).toBe(0);
+    const bus = createTrafficEvents();
+    for (let step = 0; step < 6 * 120; step++) {
+      const t = step * DT;
+      bus.update(
+        DT,
+        player(-60 + 40 * t, 40),
+        [{ ...car(1, line, 20 + 20 * t, 20), modelKind: 'bus' }],
+        TUNING,
+      );
+    }
+    expect(bus.state.nearMisses).toBe(1);
   });
   it('re-arms a near miss only once the car is far away again, and the label fades', () => {
     const events = createTrafficEvents();

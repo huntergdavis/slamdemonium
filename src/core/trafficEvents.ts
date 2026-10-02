@@ -11,8 +11,12 @@
  *   while the player is moving; pays per second.
  * - SLAM: a contact with a traffic car while the player is moving, paid by
  *   the shared impact severity, once per car per contact episode. */
+import { carHalfWidth, type CarModelKind } from '../world/carModels';
+
 export interface TrafficCarView {
   readonly id: number;
+  /** The catalogue kind; undefined reads as a sedan. */
+  readonly modelKind?: CarModelKind;
   readonly bodyId: number;
   readonly position: { readonly x: number; readonly z: number };
   readonly forward: { readonly x: number; readonly z: number };
@@ -59,9 +63,9 @@ export interface TrafficEventsState {
   grant: number;
 }
 
-/** The two half widths, player and traffic car, that turn a centre distance
- * into an edge-to-edge gap. The traffic body is 1.9 m wide, the player 2.0. */
-export const CAR_HALF_WIDTHS = 1.95;
+/** Half the player's width: with the traffic car's half width from the
+ * catalogue, it turns a centre distance into an edge-to-edge gap. */
+export const PLAYER_HALF_WIDTH = 1.0;
 /** A pass is over, and the near miss re-arms, this far away from the car. */
 export const NEAR_MISS_RESET_DISTANCE = 30;
 /** Half a lane: an oncoming car within this of the player's line is in it. */
@@ -186,7 +190,8 @@ export function createTrafficEvents(): TrafficEvents {
         if (
           !track.passSpent &&
           distance > track.closest + 1 &&
-          track.closest - CAR_HALF_WIDTHS <= tuning.nearMissGap &&
+          track.closest - PLAYER_HALF_WIDTH - carHalfWidth(car.modelKind) <=
+            tuning.nearMissGap &&
           track.closingAtClosest >= tuning.nearMissClosing &&
           player.speed >= EVENT_MIN_SPEED &&
           time - track.lastContactAt > SLAM_REARM_SECONDS
