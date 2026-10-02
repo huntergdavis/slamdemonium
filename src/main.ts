@@ -73,6 +73,7 @@ import {
 import { createSurfacedBodies } from './world/surfacedBodies';
 import { createSurfaceRegistry } from './world/surfaceRegistry';
 import { createTraffic, createTrafficVisual } from './world/traffic';
+import { Vector3 } from 'three';
 import './style.css';
 
 document.title = GAME_NAME;
@@ -1000,19 +1001,53 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     loop.stepMany(count);
   };
+  const trafficScreenPoint = new Vector3();
   game.getTraffic = () =>
-    (traffic?.states ?? []).map((car) => ({
-      id: car.id,
-      bodyId: car.bodyId,
-      x: car.position.x,
-      z: car.position.z,
-      fx: car.forward.x,
-      fz: car.forward.z,
-      vx: car.velocity.x,
-      vz: car.velocity.z,
-      speed: car.speed,
-      wrecked: car.wrecked,
-    }));
+    (traffic?.states ?? []).map((car) => {
+      // Test-only projection from the rendered camera, so browser density
+      // measurements do not mistake behind-camera cars for visible traffic.
+      const rightX = -car.forward.z;
+      const rightZ = car.forward.x;
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      let inDepth = false;
+      for (const side of [-1, 1])
+        for (const end of [-1, 1]) {
+          trafficScreenPoint
+            .set(
+              car.position.x + rightX * side * 0.95 + car.forward.x * end * 2.1,
+              car.position.y + 0.45,
+              car.position.z + rightZ * side * 0.95 + car.forward.z * end * 2.1,
+            )
+            .project(view.camera);
+          minX = Math.min(minX, trafficScreenPoint.x);
+          maxX = Math.max(maxX, trafficScreenPoint.x);
+          minY = Math.min(minY, trafficScreenPoint.y);
+          maxY = Math.max(maxY, trafficScreenPoint.y);
+          inDepth ||= trafficScreenPoint.z >= -1 && trafficScreenPoint.z <= 1;
+        }
+      const inFrame =
+        inDepth && maxX >= -1 && minX <= 1 && maxY >= -1 && minY <= 1;
+      const screenPixels = inFrame
+        ? (Math.min(1, maxX) - Math.max(-1, minX)) * view.size.width * 0.5
+        : 0;
+      return {
+        id: car.id,
+        bodyId: car.bodyId,
+        x: car.position.x,
+        z: car.position.z,
+        fx: car.forward.x,
+        fz: car.forward.z,
+        vx: car.velocity.x,
+        vz: car.velocity.z,
+        speed: car.speed,
+        wrecked: car.wrecked,
+        inFrame,
+        screenPixels,
+      };
+    });
   game.getTelemetry = () => {
     const s = vehicle.telemetry;
     return {

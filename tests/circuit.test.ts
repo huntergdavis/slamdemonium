@@ -55,4 +55,27 @@ describe('the 10 km circuit', () => {
     }
     expect(CIRCUIT_STATIONS.checkpoints).toHaveLength(3);
   });
+  it('spaces traffic around the full lap in both directions and clears set pieces', () => {
+    expect(map.traffic.length).toBeGreaterThan(1400);
+    expect(map.traffic.length).toBeLessThan(1550);
+    const stations = map.traffic.map((car) => car.station);
+    for (let i = 1; i < stations.length; i++)
+      expect(stations[i]! - stations[i - 1]!).toBeGreaterThanOrEqual(6);
+    const added = map.traffic;
+    expect(added.some((car) => car.direction === 1)).toBe(true);
+    expect(added.some((car) => car.direction === -1)).toBe(true);
+    for (const car of added) {
+      expect(car.laneSide).toBe(car.direction);
+      expect(car.station).toBeLessThan(map.path.length);
+      expect(
+        Math.abs(car.station - CIRCUIT_STATIONS.giantRamp),
+      ).toBeGreaterThan(180);
+      for (const loop of [
+        CIRCUIT_STATIONS.forgivingLoop,
+        CIRCUIT_STATIONS.hardLoop,
+      ]) {
+        expect(car.station < loop - 180 || car.station > loop + 280).toBe(true);
+      }
+    }
+  });
 });

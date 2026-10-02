@@ -252,14 +252,40 @@ export function createCircuitMap(): CircuitMap {
   const route = path.samples
     .filter((_s, i) => i % 12 === 0)
     .map((s) => ({ x: s.x, z: s.z }));
-  // First traffic slice: four catchable cars on the opening straight.
-  // Later density can add records without changing the eight-body pool.
-  const traffic: TrafficCarRecord[] = [
-    { station: 140, laneSide: -1, speed: 19 },
-    { station: 260, laneSide: 1, speed: 23 },
-    { station: 390, laneSide: -1, speed: 21 },
-    { station: 540, laneSide: 1, speed: 25 },
+  // Both lanes carry moving visual cars at all distances. Only the nearest
+  // handful use the MAX_DRIVING physics pool; content density is independent
+  // of that cap.
+  const trafficSpacing = 12;
+  // The approach and exit corridors around set pieces stay free of authored
+  // traffic so a new car never appears on a launch or loop entry line.
+  const trafficClearance = [
+    { station: CIRCUIT_STATIONS.giantRamp, before: 180, after: 180 },
+    { station: CIRCUIT_STATIONS.forgivingLoop, before: 180, after: 280 },
+    { station: CIRCUIT_STATIONS.hardLoop, before: 180, after: 280 },
   ];
+  const traffic: TrafficCarRecord[] = [];
+  const trafficAllowed = (station: number) =>
+    trafficClearance.every(
+      (zone) =>
+        station < zone.station - zone.before ||
+        station > zone.station + zone.after,
+    );
+  for (
+    let station = 12;
+    station < path.length - 80;
+    station += trafficSpacing
+  ) {
+    if (trafficAllowed(station))
+      traffic.push({ station, laneSide: 1, direction: 1, speed: 22 });
+    const oppositeStation = station + trafficSpacing / 2;
+    if (trafficAllowed(oppositeStation))
+      traffic.push({
+        station: oppositeStation,
+        laneSide: -1,
+        direction: -1,
+        speed: 24,
+      });
+  }
   return {
     name: 'circuit',
     label: 'Circuit (10 km)',
