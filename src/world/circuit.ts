@@ -264,6 +264,11 @@ export function createCircuitMap(): CircuitMap {
     { station: CIRCUIT_STATIONS.hardLoop, before: 180, after: 280 },
   ];
   const traffic: TrafficCarRecord[] = [];
+  // Stable per-record variation: reloading a circuit never reshuffles traffic.
+  const trafficSpeed = (station: number, lane: number) => {
+    const n = Math.imul(Math.round(station) + lane * 7919, 2654435761);
+    return 20 + ((n >>> 16) % 7); // 20..26 m/s, before following a slower car.
+  };
   const trafficAllowed = (station: number) =>
     trafficClearance.every(
       (zone) =>
@@ -276,14 +281,19 @@ export function createCircuitMap(): CircuitMap {
     station += trafficSpacing
   ) {
     if (trafficAllowed(station))
-      traffic.push({ station, laneSide: 1, direction: 1, speed: 22 });
+      traffic.push({
+        station,
+        laneSide: 1,
+        direction: 1,
+        speed: trafficSpeed(station, 1),
+      });
     const oppositeStation = station + trafficSpacing / 2;
     if (trafficAllowed(oppositeStation))
       traffic.push({
         station: oppositeStation,
         laneSide: -1,
         direction: -1,
-        speed: 24,
+        speed: trafficSpeed(oppositeStation, -1),
       });
   }
   return {
