@@ -1058,6 +1058,7 @@ async function boot(): Promise<void> {
         vz: car.velocity.z,
         speed: car.speed,
         wrecked: car.wrecked,
+        modelKind: (car as { modelKind?: string }).modelKind ?? null,
         inFrame,
         screenPixels,
       };
