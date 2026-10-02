@@ -259,7 +259,11 @@ async function boot(): Promise<void> {
   vehicle.respawn(track.spawn.position, track.spawn.rotation);
   const traffic =
     map.path && map.traffic
-      ? createTraffic(physics, surfacedBodies, map.path, map.traffic)
+      ? createTraffic(physics, surfacedBodies, map.path, map.traffic, {
+          density: tuning.get('trafficDensity'),
+          minGap: tuning.get('trafficMinGap'),
+          maxGap: tuning.get('trafficMaxGap'),
+        })
       : undefined;
   const trafficVisual = traffic
     ? createTrafficVisual(view.scene, traffic)
@@ -667,6 +671,16 @@ async function boot(): Promise<void> {
   });
   resources.push(massRebuild);
   unsubscribe = tuning.onChange((change) => {
+    if (
+      change.key === 'trafficDensity' ||
+      change.key === 'trafficMinGap' ||
+      change.key === 'trafficMaxGap'
+    )
+      traffic?.setRules({
+        density: tuning.get('trafficDensity'),
+        minGap: tuning.get('trafficMinGap'),
+        maxGap: tuning.get('trafficMaxGap'),
+      });
     if (change.key === 'propGlow' || change.key === 'propFarScale')
       applyPropLook();
     if (
@@ -1044,6 +1058,7 @@ async function boot(): Promise<void> {
         vz: car.velocity.z,
         speed: car.speed,
         wrecked: car.wrecked,
+        modelKind: (car as { modelKind?: string }).modelKind ?? null,
         inFrame,
         screenPixels,
       };

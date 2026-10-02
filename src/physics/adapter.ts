@@ -129,6 +129,11 @@ export interface IPhysicsWorld {
   /** Scoped removal for teardown: destroys the body. Never on the hot path. */
   destroyBody(id: BodyId): void;
   updateMassProperties(id: BodyId, desc: MassDesc): void;
+  /** Swap a dynamic body's box for another size (the traffic catalogue's
+   * per-kind collision), keeping the body wherever it is and asleep if it
+   * was asleep; mass and inertia are recomputed for the new box from `desc`.
+   * Flagged addition (2026-10-02, dev-claude). */
+  setBodyShape(id: BodyId, halfExtents: V3, desc: MassDesc): void;
   setContactProperties(id: BodyId, friction: number, restitution: number): void;
   setBodyProperties(id: BodyId, properties: BodyProperties): void;
   /** Diagonal of the local inertia tensor, including the COM shift and scale. */

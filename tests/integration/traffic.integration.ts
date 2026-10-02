@@ -3,6 +3,7 @@ import { InstancedMesh, Matrix4, Scene } from 'three';
 import { afterEach, expect, it } from 'vitest';
 import type { IPhysicsWorld } from '../../src/physics/adapter';
 import { createPhysicsWorld } from '../../src/physics/joltWorld';
+import { createCircuitMap } from '../../src/world/circuit';
 import { sampleRoad } from '../../src/world/roadGenerator';
 import {
   createTraffic,
@@ -19,6 +20,100 @@ const worlds: IPhysicsWorld[] = [];
 afterEach(() => {
   for (const world of worlds) world.dispose();
   worlds.length = 0;
+});
+
+it('makes the default circuit breathe beneath the authored density ceiling', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  const map = createCircuitMap();
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(world, bodies, map.path, map.traffic, {
+    density: 0.85,
+    minGap: 12,
+    maxGap: 36,
+  });
+  try {
+    expect(map.traffic.length).toBeGreaterThan(1400);
+    expect(traffic.activeCount).toBeGreaterThan(700);
+    expect(traffic.activeCount).toBeLessThan(1100);
+    traffic.setRules({ density: 1, minGap: 12, maxGap: 12 });
+    expect(traffic.activeCount).toBe(map.traffic.length);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
+});
+
+it('varies same-lane gaps live without exceeding the old ceiling or reusing ids', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  const path = sampleRoad([{ kind: 'straight', length: 1000 }], {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const records = Array.from({ length: 20 }, (_, i) => ({
+    station: 20 + i * 12,
+    laneSide: -1 as const,
+    speed: 20 + (i % 5),
+  }));
+  const traffic = createTraffic(world, bodies, path, records, {
+    density: 0.85,
+    minGap: 12,
+    maxGap: 36,
+  });
+  try {
+    const player = { x: 0, y: 0.6, z: -350 };
+    traffic.preStep(1 / 120, player);
+    expect(traffic.activeCount).toBeLessThan(records.length);
+    expect(traffic.activeCount).toBeGreaterThan(5);
+    const initialStates = new Map(traffic.states.map((car) => [car.id, car]));
+    const stations = traffic.states.map((car) => -car.position.z);
+    for (let i = 1; i < stations.length; i++)
+      expect(stations[i]! - stations[i - 1]!).toBeGreaterThanOrEqual(11.9);
+
+    traffic.setRules({ density: 1, minGap: 12, maxGap: 12 });
+    traffic.preStep(1 / 120, player);
+    expect(traffic.activeCount).toBeGreaterThan(initialStates.size);
+    expect(traffic.activeCount).toBeLessThanOrEqual(records.length);
+    const retained = traffic.states.filter((car) => initialStates.has(car.id));
+    expect(retained.length).toBeGreaterThan(0);
+    for (const car of retained) expect(car).toBe(initialStates.get(car.id));
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
+});
+
+it('slows a faster visual follower behind a slower car in the same lane', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  const path = sampleRoad([{ kind: 'straight', length: 1000 }], {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(
+    world,
+    bodies,
+    path,
+    [
+      { station: 20, laneSide: -1, speed: 26 },
+      { station: 32, laneSide: -1, speed: 20 },
+    ],
+    { density: 1, minGap: 12, maxGap: 12 },
+  );
+  try {
+    traffic.preStep(1 / 120, { x: 0, y: 0.6, z: -350 });
+    expect(traffic.states).toHaveLength(2);
+    expect(traffic.states[0]!.speed).toBeCloseTo(20, 1);
+    expect(traffic.states[1]!.speed).toBeCloseTo(20, 1);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
 });
 
 it('holds authored traffic speed for ten seconds inside the drive radius', async () => {
@@ -93,10 +188,18 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
     expect(tracked).toHaveLength(20);
     const first = traffic.states[0]!;
     visual.update();
-    const bodyMesh = scene.children[0] as InstancedMesh;
-    expect(bodyMesh.count).toBe(20);
+    // The catalogue draws one instanced body mesh per kind: the twenty cars
+    // are spread across them, and the first car sits at index 0 of its kind.
+    const bodyMeshes = scene.children.filter(
+      (child): child is InstancedMesh =>
+        child instanceof InstancedMesh && child.name.endsWith('.body'),
+    );
+    expect(bodyMeshes.reduce((sum, mesh) => sum + mesh.count, 0)).toBe(20);
+    const firstMesh = scene.getObjectByName(
+      `traffic.${first.modelKind}.body`,
+    ) as InstancedMesh;
     const matrix = new Matrix4();
-    bodyMesh.getMatrixAt(0, matrix);
+    firstMesh.getMatrixAt(0, matrix);
     expect(matrix.elements[12]).toBeCloseTo(first.position.x, 1);
     expect(matrix.elements[14]).toBeCloseTo(first.position.z, 1);
     const id = first.id;
@@ -109,7 +212,7 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
     }
     expect(traffic.states).toHaveLength(0);
     visual.update();
-    expect(bodyMesh.count).toBe(0);
+    expect(bodyMeshes.reduce((sum, mesh) => sum + mesh.count, 0)).toBe(0);
     expect(tracked.every((car) => car.bodyId === -1)).toBe(true);
     expect(first.position.z).toBeLessThan(startZ - 219);
     expect(first.position.z).toBeGreaterThan(startZ - 222);

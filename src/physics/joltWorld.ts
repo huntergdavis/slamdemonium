@@ -527,6 +527,25 @@ export async function createPhysicsWorld(
         angular,
       );
     },
+    setBodyShape(id, halfExtents, desc) {
+      assertAlive();
+      validateMass(desc);
+      const entry = record(id);
+      if (!entry.dynamic)
+        throw new Error('Only a dynamic body can change shape.');
+      const box = shape(halfExtents, desc.comOffset);
+      // Mass properties are set explicitly below, so Jolt must not derive
+      // them from the new shape's density; the body keeps its sleep state.
+      bodies.SetShape(entry.id, box, false, J.EActivation_DontActivate);
+      setMass(entry.body, box, desc);
+      box.Release();
+      entry.halfExtents.x = halfExtents.x;
+      entry.halfExtents.y = halfExtents.y;
+      entry.halfExtents.z = halfExtents.z;
+      entry.inertia.x = lastInertia.x;
+      entry.inertia.y = lastInertia.y;
+      entry.inertia.z = lastInertia.z;
+    },
     setContactProperties(id, friction, restitution) {
       const body = record(id).body;
       body.SetFriction(friction);
