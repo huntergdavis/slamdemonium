@@ -102,7 +102,10 @@ const mean = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFix
 const warm = frames.slice(60);
 const loadAfter = loadavg()[0];
 const cores = cpus().length;
-const quiet = Math.max(loadBefore, loadAfter) < cores * 0.25;
+// The gate itself (Xvfb, Chromium, the GPU process) adds about five to the
+// 1-minute average on eight cores, so only the load BEFORE launch says
+// whether anything else was running; the average lags by about a minute.
+const quiet = loadBefore < Math.max(2, cores * 0.4);
 const report = {
   box: { cores, loadBefore: +loadBefore.toFixed(2), loadAfter: +loadAfter.toFixed(2), quiet },
   build: build.shortCommit, url, renderer, viewport: `${W}x${H}`, seconds: SECONDS, wallSeconds: +((Date.now() - started) / 1000).toFixed(1), errors,
