@@ -255,7 +255,7 @@ export function createCircuitMap(): CircuitMap {
   // Both lanes carry moving visual cars at all distances. Only the nearest
   // handful use the MAX_DRIVING physics pool; content density is independent
   // of that cap.
-  const trafficSpacing = 40;
+  const trafficSpacing = 12;
   // The approach and exit corridors around set pieces stay free of authored
   // traffic so a new car never appears on a launch or loop entry line.
   const trafficClearance = [
@@ -271,7 +271,7 @@ export function createCircuitMap(): CircuitMap {
         station > zone.station + zone.after,
     );
   for (
-    let station = 80;
+    let station = 12;
     station < path.length - 80;
     station += trafficSpacing
   ) {
