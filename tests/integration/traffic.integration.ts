@@ -3,7 +3,7 @@ import { afterEach, expect, it } from 'vitest';
 import type { IPhysicsWorld } from '../../src/physics/adapter';
 import { createPhysicsWorld } from '../../src/physics/joltWorld';
 import { sampleRoad } from '../../src/world/roadGenerator';
-import { createTraffic } from '../../src/world/traffic';
+import { createTraffic, MAX_DRIVING } from '../../src/world/traffic';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 
@@ -55,7 +55,7 @@ it('holds authored traffic speed for ten seconds inside the drive radius', async
   }
 });
 
-it('drives a pooled car, yields on a real impact, and preserves wrecks with new encounter ids', async () => {
+it('drives a pooled car, yields on impact, and keeps its identity through visual hand-offs', async () => {
   const world = await createPhysicsWorld({ wasmPath });
   worlds.push(world);
   world.setGravity(20);
@@ -69,12 +69,13 @@ it('drives a pooled car, yields on a real impact, and preserves wrecks with new 
   const traffic = createTraffic(world, bodies, path, [
     { station: 140, laneSide: -1, speed: 19 },
   ]);
-  expect(bodies.count).toBe(8);
+  expect(bodies.count).toBe(MAX_DRIVING);
   const player = { x: 3.5, y: 0.6, z: -100 };
   traffic.preStep(1 / 120, player);
   expect(traffic.states).toHaveLength(1);
   const first = traffic.states[0]!;
   const firstEncounterId = first.id;
+  const physicalBodyId = first.bodyId;
   expect(world.isBodyActive(first.bodyId)).toBe(true);
   const identity = traffic.states;
 
@@ -131,16 +132,18 @@ it('drives a pooled car, yields on a real impact, and preserves wrecks with new 
   player.x = 1000;
   player.z = 1000;
   traffic.preStep(1 / 120, player);
-  expect(traffic.states).toHaveLength(0);
-  expect(world.isBodyActive(first.bodyId)).toBe(false);
-  expect(traffic.velocityForBody(first.bodyId)).toBeUndefined();
+  expect(traffic.states).toHaveLength(1);
+  expect(first.bodyId).toBe(-1);
+  expect(world.isBodyActive(physicalBodyId)).toBe(false);
+  expect(traffic.velocityForBody(physicalBodyId)).toBeUndefined();
+  expect(traffic.velocityForBody(-1)).toBeUndefined();
 
   player.x = first.position.x;
   player.z = wreckZ;
   traffic.preStep(1 / 120, player);
   expect(traffic.states).toHaveLength(1);
-  expect(traffic.states[0]!.id).toBeGreaterThan(firstEncounterId);
-  expect(traffic.states[0]!.bodyId).toBe(first.bodyId);
+  expect(traffic.states[0]!.id).toBe(firstEncounterId);
+  expect(traffic.states[0]!.bodyId).toBe(physicalBodyId);
   expect(traffic.states[0]!.wrecked).toBe(true);
   traffic.dispose();
   expect(bodies.count).toBe(0);

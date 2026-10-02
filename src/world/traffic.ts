@@ -45,8 +45,7 @@ export interface TrafficCarState {
 interface RecordState {
   readonly authored: TrafficCarRecord;
   station: number;
-  parkedX: number;
-  parkedZ: number;
+  readonly state: TrafficCarState;
   wrecked: boolean;
   wreckPosition: V3;
   wreckRotation: Quat;
@@ -56,21 +55,16 @@ interface RecordState {
 interface Slot {
   readonly bodyId: BodyId;
   record: RecordState | null;
-  readonly state: TrafficCarState;
   friction: number;
 }
 
 const BODY_HALF = { x: 0.95, y: 0.55, z: 2.1 };
 const IDENTITY: Quat = { x: 0, y: 0, z: 0, w: 1 };
-const ENTER = 240;
-const DRIVE = 180;
-const EXIT = 300;
-// At 85 m/s a car travels 21.25 m between scans; 60 m catches entry before
-// it reaches the 240 m promotion boundary, even on the boosted circuit.
-const CANDIDATE = ENTER + 60;
-const CANDIDATE_REFRESH_SECONDS = 0.25;
-export const MAX_DRIVING = 4;
-const POOL_SIZE = 8;
+const ENTER = 120;
+const EXIT = 180;
+const VISUAL_RADIUS = 750;
+export const MAX_DRIVING = 12;
+const POOL_SIZE = MAX_DRIVING;
 const BODY_MASS = 1100;
 // A box has no driven wheels: road friction above the 5 m/s² controller cap
 // stops it outright. Restore heavy contact friction after a wreck so it settles.
@@ -88,32 +82,38 @@ function wrapAngle(a: number): number {
   return Math.atan2(Math.sin(a), Math.cos(a));
 }
 
-/** Dumb lane/speed followers with eight bodies reserved at boot. Bodies
- * enter asleep, drive only within 180 m, and leave beyond 300 m. Wrecks retain
- * their last pose by authored record; an encounter id changes on re-promotion. */
+/** Every authored car advances continuously. Only nearby cars own a pooled
+ * Jolt body; their stable encounter state survives each LOD hand-off. */
 export function createTraffic(
   physics: IPhysicsWorld,
   bodies: SurfacedBodies,
   path: RoadPath,
   records: readonly TrafficCarRecord[],
 ) {
-  const authored: RecordState[] = records.map((record) => ({
+  const authored: RecordState[] = records.map((record, index) => ({
     authored: record,
     station: record.station,
-    parkedX: 0,
-    parkedZ: 0,
+    state: {
+      id: index + 1,
+      bodyId: -1,
+      position: { x: 0, y: BODY_HALF.y + 0.04, z: 0 },
+      rotation: { ...IDENTITY },
+      forward: { x: 0, y: 0, z: -1 },
+      velocity: { x: 0, y: 0, z: 0 },
+      laneSide: record.laneSide,
+      direction: record.direction ?? 1,
+      speed: record.speed,
+      wrecked: false,
+    },
     wrecked: false,
     wreckPosition: { x: 0, y: 0, z: 0 },
     wreckRotation: { ...IDENTITY },
     slot: null,
   }));
   const slots: Slot[] = [];
-  const activeStates: TrafficCarState[] = [];
-  const nearby: RecordState[] = [];
-  let candidateAgeSeconds = CANDIDATE_REFRESH_SECONDS;
-  let lastCandidateX = Number.POSITIVE_INFINITY;
-  let lastCandidateZ = Number.POSITIVE_INFINITY;
-  let nextEncounterId = 1;
+  const allStates = authored.map((record) => record.state);
+  const visualStates: TrafficCarState[] = [];
+  let physicalCount = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -122,7 +122,6 @@ export function createTraffic(
   const angular: V3 = { x: 0, y: 0, z: 0 };
   const routeScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
   const nextScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
-  const wakeVelocity: V3 = { x: 0, y: 0, z: 0 };
 
   for (let i = 0; i < POOL_SIZE; i++) {
     const bodyId = bodies.createPooledBox({
@@ -142,18 +141,6 @@ export function createTraffic(
       bodyId,
       record: null,
       friction: DRIVE_FRICTION,
-      state: {
-        id: 0,
-        bodyId,
-        position: { x: 0, y: 0, z: 0 },
-        rotation: { ...IDENTITY },
-        forward: { x: 0, y: 0, z: -1 },
-        velocity: { x: 0, y: 0, z: 0 },
-        laneSide: 1,
-        direction: 1,
-        speed: 0,
-        wrecked: false,
-      },
     });
   }
 
@@ -189,47 +176,40 @@ export function createTraffic(
     return out;
   }
 
-  for (const record of authored) {
+  function updateVisualPose(record: RecordState): void {
+    if (record.wrecked) return;
     const pose = routePose(record, record.station, routeScratch);
-    record.parkedX = pose.x;
-    record.parkedZ = pose.z;
+    const state = record.state;
+    const facing = pose.heading + (state.direction < 0 ? Math.PI : 0);
+    state.position.x = pose.x;
+    state.position.y = BODY_HALF.y + 0.04;
+    state.position.z = pose.z;
+    state.rotation.x = state.rotation.z = 0;
+    state.rotation.y = Math.sin(facing / 2);
+    state.rotation.w = Math.cos(facing / 2);
+    state.forward.x = -Math.sin(facing);
+    state.forward.y = 0;
+    state.forward.z = -Math.cos(facing);
+    state.velocity.x = state.forward.x * record.authored.speed;
+    state.velocity.y = 0;
+    state.velocity.z = state.forward.z * record.authored.speed;
+    state.speed = record.authored.speed;
   }
+
+  for (const record of authored) updateVisualPose(record);
 
   function promote(record: RecordState): void {
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
-    const pose = routePose(record, record.station, routeScratch);
-    const facing =
-      pose.heading + ((record.authored.direction ?? 1) < 0 ? Math.PI : 0);
-    const position = record.wrecked
-      ? record.wreckPosition
-      : { x: pose.x, y: BODY_HALF.y + 0.04, z: pose.z };
-    const rotation = record.wrecked
-      ? record.wreckRotation
-      : {
-          x: 0,
-          y: Math.sin(facing / 2),
-          z: 0,
-          w: Math.cos(facing / 2),
-        };
-    physics.activateBody(slot.bodyId, position, rotation, true);
+    const state = record.state;
+    physics.activateBody(slot.bodyId, state.position, state.rotation, true);
     slot.friction = record.wrecked ? WRECK_FRICTION : DRIVE_FRICTION;
     physics.setContactProperties(slot.bodyId, slot.friction, RESTITUTION);
     slot.record = record;
     record.slot = slot;
-    const state = slot.state;
-    state.id = nextEncounterId++;
-    state.laneSide = record.authored.laneSide;
-    state.direction = record.authored.direction ?? 1;
-    state.wrecked = record.wrecked;
-    state.speed = 0;
-    Object.assign(state.position, position);
-    Object.assign(state.rotation, rotation);
-    state.forward.x = -Math.sin(facing);
-    state.forward.y = 0;
-    state.forward.z = -Math.cos(facing);
-    state.velocity.x = state.velocity.y = state.velocity.z = 0;
-    activeStates.push(state);
+    state.bodyId = slot.bodyId;
+    if (!record.wrecked) physics.setLinearVelocity(slot.bodyId, state.velocity);
+    physicalCount++;
   }
 
   function demote(record: RecordState): void {
@@ -241,72 +221,50 @@ export function createTraffic(
         record.wreckPosition,
         record.wreckRotation,
       );
-    } else {
-      const pose = routePose(record, record.station, routeScratch);
-      record.parkedX = pose.x;
-      record.parkedZ = pose.z;
+      Object.assign(record.state.position, record.wreckPosition);
+      Object.assign(record.state.rotation, record.wreckRotation);
     }
     physics.deactivateBody(slot.bodyId);
-    const index = activeStates.indexOf(slot.state);
-    if (index >= 0) activeStates.splice(index, 1);
+    record.state.bodyId = -1;
     slot.record = null;
     record.slot = null;
+    physicalCount--;
   }
 
   function preStep(dt: number, player: V3): void {
-    candidateAgeSeconds += dt;
-    if (
-      candidateAgeSeconds >= CANDIDATE_REFRESH_SECONDS ||
-      horizontalDistanceSquared(player, lastCandidateX, lastCandidateZ) >
-        30 * 30
-    ) {
-      nearby.length = 0;
-      for (const record of authored) {
-        if (record.slot) {
-          nearby.push(record);
-          continue;
-        }
-        const x = record.wrecked ? record.wreckPosition.x : record.parkedX;
-        const z = record.wrecked ? record.wreckPosition.z : record.parkedZ;
-        if (horizontalDistanceSquared(player, x, z) <= CANDIDATE * CANDIDATE)
-          nearby.push(record);
+    visualStates.length = 0;
+    for (const record of authored) {
+      const state = record.state;
+      if (!record.wrecked) {
+        const direction = state.direction;
+        record.station =
+          (((record.station + direction * record.authored.speed * dt) %
+            path.length) +
+            path.length) %
+          path.length;
       }
-      lastCandidateX = player.x;
-      lastCandidateZ = player.z;
-      candidateAgeSeconds = 0;
-    }
-    for (const record of nearby) {
-      const slot = record.slot;
-      // Wrecks remain at their final pose; undamaged cars progress only while
-      // simulated so there is no large teleport at the streaming boundary.
-      const targetX = slot
-        ? slot.state.position.x
-        : record.wrecked
-          ? record.wreckPosition.x
-          : record.parkedX;
-      const targetZ = slot
-        ? slot.state.position.z
-        : record.wrecked
-          ? record.wreckPosition.z
-          : record.parkedZ;
+      if (!record.slot) updateVisualPose(record);
       const distanceSquared = horizontalDistanceSquared(
         player,
-        targetX,
-        targetZ,
+        state.position.x,
+        state.position.z,
       );
-      if (!slot) {
-        if (
-          distanceSquared <= ENTER * ENTER &&
-          activeStates.length < MAX_DRIVING
-        )
-          promote(record);
-        continue;
-      }
-      if (distanceSquared > EXIT * EXIT) {
+      if (distanceSquared <= VISUAL_RADIUS * VISUAL_RADIUS)
+        visualStates.push(state);
+      if (record.slot && distanceSquared > EXIT * EXIT) {
         demote(record);
+        updateVisualPose(record);
         continue;
       }
-      // A wreck stays physically free to tumble and settle while nearby.
+      if (
+        !record.slot &&
+        distanceSquared <= ENTER * ENTER &&
+        physicalCount < MAX_DRIVING
+      )
+        promote(record);
+      const slot = record.slot;
+      if (!slot) continue;
+      // Wrecks remain physically free to tumble and settle while nearby.
       if (record.wrecked) {
         if (slot.friction !== WRECK_FRICTION) {
           physics.setContactProperties(
@@ -318,13 +276,8 @@ export function createTraffic(
         }
         continue;
       }
-      if (distanceSquared > DRIVE * DRIVE) {
-        if (physics.isBodyAwake(slot.bodyId)) physics.sleepBody(slot.bodyId);
-        continue;
-      }
       const pose = routePose(record, record.station, routeScratch);
-      const state = slot.state;
-      const direction = record.authored.direction ?? 1;
+      const direction = state.direction;
       const next = routePose(
         record,
         record.station + 8 * direction,
@@ -337,27 +290,20 @@ export function createTraffic(
       const desiredZ =
         -Math.cos(nextHeading) * record.authored.speed +
         Math.max(-3, Math.min(3, (pose.z - state.position.z) * 0.7));
-      if (!physics.isBodyAwake(slot.bodyId)) {
-        wakeVelocity.x = desiredX;
-        wakeVelocity.y = state.velocity.y;
-        wakeVelocity.z = desiredZ;
-        physics.setLinearVelocity(slot.bodyId, wakeVelocity);
-      } else {
-        // Soft speed hold, capped at 5 m/s²; a hit wins over the controller.
-        force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
-        force.z = (desiredZ - state.velocity.z) * BODY_MASS * 2;
-        const magnitude = Math.hypot(force.x, force.z);
-        if (magnitude > BODY_MASS * 5) {
-          const scale = (BODY_MASS * 5) / magnitude;
-          force.x *= scale;
-          force.z *= scale;
-        }
-        force.y = 0;
-        point.x = state.position.x;
-        point.y = state.position.y;
-        point.z = state.position.z;
-        physics.applyForceAtPoint(slot.bodyId, force, point);
+      // Soft speed hold, capped at 5 m/s²; a hit wins over the controller.
+      force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
+      force.z = (desiredZ - state.velocity.z) * BODY_MASS * 2;
+      const magnitude = Math.hypot(force.x, force.z);
+      if (magnitude > BODY_MASS * 5) {
+        const scale = (BODY_MASS * 5) / magnitude;
+        force.x *= scale;
+        force.z *= scale;
       }
+      force.y = 0;
+      point.x = state.position.x;
+      point.y = state.position.y;
+      point.z = state.position.z;
+      physics.applyForceAtPoint(slot.bodyId, force, point);
       const heading = 2 * Math.atan2(state.rotation.y, state.rotation.w);
       angular.x = 0;
       angular.y = Math.max(
@@ -366,11 +312,6 @@ export function createTraffic(
       );
       angular.z = 0;
       physics.setAngularVelocity(slot.bodyId, angular);
-      record.station =
-        (((record.station + direction * record.authored.speed * dt) %
-          path.length) +
-          path.length) %
-        path.length;
     }
   }
 
@@ -378,7 +319,7 @@ export function createTraffic(
     for (const slot of slots) {
       const record = slot.record;
       if (!record) continue;
-      const state = slot.state;
+      const state = record.state;
       physics.getTransform(slot.bodyId, readPosition, readRotation);
       physics.getLinearVelocity(slot.bodyId, readVelocity);
       Object.assign(state.position, readPosition);
@@ -402,7 +343,7 @@ export function createTraffic(
     for (const slot of slots) {
       if (slot.bodyId !== otherBody || !slot.record) continue;
       slot.record.wrecked = true;
-      slot.state.wrecked = true;
+      slot.record.state.wrecked = true;
       return;
     }
   }
@@ -410,13 +351,15 @@ export function createTraffic(
   /** Last post-step velocity, safe to read inside a contact callback. */
   function velocityForBody(bodyId: BodyId): Readonly<V3> | undefined {
     for (const slot of slots)
-      if (slot.bodyId === bodyId && slot.record) return slot.state.velocity;
+      if (slot.bodyId === bodyId && slot.record)
+        return slot.record.state.velocity;
     return undefined;
   }
 
   return {
     /** Reused array and records; safe to iterate after physics without allocation. */
-    states: activeStates as readonly TrafficCarState[],
+    states: allStates as readonly TrafficCarState[],
+    visualStates: visualStates as readonly TrafficCarState[],
     preStep,
     postStep,
     onPlayerContact,
@@ -443,12 +386,13 @@ export function createTrafficVisual(
     color: 0x344656,
     roughness: 0.42,
   });
-  const body = new InstancedMesh(bodyGeometry, bodyMaterial, POOL_SIZE);
-  const cabin = new InstancedMesh(cabinGeometry, cabinMaterial, POOL_SIZE);
+  const capacity = traffic.states.length;
+  const body = new InstancedMesh(bodyGeometry, bodyMaterial, capacity);
+  const cabin = new InstancedMesh(cabinGeometry, cabinMaterial, capacity);
   const helper = new Object3D();
-  const colors = [0xff4c3a, 0xe8c741, 0x63c9f1, 0xd9e0e7];
-  for (let i = 0; i < POOL_SIZE; i++)
-    body.setColorAt(i, new Color(colors[i % colors.length]!));
+  const colors = [0xff4c3a, 0xe8c741, 0x63c9f1, 0xd9e0e7].map(
+    (hex) => new Color(hex),
+  );
   body.castShadow = cabin.castShadow = true;
   body.receiveShadow = cabin.receiveShadow = true;
   // Instance matrices move across a 10 km map; a one-time bounds sphere at
@@ -459,7 +403,7 @@ export function createTrafficVisual(
   scene.add(body, cabin);
   function update(): void {
     let i = 0;
-    for (const state of traffic.states) {
+    for (const state of traffic.visualStates) {
       helper.position.set(state.position.x, state.position.y, state.position.z);
       helper.quaternion.set(
         state.rotation.x,
@@ -471,16 +415,13 @@ export function createTrafficVisual(
       helper.updateMatrix();
       body.setMatrixAt(i, helper.matrix);
       cabin.setMatrixAt(i, helper.matrix);
+      body.setColorAt(i, colors[state.id % colors.length]!);
       i++;
     }
-    helper.scale.setScalar(0);
-    helper.updateMatrix();
-    for (; i < POOL_SIZE; i++) {
-      body.setMatrixAt(i, helper.matrix);
-      cabin.setMatrixAt(i, helper.matrix);
-    }
+    body.count = cabin.count = i;
     body.instanceMatrix.needsUpdate = true;
     cabin.instanceMatrix.needsUpdate = true;
+    if (body.instanceColor) body.instanceColor.needsUpdate = true;
   }
   update();
   return {

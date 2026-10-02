@@ -11,7 +11,7 @@ import {
   type LoopSpec,
 } from './loopDeLoop';
 import type { MapDefinition } from './maps';
-import { MAX_DRIVING, type TrafficCarRecord } from './traffic';
+import type { TrafficCarRecord } from './traffic';
 import { rampFootprint, type RampSpec } from './ramps';
 import { runwayLaneClearance, type RunwaySpec } from './runways';
 import {
@@ -252,10 +252,10 @@ export function createCircuitMap(): CircuitMap {
   const route = path.samples
     .filter((_s, i) => i % 12 === 0)
     .map((s) => ({ x: s.x, z: s.z }));
-  // At four active cars this is every 130 m; eight would use 65 m without
-  // re-authoring lanes. The 520 m numerator leaves a 40 m buffer across the
-  // 480 m promotion window, so the pool does not hide nearby traffic.
-  const trafficSpacing = 520 / MAX_DRIVING;
+  // Both lanes carry moving visual cars at all distances. Only the nearest
+  // handful use the MAX_DRIVING physics pool; content density is independent
+  // of that cap.
+  const trafficSpacing = 40;
   // The approach and exit corridors around set pieces stay free of authored
   // traffic so a new car never appears on a launch or loop entry line.
   const trafficClearance = [
@@ -263,32 +263,28 @@ export function createCircuitMap(): CircuitMap {
     { station: CIRCUIT_STATIONS.forgivingLoop, before: 180, after: 280 },
     { station: CIRCUIT_STATIONS.hardLoop, before: 180, after: 280 },
   ];
-  const traffic: TrafficCarRecord[] = [
-    { station: 140, laneSide: -1, speed: 19 },
-    { station: 260, laneSide: 1, speed: 23 },
-    { station: 390, laneSide: -1, speed: 21 },
-    { station: 540, laneSide: 1, speed: 25 },
-  ];
+  const traffic: TrafficCarRecord[] = [];
+  const trafficAllowed = (station: number) =>
+    trafficClearance.every(
+      (zone) =>
+        station < zone.station - zone.before ||
+        station > zone.station + zone.after,
+    );
   for (
-    let station = 700, index = 0;
+    let station = 80;
     station < path.length - 80;
-    station += trafficSpacing, index++
+    station += trafficSpacing
   ) {
-    if (
-      trafficClearance.some(
-        (zone) =>
-          station >= zone.station - zone.before &&
-          station <= zone.station + zone.after,
-      )
-    )
-      continue;
-    const direction = index % 2 === 0 ? 1 : -1;
-    traffic.push({
-      station,
-      laneSide: direction,
-      direction,
-      speed: direction > 0 ? 22 : 24,
-    });
+    if (trafficAllowed(station))
+      traffic.push({ station, laneSide: 1, direction: 1, speed: 22 });
+    const oppositeStation = station + trafficSpacing / 2;
+    if (trafficAllowed(oppositeStation))
+      traffic.push({
+        station: oppositeStation,
+        laneSide: -1,
+        direction: -1,
+        speed: 24,
+      });
   }
   return {
     name: 'circuit',
