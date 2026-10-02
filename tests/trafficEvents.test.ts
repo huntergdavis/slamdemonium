@@ -158,6 +158,81 @@ describe('traffic events', () => {
     );
     expect(events.state.oncoming).toBe(false);
   });
+  it('pays no near miss to a parked player, however close and fast the traffic passes', () => {
+    const events = createTrafficEvents();
+    let total = 0;
+    for (let step = 0; step < 4 * 120; step++) {
+      const t = step * DT;
+      // The player sits still; a car streams past 2.5 m away at 24 m/s.
+      total += events.update(
+        DT,
+        player(0, 0),
+        [car(1, 2.5, -40 + 24 * t, 24)],
+        TUNING,
+      );
+    }
+    expect(total).toBe(0);
+    expect(events.state.nearMisses).toBe(0);
+    // Rolling slowly is still parked for this purpose; at speed it counts.
+    for (let step = 0; step < 4 * 120; step++) {
+      const t = step * DT;
+      total += events.update(
+        DT,
+        player(0, 10),
+        [car(2, 2.5, -40 + 24 * t, 24)],
+        TUNING,
+      );
+    }
+    expect(events.state.nearMisses).toBe(0);
+    for (let step = 0; step < 4 * 120; step++) {
+      const t = step * DT;
+      total += events.update(
+        DT,
+        player(0, 20),
+        [car(3, 2.5, -60 + 24 * t, 24)],
+        TUNING,
+      );
+    }
+    expect(events.state.nearMisses).toBe(0); // Same direction, closing 4 m/s: no.
+    for (let step = 0; step < 4 * 120; step++) {
+      const t = step * DT;
+      total += events.update(
+        DT,
+        player(0, 20),
+        [car(4, 2.5, 60 - 24 * t, -24)],
+        TUNING,
+      );
+    }
+    expect(events.state.nearMisses).toBe(1); // Oncoming at 44 m/s closing, moving: yes.
+    // Being rammed while parked pays nothing either.
+    const parked = createTrafficEvents();
+    parked.update(DT, player(0, 0), [car(5, 0, -5, 24)], TUNING);
+    parked.noteContact(105, 1);
+    expect(parked.update(DT, player(0, 0), [car(5, 0, -1, 24)], TUNING)).toBe(
+      0,
+    );
+    expect(parked.state.slams).toBe(0);
+  });
+  it('keeps a near miss on the label through continuous oncoming traffic', () => {
+    const events = createTrafficEvents();
+    let firedAt = -1;
+    // Oncoming car ahead in the lane line the whole time; a second car
+    // passes close at speed.
+    for (let step = 0; step < 480; step++) {
+      const t = step * DT;
+      events.update(
+        DT,
+        player(0, 30),
+        [car(2, 0, 50, -20), car(3, 2.5, 20 - 24 * t, -24)],
+        TUNING,
+      );
+      if (events.state.nearMisses === 1 && firedAt < 0) firedAt = t;
+      if (firedAt >= 0 && t - firedAt < 1.1)
+        expect(events.state.lastEvent).toBe('near-miss');
+    }
+    expect(events.state.nearMisses).toBe(1);
+    expect(events.state.lastEvent).toBe('oncoming'); // After the hold, oncoming again.
+  });
   it('reset clears everything', () => {
     const { events } = pass();
     events.reset();

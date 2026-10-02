@@ -4,13 +4,13 @@
  * the lane 200 m back is a parked obstacle, and a wreck is scenery.
  *
  * - NEAR MISS: a car passes within `nearMissGap` metres edge to edge at a
- *   closing speed of at least `nearMissClosing`, once per car per pass,
- *   voided when the player touched that car during the pass.
+ *   closing speed of at least `nearMissClosing` while the player is moving,
+ *   once per car per pass, voided when the player touched that car.
  * - WRONG SIDE: an oncoming car (its heading opposes the player's) is ahead
  *   within `wrongSideReach` and within a lane's width of the player's line
  *   while the player is moving; pays per second.
- * - SLAM: a contact with a traffic car, paid by the shared impact severity,
- *   once per car per contact episode. */
+ * - SLAM: a contact with a traffic car while the player is moving, paid by
+ *   the shared impact severity, once per car per contact episode. */
 export interface TrafficCarView {
   readonly id: number;
   readonly bodyId: number;
@@ -66,8 +66,11 @@ export const CAR_HALF_WIDTHS = 1.95;
 export const NEAR_MISS_RESET_DISTANCE = 30;
 /** Half a lane: an oncoming car within this of the player's line is in it. */
 export const WRONG_SIDE_HALF_WIDTH = 4;
-/** Below this player speed nothing on the wrong side counts. */
-export const WRONG_SIDE_MIN_SPEED = 15;
+/** Below this player speed no event counts: traffic brushing past, or
+ * ramming, a parked car is not the player doing anything. */
+export const EVENT_MIN_SPEED = 15;
+/** @deprecated use EVENT_MIN_SPEED */
+export const WRONG_SIDE_MIN_SPEED = EVENT_MIN_SPEED;
 /** An oncoming car's heading opposes the player's below this dot product. */
 export const ONCOMING_DOT = -0.5;
 /** A slam re-arms after this long with no contact with that car. */
@@ -185,6 +188,7 @@ export function createTrafficEvents(): TrafficEvents {
           distance > track.closest + 1 &&
           track.closest - CAR_HALF_WIDTHS <= tuning.nearMissGap &&
           track.closingAtClosest >= tuning.nearMissClosing &&
+          player.speed >= EVENT_MIN_SPEED &&
           time - track.lastContactAt > SLAM_REARM_SECONDS
         ) {
           track.passSpent = true;
@@ -199,7 +203,7 @@ export function createTrafficEvents(): TrafficEvents {
         // Wrong side: an oncoming car ahead, inside the player's lane line.
         const dot =
           car.forward.x * player.forward.x + car.forward.z * player.forward.z;
-        if (dot < ONCOMING_DOT && player.speed >= WRONG_SIDE_MIN_SPEED) {
+        if (dot < ONCOMING_DOT && player.speed >= EVENT_MIN_SPEED) {
           const along = dx * player.forward.x + dz * player.forward.z;
           const lateral = Math.abs(
             dx * player.forward.z - dz * player.forward.x,
@@ -215,7 +219,9 @@ export function createTrafficEvents(): TrafficEvents {
       if (state.oncoming) {
         state.wrongSideSeconds += dt;
         state.grant += tuning.wrongSideRate * dt;
-        if (state.lastEvent !== 'oncoming' || state.labelSeconds <= 0) {
+        // The oncoming label never cuts a near miss or slam short: those
+        // fire once and hold their moment; oncoming is continuous.
+        if (state.labelSeconds <= 0 || state.lastEvent === 'oncoming') {
           state.lastEvent = 'oncoming';
           state.labelSeconds = EVENT_LABEL_SECONDS;
         }
@@ -236,7 +242,7 @@ export function createTrafficEvents(): TrafficEvents {
         const armed = time - track.lastContactAt > SLAM_REARM_SECONDS;
         track.lastContactAt = time;
         track.passSpent = true; // Touching the car is not a near miss.
-        if (armed && slam.severity > 0) {
+        if (armed && slam.severity > 0 && player.speed >= EVENT_MIN_SPEED) {
           state.slams++;
           fire('slam', tuning.slamBoost * slam.severity);
         }
