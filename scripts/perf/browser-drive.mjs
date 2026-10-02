@@ -8,6 +8,9 @@
  * The report names the GL renderer so a software fallback cannot pass as a
  * GPU. Route: spawn, north up the opening straight through the chicane,
  * pure pursuit on the circuit centreline, speed held at 35 m/s. */
+/* global process, console, window, document, fetch, performance, requestAnimationFrame */
+// The outer scope is Node; the functions handed to page.evaluate run in the
+// browser, so this one file legitimately uses both sets of globals.
 import { chromium } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
