@@ -113,7 +113,7 @@ export function createTraffic(
   const slots: Slot[] = [];
   const visualStates: TrafficCarState[] = [];
   let physicalCount = 0;
-  let farPoseAge = 0;
+  let farPoseBucket = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -256,35 +256,32 @@ export function createTraffic(
 
   function preStep(dt: number, player: V3): void {
     visualStates.length = 0;
-    farPoseAge += dt;
-    const refreshFar = farPoseAge >= 0.1;
-    if (refreshFar) farPoseAge = 0;
-    for (const record of authored) {
+    // Refresh one distant slice per step instead of all authored cars on the
+    // same 10 Hz tick. Nearby poses still update every step.
+    const farPoseBuckets = Math.max(1, Math.round(0.1 / dt));
+    farPoseBucket = (farPoseBucket + 1) % farPoseBuckets;
+    for (let i = 0; i < authored.length; i++) {
+      const record = authored[i]!;
       const state = record.state;
       if (!record.wrecked) {
         const direction = state.direction;
-        record.station =
-          (((record.station + direction * record.authored.speed * dt) %
-            path.length) +
-            path.length) %
-          path.length;
+        record.station += direction * record.authored.speed * dt;
+        if (record.station >= path.length) record.station -= path.length;
+        else if (record.station < 0) record.station += path.length;
       }
-      if (
-        !record.slot &&
-        (refreshFar ||
-          horizontalDistanceSquared(
-            player,
-            state.position.x,
-            state.position.z,
-          ) <=
-            (VISUAL_RADIUS + 30) ** 2)
-      )
-        updateVisualPose(record);
-      const distanceSquared = horizontalDistanceSquared(
+      const oldDistanceSquared = horizontalDistanceSquared(
         player,
         state.position.x,
         state.position.z,
       );
+      const refreshVisual =
+        !record.slot &&
+        (i % farPoseBuckets === farPoseBucket ||
+          oldDistanceSquared <= (VISUAL_RADIUS + 30) ** 2);
+      if (refreshVisual) updateVisualPose(record);
+      const distanceSquared = refreshVisual
+        ? horizontalDistanceSquared(player, state.position.x, state.position.z)
+        : oldDistanceSquared;
       if (distanceSquared <= VISUAL_RADIUS * VISUAL_RADIUS)
         visualStates.push(state);
       if (record.slot && distanceSquared > EXIT * EXIT) {
