@@ -111,9 +111,9 @@ export function createTraffic(
     slot: null,
   }));
   const slots: Slot[] = [];
-  const allStates = authored.map((record) => record.state);
   const visualStates: TrafficCarState[] = [];
   let physicalCount = 0;
+  let farPoseAge = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -256,6 +256,9 @@ export function createTraffic(
 
   function preStep(dt: number, player: V3): void {
     visualStates.length = 0;
+    farPoseAge += dt;
+    const refreshFar = farPoseAge >= 0.1;
+    if (refreshFar) farPoseAge = 0;
     for (const record of authored) {
       const state = record.state;
       if (!record.wrecked) {
@@ -266,7 +269,17 @@ export function createTraffic(
             path.length) %
           path.length;
       }
-      if (!record.slot) updateVisualPose(record);
+      if (
+        !record.slot &&
+        (refreshFar ||
+          horizontalDistanceSquared(
+            player,
+            state.position.x,
+            state.position.z,
+          ) <=
+            (VISUAL_RADIUS + 30) ** 2)
+      )
+        updateVisualPose(record);
       const distanceSquared = horizontalDistanceSquared(
         player,
         state.position.x,
@@ -379,8 +392,9 @@ export function createTraffic(
 
   return {
     /** Reused array and records; safe to iterate after physics without allocation. */
-    states: allStates as readonly TrafficCarState[],
+    states: visualStates as readonly TrafficCarState[],
     visualStates: visualStates as readonly TrafficCarState[],
+    recordCount: authored.length,
     preStep,
     postStep,
     onPlayerContact,
@@ -407,7 +421,7 @@ export function createTrafficVisual(
     color: 0x344656,
     roughness: 0.42,
   });
-  const capacity = traffic.states.length;
+  const capacity = traffic.recordCount;
   const body = new InstancedMesh(bodyGeometry, bodyMaterial, capacity);
   const cabin = new InstancedMesh(cabinGeometry, cabinMaterial, capacity);
   const helper = new Object3D();

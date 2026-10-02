@@ -81,22 +81,30 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
   );
   try {
     const farPlayer = { x: 1000, y: 0.6, z: 0 };
+    traffic.preStep(1 / 120, { x: 0, y: 0.6, z: -300 });
+    const tracked = [...traffic.states];
+    expect(tracked).toHaveLength(20);
     const first = traffic.states[0]!;
     const id = first.id;
     const startZ = first.position.z;
+    traffic.preStep(1 / 120, farPlayer);
     for (let i = 0; i < 10 * 120; i++) {
       traffic.preStep(1 / 120, farPlayer);
       world.step(1 / 120);
       traffic.postStep();
     }
-    expect(traffic.states).toHaveLength(20);
-    expect(traffic.states.every((car) => car.bodyId === -1)).toBe(true);
-    expect(first.position.z).toBeCloseTo(startZ - 220, 1);
+    expect(traffic.states).toHaveLength(0);
+    expect(tracked.every((car) => car.bodyId === -1)).toBe(true);
+    expect(first.position.z).toBeLessThan(startZ - 219);
+    expect(first.position.z).toBeGreaterThan(startZ - 222);
     expect(first.velocity.z).toBeCloseTo(-22, 1);
     expect(traffic.velocityForBody(-1)).toBeUndefined();
 
-    const player = { x: first.position.x, y: 0.6, z: first.position.z + 50 };
+    const player = { x: first.position.x, y: 0.6, z: first.position.z + 130 };
+    traffic.preStep(1 / 120, player);
     const visualZ = first.position.z;
+    expect(first.bodyId).toBe(-1);
+    player.z = first.position.z + 50;
     traffic.preStep(1 / 120, player);
     expect(traffic.visualStates).toHaveLength(20);
     expect(first.id).toBe(id);
@@ -110,7 +118,7 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
     expect(first.bodyId).toBe(-1);
     expect(first.id).toBe(id);
     const demotedZ = first.position.z;
-    traffic.preStep(1 / 120, farPlayer);
+    for (let i = 0; i < 13; i++) traffic.preStep(1 / 120, farPlayer);
     expect(first.position.z).toBeLessThan(demotedZ);
   } finally {
     traffic.dispose();
@@ -225,7 +233,7 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
   player.x = 1000;
   player.z = 1000;
   traffic.preStep(1 / 120, player);
-  expect(traffic.states).toHaveLength(1);
+  expect(traffic.states).toHaveLength(0);
   expect(first.bodyId).toBe(-1);
   expect(world.isBodyActive(physicalBodyId)).toBe(false);
   expect(traffic.velocityForBody(physicalBodyId)).toBeUndefined();
