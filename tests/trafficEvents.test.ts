@@ -109,15 +109,31 @@ describe('traffic events', () => {
     ).toBeCloseTo(TUNING.slamBoost, 9);
     expect(events.state.slams).toBe(2);
   });
-  it('ignores a slam on a car that is not in the traffic list (asleep or wrecked)', () => {
+  it('pays the hit that wrecks a car, and ignores a car that was already a wreck or is not listed', () => {
     const events = createTrafficEvents();
     events.noteContact(999, 1);
     expect(events.update(DT, player(0, 40), [], TUNING)).toBe(0);
+    // Driving one step, then the hit wrecks it in the same step: a slam.
+    events.update(DT, player(0, 40), [car(1, 3, 10, 20)], TUNING);
+    events.noteContact(101, 1);
+    expect(
+      events.update(DT, player(0, 40), [car(1, 3, 10, 0, true)], TUNING),
+    ).toBeCloseTo(TUNING.slamBoost, 9);
+    expect(events.state.slams).toBe(1);
+    // A second later it is scenery: hitting it again pays nothing.
+    for (let step = 0; step < 150; step++)
+      events.update(DT, player(0, 40), [car(1, 3, 10, 0, true)], TUNING);
     events.noteContact(101, 1);
     expect(
       events.update(DT, player(0, 40), [car(1, 3, 10, 0, true)], TUNING),
     ).toBe(0);
-    expect(events.state.slams).toBe(0);
+    expect(events.state.slams).toBe(1);
+    // A car first seen as a wreck never pays.
+    events.noteContact(102, 1);
+    expect(
+      events.update(DT, player(0, 40), [car(2, 3, 10, 0, true)], TUNING),
+    ).toBe(0);
+    expect(events.state.slams).toBe(1);
   });
   it('pays wrong-side driving per second only with an oncoming car ahead in the lane line, at speed', () => {
     const events = createTrafficEvents();

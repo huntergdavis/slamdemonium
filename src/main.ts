@@ -72,6 +72,7 @@ import {
 } from './world/propStreaming';
 import { createSurfacedBodies } from './world/surfacedBodies';
 import { createSurfaceRegistry } from './world/surfaceRegistry';
+import { createTraffic, createTrafficVisual } from './world/traffic';
 import './style.css';
 
 document.title = GAME_NAME;
@@ -255,6 +256,14 @@ async function boot(): Promise<void> {
   // initial respawn the proving-ground camera starts facing away from every
   // target even though subsequent respawns use the correct rotation.
   vehicle.respawn(track.spawn.position, track.spawn.rotation);
+  const traffic =
+    map.path && map.traffic
+      ? createTraffic(physics, surfacedBodies, map.path, map.traffic)
+      : undefined;
+  const trafficVisual = traffic
+    ? createTrafficVisual(view.scene, traffic)
+    : undefined;
+  if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
   // cheap far-field instance elsewhere; the record format is shared with a
@@ -470,6 +479,7 @@ async function boot(): Promise<void> {
         visualHistory.beforeStep();
         stepStart = performance.now();
         vehicle.preStep(dt, sampled, source);
+        traffic?.preStep(dt, vehicle.telemetry.position);
       },
       stepPhysics(dt) {
         const engineStarted = performance.now();
@@ -478,6 +488,7 @@ async function boot(): Promise<void> {
       },
       postStep(dt) {
         vehicle.postStep(dt);
+        traffic?.postStep();
         breakableProps.update(dt);
         {
           const entered = boostPads.update(
@@ -505,7 +516,7 @@ async function boot(): Promise<void> {
           const grant = trafficEvents.update(
             dt,
             playerView,
-            trafficStates,
+            traffic?.states ?? trafficStates,
             trafficTuning,
           );
           if (grant > 0) vehicle.applyPad(0, grant);
@@ -573,6 +584,7 @@ async function boot(): Promise<void> {
         const pose = history.interpolate(alpha);
         carVisual.update(visualHistory.interpolate(alpha, pose));
         breakablePropsVisual.update();
+        trafficVisual?.update();
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
@@ -828,6 +840,7 @@ async function boot(): Promise<void> {
   // Menu disposal restores the shared Options element before Options removes it.
   resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
+  const relativeImpactVelocity: V3 = { x: 0, y: 0, z: 0 };
   const impact = createImpactSeverity();
   let landingsSeen = vehicle.telemetry.landingCount;
   const impactFeedback = new ImpactFeedback({
@@ -846,9 +859,22 @@ async function boot(): Promise<void> {
     impactNormal.x = normal.x * direction;
     impactNormal.y = normal.y * direction;
     impactNormal.z = normal.z * direction;
+    const otherBody = a === vehicle.body ? b : a;
+    const trafficVelocity = traffic?.velocityForBody(otherBody);
+    const severityVelocity = trafficVelocity
+      ? relativeImpactVelocity
+      : vehicle.telemetry.velocity;
+    if (trafficVelocity) {
+      relativeImpactVelocity.x =
+        vehicle.telemetry.velocity.x - trafficVelocity.x;
+      relativeImpactVelocity.y =
+        vehicle.telemetry.velocity.y - trafficVelocity.y;
+      relativeImpactVelocity.z =
+        vehicle.telemetry.velocity.z - trafficVelocity.z;
+    }
     estimateImpactSeverity(
       impulse,
-      vehicle.telemetry.velocity,
+      severityVelocity,
       impactNormal,
       vehicle.currentMass,
       impact,
@@ -863,7 +889,8 @@ async function boot(): Promise<void> {
       vehicle.telemetry.velocity,
       impact,
     );
-    const otherBody = a === vehicle.body ? b : a;
+    traffic?.onPlayerContact(otherBody, impact);
+    if (trafficVelocity) trafficEvents.noteContact(otherBody, impact.severity);
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
       vehicle.noteChassisContact(impactNormal);
@@ -973,6 +1000,19 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     loop.stepMany(count);
   };
+  game.getTraffic = () =>
+    (traffic?.states ?? []).map((car) => ({
+      id: car.id,
+      bodyId: car.bodyId,
+      x: car.position.x,
+      z: car.position.z,
+      fx: car.forward.x,
+      fz: car.forward.z,
+      vx: car.velocity.x,
+      vz: car.velocity.z,
+      speed: car.speed,
+      wrecked: car.wrecked,
+    }));
   game.getTelemetry = () => {
     const s = vehicle.telemetry;
     return {

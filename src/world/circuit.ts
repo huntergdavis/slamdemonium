@@ -11,6 +11,7 @@ import {
   type LoopSpec,
 } from './loopDeLoop';
 import type { MapDefinition } from './maps';
+import type { TrafficCarRecord } from './traffic';
 import { rampFootprint, type RampSpec } from './ramps';
 import { runwayLaneClearance, type RunwaySpec } from './runways';
 import {
@@ -84,6 +85,7 @@ export interface CircuitMap extends MapDefinition {
   readonly name: 'circuit';
   readonly path: RoadPath;
   readonly placements: readonly BreakablePlacement[];
+  readonly traffic: readonly TrafficCarRecord[];
 }
 
 function gate(
@@ -250,6 +252,14 @@ export function createCircuitMap(): CircuitMap {
   const route = path.samples
     .filter((_s, i) => i % 12 === 0)
     .map((s) => ({ x: s.x, z: s.z }));
+  // First traffic slice: four catchable cars on the opening straight.
+  // Later density can add records without changing the eight-body pool.
+  const traffic: TrafficCarRecord[] = [
+    { station: 140, laneSide: -1, speed: 19 },
+    { station: 260, laneSide: 1, speed: 23 },
+    { station: 390, laneSide: -1, speed: 21 },
+    { station: 540, laneSide: 1, speed: 25 },
+  ];
   return {
     name: 'circuit',
     label: 'Circuit (10 km)',
@@ -274,6 +284,7 @@ export function createCircuitMap(): CircuitMap {
     runs,
     route,
     path,
+    traffic,
     placements,
   };
 }
