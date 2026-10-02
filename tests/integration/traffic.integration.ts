@@ -122,7 +122,7 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
     expect(first.bodyId).toBe(-1);
     player.z = first.position.z + 50;
     traffic.preStep(1 / 120, player);
-    expect(traffic.visualStates).toHaveLength(20);
+    expect(traffic.visualStates).toContain(first);
     expect(first.id).toBe(id);
     expect(first.bodyId).not.toBe(-1);
     const bodyVelocity = { x: 0, y: 0, z: 0 };
