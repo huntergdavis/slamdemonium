@@ -179,3 +179,15 @@ available as the `performance-results` artifact for 90 days, including failures.
 Sources: [design §13.4](vertical-slice-design.md#134-performance-harness),
 [CDP heap usage](https://chromedevtools.github.io/devtools-protocol/tot/Runtime/#method-getHeapUsage),
 [CDP explicit GC](https://chromedevtools.github.io/devtools-protocol/tot/HeapProfiler/#method-collectGarbage).
+
+## The browser gate (2026-10-01)
+
+Headless probes are not a browser. For anything that changes what is on screen or how many bodies are awake, the number that counts is from `scripts/perf/browser-drive.mjs`: a real headed Chromium on the real GPU (under a virtual display on the measuring box), the game running its own frame loop, a fixed route on the circuit (spawn, north up the opening straight through the chicane, pure pursuit on the centreline at 35 m/s for 45 s) and the game's own recorder read for frames, full physics steps and Jolt steps.
+
+```
+xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/perf/browser-drive.mjs https://hunterdavis.com/slamdemonium/pr/NNN/ 45 1280x720 out.json
+```
+
+The report names the GL renderer so a software fallback cannot pass as a GPU, and counts the traffic cars within 750 m and 180 m and, where the build exposes it, in frame at 4 px and 8 px or more. The numbers are a relative gate: main and the PR on the same box, same route, same resolution. They are not anyone else's frame rate; the URL and route are in the report so a reader can repeat the drive in their own browser. One GPU run at a time on a box; a second browser skews both.
+
+Baseline on main e6ea7da, 1280x720 on an i5-8250U with an Intel UHD 620 through Vulkan: 12.2 fps (frame p50 83 ms, p99 150 ms), full step p50 1.3 / p99 5.7 ms, Jolt p50 0.6 / p99 3.5 ms. At 1920x1080 the same box gives 6.6 fps, and below about 10 fps the game slows down because the fixed-step loop stops catching up, which shows as less route covered in the 45 s.
