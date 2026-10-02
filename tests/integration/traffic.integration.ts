@@ -55,6 +55,69 @@ it('holds authored traffic speed for ten seconds inside the drive radius', async
   }
 });
 
+it('keeps twenty distant cars moving and promotes one without a pose or speed jump', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  world.setGravity(20);
+  world.createStaticBox(
+    { x: 0, y: -0.5, z: -1000 },
+    { x: 300, y: 0.5, z: 1200 },
+  );
+  const path = sampleRoad([{ kind: 'straight', length: 2000 }], {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(
+    world,
+    bodies,
+    path,
+    Array.from({ length: 20 }, (_, i) => ({
+      station: 80 + 20 * i,
+      laneSide: -1 as const,
+      speed: 22,
+    })),
+  );
+  try {
+    const farPlayer = { x: 1000, y: 0.6, z: 0 };
+    const first = traffic.states[0]!;
+    const id = first.id;
+    const startZ = first.position.z;
+    for (let i = 0; i < 10 * 120; i++) {
+      traffic.preStep(1 / 120, farPlayer);
+      world.step(1 / 120);
+      traffic.postStep();
+    }
+    expect(traffic.states).toHaveLength(20);
+    expect(traffic.states.every((car) => car.bodyId === -1)).toBe(true);
+    expect(first.position.z).toBeCloseTo(startZ - 220, 1);
+    expect(first.velocity.z).toBeCloseTo(-22, 1);
+    expect(traffic.velocityForBody(-1)).toBeUndefined();
+
+    const player = { x: first.position.x, y: 0.6, z: first.position.z + 50 };
+    const visualZ = first.position.z;
+    traffic.preStep(1 / 120, player);
+    expect(traffic.visualStates).toHaveLength(20);
+    expect(first.id).toBe(id);
+    expect(first.bodyId).not.toBe(-1);
+    const bodyVelocity = { x: 0, y: 0, z: 0 };
+    world.getLinearVelocity(first.bodyId, bodyVelocity);
+    expect(bodyVelocity.z).toBeCloseTo(-22, 1);
+    expect(first.position.z).toBeCloseTo(visualZ - 22 / 120, 1);
+
+    traffic.preStep(1 / 120, farPlayer);
+    expect(first.bodyId).toBe(-1);
+    expect(first.id).toBe(id);
+    const demotedZ = first.position.z;
+    traffic.preStep(1 / 120, farPlayer);
+    expect(first.position.z).toBeLessThan(demotedZ);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
+});
+
 it('drives a pooled car, yields on impact, and keeps its identity through visual hand-offs', async () => {
   const world = await createPhysicsWorld({ wasmPath });
   worlds.push(world);
