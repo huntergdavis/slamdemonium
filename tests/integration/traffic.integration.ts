@@ -1,9 +1,14 @@
 import { createRequire } from 'node:module';
+import { InstancedMesh, Matrix4, Scene } from 'three';
 import { afterEach, expect, it } from 'vitest';
 import type { IPhysicsWorld } from '../../src/physics/adapter';
 import { createPhysicsWorld } from '../../src/physics/joltWorld';
 import { sampleRoad } from '../../src/world/roadGenerator';
-import { createTraffic, MAX_DRIVING } from '../../src/world/traffic';
+import {
+  createTraffic,
+  createTrafficVisual,
+  MAX_DRIVING,
+} from '../../src/world/traffic';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 
@@ -79,12 +84,21 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
       speed: 22,
     })),
   );
+  const scene = new Scene();
+  const visual = createTrafficVisual(scene, traffic);
   try {
     const farPlayer = { x: 1000, y: 0.6, z: 0 };
     traffic.preStep(1 / 120, { x: 0, y: 0.6, z: -300 });
     const tracked = [...traffic.states];
     expect(tracked).toHaveLength(20);
     const first = traffic.states[0]!;
+    visual.update();
+    const bodyMesh = scene.children[0] as InstancedMesh;
+    expect(bodyMesh.count).toBe(20);
+    const matrix = new Matrix4();
+    bodyMesh.getMatrixAt(0, matrix);
+    expect(matrix.elements[12]).toBeCloseTo(first.position.x, 1);
+    expect(matrix.elements[14]).toBeCloseTo(first.position.z, 1);
     const id = first.id;
     const startZ = first.position.z;
     traffic.preStep(1 / 120, farPlayer);
@@ -94,6 +108,8 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
       traffic.postStep();
     }
     expect(traffic.states).toHaveLength(0);
+    visual.update();
+    expect(bodyMesh.count).toBe(0);
     expect(tracked.every((car) => car.bodyId === -1)).toBe(true);
     expect(first.position.z).toBeLessThan(startZ - 219);
     expect(first.position.z).toBeGreaterThan(startZ - 222);
@@ -121,6 +137,7 @@ it('keeps twenty distant cars moving and promotes one without a pose or speed ju
     for (let i = 0; i < 13; i++) traffic.preStep(1 / 120, farPlayer);
     expect(first.position.z).toBeLessThan(demotedZ);
   } finally {
+    visual.dispose();
     traffic.dispose();
     bodies.dispose();
   }
