@@ -56,11 +56,11 @@ describe('the 10 km circuit', () => {
     expect(CIRCUIT_STATIONS.checkpoints).toHaveLength(3);
   });
   it('spaces traffic around the full lap in both directions and clears set pieces', () => {
-    expect(map.traffic.length).toBeGreaterThan(1700);
-    expect(map.traffic.length).toBeLessThan(1850);
+    expect(map.traffic.length).toBeGreaterThan(1400);
+    expect(map.traffic.length).toBeLessThan(1550);
     const stations = map.traffic.map((car) => car.station);
     for (let i = 1; i < stations.length; i++)
-      expect(stations[i]! - stations[i - 1]!).toBeGreaterThanOrEqual(5);
+      expect(stations[i]! - stations[i - 1]!).toBeGreaterThanOrEqual(6);
     const added = map.traffic;
     expect(added.some((car) => car.direction === 1)).toBe(true);
     expect(added.some((car) => car.direction === -1)).toBe(true);
