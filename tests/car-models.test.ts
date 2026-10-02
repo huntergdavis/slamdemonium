@@ -19,11 +19,11 @@ describe('car model catalogue', () => {
       const m = CAR_MODELS[kind];
       const length = m.halfExtents.z * 2;
       const width = m.halfExtents.x * 2;
-      expect(width / ORIGINAL_TRAFFIC_BOX.width).toBeGreaterThanOrEqual(1.26);
+      // Every kind, the small ones included, is at least 1.3 times the old
+      // box in both length and width; the bus and truck run much longer.
+      expect(width / ORIGINAL_TRAFFIC_BOX.width).toBeGreaterThanOrEqual(1.3);
       expect(width / ORIGINAL_TRAFFIC_BOX.width).toBeLessThanOrEqual(1.6);
-      // The hatch is the short one and still longer than the old box; the
-      // bus and truck are the long ones.
-      expect(length).toBeGreaterThan(ORIGINAL_TRAFFIC_BOX.length);
+      expect(length / ORIGINAL_TRAFFIC_BOX.length).toBeGreaterThanOrEqual(1.3);
       lengths.add(Math.round(length * 10));
       expect(m.parts.length).toBeGreaterThanOrEqual(2);
       expect(m.share).toBeGreaterThan(0);
@@ -35,6 +35,21 @@ describe('car model catalogue', () => {
     );
     expect(CAR_MODELS.bus.halfExtents.z * 2).toBeGreaterThan(
       2 * CAR_MODELS.sedan.halfExtents.z * 2,
+    );
+    // Sedan and hatch differ in proportion, not only length: the hatch is
+    // taller and its cabin runs to the tail, the sedan's sits mid-body.
+    expect(CAR_MODELS.hatch.halfExtents.y).toBeGreaterThan(
+      CAR_MODELS.sedan.halfExtents.y * 1.15,
+    );
+    const cabinOf = (kind: 'sedan' | 'hatch') =>
+      CAR_MODELS[kind].parts.find((p) => p.tone === 'cabin')!;
+    expect(
+      cabinOf('hatch').size[2] / CAR_MODELS.hatch.halfExtents.z,
+    ).toBeGreaterThan(
+      cabinOf('sedan').size[2] / CAR_MODELS.sedan.halfExtents.z + 0.3,
+    );
+    expect(cabinOf('hatch').offset[2]).toBeLessThan(
+      cabinOf('sedan').offset[2] - 0.5,
     );
     expect(CAR_MODELS.van.halfExtents.y).toBeGreaterThan(
       CAR_MODELS.sedan.halfExtents.y,

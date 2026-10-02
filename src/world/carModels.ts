@@ -54,7 +54,8 @@ export interface CarModelSpec {
 }
 
 /** The first traffic box: 4.2 long, 1.9 wide, 0.9 tall body. Every kind
- * below is at least 1.3 times that in length and width. */
+ * below is at least 1.3 times that in both length and width (the CTO's
+ * '30-40% bigger' applies to every car, the small ones included). */
 export const ORIGINAL_TRAFFIC_BOX = Object.freeze({
   length: 4.2,
   width: 1.9,
@@ -85,13 +86,16 @@ const spec = (
  * are in car space with y measured from the ground. */
 export const CAR_MODELS: Readonly<Record<CarModelKind, CarModelSpec>> =
   Object.freeze({
-    sedan: spec('sedan', 'Sedan', 5.7, 2.55, 2.0, 0.38, [
-      { size: [2.55, 1.2, 5.7], offset: [0, 0.64, 0], tone: 'body' },
-      { size: [2.1, 0.8, 2.9], offset: [0, 1.6, -0.3], tone: 'cabin' },
+    // Three-box: a low body, a short cabin in the middle, a long tail.
+    sedan: spec('sedan', 'Sedan', 5.7, 2.55, 1.9, 0.38, [
+      { size: [2.55, 1.1, 5.7], offset: [0, 0.59, 0], tone: 'body' },
+      { size: [2.1, 0.8, 2.6], offset: [0, 1.5, 0.1], tone: 'cabin' },
     ]),
-    hatch: spec('hatch', 'Hatchback', 4.6, 2.4, 2.2, 0.24, [
-      { size: [2.4, 1.3, 4.6], offset: [0, 0.69, 0], tone: 'body' },
-      { size: [2.05, 0.85, 2.6], offset: [0, 1.75, -0.55], tone: 'cabin' },
+    // Two-box: a tall cabin that runs to the tail, a short nose, a higher
+    // roof: reads as a different car from the sedan at chase distance.
+    hatch: spec('hatch', 'Hatchback', 5.5, 2.5, 2.4, 0.24, [
+      { size: [2.5, 1.2, 5.5], offset: [0, 0.64, 0], tone: 'body' },
+      { size: [2.3, 1.2, 3.6], offset: [0, 1.8, -0.9], tone: 'cabin' },
     ]),
     van: spec('van', 'Van', 6.0, 2.6, 2.3, 0.14, [
       { size: [2.6, 2.3, 6.0], offset: [0, 1.19, 0], tone: 'body' },
