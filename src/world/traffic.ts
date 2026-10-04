@@ -1,17 +1,15 @@
-import {
-  BoxGeometry,
-  Color,
-  DynamicDrawUsage,
-  InstancedMesh,
-  MeshStandardMaterial,
-  Object3D,
-  type Scene,
-} from 'three';
+import type { Scene } from 'three';
 import type { ImpactSeverity } from '../core/impactSeverity';
 import { SURFACE_IDS } from '../content/surfaces';
 import type { BodyId, IPhysicsWorld, Quat, V3 } from '../physics/adapter';
 import type { RoadPath } from './roadGenerator';
 import type { SurfacedBodies } from './surfacedBodies';
+import {
+  CAR_MODELS,
+  createCarModelInstances,
+  pickCarModelKind,
+  type CarModelKind,
+} from './carModels';
 
 interface MutableRoadPose {
   x: number;
@@ -25,6 +23,8 @@ export interface TrafficCarRecord {
   readonly speed: number;
   /** +1 follows circuit stations; -1 travels against them. */
   readonly direction?: -1 | 1;
+  /** The catalogue kind; picked by id when not authored. */
+  readonly modelKind?: CarModelKind;
 }
 
 /** Centre-to-centre spacing in metres. The 12 m authored grid is the hard
@@ -48,6 +48,8 @@ export interface TrafficCarState {
   direction: -1 | 1;
   speed: number;
   wrecked: boolean;
+  /** The catalogue kind: collision box, visual parts and ride height. */
+  modelKind: CarModelKind;
 }
 
 interface RecordState {
@@ -71,6 +73,8 @@ interface Slot {
   readonly bodyId: BodyId;
   record: RecordState | null;
   friction: number;
+  /** The kind whose collision box the pooled body currently carries. */
+  kind: CarModelKind | null;
 }
 
 const BODY_HALF = { x: 0.95, y: 0.55, z: 2.1 };
@@ -81,6 +85,12 @@ const VISUAL_RADIUS = 400;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
 const BODY_MASS = 1100;
+/** Every kind weighs the same in v1; per-kind mass waits for crumple. */
+const BODY_MASS_DESC = {
+  mass: BODY_MASS,
+  comOffset: { x: 0, y: -0.15, z: 0 },
+  inertiaScale: { x: 1, y: 1, z: 1 },
+};
 // A box has no driven wheels: road friction above the 5 m/s² controller cap
 // stops it outright. Restore heavy contact friction after a wreck so it settles.
 const DRIVE_FRICTION = 0.05;
@@ -126,7 +136,11 @@ export function createTraffic(
     state: {
       id: index + 1,
       bodyId: -1,
-      position: { x: 0, y: BODY_HALF.y + 0.04, z: 0 },
+      position: {
+        x: 0,
+        y: CAR_MODELS[record.modelKind ?? pickCarModelKind(index + 1)].ride,
+        z: 0,
+      },
       rotation: { ...IDENTITY },
       forward: { x: 0, y: 0, z: -1 },
       velocity: { x: 0, y: 0, z: 0 },
@@ -134,6 +148,7 @@ export function createTraffic(
       direction: record.direction ?? 1,
       speed: record.speed,
       wrecked: false,
+      modelKind: record.modelKind ?? pickCarModelKind(index + 1),
     },
     wrecked: false,
     wreckPosition: { x: 0, y: 0, z: 0 },
@@ -179,6 +194,7 @@ export function createTraffic(
     });
     slots.push({
       bodyId,
+      kind: null,
       record: null,
       friction: DRIVE_FRICTION,
     });
@@ -222,7 +238,7 @@ export function createTraffic(
     const state = record.state;
     const facing = pose.heading + (state.direction < 0 ? Math.PI : 0);
     state.position.x = pose.x;
-    state.position.y = BODY_HALF.y + 0.04;
+    state.position.y = CAR_MODELS[state.modelKind].ride;
     state.position.z = pose.z;
     state.rotation.x = state.rotation.z = 0;
     state.rotation.y = Math.sin(facing / 2);
@@ -326,6 +342,14 @@ export function createTraffic(
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
     const state = record.state;
+    if (slot.kind !== state.modelKind) {
+      physics.setBodyShape(
+        slot.bodyId,
+        CAR_MODELS[state.modelKind].halfExtents,
+        BODY_MASS_DESC,
+      );
+      slot.kind = state.modelKind;
+    }
     physics.activateBody(slot.bodyId, state.position, state.rotation, true);
     setSlotProperties(slot, record.wrecked);
     slot.record = record;
@@ -630,63 +654,20 @@ export function createTrafficVisual(
   scene: Scene,
   traffic: ReturnType<typeof createTraffic>,
 ) {
-  const bodyGeometry = new BoxGeometry(1.9, 0.9, 4.2);
-  const cabinGeometry = new BoxGeometry(1.55, 0.6, 2.2);
-  cabinGeometry.translate(0, 0.7, -0.25);
-  const bodyMaterial = new MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.55,
-  });
-  const cabinMaterial = new MeshStandardMaterial({
-    color: 0x344656,
-    roughness: 0.42,
-  });
-  const capacity = traffic.recordCount;
-  const body = new InstancedMesh(bodyGeometry, bodyMaterial, capacity);
-  const cabin = new InstancedMesh(cabinGeometry, cabinMaterial, capacity);
-  const helper = new Object3D();
-  const colors = [0xff4c3a, 0xe8c741, 0x63c9f1, 0xd9e0e7].map(
-    (hex) => new Color(hex),
-  );
-  body.castShadow = cabin.castShadow = true;
-  body.receiveShadow = cabin.receiveShadow = true;
-  // Instance matrices move across a 10 km map; a one-time bounds sphere at
-  // their boot positions would cull the entire draw at a distant station.
-  body.frustumCulled = cabin.frustumCulled = false;
-  body.instanceMatrix.setUsage(DynamicDrawUsage);
-  cabin.instanceMatrix.setUsage(DynamicDrawUsage);
-  scene.add(body, cabin);
+  // The catalogue owns geometry, materials and the per-kind instanced draws;
+  // traffic only says which car is where.
+  const cars = createCarModelInstances(scene, traffic.recordCount);
   function update(): void {
-    let i = 0;
-    for (const state of traffic.visualStates) {
-      helper.position.set(state.position.x, state.position.y, state.position.z);
-      helper.quaternion.set(
-        state.rotation.x,
-        state.rotation.y,
-        state.rotation.z,
-        state.rotation.w,
-      );
-      helper.scale.setScalar(1);
-      helper.updateMatrix();
-      body.setMatrixAt(i, helper.matrix);
-      cabin.setMatrixAt(i, helper.matrix);
-      body.setColorAt(i, colors[state.id % colors.length]!);
-      i++;
-    }
-    body.count = cabin.count = i;
-    body.instanceMatrix.needsUpdate = true;
-    cabin.instanceMatrix.needsUpdate = true;
-    if (body.instanceColor) body.instanceColor.needsUpdate = true;
+    cars.begin();
+    for (const state of traffic.visualStates)
+      cars.push(state.modelKind, state.position, state.rotation, state.id);
+    cars.end();
   }
   update();
   return {
     update,
     dispose() {
-      scene.remove(body, cabin);
-      bodyGeometry.dispose();
-      cabinGeometry.dispose();
-      bodyMaterial.dispose();
-      cabinMaterial.dispose();
+      cars.dispose();
     },
   };
 }
