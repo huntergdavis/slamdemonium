@@ -158,7 +158,9 @@ for (const kind of ['rear', 'side'] as const) {
         );
         expect(struck).toBe(true);
         expect(trafficFlipped).toBe(false);
-        expect(trafficAirborneSteps * DT).toBeLessThan(0.2);
+        // CTO (2026-10-04): "hit cars should allow to lift off briefly."
+        // A hop is part of the crash; a sustained flight or rollover is not.
+        expect(trafficAirborneSteps * DT).toBeLessThan(1.0);
         if (kind === 'rear') {
           const travelLimit = { 20: 26, 40: 36, 60: 46 }[requestedClosing]!;
           expect(trafficTravelAtOne).toBeLessThan(travelLimit);
