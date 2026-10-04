@@ -64,6 +64,7 @@ describe('the 10 km circuit', () => {
     const added = map.traffic;
     expect(added.some((car) => car.direction === 1)).toBe(true);
     expect(added.some((car) => car.direction === -1)).toBe(true);
+    expect(new Set(added.map((car) => car.speed)).size).toBeGreaterThan(4);
     for (const car of added) {
       expect(car.laneSide).toBe(car.direction);
       expect(car.station).toBeLessThan(map.path.length);

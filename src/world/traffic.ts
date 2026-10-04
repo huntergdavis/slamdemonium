@@ -27,6 +27,14 @@ export interface TrafficCarRecord {
   readonly direction?: -1 | 1;
 }
 
+/** Centre-to-centre spacing in metres. The 12 m authored grid is the hard
+ * ceiling: no slider can create more cars than the CTO already drove. */
+export interface TrafficSpacingRules {
+  readonly density: number;
+  readonly minGap: number;
+  readonly maxGap: number;
+}
+
 /** Mutable, reused snapshots. Encounter ids never repeat, even when a pooled
  * body is recycled; bodyId is the physical identity for contact dispatch. */
 export interface TrafficCarState {
@@ -50,6 +58,9 @@ interface RecordState {
   wreckPosition: V3;
   wreckRotation: Quat;
   slot: Slot | null;
+  enabled: boolean;
+  driveSpeed: number;
+  leader: RecordState | null;
 }
 
 interface Slot {
@@ -72,6 +83,16 @@ const DRIVE_FRICTION = 0.05;
 const WRECK_FRICTION = 0.7;
 const RESTITUTION = 0.05;
 
+function noise(seed: number): number {
+  let x = seed | 0;
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+  return (x >>> 0) / 0x100000000;
+}
+
 function horizontalDistanceSquared(a: V3, x: number, z: number): number {
   const dx = a.x - x;
   const dz = a.z - z;
@@ -89,6 +110,7 @@ export function createTraffic(
   bodies: SurfacedBodies,
   path: RoadPath,
   records: readonly TrafficCarRecord[],
+  initialRules?: TrafficSpacingRules,
 ) {
   const authored: RecordState[] = records.map((record, index) => ({
     authored: record,
@@ -109,7 +131,12 @@ export function createTraffic(
     wreckPosition: { x: 0, y: 0, z: 0 },
     wreckRotation: { ...IDENTITY },
     slot: null,
+    enabled: true,
+    driveSpeed: record.speed,
+    leader: null,
   }));
+  let rules: TrafficSpacingRules | undefined;
+  let activeCount = authored.length;
   const slots: Slot[] = [];
   const visualStates: TrafficCarState[] = [];
   let physicalCount = 0;
@@ -190,13 +217,87 @@ export function createTraffic(
     state.forward.x = -Math.sin(facing);
     state.forward.y = 0;
     state.forward.z = -Math.cos(facing);
-    state.velocity.x = state.forward.x * record.authored.speed;
+    state.velocity.x = state.forward.x * record.driveSpeed;
     state.velocity.y = 0;
-    state.velocity.z = state.forward.z * record.authored.speed;
-    state.speed = record.authored.speed;
+    state.velocity.z = state.forward.z * record.driveSpeed;
+    state.speed = record.driveSpeed;
   }
 
   for (const record of authored) updateVisualPose(record);
+
+  /** A tuning edit only changes which stable records are present. Wrecks stay
+   * present and keep their ids; intact hidden cars continue around the lap. */
+  function setRules(next: TrafficSpacingRules): void {
+    const density = Math.max(0.35, Math.min(1, next.density));
+    const minGap = Math.max(12, next.minGap);
+    const maxGap = Math.max(minGap, next.maxGap);
+    if (
+      rules?.density === density &&
+      rules.minGap === minGap &&
+      rules.maxGap === maxGap
+    )
+      return;
+    rules = { density, minGap, maxGap };
+    activeCount = 0;
+    for (const record of authored) {
+      record.enabled = record.wrecked;
+      record.leader = null;
+    }
+    for (const direction of [1, -1] as const) {
+      const lane = authored
+        .filter(
+          (record) =>
+            !record.wrecked && (record.authored.direction ?? 1) === direction,
+        )
+        .sort((a, b) => direction * (a.station - b.station));
+      const chosen: RecordState[] = [];
+      let lastProgress = -Infinity;
+      let nextGap = 0;
+      for (const record of lane) {
+        const progress = direction * record.station;
+        if (progress - lastProgress + 0.001 < nextGap) continue;
+        record.enabled = true;
+        chosen.push(record);
+        lastProgress = progress;
+        const zone = noise(
+          Math.floor(record.station / 180) * 17 + direction * 131,
+        );
+        const variation = noise(record.state.id * 31 + direction * 761);
+        // Quantization against the 12 m authoring grid needs explicit short
+        // gaps. Otherwise even 12.1 m rounds every cluster up to 24 m.
+        const extra = (1 - density) * (maxGap - minGap);
+        nextGap =
+          zone < 0.55
+            ? variation < density
+              ? minGap
+              : minGap + 12 + extra
+            : zone > 0.85
+              ? maxGap + extra
+              : minGap + (maxGap - minGap) * (0.35 + variation * 0.3) + extra;
+      }
+      if (path.closed && chosen.length > 1) {
+        const first = chosen[0]!;
+        const last = chosen[chosen.length - 1]!;
+        const wrapGap =
+          (((direction * (first.station - last.station)) % path.length) +
+            path.length) %
+          path.length;
+        if (wrapGap < minGap) {
+          last.enabled = false;
+          chosen.pop();
+        }
+      }
+      if (chosen.length > 1)
+        for (let i = 0; i < chosen.length; i++)
+          chosen[i]!.leader =
+            chosen[i + 1] ?? (path.closed ? chosen[0]! : null);
+    }
+    for (const record of authored) {
+      if (!record.enabled && record.slot) demote(record);
+      if (record.enabled && !record.wrecked) updateVisualPose(record);
+      if (record.enabled) activeCount++;
+    }
+  }
 
   function promote(record: RecordState): void {
     const slot = slots.find((candidate) => candidate.record === null);
@@ -265,10 +366,24 @@ export function createTraffic(
       const state = record.state;
       if (!record.wrecked) {
         const direction = state.direction;
-        record.station += direction * record.authored.speed * dt;
+        if (rules && record.enabled && record.leader) {
+          const ahead = record.leader;
+          const gap =
+            (((direction * (ahead.station - record.station)) % path.length) +
+              path.length) %
+            path.length;
+          // A faster car queues behind a slower one, without lane swapping.
+          const followingSpeed = ahead.driveSpeed + (gap - rules.minGap) * 0.6;
+          record.driveSpeed = Math.max(
+            0,
+            Math.min(record.authored.speed, followingSpeed),
+          );
+        } else record.driveSpeed = record.authored.speed;
+        record.station += direction * record.driveSpeed * dt;
         if (record.station >= path.length) record.station -= path.length;
         else if (record.station < 0) record.station += path.length;
       }
+      if (!record.enabled) continue;
       const oldDistanceSquared = horizontalDistanceSquared(
         player,
         state.position.x,
@@ -316,10 +431,10 @@ export function createTraffic(
       );
       const nextHeading = Math.atan2(-(next.x - pose.x), -(next.z - pose.z));
       const desiredX =
-        -Math.sin(nextHeading) * record.authored.speed +
+        -Math.sin(nextHeading) * record.driveSpeed +
         Math.max(-3, Math.min(3, (pose.x - state.position.x) * 0.7));
       const desiredZ =
-        -Math.cos(nextHeading) * record.authored.speed +
+        -Math.cos(nextHeading) * record.driveSpeed +
         Math.max(-3, Math.min(3, (pose.z - state.position.z) * 0.7));
       // Soft speed hold, capped at 5 m/s²; a hit wins over the controller.
       force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
@@ -387,11 +502,17 @@ export function createTraffic(
     return undefined;
   }
 
+  if (initialRules) setRules(initialRules);
+
   return {
     /** Reused array and records; safe to iterate after physics without allocation. */
     states: visualStates as readonly TrafficCarState[],
     visualStates: visualStates as readonly TrafficCarState[],
     recordCount: authored.length,
+    get activeCount() {
+      return activeCount;
+    },
+    setRules,
     preStep,
     postStep,
     onPlayerContact,
