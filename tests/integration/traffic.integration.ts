@@ -341,7 +341,7 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
         first.bodyId,
         impact,
         { x: 0, y: 0, z: 1 },
-        { x: 0, y: 0, z: -30 },
+        { x: 0, y: 0, z: -23 },
       );
     }
   });
@@ -355,6 +355,7 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
   const crush = first.crush;
   expect(Math.max(...Object.values(crush))).toBeGreaterThan(0);
   const firstDepth = Math.max(crush.front, crush.rear);
+  expect(firstDepth).toBeGreaterThan(0.65);
   traffic.onPlayerContact(
     first.bodyId,
     impact,

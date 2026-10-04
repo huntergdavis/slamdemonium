@@ -133,7 +133,9 @@ function recordVisualCrush(
   nz: number,
   closingSpeed: number,
 ): void {
-  const strength = Math.max(0, Math.min(1, (closingSpeed - 8) / 44));
+  // A normal traffic slam is about 23 m/s of closing speed. Make its crush
+  // readable at chase distance without changing the maximum model envelope.
+  const strength = Math.max(0, Math.min(1, (closingSpeed - 5) / 25));
   if (strength === 0) return;
   const q = state.rotation;
   const qx = -q.x;
