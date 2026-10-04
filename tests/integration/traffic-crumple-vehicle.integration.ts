@@ -3,6 +3,7 @@ import {
   createImpactSeverity,
   estimateImpactSeverity,
 } from '../../src/core/impactSeverity';
+import { CAR_MODELS } from '../../src/world/carModels';
 import { sampleRoad } from '../../src/world/roadGenerator';
 import { createTraffic } from '../../src/world/traffic';
 import {
@@ -31,6 +32,7 @@ for (const kind of ['rear', 'side'] as const) {
         world.step(DT);
         traffic.postStep();
         const car = traffic.states[0]!;
+        const trafficRideHeight = CAR_MODELS[car.modelKind].ride;
         expect(car.bodyId).toBeGreaterThan(0);
         vehicle.respawn(
           kind === 'rear'
@@ -133,9 +135,9 @@ for (const kind of ['rear', 'side'] as const) {
           peakTrafficUp = Math.max(peakTrafficUp, car.velocity.y);
           peakTrafficHeight = Math.max(
             peakTrafficHeight,
-            car.position.y - 0.59,
+            car.position.y - trafficRideHeight,
           );
-          if (car.position.y > 0.8) trafficAirborneSteps++;
+          if (car.position.y > trafficRideHeight + 0.21) trafficAirborneSteps++;
           minTrafficUpY = Math.min(
             minTrafficUpY,
             1 - 2 * (car.rotation.x ** 2 + car.rotation.z ** 2),
