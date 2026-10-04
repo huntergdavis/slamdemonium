@@ -372,8 +372,20 @@ export function createCarModelInstances(
             part.tone === 'body'
               ? 0
               : Math.min(0.3, 0.16 * (endDamage + (left + right) * 0.4));
-          localDamage.makeScale(scaleX, 1, scaleZ);
-          localDamage.setPosition(shiftX, -roofDrop, shiftZ);
+          // Lengthwise crush disappears when seen straight from behind. Drop
+          // the struck face too, pivoting each part around its lower edge so
+          // its body stays on the road instead of floating as it buckles.
+          const silhouetteDamage =
+            part.zone === 'front'
+              ? front
+              : part.zone === 'rear'
+                ? rear
+                : Math.max(front, rear, left, right) * 0.75;
+          const scaleY = 1 - 0.55 * silhouetteDamage;
+          const partBottom = part.offset[1] - model.ride - part.size[1] / 2;
+          const shiftY = (1 - scaleY) * partBottom - roofDrop;
+          localDamage.makeScale(scaleX, scaleY, scaleZ);
+          localDamage.setPosition(shiftX, shiftY, shiftZ);
           damagedMatrix.multiplyMatrices(helper.matrix, localDamage);
           mesh.setMatrixAt(index, damagedMatrix);
         } else mesh.setMatrixAt(index, helper.matrix);

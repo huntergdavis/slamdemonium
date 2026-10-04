@@ -360,9 +360,17 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
     first.bodyId,
     impact,
     { x: 0, y: 0, z: 1 },
+    { x: 0, y: 0, z: -30 },
+  );
+  const mediumDepth = Math.max(crush.front, crush.rear);
+  expect(mediumDepth).toBeGreaterThan(firstDepth);
+  traffic.onPlayerContact(
+    first.bodyId,
+    impact,
+    { x: 0, y: 0, z: 1 },
     { x: 0, y: 0, z: -60 },
   );
-  expect(Math.max(crush.front, crush.rear)).toBeGreaterThan(firstDepth);
+  expect(Math.max(crush.front, crush.rear)).toBeGreaterThan(mediumDepth);
   traffic.onPlayerContact(
     first.bodyId,
     impact,

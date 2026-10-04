@@ -160,6 +160,8 @@ describe('car model catalogue', () => {
       expect(front.min.z).toBeCloseTo(intact.min.z, 5);
       expect(rear.min.z).toBeGreaterThan(intact.min.z + 0.5);
       expect(rear.max.z).toBeCloseTo(intact.max.z, 5);
+      expect(rear.max.y).toBeLessThan(intact.max.y - 0.25);
+      expect(rear.min.y).toBeCloseTo(intact.min.y, 5);
       cars.begin();
       cars.push(kind, position, q, 1);
       cars.push(kind, position, q, 2, {
