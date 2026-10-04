@@ -24,7 +24,7 @@ function fixture() {
     wheels: [0, 1, 2, 3].map((i) => ({
       centerLocal: {
         x: i % 2 ? 1.08 : -1.08,
-        y: -0.676,
+        y: -0.806,
         z: i < 2 ? -1.755 : 1.755,
       },
       steerAngle: 0,
