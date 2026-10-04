@@ -1,16 +1,16 @@
 export const VEHICLE_GEOMETRY = {
-  width: 1.8,
-  height: 1,
-  length: 4,
-  wheelbase: 2.6,
-  track: 1.6,
-  wheelRadius: 0.34,
+  width: 2.43,
+  height: 1.3,
+  length: 5.4,
+  wheelbase: 3.51,
+  track: 2.16,
+  wheelRadius: 0.44,
   maxDroop: 0.1,
   mounts: [
-    { x: -0.8, y: -0.2, z: -1.3 },
-    { x: 0.8, y: -0.2, z: -1.3 },
-    { x: -0.8, y: -0.2, z: 1.3 },
-    { x: 0.8, y: -0.2, z: 1.3 },
+    { x: -1.08, y: -0.27, z: -1.755 },
+    { x: 1.08, y: -0.27, z: -1.755 },
+    { x: -1.08, y: -0.27, z: 1.755 },
+    { x: 1.08, y: -0.27, z: 1.755 },
   ],
 } as const;
 export const DEG = Math.PI / 180;

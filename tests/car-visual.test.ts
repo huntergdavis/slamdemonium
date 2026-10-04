@@ -22,16 +22,20 @@ function fixture() {
     brake01: 0,
     handbrake01: 0,
     wheels: [0, 1, 2, 3].map((i) => ({
-      centerLocal: { x: i % 2 ? 0.8 : -0.8, y: -0.52, z: i < 2 ? -1.3 : 1.3 },
+      centerLocal: {
+        x: i % 2 ? 1.08 : -1.08,
+        y: -0.676,
+        z: i < 2 ? -1.755 : 1.755,
+      },
       steerAngle: 0,
       spinAngle: 0,
       grounded: true,
       spinning: false,
       locked: false,
       contactPointWorld: {
-        x: 130 + (i % 2 ? 0.8 : -0.8),
+        x: 130 + (i % 2 ? 1.08 : -1.08),
         y: 0,
-        z: i < 2 ? -1.3 : 1.3,
+        z: i < 2 ? -1.755 : 1.755,
       },
       tireForceWorld: { x: 0, y: 0, z: -4000 },
     })) as [MutableWheel, MutableWheel, MutableWheel, MutableWheel],
@@ -44,41 +48,51 @@ type MutableWheel = {
 };
 
 describe('car visual contract', () => {
-  it('matches D1 dimensions, chevron endpoints, strips and wheel witness placement', () => {
+  it('matches the enlarged body, chevron endpoints and wheel placement', () => {
     const car = createCarVisual(new Scene());
     const size = new Vector3();
     new Box3()
       .setFromObject(car.root.getObjectByName('car.body')!)
       .getSize(size);
-    expect(size.toArray()).toEqual([1.8, 1, 4]);
+    expect(size.toArray()).toEqual([2.43, 1.3, 5.4]);
     for (const [name, a, b] of [
-      ['left', [-0.62, 0.503, -0.85], [0, 0.503, -1.72]],
-      ['right', [0, 0.503, -1.72], [0.62, 0.503, -0.85]],
+      ['left', [-0.837, 0.653, -1.1475], [0, 0.653, -2.322]],
+      ['right', [0, 0.653, -2.322], [0.837, 0.653, -1.1475]],
     ] as const) {
       const strip = car.root.getObjectByName('car.chevron.' + name)!;
       const start = strip.localToWorld(new Vector3(0, -0.5, 0));
       const end = strip.localToWorld(new Vector3(0, 0.5, 0));
       expect(start.distanceTo(new Vector3(...a))).toBeLessThan(1e-12);
       expect(end.distanceTo(new Vector3(...b))).toBeLessThan(1e-12);
-      expect(strip.scale.x).toBe(0.16);
+      expect(strip.scale.x).toBeCloseTo(0.216);
     }
     const nose = car.root.getObjectByName('car.nose')!;
-    expect(nose.position.toArray()).toEqual([0, 0.125, -2.003]);
-    expect(nose.scale.toArray()).toEqual([0.26, 0.75, 1]);
+    expect(
+      nose.position.distanceTo(new Vector3(0, 0.1625, -2.703)),
+    ).toBeLessThan(1e-12);
+    expect(nose.scale.distanceTo(new Vector3(0.351, 0.975, 1))).toBeLessThan(
+      1e-12,
+    );
     const tail = car.root.getObjectByName('car.tail')!;
-    expect(tail.position.toArray()).toEqual([0, 0.08, 2.003]);
-    expect(tail.scale.toArray()).toEqual([1.44, 0.14, 1]);
+    expect(tail.position.distanceTo(new Vector3(0, 0.104, 2.703))).toBeLessThan(
+      1e-12,
+    );
+    expect(tail.scale.distanceTo(new Vector3(1.944, 0.182, 1))).toBeLessThan(
+      1e-12,
+    );
     for (const [i, name] of ['FL', 'FR', 'RL', 'RR'].entries()) {
       const wheel = car.root.getObjectByName('car.wheel.' + name)!;
       new Box3().setFromObject(wheel).getSize(size);
-      expect(size.x).toBeCloseTo(0.24);
-      expect(size.y).toBeCloseTo(0.68);
-      expect(size.z).toBeCloseTo(0.68);
+      expect(size.x).toBeCloseTo(0.324);
+      expect(size.y).toBeCloseTo(0.88);
+      expect(size.z).toBeCloseTo(0.88);
       const witness = car.root.getObjectByName(
         'car.wheel.' + name + '.witness',
       )!;
-      expect(witness.position.x).toBe(i % 2 ? 0.123 : -0.123);
-      expect(witness.scale.toArray()).toEqual([0.05, 0.34, 1]);
+      expect(witness.position.x).toBeCloseTo(i % 2 ? 0.16605 : -0.16605);
+      expect(witness.scale.x).toBeCloseTo(0.0675);
+      expect(witness.scale.y).toBeCloseTo(0.44);
+      expect(witness.scale.z).toBe(1);
     }
     car.dispose();
   });
@@ -176,12 +190,12 @@ describe('car visual contract', () => {
     car.update(state);
     expect(velocity.rotation.y).toBeCloseTo(-Math.PI / 2);
     const force = scene.getObjectByName('car.gizmos.force.FL')!;
-    expect(force.position.toArray()).toEqual([129.2, 0.06, -1.3]);
+    expect(force.position.toArray()).toEqual([128.92, 0.06, -1.755]);
     const tip = force
       .getObjectByName('car.gizmos.force.FL.head')!
       .localToWorld(new Vector3(0, 0.5, 0));
-    expect(tip.x).toBeCloseTo(129.2);
-    expect(tip.z).toBeCloseTo(-3.3); // 4 kN = 2 m, remains world-forward.
+    expect(tip.x).toBeCloseTo(128.92);
+    expect(tip.z).toBeCloseTo(-3.755); // 4 kN = 2 m, remains world-forward.
     state.wheels[0].grounded = false;
     state.wheels[1].tireForceWorld = { x: 0, y: 0, z: 0 };
     state.velocityWorld = { x: 0, y: 100, z: 0 };

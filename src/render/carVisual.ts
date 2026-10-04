@@ -17,11 +17,15 @@ import {
   type Scene,
 } from 'three';
 import type { VehicleVisualState } from './carVisualState';
+import { VEHICLE_GEOMETRY as G } from '../vehicle/constants';
 
 export type { VehicleVisualState, WheelVisualState } from './carVisualState';
 
 const TAU = Math.PI * 2;
 const WHEEL_NAMES = ['FL', 'FR', 'RL', 'RR'] as const;
+const WIDTH_SCALE = G.width / 1.8;
+const HEIGHT_SCALE = G.height;
+const LENGTH_SCALE = G.length / 4;
 
 /** Mount once; update with render-ready state. Owns no physics, input or camera. */
 export function createCarVisual(scene: Scene) {
@@ -86,7 +90,7 @@ export function createCarVisual(scene: Scene) {
     return object;
   }
   const body = mesh(root, 'car.body', unitBox, bodyMaterial);
-  body.scale.set(1.8, 1, 4);
+  body.scale.set(G.width, G.height, G.length);
   body.castShadow = true;
   body.receiveShadow = true;
 
@@ -99,24 +103,38 @@ export function createCarVisual(scene: Scene) {
     bz: number,
   ) {
     const strip = mesh(root, name, unitPlane, noseMaterial);
-    strip.position.set((ax + bx) / 2, 0.503, (az + bz) / 2);
+    strip.position.set(
+      ((ax + bx) / 2) * WIDTH_SCALE,
+      G.height / 2 + 0.003,
+      ((az + bz) / 2) * LENGTH_SCALE,
+    );
     strip.rotation.set(-Math.PI / 2, 0, Math.atan2(ax - bx, az - bz));
-    strip.scale.set(0.16, Math.hypot(bx - ax, bz - az), 1);
+    strip.scale.set(
+      0.16 * WIDTH_SCALE,
+      Math.hypot((bx - ax) * WIDTH_SCALE, (bz - az) * LENGTH_SCALE),
+      1,
+    );
   }
   topStrip('car.chevron.left', -0.62, -0.85, 0, -1.72);
   topStrip('car.chevron.right', 0, -1.72, 0.62, -0.85);
   const nose = mesh(root, 'car.nose', unitPlane, noseMaterial);
-  nose.position.set(0, 0.125, -2.003);
-  nose.scale.set(0.26, 0.75, 1);
+  nose.position.set(0, 0.125 * HEIGHT_SCALE, -G.length / 2 - 0.003);
+  nose.scale.set(0.26 * WIDTH_SCALE, 0.75 * HEIGHT_SCALE, 1);
   const tail = mesh(root, 'car.tail', unitPlane, tailMaterial);
-  tail.position.set(0, 0.08, 2.003);
-  tail.scale.set(1.44, 0.14, 1);
+  tail.position.set(0, 0.08 * HEIGHT_SCALE, G.length / 2 + 0.003);
+  tail.scale.set(1.44 * WIDTH_SCALE, 0.14 * HEIGHT_SCALE, 1);
 
-  const wheelGeometry = geometry(new BoxGeometry(0.24, 0.68, 0.68));
+  const wheelGeometry = geometry(
+    new BoxGeometry(0.24 * WIDTH_SCALE, 2 * G.wheelRadius, 2 * G.wheelRadius),
+  );
   const wheels = WHEEL_NAMES.map((name, index) => {
     const pivot = new Group();
     pivot.name = 'car.wheel.' + name + '.steer';
-    pivot.position.set(index % 2 ? 0.8 : -0.8, -0.52, index < 2 ? -1.3 : 1.3);
+    pivot.position.set(
+      index % 2 ? G.track / 2 : -G.track / 2,
+      -0.52 * HEIGHT_SCALE,
+      index < 2 ? -G.wheelbase / 2 : G.wheelbase / 2,
+    );
     root.add(pivot);
     const spin = new Group();
     spin.name = 'car.wheel.' + name + '.spin';
@@ -131,9 +149,13 @@ export function createCarVisual(scene: Scene) {
       unitPlane,
       witnessMaterial,
     );
-    stripe.position.set(index % 2 ? 0.123 : -0.123, 0.17, 0);
+    stripe.position.set(
+      index % 2 ? 0.123 * WIDTH_SCALE : -0.123 * WIDTH_SCALE,
+      G.wheelRadius / 2,
+      0,
+    );
     stripe.rotation.y = Math.PI / 2;
-    stripe.scale.set(0.05, 0.34, 1);
+    stripe.scale.set(0.05 * WIDTH_SCALE, G.wheelRadius, 1);
     return { pivot, spin };
   });
 
