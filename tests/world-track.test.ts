@@ -177,7 +177,7 @@ describe('track scene and physics seam', () => {
     expect(track.checkKillPlane({ x: 0, y: -50, z: 0 }, respawn)).toBe(false);
     expect(track.checkKillPlane({ x: 0, y: -50.01, z: 0 }, respawn)).toBe(true);
     expect(respawn).toHaveBeenCalledExactlyOnceWith(track.spawn);
-    expect(track.spawn.position).toEqual({ x: 130, y: 0.86, z: 0 });
+    expect(track.spawn.position).toEqual({ x: 130, y: 1.1, z: 0 });
     expect(track.spawn.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
     track.dispose();
   });
@@ -211,7 +211,7 @@ describe('track scene and physics seam', () => {
       asphalt: { size: 128 },
       spawn: { x: 0, z: -120, heading: Math.PI },
     });
-    expect(track.spawn.position).toEqual({ x: 0, y: 0.86, z: -120 });
+    expect(track.spawn.position).toEqual({ x: 0, y: 1.1, z: -120 });
     // Heading pi faces +Z: the forward vector (0,0,-1) rotated by the quaternion.
     const q = track.spawn.rotation;
     const forward = new Vector3(0, 0, -1).applyQuaternion(

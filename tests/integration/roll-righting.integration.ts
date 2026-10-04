@@ -89,7 +89,7 @@ it('does not fight an inverted car that is riding a loop: no roll rate, no drift
     const q = new Quaternion().setFromRotationMatrix(
       new Matrix4().makeBasis(right, up, back),
     );
-    const spawn = p.clone().addScaledVector(up, 0.86);
+    const spawn = p.clone().addScaledVector(up, 1.1);
     setPad({
       throttle: 0.3,
       brake: 0,

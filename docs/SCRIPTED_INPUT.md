@@ -19,15 +19,15 @@ A script is a list of driver inputs indexed by physics step, plus everything nee
 
 A script is one JSON document, version 1.
 
-| Field | What it holds |
-|---|---|
-| `version` | Exactly `1`. |
-| `name` | A non-empty human-readable name. |
-| `seed` | Unsigned 32-bit integer handed to the reset. Reserved for scenario randomness; the vehicle itself uses none. |
-| `spawn` | `position` in metres and a unit quaternion `rotation`, Y up. |
-| `tuning` | **Every** key currently in the tuning schema (`PARAM_DEFS`) with its exact value, presentation settings included; 71 keys at the time of writing. Nothing is filled in from defaults. |
-| `durationSteps` | How many physics steps the script runs. A positive integer. |
-| `frames` | Input changes as `{ "step", "input" }`. Steps are integers, strictly increasing, starting at 0 and all below `durationSteps`. |
+| Field           | What it holds                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`       | Exactly `1`.                                                                                                                                                                          |
+| `name`          | A non-empty human-readable name.                                                                                                                                                      |
+| `seed`          | Unsigned 32-bit integer handed to the reset. Reserved for scenario randomness; the vehicle itself uses none.                                                                          |
+| `spawn`         | `position` in metres and a unit quaternion `rotation`, Y up.                                                                                                                          |
+| `tuning`        | **Every** key currently in the tuning schema (`PARAM_DEFS`) with its exact value, presentation settings included; 71 keys at the time of writing. Nothing is filled in from defaults. |
+| `durationSteps` | How many physics steps the script runs. A positive integer.                                                                                                                           |
+| `frames`        | Input changes as `{ "step", "input" }`. Steps are integers, strictly increasing, starting at 0 and all below `durationSteps`.                                                         |
 
 Each `input` carries all six fields every time: `throttle` and `brake` from 0 to 1, `steer` from -1 to 1 with positive meaning left, `handbrake` and `boost` as booleans, and `source` as `"keyboard"` or `"gamepad"`. The source matters because the vehicle filters keyboard and controller input differently. An input holds until the next frame; the last frame holds through step `durationSteps - 1`.
 
@@ -40,15 +40,57 @@ A minimal example, the shipped handbrake turn, has four frames: settle for half 
   "version": 1,
   "name": "handbrake-turn",
   "seed": 20903,
-  "spawn": { "position": { "x": 130, "y": 0.86, "z": 0 },
-             "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 } },
+  "spawn": {
+    "position": { "x": 130, "y": 1.1, "z": 0 },
+    "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 }
+  },
   "tuning": { "gravity": 20, "timeScale": 1, "... every schema key ...": 0 },
   "durationSteps": 420,
   "frames": [
-    { "step": 0,   "input": { "throttle": 0,   "brake": 0, "steer": 0,    "handbrake": false, "boost": false, "source": "gamepad" } },
-    { "step": 60,  "input": { "throttle": 1,   "brake": 0, "steer": 0,    "handbrake": false, "boost": false, "source": "gamepad" } },
-    { "step": 270, "input": { "throttle": 0.3, "brake": 0, "steer": 0.65, "handbrake": true,  "boost": false, "source": "gamepad" } },
-    { "step": 330, "input": { "throttle": 0.3, "brake": 0, "steer": 0.65, "handbrake": false, "boost": false, "source": "gamepad" } }
+    {
+      "step": 0,
+      "input": {
+        "throttle": 0,
+        "brake": 0,
+        "steer": 0,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 60,
+      "input": {
+        "throttle": 1,
+        "brake": 0,
+        "steer": 0,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 270,
+      "input": {
+        "throttle": 0.3,
+        "brake": 0,
+        "steer": 0.65,
+        "handbrake": true,
+        "boost": false,
+        "source": "gamepad"
+      }
+    },
+    {
+      "step": 330,
+      "input": {
+        "throttle": 0.3,
+        "brake": 0,
+        "steer": 0.65,
+        "handbrake": false,
+        "boost": false,
+        "source": "gamepad"
+      }
+    }
   ]
 }
 ```
@@ -85,10 +127,10 @@ Telemetry CSV recording (F9) is separate from all of this and may capture inject
 ### In a test
 
 ```ts
-scripts.noteRespawn(spawn, seed);      // boot does this after a real respawn
-scripts.startRecording('my-drive');    // refuses unless a respawn just happened
+scripts.noteRespawn(spawn, seed); // boot does this after a real respawn
+scripts.startRecording('my-drive'); // refuses unless a respawn just happened
 // ... drive: loop.stepMany(n) with inputs arriving through the real mapper ...
-const script = scripts.stopRecording();   // a validated InputScript
+const script = scripts.stopRecording(); // a validated InputScript
 writeFileSync('my-drive.json', exportInputScript(script));
 ```
 
@@ -101,7 +143,7 @@ Recording is a programmatic contributor capability, by decision. There is no hot
 ## Replaying a drive
 
 ```ts
-scripts.load(document, { tuning: 'apply' });   // or { tuning: 'verify' }
+scripts.load(document, { tuning: 'apply' }); // or { tuning: 'verify' }
 loop.stepMany(scripts.progress().totalSteps);
 const result = scripts.result();
 ```
@@ -120,7 +162,7 @@ In the browser the controller is exposed as `window.__game.scripts` with `load`,
 ## Writing a scenario by hand
 
 1. Copy `src/input/examples/standing-start.json`. Its header is a complete, valid tuning set at defaults with the ring spawn.
-2. Change `name`, and `spawn` if you want to start elsewhere. The ring centre line is radius 130 m; the shipped spawn is `(130, 0.86, 0)` facing -Z, which is the standing-start position of the lap timer.
+2. Change `name`, and `spawn` if you want to start elsewhere. The ring centre line is radius 130 m; the shipped spawn is `(130, 1.1, 0)` facing -Z, which is the standing-start position of the lap timer.
 3. Write `frames`. Think in steps at the header's `physicsHz` (120 by default, so 60 steps is half a second). Start with a short neutral hold so the suspension settles. Every frame must carry all six input fields.
 4. Set `durationSteps` to the last step you care about plus one.
 5. Load it with `{ tuning: 'apply' }` and step `progress().totalSteps`. If it fails to parse, the error names the field.
@@ -131,12 +173,12 @@ Keep controls to sensible precision, hundredths is plenty. If you want a differe
 
 `assertReplay(result, expectations)` throws on the first failure. It always checks one thing you did not ask for: **no non-finite value** appeared in telemetry at any step, and the vehicle's recovery counter did not increase. A NaN that the vehicle repaired before publishing still fails the replay.
 
-| Expectation | Checks |
-|---|---|
-| `elapsedSteps` | `completedSteps` equals this number exactly. |
-| `finalPose` | Final position within `positionTolerance` metres and final rotation within `rotationTolerance` radians of `pose`. Quaternion sign is ignored. |
-| `peakSpeed` | Highest speed during the run, in m/s, inside `{ min, max }`. |
-| `peakAbsSlideAngle` | Largest absolute slide angle, in radians, inside `{ min, max }`. |
+| Expectation         | Checks                                                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `elapsedSteps`      | `completedSteps` equals this number exactly.                                                                                                  |
+| `finalPose`         | Final position within `positionTolerance` metres and final rotation within `rotationTolerance` radians of `pose`. Quaternion sign is ignored. |
+| `peakSpeed`         | Highest speed during the run, in m/s, inside `{ min, max }`.                                                                                  |
+| `peakAbsSlideAngle` | Largest absolute slide angle, in radians, inside `{ min, max }`.                                                                              |
 
 A typical drift test asserts `peakAbsSlideAngle: { min: 0.1, max: Math.PI }` to prove the car actually slid. A regression test asserts `finalPose` against a stored result with tolerances around `1e-4` m and `1e-5` rad, which is what the shipped examples use.
 
@@ -146,23 +188,23 @@ A typical drift test asserts `peakAbsSlideAngle: { min: 0.1, max: Math.PI }` to 
 
 Every `load` and every `startRecording` creates a fresh lap timer from the header's `physicsHz` and spawn. You do not construct one yourself in normal use. Its geometry defaults to the shipped ring:
 
-| Option | Default | Meaning |
-|---|---|---|
-| `physicsHz` | required | Converts lap steps to seconds. |
-| `checkpointCount` | 8 | Ordered gates around the ring. |
-| `centerLineRadius` | 130 m | Where the gates sit. |
+| Option                       | Default      | Meaning                                            |
+| ---------------------------- | ------------ | -------------------------------------------------- |
+| `physicsHz`                  | required     | Converts lap steps to seconds.                     |
+| `checkpointCount`            | 8            | Ordered gates around the ring.                     |
+| `centerLineRadius`           | 130 m        | Where the gates sit.                               |
 | `innerRadius`, `outerRadius` | 110 m, 150 m | Leave this annulus and the attempt is invalidated. |
 
 Gates run counter-clockwise from the start line on the positive X axis. A script that spawns on that line, anywhere between 110 and 150 m out with z near zero, begins a standing-start lap at step zero. A script that spawns anywhere else has to cross the start gate first before a lap begins.
 
 `lapProgress()` returns:
 
-| Field | Meaning |
-|---|---|
-| `completedLaps` | Full ordered laps so far. |
-| `nextCheckpoint` | Index of the gate the car must cross next. |
+| Field                            | Meaning                                                                                                               |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `completedLaps`                  | Full ordered laps so far.                                                                                             |
+| `nextCheckpoint`                 | Index of the gate the car must cross next.                                                                            |
 | `lastLapSteps`, `lastLapSeconds` | The most recent complete lap, in physics steps and seconds at the header's `physicsHz`. `null` until a lap completes. |
-| `invalidated` | True once the car leaves the 110 to 150 m ring annulus or teleports. Re-enter through the start gate to try again. |
+| `invalidated`                    | True once the car leaves the 110 to 150 m ring annulus or teleports. Re-enter through the start gate to try again.    |
 
 Gates only count forward crossings; driving the ring backwards cannot advance. Timing uses completed physics steps only, never the wall clock.
 
@@ -172,16 +214,16 @@ The shipped `ring-lap.json` completes one lap in **5,169 steps, 43.075 seconds**
 
 ## Where things are
 
-| Path | What |
-|---|---|
-| `src/input/SCRIPTS.md` | The contract: format, fresh-respawn rule, boot integration, EOF gating. |
-| `src/input/script.ts` | `ScriptController` and re-exports of everything below. |
-| `src/input/scriptFormat.ts` | `parseInputScript`, `exportInputScript`, the types. |
-| `src/input/scriptAssertions.ts` | `assertReplay`, `ReplayResult`, `ReplayExpectations`. |
-| `src/input/lapTimer.ts` | `RingLapTimer`, `LapProgress`, `assertCompletedLap`. |
-| `src/input/examples/` | Three validated scripts and their README. |
+| Path                            | What                                                                          |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `src/input/SCRIPTS.md`          | The contract: format, fresh-respawn rule, boot integration, EOF gating.       |
+| `src/input/script.ts`           | `ScriptController` and re-exports of everything below.                        |
+| `src/input/scriptFormat.ts`     | `parseInputScript`, `exportInputScript`, the types.                           |
+| `src/input/scriptAssertions.ts` | `assertReplay`, `ReplayResult`, `ReplayExpectations`.                         |
+| `src/input/lapTimer.ts`         | `RingLapTimer`, `LapProgress`, `assertCompletedLap`.                          |
+| `src/input/examples/`           | Three validated scripts and their README.                                     |
 | `tests/script-examples.test.ts` | Replays each example twice in one physics world and checks identical results. |
-| `tests/scriptVehicleHarness.ts` | How to stand up vehicle, mapper, controller and loop in a test. |
+| `tests/scriptVehicleHarness.ts` | How to stand up vehicle, mapper, controller and loop in a test.               |
 
 To re-author the examples and their reference results after a reviewed vehicle or schema change:
 

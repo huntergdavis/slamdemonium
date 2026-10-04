@@ -101,7 +101,7 @@ export async function attempt(
       ),
     );
     vehicle.respawn(
-      { x: start.x, y: 0.86, z: start.z },
+      { x: start.x, y: 1.1, z: start.z },
       { x: q.x, y: q.y, z: q.z, w: q.w },
     );
     world.setLinearVelocity(vehicle.body, {

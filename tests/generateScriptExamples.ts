@@ -46,7 +46,9 @@ export async function generateScriptExamples() {
         if (kind === 'ring-lap' && step >= 60 && step % 12 === 0) {
           const s = rig.vehicle.telemetry;
           const angle = Math.atan2(-s.position.z, s.position.x);
-          const radiusError = Math.hypot(s.position.x, s.position.z) - 130;
+          // The outer prop bank starts near radius 137 m; aim 4 m inside the
+          // painted centreline so this recorded lap retains 10 m clearance.
+          const radiusError = Math.hypot(s.position.x, s.position.z) - 126;
           forward.set(0, 0, -1).applyQuaternion(s.rotation);
           const yaw = Math.atan2(-forward.x, -forward.z);
           const error = Math.atan2(

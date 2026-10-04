@@ -56,7 +56,7 @@ async function reverse(swing: number) {
     const s = vehicle.telemetry;
     const camera = new PerspectiveCamera();
     const cam = new CameraRig(camera, store, { lineOfSight: lineOfSight(rig) });
-    vehicle.respawn({ x: 130, y: 0.86, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+    vehicle.respawn({ x: 130, y: 1.1, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: 14 }); // Car faces -Z.
     const previous = new Vector3();
     const travel = new Vector3();
@@ -116,7 +116,7 @@ it('does not swing for a reverse blip shorter than the hold', async () => {
     const { vehicle, loop, setPad, store, world } = rig;
     const s = vehicle.telemetry;
     const cam = new CameraRig(new PerspectiveCamera(), store);
-    vehicle.respawn({ x: 130, y: 0.86, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+    vehicle.respawn({ x: 130, y: 1.1, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: 6 });
     const travel = new Vector3();
     let facingTravel = 0;
@@ -167,7 +167,7 @@ it('keeps the car in sight all the way round a loop', async () => {
     const q = new Quaternion().setFromRotationMatrix(
       new Matrix4().makeBasis(right, pose.up, back),
     );
-    const spawn = pose.point.clone().addScaledVector(pose.up, 0.86);
+    const spawn = pose.point.clone().addScaledVector(pose.up, 1.1);
     vehicle.respawn(
       { x: spawn.x, y: spawn.y, z: spawn.z },
       { x: q.x, y: q.y, z: q.z, w: q.w },

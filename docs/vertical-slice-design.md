@@ -257,14 +257,14 @@ The car is **one rigid body** (a box) owned by the physics engine, with gravity,
 
 | Item | Value |
 |---|---|
-| Chassis box (full size) | length 4.0 m (Z), height 1.0 m (Y), width 1.8 m (X) |
-| Wheelbase / track | 2.6 m / 1.6 m |
-| Wheel radius | 0.34 m (visual and ray-cast offset) |
-| Wheel mount points (chassis local) | FL (-0.8, -0.2, -1.3), FR (+0.8, -0.2, -1.3), RL (-0.8, -0.2, +1.3), RR (+0.8, -0.2, +1.3) |
+| Chassis box (full size) | length 5.4 m (Z), height 1.3 m (Y), width 2.43 m (X) |
+| Wheelbase / track | 3.51 m / 2.16 m |
+| Wheel radius | 0.44 m (visual and ray-cast offset) |
+| Wheel mount points (chassis local) | FL (-1.08, -0.4, -1.755), FR (+1.08, -0.4, -1.755), RL (-1.08, -0.4, +1.755), RR (+1.08, -0.4, +1.755) |
 | Centre of mass | box centre plus `comLongOffset` (Z, positive forward) and `comHeightOffset` (Y) |
 | Sprung mass per wheel | `mass / 4`, adjusted for `comLongOffset` (front share = 0.5 - comLongOffset / wheelbase) |
 
-At default settings the box centre rides about 0.86 m above the pavement and the underside about 0.36 m. Static suspension compression is about 8 cm.
+At default settings the enlarged box centre settles about 1.13 m above the pavement and the underside about 0.48 m. The wheel mounts sit 0.4 m below the chassis centre to preserve loop clearance.
 
 ### 6.3 Per-step pipeline
 
@@ -549,7 +549,7 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 | loadSensitivity | Tires | | 0.15 | 0 | 0.5 | 0.01 | | How much grip per unit load falls as load rises (weight transfer consequence). |
 | downforceAtTopSpeed | Tires | x weight | 0.6 | 0 | 3.0 | 0.05 | Q | Extra downward force at top speed as a multiple of weight (scales with speed squared). |
 | lowSpeedBlend | Tires | m/s | 3.0 | 0.5 | 10.0 | 0.1 | A | Speed below which the tire model blends to the stable low-speed model. |
-| steerMaxLowSpeed | Steering | deg | 32 | 5 | 60 | 0.5 | | Maximum steering angle at standstill. |
+| steerMaxLowSpeed | Steering | deg | 40 | 5 | 60 | 0.5 | | Maximum steering angle at standstill. |
 | steerMaxTopSpeed | Steering | deg | 5 | 1 | 30 | 0.5 | Q | Maximum steering angle at top speed. Lower is calmer at speed. |
 | steerSpeedExp | Steering | | 0.5 | 0.2 | 3.0 | 0.05 | | How quickly steering lock shrinks with speed. Low shrinks early. |
 | steerRiseTime | Steering | s | 0.18 | 0.02 | 1.5 | 0.01 | | Keyboard: time from centre to full lock. |
@@ -932,4 +932,3 @@ Package versions were read from the public npm registry on 2026-09-20 (`three` 0
 - Jolt Physics (C++): https://github.com/jrouwe/JoltPhysics
 - Rapier JavaScript determinism guide: https://rapier.rs/docs/user_guides/javascript/determinism/
 - three.js WebGPURenderer manual (for a later renderer evaluation): https://threejs.org/manual/en/webgpurenderer.html
-

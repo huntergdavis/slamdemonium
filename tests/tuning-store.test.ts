@@ -12,7 +12,7 @@ describe('TuningStore', () => {
     expect(first.get('gravity')).toBe(20);
     expect(second.get('gravity')).toBe(20);
     expect(first.getRadians('steerMaxLowSpeed')).toBeCloseTo(
-      (32 * Math.PI) / 180,
+      (40 * Math.PI) / 180,
     );
   });
 

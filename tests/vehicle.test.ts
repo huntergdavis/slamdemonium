@@ -67,7 +67,7 @@ it('supports its weight on four rays, launches, and coasts without gaining speed
   const { vehicle, step } = await setup();
   const s = vehicle.telemetry;
   expect(s.groundedWheels).toBe(4);
-  expect(s.position.y).toBeCloseTo(0.86, 1);
+  expect(s.position.y).toBeCloseTo(1.13, 1);
   expect(s.wheels.reduce((sum, wheel) => sum + wheel.Fz, 0)).toBeCloseTo(
     1300 * 20,
     -1,

@@ -5,7 +5,7 @@
   "spawn": {
     "position": {
       "x": 130,
-      "y": 0.86,
+      "y": 1.1,
       "z": 0
     },
     "rotation": {
@@ -16,6 +16,7 @@
     }
   },
   "tuning": {
+    "hapticsIntensity": 0.35,
     "gravity": 20,
     "timeScale": 1,
     "surfaceGrip": 1,
@@ -60,7 +61,7 @@
     "loadSensitivity": 0.15,
     "downforceAtTopSpeed": 0.6,
     "lowSpeedBlend": 3,
-    "steerMaxLowSpeed": 32,
+    "steerMaxLowSpeed": 40,
     "steerMaxTopSpeed": 5,
     "steerSpeedExp": 0.5,
     "steerRiseTime": 0.18,
@@ -104,10 +105,14 @@
     "camVelocityBlend": 0.5,
     "camShake": 0.3,
     "camRollGain": 3,
+    "camReverseSwing": 1,
+    "camTrackFollow": 1,
     "speedLinesStrength": 0.5,
     "vignetteStrength": 0.5,
-    "hapticsIntensity": 0.35,
     "sfxVolume": 0.7,
+    "airControlAuthority": 0.25,
+    "airDamping": 0.8,
+    "airAutoLevel": 0.5,
     "engineCharacter": 0.75,
     "engineRevLift": 1850,
     "rpmRampExponent": 1.2,
@@ -117,12 +122,7 @@
     "firingRateScale": 1.15,
     "engineLevel": 2,
     "gearSpacing": 1.6,
-    "gearCount": 6,
-    "airControlAuthority": 0.25,
-    "airDamping": 0.8,
-    "airAutoLevel": 0.5,
-    "camReverseSwing": 1,
-    "camTrackFollow": 1
+    "gearCount": 6
   },
   "durationSteps": 420,
   "frames": [

@@ -17,7 +17,7 @@ it('gives one kick and one boost grant per crossing, and re-arms on respawn', as
     const grant = store.get('padBoost');
     expect(kick).toBe(8);
     expect(grant).toBe(0.05);
-    vehicle.respawn({ x: 130, y: 0.86, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+    vehicle.respawn({ x: 130, y: 1.1, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -20 });
     setPad({
       throttle: 0,
@@ -50,7 +50,7 @@ it('gives one kick and one boost grant per crossing, and re-arms on respawn', as
     expect(s.boostMeter).toBeCloseTo(grant, 6);
     // Sitting still on the pad earns nothing more.
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: 0 });
-    vehicle.respawn({ x: 130, y: 0.86, z: -66 }, { x: 0, y: 0, z: 0, w: 1 });
+    vehicle.respawn({ x: 130, y: 1.1, z: -66 }, { x: 0, y: 0, z: 0, w: 1 });
     tracker.update(130, -66); // Already inside after the teleport: no edge.
     for (let step = 0; step < HZ; step++) {
       loop.stepMany(1);

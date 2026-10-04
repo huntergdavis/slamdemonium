@@ -23,7 +23,7 @@ async function jump(rampIndex: number, speed: number) {
     installRamps(surfacedBodies, [ramp]);
     const f = { x: -Math.sin(ramp.heading), z: -Math.cos(ramp.heading) };
     vehicle.respawn(
-      { x: ramp.x - f.x * 80, y: 0.86, z: ramp.z - f.z * 80 },
+      { x: ramp.x - f.x * 80, y: 1.1, z: ramp.z - f.z * 80 },
       {
         x: 0,
         y: Math.sin(ramp.heading / 2),
@@ -63,7 +63,7 @@ async function ledge() {
     const { vehicle, loop, setPad, world } = rig;
     const s = vehicle.telemetry;
     world.createStaticBox({ x: 0, y: 1.5, z: 0 }, { x: 20, y: 1.5, z: 20 });
-    vehicle.respawn({ x: 0, y: 3.86, z: 0 }, { x: 0, y: 1, z: 0, w: 0 });
+    vehicle.respawn({ x: 0, y: 4.1, z: 0 }, { x: 0, y: 1, z: 0, w: 0 });
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: 8 });
     setPad({ ...PAD, throttle: 0.3 });
     // The nose touches down and scrapes before the wheels do, which ends
