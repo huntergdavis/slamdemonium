@@ -61,6 +61,10 @@ interface RecordState {
   enabled: boolean;
   driveSpeed: number;
   leader: RecordState | null;
+  crashPending: boolean;
+  crashNormal: V3;
+  crashClosingSpeed: number;
+  crashBleedRemaining: number;
 }
 
 interface Slot {
@@ -82,6 +86,10 @@ const BODY_MASS = 1100;
 const DRIVE_FRICTION = 0.05;
 const WRECK_FRICTION = 0.7;
 const RESTITUTION = 0.05;
+const WRECK_ANGULAR_DAMPING = 5;
+const WRECK_MAX_ANGULAR_VELOCITY = 5;
+const CRASH_BLEED_SECONDS = 0.3;
+const CRASH_BLEED_RATE = 1.5;
 
 function noise(seed: number): number {
   let x = seed | 0;
@@ -134,6 +142,10 @@ export function createTraffic(
     enabled: true,
     driveSpeed: record.speed,
     leader: null,
+    crashPending: false,
+    crashNormal: { x: 0, y: 0, z: 0 },
+    crashClosingSpeed: 0,
+    crashBleedRemaining: 0,
   }));
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
@@ -144,6 +156,7 @@ export function createTraffic(
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
+  const playerVelocity: V3 = { x: 0, y: 0, z: 0 };
   const force: V3 = { x: 0, y: 0, z: 0 };
   const point: V3 = { x: 0, y: 0, z: 0 };
   const angular: V3 = { x: 0, y: 0, z: 0 };
@@ -225,6 +238,16 @@ export function createTraffic(
 
   for (const record of authored) updateVisualPose(record);
 
+  function setSlotProperties(slot: Slot, wrecked: boolean): void {
+    slot.friction = wrecked ? WRECK_FRICTION : DRIVE_FRICTION;
+    physics.setBodyProperties(slot.bodyId, {
+      friction: slot.friction,
+      restitution: wrecked ? 0 : RESTITUTION,
+      angularDamping: wrecked ? WRECK_ANGULAR_DAMPING : 0.25,
+      maxAngularVelocity: wrecked ? WRECK_MAX_ANGULAR_VELOCITY : 9,
+    });
+  }
+
   /** A tuning edit only changes which stable records are present. Wrecks stay
    * present and keep their ids; intact hidden cars continue around the lap. */
   function setRules(next: TrafficSpacingRules): void {
@@ -304,8 +327,7 @@ export function createTraffic(
     if (!slot) return;
     const state = record.state;
     physics.activateBody(slot.bodyId, state.position, state.rotation, true);
-    slot.friction = record.wrecked ? WRECK_FRICTION : DRIVE_FRICTION;
-    physics.setContactProperties(slot.bodyId, slot.friction, RESTITUTION);
+    setSlotProperties(slot, record.wrecked);
     slot.record = record;
     record.slot = slot;
     state.bodyId = slot.bodyId;
@@ -317,6 +339,7 @@ export function createTraffic(
     const slot = record.slot;
     if (!slot) return;
     if (record.wrecked) {
+      record.crashBleedRemaining = 0;
       physics.getTransform(
         slot.bodyId,
         record.wreckPosition,
@@ -412,13 +435,17 @@ export function createTraffic(
       if (!slot) continue;
       // Wrecks remain physically free to tumble and settle while nearby.
       if (record.wrecked) {
-        if (slot.friction !== WRECK_FRICTION) {
-          physics.setContactProperties(
-            slot.bodyId,
-            WRECK_FRICTION,
-            RESTITUTION,
+        if (slot.friction !== WRECK_FRICTION) setSlotProperties(slot, true);
+        if (record.crashBleedRemaining > 0) {
+          physics.getLinearVelocity(slot.bodyId, readVelocity);
+          const bleed = Math.exp(-CRASH_BLEED_RATE * dt);
+          readVelocity.x *= bleed;
+          readVelocity.z *= bleed;
+          physics.setLinearVelocity(slot.bodyId, readVelocity);
+          record.crashBleedRemaining = Math.max(
+            0,
+            record.crashBleedRemaining - dt,
           );
-          slot.friction = WRECK_FRICTION;
         }
         continue;
       }
@@ -461,10 +488,53 @@ export function createTraffic(
     }
   }
 
-  function postStep(): void {
+  function postStep(playerBodyId?: BodyId, playerMass = 1300): void {
     for (const slot of slots) {
       const record = slot.record;
       if (!record) continue;
+      if (record.crashPending) {
+        record.crashPending = false;
+        setSlotProperties(slot, true);
+        if (playerBodyId !== undefined) {
+          physics.getLinearVelocity(playerBodyId, playerVelocity);
+          physics.getLinearVelocity(slot.bodyId, readVelocity);
+          const normal = record.crashNormal;
+          const separation =
+            (playerVelocity.x - readVelocity.x) * normal.x +
+            (playerVelocity.y - readVelocity.y) * normal.y +
+            (playerVelocity.z - readVelocity.z) * normal.z;
+          // Inelastic first contact: Jolt has already solved this step, so
+          // cancel only excessive outward speed. The tangential velocity and
+          // the normal momentum of the two bodies remain unchanged.
+          const maxSeparation = Math.min(
+            2,
+            Math.max(0.5, record.crashClosingSpeed * 0.05),
+          );
+          if (separation > maxSeparation) {
+            const excess = separation - maxSeparation;
+            const mass = Math.max(1, playerMass);
+            const playerShare = (excess * BODY_MASS) / (mass + BODY_MASS);
+            const trafficShare = (excess * mass) / (mass + BODY_MASS);
+            playerVelocity.x -= playerShare * normal.x;
+            playerVelocity.y -= playerShare * normal.y;
+            playerVelocity.z -= playerShare * normal.z;
+            readVelocity.x += trafficShare * normal.x;
+            readVelocity.y += trafficShare * normal.y;
+            readVelocity.z += trafficShare * normal.z;
+            physics.setLinearVelocity(playerBodyId, playerVelocity);
+            physics.setLinearVelocity(slot.bodyId, readVelocity);
+          }
+        }
+        physics.getAngularVelocity(slot.bodyId, angular);
+        const spin = Math.hypot(angular.x, angular.y, angular.z);
+        if (spin > WRECK_MAX_ANGULAR_VELOCITY) {
+          const scale = WRECK_MAX_ANGULAR_VELOCITY / spin;
+          angular.x *= scale;
+          angular.y *= scale;
+          angular.z *= scale;
+          physics.setAngularVelocity(slot.bodyId, angular);
+        }
+      }
       const state = record.state;
       physics.getTransform(slot.bodyId, readPosition, readRotation);
       physics.getLinearVelocity(slot.bodyId, readVelocity);
@@ -484,12 +554,44 @@ export function createTraffic(
   function onPlayerContact(
     otherBody: BodyId,
     impact: Readonly<ImpactSeverity>,
+    normalIntoPlayer?: Readonly<V3>,
+    relativeVelocity?: Readonly<V3>,
   ): void {
     if (impact.severity < 0.25) return;
     for (const slot of slots) {
       if (slot.bodyId !== otherBody || !slot.record) continue;
-      slot.record.wrecked = true;
-      slot.record.state.wrecked = true;
+      const record = slot.record;
+      if (record.wrecked) return;
+      record.wrecked = true;
+      record.state.wrecked = true;
+      record.crashBleedRemaining = 0;
+      if (normalIntoPlayer && relativeVelocity) {
+        const length = Math.hypot(
+          normalIntoPlayer.x,
+          normalIntoPlayer.y,
+          normalIntoPlayer.z,
+        );
+        if (length > 0.5) {
+          record.crashNormal.x = normalIntoPlayer.x / length;
+          record.crashNormal.y = normalIntoPlayer.y / length;
+          record.crashNormal.z = normalIntoPlayer.z / length;
+          const forward = record.state.forward;
+          const longitudinal = Math.abs(
+            record.crashNormal.x * forward.x + record.crashNormal.z * forward.z,
+          );
+          if (longitudinal > 0.7)
+            record.crashBleedRemaining = CRASH_BLEED_SECONDS;
+          record.crashClosingSpeed = Math.max(
+            0,
+            -(
+              relativeVelocity.x * record.crashNormal.x +
+              relativeVelocity.y * record.crashNormal.y +
+              relativeVelocity.z * record.crashNormal.z
+            ),
+          );
+          record.crashPending = record.crashClosingSpeed > 0;
+        }
+      }
       return;
     }
   }
