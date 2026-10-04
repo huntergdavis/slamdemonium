@@ -6,7 +6,7 @@ These v1 JSON documents were recorded through the real gamepad mapper and valida
 | --- | ---: | ---: | --- |
 | [standing-start.json](standing-start.json) | 240 | 2 s | 19.496 m/s peak speed |
 | [handbrake-turn.json](handbrake-turn.json) | 420 | 3.5 s | 22.643 m/s peak; 0.572 rad peak absolute slide angle |
-| [ring-lap.json](ring-lap.json) | 5,025 | 41.875 s | One complete ordered lap; 19.508 m/s peak |
+| [ring-lap.json](ring-lap.json) | 5,019 | 41.825 s | One complete ordered lap; 19.508 m/s peak |
 
 The standing start has two input frames; the handbrake turn has four. The lap uses 371 held input frames with controls rounded to hundredths. Its authoring driver adjusted controls every 12 physics steps while recording. Playback consumes only the saved JSON; it uses no feedback driver or timer. It targets radius 126 m inside the 130 m painted centreline, keeping 11.46 m from the nearest authored prop. This is a conservative reproducible lap, not a fastest-lap claim.
 

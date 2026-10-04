@@ -550,8 +550,8 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 | downforceAtTopSpeed | Tires | x weight | 0.6 | 0 | 3.0 | 0.05 | Q | Extra downward force at top speed as a multiple of weight (scales with speed squared). |
 | lowSpeedBlend | Tires | m/s | 3.0 | 0.5 | 10.0 | 0.1 | A | Speed below which the tire model blends to the stable low-speed model. |
 | steerMaxLowSpeed | Steering | deg | 40 | 5 | 60 | 0.5 | | Maximum steering angle at standstill. |
-| steerMaxTopSpeed | Steering | deg | 3 | 1 | 30 | 0.5 | Q | Maximum steering angle at top speed. Lower is calmer at speed. |
-| steerSpeedExp | Steering | | 0.5 | 0.2 | 3.0 | 0.05 | | How quickly steering lock shrinks with speed. Low shrinks early. |
+| steerMaxTopSpeed | Steering | deg | 4.5 | 1 | 30 | 0.5 | Q | Maximum steering angle at top speed. Lower is calmer at speed. |
+| steerSpeedExp | Steering | | 0.55 | 0.2 | 3.0 | 0.05 | | How quickly steering lock shrinks with speed. Low shrinks early. |
 | steerRiseTime | Steering | s | 0.18 | 0.02 | 1.5 | 0.01 | | Keyboard: time from centre to full lock. |
 | steerReturnTime | Steering | s | 0.10 | 0.02 | 1.5 | 0.01 | | Keyboard: time to return to centre. |
 | steerExpo | Steering | 0 to 1 | 0.25 | 0 | 0.9 | 0.01 | | Gamepad stick curve. Higher softens small inputs. |
