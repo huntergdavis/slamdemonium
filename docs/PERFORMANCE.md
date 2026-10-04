@@ -191,3 +191,30 @@ xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/perf/browser-drive.mjs http
 The report names the GL renderer so a software fallback cannot pass as a GPU, and counts the traffic cars within 750 m and 180 m and, where the build exposes it, in frame at 4 px and 8 px or more. The numbers are a relative gate: main and the PR on the same box, same route, same resolution. They are not anyone else's frame rate; the URL and route are in the report so a reader can repeat the drive in their own browser. One GPU run at a time on a box; a second browser skews both.
 
 Baseline on main e6ea7da, 1280x720 on an i5-8250U with an Intel UHD 620 through Vulkan: 12.2 fps (frame p50 83 ms, p99 150 ms), full step p50 1.3 / p99 5.7 ms, Jolt p50 0.6 / p99 3.5 ms. At 1920x1080 the same box gives 6.6 fps, and below about 10 fps the game slows down because the fixed-step loop stops catching up, which shows as less route covered in the 45 s.
+
+## Reading a gate number honestly (2026-10-04)
+
+The gate above answers "did this PR cost anything". It does not answer "how fast is the game", and three things will mislead a reader who treats its frame rate as the game's frame rate.
+
+**The measuring box is relative only; the absolute gate is the CTO's laptop.** Target hardware is an 8 GB MacBook M1 with an Apple GPU. The measuring box is an i5-8250U with an Intel UHD 620 under a virtual display, roughly an order of magnitude slower on fill rate and thermally throttled besides. A number from it says main-versus-PR on one box with the renderer named. It is never the frame rate the game runs at, and it should never be quoted to anyone as though it were.
+
+**Most of the gate's frame time is the virtual display, not the game.** With vsync on, presentation through the virtual framebuffer dominates the frame. Measured on main `7de18b0` at 1280x720: 8.8 fps with a 100.1 ms median frame, against a 16.0 ms median frame for the same build, same resolution and same route with vsync disabled. For the real cost of rendering and simulating, add the two flags:
+
+```
+--disable-gpu-vsync --disable-frame-rate-limit
+```
+
+The committed gate does not pass them, so quote its vsync-on figures for the relative comparison only, and take frame cost from a vsync-off run. Two further traps with vsync on: the frame quantises to multiples of the refresh interval, so a 33.3 ms reading means "just over one vsync", not a 30 fps cap, and an empty page under the same virtual display reaches 59.2 fps, so there is no 30 fps ceiling in the environment to blame.
+
+**Splitting CPU from GPU.** Re-run at a small viewport with vsync off: whatever median frame survives is the resolution-independent CPU side, and the rest is GPU fill. On main `7de18b0` that was 9.6 ms CPU at 320x180 against 16.0 ms at 1280x720, so about 6.4 ms of fill, with the full physics step only 2.5 ms of the CPU side.
+
+**Interleave, or do not compare at all.** This box drifts far more than a PR does. Main alone measured a 16.0 ms median frame at one point and 10.8 to 11.8 ms an hour later, unchanged commit, same quiet box, about 40%. So an A/B is main, PR, main, PR inside a single window, each build served on its own port so nothing is rebuilt midway:
+
+```
+npx vite preview --port 4187 --strictPort                              # one build in dist/
+npx vite preview --port 4188 --strictPort --outDir scratch/dist-pr     # the other, stashed
+```
+
+Check the in-frame car counts match across the runs, or the scenes were not comparable. Report a delta only when it is larger than each build's own run-to-run spread; otherwise the finding is "no regression detectable", never a speedup. Do not compare against a baseline recorded earlier in the day: that was a different machine thermally.
+
+**Renderer strings.** `ANGLE (Intel, Vulkan ..., Intel open-source Mesa driver)` is the real GPU. Plain OpenGL under the virtual display falls back to `llvmpipe`, a software rasteriser, and the gate's summary only tests for `SwiftShader`, so an `llvmpipe` run would still print `GPU`. Read the renderer string itself rather than that word.
