@@ -62,7 +62,7 @@
     "downforceAtTopSpeed": 0.6,
     "lowSpeedBlend": 3,
     "steerMaxLowSpeed": 40,
-    "steerMaxTopSpeed": 5,
+    "steerMaxTopSpeed": 3,
     "steerSpeedExp": 0.5,
     "steerRiseTime": 0.18,
     "steerReturnTime": 0.1,

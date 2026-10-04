@@ -561,7 +561,7 @@ const definitions = [
     group: 'Steering',
     label: 'Steer max top speed',
     unit: 'deg',
-    default: 5.0,
+    default: 3.0,
     min: 1.0,
     max: 30.0,
     step: 0.5,
