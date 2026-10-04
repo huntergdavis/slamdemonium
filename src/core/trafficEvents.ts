@@ -12,6 +12,7 @@
  * - SLAM: a contact with a traffic car while the player is moving, paid by
  *   the shared impact severity, once per car per contact episode. */
 import { carHalfWidth, type CarModelKind } from '../world/carModels';
+import { VEHICLE_GEOMETRY } from '../vehicle/constants';
 
 export interface TrafficCarView {
   readonly id: number;
@@ -64,8 +65,12 @@ export interface TrafficEventsState {
 }
 
 /** Half the player's width: with the traffic car's half width from the
- * catalogue, it turns a centre distance into an edge-to-edge gap. */
-export const PLAYER_HALF_WIDTH = 1.0;
+ * catalogue, it turns a centre distance into an edge-to-edge gap. Derived
+ * from the collider, never written down twice: when the car's size changes
+ * the gap a near miss is judged on has to change with it, or the player
+ * earns passes they did not make. `player-half-width follows the collider`
+ * in tests/trafficEvents.test.ts is the guard. */
+export const PLAYER_HALF_WIDTH = VEHICLE_GEOMETRY.width / 2;
 /** A pass is over, and the near miss re-arms, this far away from the car. */
 export const NEAR_MISS_RESET_DISTANCE = 30;
 /** Half a lane: an oncoming car within this of the player's line is in it. */
