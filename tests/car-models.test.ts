@@ -160,6 +160,19 @@ describe('car model catalogue', () => {
       expect(front.min.z).toBeCloseTo(intact.min.z, 5);
       expect(rear.min.z).toBeGreaterThan(intact.min.z + 0.5);
       expect(rear.max.z).toBeCloseTo(intact.max.z, 5);
+      cars.begin();
+      cars.push(kind, position, q, 1);
+      cars.push(kind, position, q, 2, {
+        front: 0,
+        rear: 0,
+        left: 0,
+        right: 1,
+      });
+      cars.end();
+      const sideIntact = extent(kind, 0);
+      const sideCrushed = extent(kind, 1);
+      expect(sideCrushed.max.x).toBeLessThan(sideIntact.max.x - 0.4);
+      expect(sideCrushed.min.x).toBeCloseTo(sideIntact.min.x, 5);
       expect(cars.drawCalls).toBe(draws);
     }
     cars.dispose();

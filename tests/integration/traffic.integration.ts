@@ -354,6 +354,21 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
   expect(first.wrecked).toBe(true);
   const crush = first.crush;
   expect(Math.max(...Object.values(crush))).toBeGreaterThan(0);
+  const firstDepth = Math.max(crush.front, crush.rear);
+  traffic.onPlayerContact(
+    first.bodyId,
+    impact,
+    { x: 0, y: 0, z: 1 },
+    { x: 0, y: 0, z: -60 },
+  );
+  expect(Math.max(crush.front, crush.rear)).toBeGreaterThan(firstDepth);
+  traffic.onPlayerContact(
+    first.bodyId,
+    impact,
+    { x: 1, y: 0, z: 0 },
+    { x: -60, y: 0, z: 0 },
+  );
+  expect(Math.max(crush.left, crush.right)).toBeGreaterThan(0);
   traffic.preStep(1 / 120, player);
   expect(world.isBodyAwake(first.bodyId)).toBe(true);
   const wreckZ = first.position.z;
