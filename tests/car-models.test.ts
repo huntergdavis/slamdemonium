@@ -1,11 +1,4 @@
-import {
-  Box3,
-  InstancedMesh,
-  Matrix4,
-  Quaternion,
-  Scene,
-  Vector3,
-} from 'three';
+import { Box3, InstancedMesh, Matrix4, Scene } from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   CAR_MODELS,
@@ -129,34 +122,45 @@ describe('car model catalogue', () => {
     cars.dispose();
     expect(scene.getObjectByName('traffic.sedan.body')).toBeUndefined();
   });
-  it('draws the cab ahead of a moving traffic car at either heading', () => {
+  it('visibly crushes the struck end of every kind without extra draws or shared geometry changes', () => {
     const scene = new Scene();
-    const cars = createCarModelInstances(scene, 1);
-    const cabin = scene.getObjectByName(
-      'traffic.boxTruck.cabin',
-    ) as InstancedMesh;
-    const instance = new Matrix4();
-    cabin.geometry.computeBoundingBox();
-    for (const yaw of [0, Math.PI / 2]) {
-      const rotation = new Quaternion().setFromAxisAngle(
-        new Vector3(0, 1, 0),
-        yaw,
-      );
-      const velocity = new Vector3(0, 0, -1).applyQuaternion(rotation);
+    const cars = createCarModelInstances(scene, 3);
+    const draws = cars.drawCalls;
+    const q = { x: 0, y: 0, z: 0, w: 1 };
+    const matrix = new Matrix4();
+    const extent = (kind: (typeof CAR_MODEL_KINDS)[number], index: number) => {
+      const mesh = scene.getObjectByName(
+        `traffic.${kind}.body`,
+      ) as InstancedMesh;
+      mesh.getMatrixAt(index, matrix);
+      mesh.geometry.computeBoundingBox();
+      return new Box3().copy(mesh.geometry.boundingBox!).applyMatrix4(matrix);
+    };
+    for (const kind of CAR_MODEL_KINDS) {
+      const position = { x: 0, y: CAR_MODELS[kind].ride, z: 0 };
       cars.begin();
-      cars.push(
-        'boxTruck',
-        { x: 0, y: CAR_MODELS.boxTruck.ride, z: 0 },
-        rotation,
-        0,
-      );
+      cars.push(kind, position, q, 1);
+      cars.push(kind, position, q, 2, {
+        front: 1,
+        rear: 0,
+        left: 0,
+        right: 0,
+      });
+      cars.push(kind, position, q, 3, {
+        front: 0,
+        rear: 1,
+        left: 0,
+        right: 0,
+      });
       cars.end();
-      cabin.getMatrixAt(0, instance);
-      const cabCenter = new Box3()
-        .copy(cabin.geometry.boundingBox!)
-        .applyMatrix4(instance)
-        .getCenter(new Vector3());
-      expect(cabCenter.dot(velocity)).toBeGreaterThan(2);
+      const intact = extent(kind, 0);
+      const front = extent(kind, 1);
+      const rear = extent(kind, 2);
+      expect(front.max.z).toBeLessThan(intact.max.z - 0.5);
+      expect(front.min.z).toBeCloseTo(intact.min.z, 5);
+      expect(rear.min.z).toBeGreaterThan(intact.min.z + 0.5);
+      expect(rear.max.z).toBeCloseTo(intact.max.z, 5);
+      expect(cars.drawCalls).toBe(draws);
     }
     cars.dispose();
   });

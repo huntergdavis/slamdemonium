@@ -9,6 +9,7 @@ import {
   Color,
   DynamicDrawUsage,
   InstancedMesh,
+  Matrix4,
   MeshStandardMaterial,
   Object3D,
   Quaternion,
@@ -35,6 +36,17 @@ export interface CarModelPart {
   readonly offset: readonly [number, number, number];
   /** Which material: the painted body, the dark cabin glass, or an accent. */
   readonly tone: 'body' | 'cabin' | 'accent';
+  /** Which end of this part buckles most when struck. */
+  readonly zone: 'front' | 'rear' | 'centre';
+}
+
+/** Persistent visual damage, in car space. Each value is a fraction of that
+ * kind's maximum crush depth. The collision box deliberately stays intact. */
+export interface CarCrushState {
+  front: number;
+  rear: number;
+  left: number;
+  right: number;
 }
 
 export interface CarModelSpec {
@@ -89,32 +101,102 @@ export const CAR_MODELS: Readonly<Record<CarModelKind, CarModelSpec>> =
   Object.freeze({
     // Three-box: a low body, a short cabin in the middle, a long tail.
     sedan: spec('sedan', 'Sedan', 5.7, 2.55, 1.9, 0.38, [
-      { size: [2.55, 1.1, 5.7], offset: [0, 0.59, 0], tone: 'body' },
-      { size: [2.1, 0.8, 2.6], offset: [0, 1.5, 0.1], tone: 'cabin' },
+      {
+        size: [2.55, 1.1, 5.7],
+        offset: [0, 0.59, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.1, 0.8, 2.6],
+        offset: [0, 1.5, 0.1],
+        tone: 'cabin',
+        zone: 'centre',
+      },
     ]),
     // Two-box: a tall cabin that runs to the tail, a short nose, a higher
     // roof: reads as a different car from the sedan at chase distance.
     hatch: spec('hatch', 'Hatchback', 5.5, 2.5, 2.4, 0.24, [
-      { size: [2.5, 1.2, 5.5], offset: [0, 0.64, 0], tone: 'body' },
-      { size: [2.3, 1.2, 3.6], offset: [0, 1.8, -0.9], tone: 'cabin' },
+      {
+        size: [2.5, 1.2, 5.5],
+        offset: [0, 0.64, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.3, 1.2, 3.6],
+        offset: [0, 1.8, -0.9],
+        tone: 'cabin',
+        zone: 'rear',
+      },
     ]),
     van: spec('van', 'Van', 6.0, 2.6, 2.3, 0.14, [
-      { size: [2.6, 2.3, 6.0], offset: [0, 1.19, 0], tone: 'body' },
-      { size: [2.45, 0.8, 1.5], offset: [0, 1.85, 2.0], tone: 'cabin' },
+      {
+        size: [2.6, 2.3, 6.0],
+        offset: [0, 1.19, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.45, 0.8, 1.5],
+        offset: [0, 1.85, 2.0],
+        tone: 'cabin',
+        zone: 'front',
+      },
     ]),
     pickup: spec('pickup', 'Pickup', 6.3, 2.6, 2.1, 0.14, [
-      { size: [2.6, 1.1, 6.3], offset: [0, 0.59, 0], tone: 'body' },
-      { size: [2.4, 0.9, 2.2], offset: [0, 1.6, 1.3], tone: 'cabin' },
-      { size: [2.4, 0.5, 3.0], offset: [0, 1.3, -1.5], tone: 'accent' },
+      {
+        size: [2.6, 1.1, 6.3],
+        offset: [0, 0.59, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.4, 0.9, 2.2],
+        offset: [0, 1.6, 1.3],
+        tone: 'cabin',
+        zone: 'front',
+      },
+      {
+        size: [2.4, 0.5, 3.0],
+        offset: [0, 1.3, -1.5],
+        tone: 'accent',
+        zone: 'rear',
+      },
     ]),
     boxTruck: spec('boxTruck', 'Box truck', 8.5, 2.9, 3.4, 0.06, [
-      { size: [2.9, 1.0, 8.5], offset: [0, 0.54, 0], tone: 'body' },
-      { size: [2.7, 1.6, 2.2], offset: [0, 1.85, 3.1], tone: 'cabin' },
-      { size: [2.9, 2.4, 5.6], offset: [0, 2.2, -1.3], tone: 'accent' },
+      {
+        size: [2.9, 1.0, 8.5],
+        offset: [0, 0.54, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.7, 1.6, 2.2],
+        offset: [0, 1.85, 3.1],
+        tone: 'cabin',
+        zone: 'front',
+      },
+      {
+        size: [2.9, 2.4, 5.6],
+        offset: [0, 2.2, -1.3],
+        tone: 'accent',
+        zone: 'rear',
+      },
     ]),
     bus: spec('bus', 'Bus', 12.0, 2.9, 3.2, 0.04, [
-      { size: [2.9, 3.2, 12.0], offset: [0, 1.64, 0], tone: 'body' },
-      { size: [2.95, 1.1, 11.0], offset: [0, 2.3, 0], tone: 'cabin' },
+      {
+        size: [2.9, 3.2, 12.0],
+        offset: [0, 1.64, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.95, 1.1, 11.0],
+        offset: [0, 2.3, 0],
+        tone: 'cabin',
+        zone: 'centre',
+      },
     ]),
   });
 
@@ -164,6 +246,7 @@ export interface CarModelInstances {
       readonly w: number;
     },
     colorIndex: number,
+    crush?: Readonly<CarCrushState>,
   ): boolean;
   /** Finish the frame: upload counts and matrices. */
   end(): void;
@@ -191,6 +274,8 @@ export function createCarModelInstances(
   // Traffic's chassis and velocity point along local -Z; catalogue parts
   // were authored with their nose at +Z. Turn only the visual model.
   const visualFacing = new Quaternion(0, 1, 0, 0);
+  const localDamage = new Matrix4();
+  const damagedMatrix = new Matrix4();
   const counts: Record<CarModelKind, number> = {
     sedan: 0,
     hatch: 0,
@@ -248,7 +333,7 @@ export function createCarModelInstances(
     begin() {
       for (const kind of CAR_MODEL_KINDS) counts[kind] = 0;
     },
-    push(kind, position, rotation, colorIndex) {
+    push(kind, position, rotation, colorIndex, crush) {
       const index = counts[kind];
       if (index >= capacityPerKind) return false;
       helper.position.set(position.x, position.y, position.z);
@@ -257,8 +342,41 @@ export function createCarModelInstances(
         .multiply(visualFacing);
       helper.updateMatrix();
       const color = palette[paletteColorIndex(colorIndex)]!;
-      for (const mesh of meshes[kind]) {
-        mesh.setMatrixAt(index, helper.matrix);
+      const model = CAR_MODELS[kind];
+      const front = Math.max(0, Math.min(1, crush?.front ?? 0));
+      const rear = Math.max(0, Math.min(1, crush?.rear ?? 0));
+      const left = Math.max(0, Math.min(1, crush?.left ?? 0));
+      const right = Math.max(0, Math.min(1, crush?.right ?? 0));
+      // Keep the opposite edge fixed: front damage pulls +z inward, rear
+      // damage pulls -z inward, and the same rule applies across the width.
+      const noseDepth = front * Math.min(2, model.halfExtents.z * 0.4);
+      const tailDepth = rear * Math.min(2, model.halfExtents.z * 0.4);
+      const leftDepth = left * model.halfExtents.x * 0.4;
+      const rightDepth = right * model.halfExtents.x * 0.4;
+      const damaged = noseDepth + tailDepth + leftDepth + rightDepth > 0;
+      const scaleX = 1 - (leftDepth + rightDepth) / (model.halfExtents.x * 2);
+      const scaleZ = 1 - (noseDepth + tailDepth) / (model.halfExtents.z * 2);
+      const shiftX = (leftDepth - rightDepth) / 2;
+      const shiftZ = (tailDepth - noseDepth) / 2;
+      for (let partIndex = 0; partIndex < meshes[kind].length; partIndex++) {
+        const mesh = meshes[kind][partIndex]!;
+        if (damaged) {
+          const part = model.parts[partIndex]!;
+          const endDamage =
+            part.zone === 'front'
+              ? front
+              : part.zone === 'rear'
+                ? rear
+                : (front + rear) * 0.35;
+          const roofDrop =
+            part.tone === 'body'
+              ? 0
+              : Math.min(0.3, 0.16 * (endDamage + (left + right) * 0.4));
+          localDamage.makeScale(scaleX, 1, scaleZ);
+          localDamage.setPosition(shiftX, -roofDrop, shiftZ);
+          damagedMatrix.multiplyMatrices(helper.matrix, localDamage);
+          mesh.setMatrixAt(index, damagedMatrix);
+        } else mesh.setMatrixAt(index, helper.matrix);
         if (mesh.material === materials.body) mesh.setColorAt(index, color);
       }
       counts[kind] = index + 1;
