@@ -1,7 +1,10 @@
 import {
   Box3,
+  InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
+  MeshDepthMaterial,
+  MeshStandardMaterial,
   Quaternion,
   Scene,
   Vector3,
@@ -158,6 +161,109 @@ describe('car model catalogue', () => {
         .getCenter(new Vector3());
       expect(cabCenter.dot(velocity)).toBeGreaterThan(2);
     }
+    cars.dispose();
+  });
+  it('subdivides every model for local dents without adding draws', () => {
+    const scene = new Scene();
+    const cars = createCarModelInstances(scene, 4);
+    for (const kind of CAR_MODEL_KINDS) {
+      const mesh = scene.getObjectByName(
+        `traffic.${kind}.body`,
+      ) as InstancedMesh;
+      expect(mesh.geometry.getAttribute('position').count).toBe(294);
+      expect(mesh.geometry.getAttribute('instanceCrush')).toBeInstanceOf(
+        InstancedBufferAttribute,
+      );
+      const metrics = mesh.geometry.getAttribute('crushMetrics');
+      expect(metrics.getX(0)).toBeCloseTo(CAR_MODELS[kind].halfExtents.x);
+      expect(metrics.getY(0)).toBeCloseTo(CAR_MODELS[kind].halfExtents.z);
+      expect(metrics.getZ(0)).toBeCloseTo(CAR_MODELS[kind].ride);
+    }
+    expect(cars.drawCalls).toBe(14);
+    cars.dispose();
+  });
+  it('feeds four-sided per-instance damage to matching colour and shadow shaders', () => {
+    const scene = new Scene();
+    const cars = createCarModelInstances(scene, 4);
+    const body = scene.getObjectByName(
+      'traffic.boxTruck.body',
+    ) as InstancedMesh;
+    const cargo = scene.getObjectByName(
+      'traffic.boxTruck.accent',
+    ) as InstancedMesh;
+    const sedan = scene.getObjectByName('traffic.sedan.body') as InstancedMesh;
+    const position = { x: 0, y: CAR_MODELS.boxTruck.ride, z: 0 };
+    const rotation = { x: 0, y: 0, z: 0, w: 1 };
+    cars.begin();
+    cars.push('boxTruck', position, rotation, 0);
+    cars.push('boxTruck', position, rotation, 0, {
+      front: 0,
+      rear: 0.3,
+      left: 0,
+      right: 0,
+    });
+    cars.push('boxTruck', position, rotation, 0, {
+      front: 0,
+      rear: 1,
+      left: 0,
+      right: 0,
+    });
+    cars.push('boxTruck', position, rotation, 0, {
+      front: 1,
+      rear: 0,
+      left: 1,
+      right: 1,
+    });
+    cars.push('sedan', { x: 0, y: CAR_MODELS.sedan.ride, z: 0 }, rotation, 0, {
+      front: 0,
+      rear: 1,
+      left: 0,
+      right: 0,
+    });
+    cars.end();
+    const crush = body.geometry.getAttribute(
+      'instanceCrush',
+    ) as InstancedBufferAttribute;
+    expect([0, 1, 2, 3].map((i) => crush.getY(i))).toEqual([
+      0, 0.30000001192092896, 1, 0,
+    ]);
+    expect([0, 1, 2, 3].map((i) => crush.getX(i))).toEqual([0, 0, 0, 1]);
+    expect([0, 1, 2, 3].map((i) => crush.getZ(i))).toEqual([0, 0, 0, 1]);
+    expect([0, 1, 2, 3].map((i) => crush.getW(i))).toEqual([0, 0, 0, 1]);
+    expect(
+      (
+        sedan.geometry.getAttribute('instanceCrush') as InstancedBufferAttribute
+      ).getY(0),
+    ).toBe(1);
+    const intact = new Matrix4();
+    const dented = new Matrix4();
+    const cargoDented = new Matrix4();
+    body.getMatrixAt(0, intact);
+    body.getMatrixAt(1, dented);
+    cargo.getMatrixAt(1, cargoDented);
+    // The vertex shader owns the dent: no whole-car lean, lift, or detached part.
+    expect(Array.from(dented.elements)).toEqual(Array.from(intact.elements));
+    expect(Array.from(cargoDented.elements)).toEqual(
+      Array.from(intact.elements),
+    );
+    const source = (material: MeshStandardMaterial | MeshDepthMaterial) => {
+      const shader = {
+        vertexShader: '#include <common>\n#include <begin_vertex>',
+      };
+      material.onBeforeCompile(shader as never, {} as never);
+      return shader.vertexShader;
+    };
+    const visible = source(body.material as MeshStandardMaterial);
+    const shadow = source(body.customDepthMaterial as MeshDepthMaterial);
+    expect(visible).toBe(shadow);
+    expect(visible).toContain('attribute vec4 instanceCrush;');
+    expect(visible).toContain(
+      'transformed.z += 2.4 * (trafficRear - trafficFront)',
+    );
+    expect(visible).toContain(
+      'transformed.x += 1.15 * (trafficLeft - trafficRight)',
+    );
+    expect(visible).toContain('transformed.y -= roof');
     cars.dispose();
   });
 });

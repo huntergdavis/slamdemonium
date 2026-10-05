@@ -8,6 +8,7 @@ import {
   CAR_MODELS,
   createCarModelInstances,
   pickCarModelKind,
+  type CarCrushState,
   type CarModelKind,
 } from './carModels';
 
@@ -50,6 +51,8 @@ export interface TrafficCarState {
   wrecked: boolean;
   /** The catalogue kind: collision box, visual parts and ride height. */
   modelKind: CarModelKind;
+  /** Visual crush persists with this encounter across body LOD handoffs. */
+  crush: CarCrushState;
 }
 
 interface RecordState {
@@ -121,6 +124,47 @@ function wrapAngle(a: number): number {
   return Math.atan2(Math.sin(a), Math.cos(a));
 }
 
+/** Transform the hit normal into the visual model's local frame. The
+ * catalogue's +Z nose is turned 180° from the chassis's -Z travel axis. */
+function recordVisualCrush(
+  state: TrafficCarState,
+  nx: number,
+  ny: number,
+  nz: number,
+  closingSpeed: number,
+): void {
+  // Even a slow scrape leaves a small visible dent. Ordinary knocks build
+  // damage quickly, while 30 and 60 m/s hits remain distinct.
+  const speed = Math.max(0, closingSpeed);
+  const strength =
+    speed <= 8
+      ? 0.15 + speed * 0.01875
+      : speed <= 15
+        ? 0.3 + ((speed - 8) * 0.15) / 7
+        : speed <= 23
+          ? 0.45 + ((speed - 15) * 0.25) / 8
+          : Math.min(1, 0.7 + ((speed - 23) * 0.3) / 37);
+  const q = state.rotation;
+  const qx = -q.x;
+  const qy = -q.y;
+  const qz = -q.z;
+  const tx = 2 * (qy * nz - qz * ny);
+  const ty = 2 * (qz * nx - qx * nz);
+  const tz = 2 * (qx * ny - qy * nx);
+  const localX = -(nx + q.w * tx + qy * tz - qz * ty);
+  const localZ = -(nz + q.w * tz + qx * ty - qy * tx);
+  if (Math.hypot(localX, localZ) < 0.45) return;
+  const side =
+    Math.abs(localZ) >= Math.abs(localX)
+      ? localZ >= 0
+        ? 'front'
+        : 'rear'
+      : localX >= 0
+        ? 'right'
+        : 'left';
+  state.crush[side] = Math.max(state.crush[side], strength);
+}
+
 /** Every authored car advances continuously. Only nearby cars own a pooled
  * Jolt body; their stable encounter state survives each LOD hand-off. */
 export function createTraffic(
@@ -149,6 +193,7 @@ export function createTraffic(
       speed: record.speed,
       wrecked: false,
       modelKind: record.modelKind ?? pickCarModelKind(index + 1),
+      crush: { front: 0, rear: 0, left: 0, right: 0 },
     },
     wrecked: false,
     wreckPosition: { x: 0, y: 0, z: 0 },
@@ -581,10 +626,32 @@ export function createTraffic(
     normalIntoPlayer?: Readonly<V3>,
     relativeVelocity?: Readonly<V3>,
   ): void {
-    if (impact.severity < 0.25) return;
     for (const slot of slots) {
       if (slot.bodyId !== otherBody || !slot.record) continue;
       const record = slot.record;
+      if (normalIntoPlayer && relativeVelocity) {
+        const length = Math.hypot(
+          normalIntoPlayer.x,
+          normalIntoPlayer.y,
+          normalIntoPlayer.z,
+        );
+        if (length > 0.5) {
+          const nx = normalIntoPlayer.x / length;
+          const ny = normalIntoPlayer.y / length;
+          const nz = normalIntoPlayer.z / length;
+          const closingSpeed = Math.max(
+            0,
+            -(
+              relativeVelocity.x * nx +
+              relativeVelocity.y * ny +
+              relativeVelocity.z * nz
+            ),
+          );
+          recordVisualCrush(record.state, nx, ny, nz, closingSpeed);
+        }
+      }
+      // Gentle contact dents without counting as a wreck or a slam.
+      if (impact.severity < 0.25) return;
       if (record.wrecked) return;
       record.wrecked = true;
       record.state.wrecked = true;
@@ -660,7 +727,13 @@ export function createTrafficVisual(
   function update(): void {
     cars.begin();
     for (const state of traffic.visualStates)
-      cars.push(state.modelKind, state.position, state.rotation, state.id);
+      cars.push(
+        state.modelKind,
+        state.position,
+        state.rotation,
+        state.id,
+        state.crush,
+      );
     cars.end();
   }
   update();

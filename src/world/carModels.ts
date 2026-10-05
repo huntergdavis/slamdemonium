@@ -8,7 +8,10 @@ import {
   BoxGeometry,
   Color,
   DynamicDrawUsage,
+  Float32BufferAttribute,
+  InstancedBufferAttribute,
   InstancedMesh,
+  MeshDepthMaterial,
   MeshStandardMaterial,
   Object3D,
   Quaternion,
@@ -27,6 +30,59 @@ export const CAR_MODEL_KINDS: readonly CarModelKind[] = Object.freeze([
   'bus',
 ]);
 
+/** Keep the secondary scuff cue off while the vertex dent is judged alone. */
+const SCUFF_TINT_STRENGTH = 0;
+
+/** Deform before the instance matrix in both the colour and depth passes.
+ * Model metrics are vertex attributes because the three materials are shared
+ * by all six kinds; damage strengths are per encounter, not per geometry. */
+function installCrushShader(
+  material: MeshStandardMaterial | MeshDepthMaterial,
+): void {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      `#include <common>
+attribute vec4 instanceCrush;
+attribute vec3 crushMetrics;`,
+    );
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+if (dot(instanceCrush, vec4(1.0)) > 0.0) {
+  float halfWidth = crushMetrics.x;
+  float halfLength = crushMetrics.y;
+  float rideHeight = crushMetrics.z;
+  float rearBand = 1.0 - smoothstep(-halfLength * 0.82, -halfLength * 0.08, position.z);
+  float frontBand = smoothstep(halfLength * 0.08, halfLength * 0.82, position.z);
+  float leftBand = 1.0 - smoothstep(-halfWidth * 0.82, -halfWidth * 0.08, position.x);
+  float rightBand = smoothstep(halfWidth * 0.08, halfWidth * 0.82, position.x);
+  float trafficRear = instanceCrush.y * rearBand;
+  float trafficFront = instanceCrush.x * frontBand;
+  float trafficLeft = instanceCrush.z * leftBand;
+  float trafficRight = instanceCrush.w * rightBand;
+  float across = clamp(abs(position.x) / halfWidth, 0.0, 1.0);
+  float along = clamp(abs(position.z) / halfLength, 0.0, 1.0);
+  float height = clamp((position.y + rideHeight) / (rideHeight * 2.0), 0.0, 1.0);
+  float bowl = 0.28 + 0.72 * (1.0 - across * across);
+  float sideBowl = 0.28 + 0.72 * (1.0 - along * along);
+  float wrinkle = 0.82 + 0.18 * sin(position.x * 5.7 + position.y * 4.1);
+  float sideWrinkle = 0.82 + 0.18 * sin(position.z * 5.7 + position.y * 4.1);
+  transformed.z += 2.4 * (trafficRear - trafficFront) * bowl * wrinkle;
+  transformed.x += 1.15 * (trafficLeft - trafficRight) * sideBowl * sideWrinkle;
+  float roof = smoothstep(0.55, 0.9, height);
+  float roofNotch = 1.0 - smoothstep(0.1, 0.95, across);
+  float sideNotch = 1.0 - smoothstep(0.1, 0.95, along);
+  transformed.y -= roof * ((trafficRear + trafficFront) * (0.35 + 0.9 * roofNotch)
+    + (trafficLeft + trafficRight) * (0.35 + 0.9 * sideNotch));
+  transformed.y += 0.18 * roof * ((trafficRear + trafficFront) * sin(position.x * 3.2 + position.z * 1.7)
+    + (trafficLeft + trafficRight) * sin(position.z * 3.2 + position.x * 1.7));
+}`,
+    );
+  };
+  material.customProgramCacheKey = () => 'traffic-vertex-crush-v2';
+}
+
 /** A box part of a model, in car space: +z is the nose, y up from the
  * ground plane, x to the right. Sizes are full extents. */
 export interface CarModelPart {
@@ -35,6 +91,17 @@ export interface CarModelPart {
   readonly offset: readonly [number, number, number];
   /** Which material: the painted body, the dark cabin glass, or an accent. */
   readonly tone: 'body' | 'cabin' | 'accent';
+  /** Which end of this part buckles most when struck. */
+  readonly zone: 'front' | 'rear' | 'centre';
+}
+
+/** Persistent visual damage, in car space. Each value is a fraction of that
+ * kind's maximum crush depth. The collision box deliberately stays intact. */
+export interface CarCrushState {
+  front: number;
+  rear: number;
+  left: number;
+  right: number;
 }
 
 export interface CarModelSpec {
@@ -89,32 +156,102 @@ export const CAR_MODELS: Readonly<Record<CarModelKind, CarModelSpec>> =
   Object.freeze({
     // Three-box: a low body, a short cabin in the middle, a long tail.
     sedan: spec('sedan', 'Sedan', 5.7, 2.55, 1.9, 0.38, [
-      { size: [2.55, 1.1, 5.7], offset: [0, 0.59, 0], tone: 'body' },
-      { size: [2.1, 0.8, 2.6], offset: [0, 1.5, 0.1], tone: 'cabin' },
+      {
+        size: [2.55, 1.1, 5.7],
+        offset: [0, 0.59, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.1, 0.8, 2.6],
+        offset: [0, 1.5, 0.1],
+        tone: 'cabin',
+        zone: 'centre',
+      },
     ]),
     // Two-box: a tall cabin that runs to the tail, a short nose, a higher
     // roof: reads as a different car from the sedan at chase distance.
     hatch: spec('hatch', 'Hatchback', 5.5, 2.5, 2.4, 0.24, [
-      { size: [2.5, 1.2, 5.5], offset: [0, 0.64, 0], tone: 'body' },
-      { size: [2.3, 1.2, 3.6], offset: [0, 1.8, -0.9], tone: 'cabin' },
+      {
+        size: [2.5, 1.2, 5.5],
+        offset: [0, 0.64, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.3, 1.2, 3.6],
+        offset: [0, 1.8, -0.9],
+        tone: 'cabin',
+        zone: 'rear',
+      },
     ]),
     van: spec('van', 'Van', 6.0, 2.6, 2.3, 0.14, [
-      { size: [2.6, 2.3, 6.0], offset: [0, 1.19, 0], tone: 'body' },
-      { size: [2.45, 0.8, 1.5], offset: [0, 1.85, 2.0], tone: 'cabin' },
+      {
+        size: [2.6, 2.3, 6.0],
+        offset: [0, 1.19, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.45, 0.8, 1.5],
+        offset: [0, 1.85, 2.0],
+        tone: 'cabin',
+        zone: 'front',
+      },
     ]),
     pickup: spec('pickup', 'Pickup', 6.3, 2.6, 2.1, 0.14, [
-      { size: [2.6, 1.1, 6.3], offset: [0, 0.59, 0], tone: 'body' },
-      { size: [2.4, 0.9, 2.2], offset: [0, 1.6, 1.3], tone: 'cabin' },
-      { size: [2.4, 0.5, 3.0], offset: [0, 1.3, -1.5], tone: 'accent' },
+      {
+        size: [2.6, 1.1, 6.3],
+        offset: [0, 0.59, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.4, 0.9, 2.2],
+        offset: [0, 1.6, 1.3],
+        tone: 'cabin',
+        zone: 'front',
+      },
+      {
+        size: [2.4, 0.5, 3.0],
+        offset: [0, 1.3, -1.5],
+        tone: 'accent',
+        zone: 'rear',
+      },
     ]),
     boxTruck: spec('boxTruck', 'Box truck', 8.5, 2.9, 3.4, 0.06, [
-      { size: [2.9, 1.0, 8.5], offset: [0, 0.54, 0], tone: 'body' },
-      { size: [2.7, 1.6, 2.2], offset: [0, 1.85, 3.1], tone: 'cabin' },
-      { size: [2.9, 2.4, 5.6], offset: [0, 2.2, -1.3], tone: 'accent' },
+      {
+        size: [2.9, 1.0, 8.5],
+        offset: [0, 0.54, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.7, 1.6, 2.2],
+        offset: [0, 1.85, 3.1],
+        tone: 'cabin',
+        zone: 'front',
+      },
+      {
+        size: [2.9, 2.4, 5.6],
+        offset: [0, 2.2, -1.3],
+        tone: 'accent',
+        zone: 'rear',
+      },
     ]),
     bus: spec('bus', 'Bus', 12.0, 2.9, 3.2, 0.04, [
-      { size: [2.9, 3.2, 12.0], offset: [0, 1.64, 0], tone: 'body' },
-      { size: [2.95, 1.1, 11.0], offset: [0, 2.3, 0], tone: 'cabin' },
+      {
+        size: [2.9, 3.2, 12.0],
+        offset: [0, 1.64, 0],
+        tone: 'body',
+        zone: 'centre',
+      },
+      {
+        size: [2.95, 1.1, 11.0],
+        offset: [0, 2.3, 0],
+        tone: 'cabin',
+        zone: 'centre',
+      },
     ]),
   });
 
@@ -164,6 +301,7 @@ export interface CarModelInstances {
       readonly w: number;
     },
     colorIndex: number,
+    crush?: Readonly<CarCrushState>,
   ): boolean;
   /** Finish the frame: upload counts and matrices. */
   end(): void;
@@ -182,11 +320,27 @@ export function createCarModelInstances(
   capacityPerKind: number,
 ): CarModelInstances {
   const materials = {
-    body: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 }),
-    cabin: new MeshStandardMaterial({ color: 0x344656, roughness: 0.42 }),
-    accent: new MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.6 }),
+    body: new MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.55,
+      flatShading: true,
+    }),
+    cabin: new MeshStandardMaterial({
+      color: 0x344656,
+      roughness: 0.42,
+      flatShading: true,
+    }),
+    accent: new MeshStandardMaterial({
+      color: 0x9aa3ad,
+      roughness: 0.6,
+      flatShading: true,
+    }),
   };
+  for (const material of Object.values(materials)) installCrushShader(material);
+  const depthMaterial = new MeshDepthMaterial();
+  installCrushShader(depthMaterial);
   const palette = CAR_PALETTE.map((hex) => new Color(hex));
+  const instanceTint = new Color();
   const helper = new Object3D();
   // Traffic's chassis and velocity point along local -Z; catalogue parts
   // were authored with their nose at +Z. Turn only the visual model.
@@ -212,10 +366,14 @@ export function createCarModelInstances(
   for (const kind of CAR_MODEL_KINDS) {
     const model = CAR_MODELS[kind];
     for (const part of model.parts) {
+      const segments = 6;
       const geometry = new BoxGeometry(
         part.size[0],
         part.size[1],
         part.size[2],
+        segments,
+        segments,
+        segments,
       );
       // Car space has the origin `ride` metres up; parts are authored from
       // the ground, so lower them by the ride height.
@@ -224,6 +382,24 @@ export function createCarModelInstances(
         part.offset[1] - model.ride,
         part.offset[2],
       );
+      const metrics = new Float32Array(
+        geometry.getAttribute('position').count * 3,
+      );
+      for (let i = 0; i < metrics.length; i += 3) {
+        metrics[i] = model.halfExtents.x;
+        metrics[i + 1] = model.halfExtents.z;
+        metrics[i + 2] = model.ride;
+      }
+      geometry.setAttribute(
+        'crushMetrics',
+        new Float32BufferAttribute(metrics, 3),
+      );
+      const crushAttribute = new InstancedBufferAttribute(
+        new Float32Array(capacityPerKind * 4),
+        4,
+      );
+      crushAttribute.setUsage(DynamicDrawUsage);
+      geometry.setAttribute('instanceCrush', crushAttribute);
       geometries.push(geometry);
       const mesh = new InstancedMesh(
         geometry,
@@ -232,6 +408,7 @@ export function createCarModelInstances(
       );
       mesh.name = `traffic.${kind}.${part.tone}`;
       mesh.castShadow = mesh.receiveShadow = true;
+      mesh.customDepthMaterial = depthMaterial;
       // Instances move across a 10 km map; a bounds sphere from their boot
       // positions would cull the whole draw at a distant station.
       mesh.frustumCulled = false;
@@ -248,7 +425,7 @@ export function createCarModelInstances(
     begin() {
       for (const kind of CAR_MODEL_KINDS) counts[kind] = 0;
     },
-    push(kind, position, rotation, colorIndex) {
+    push(kind, position, rotation, colorIndex, crush) {
       const index = counts[kind];
       if (index >= capacityPerKind) return false;
       helper.position.set(position.x, position.y, position.z);
@@ -257,9 +434,28 @@ export function createCarModelInstances(
         .multiply(visualFacing);
       helper.updateMatrix();
       const color = palette[paletteColorIndex(colorIndex)]!;
-      for (const mesh of meshes[kind]) {
+      const front = Math.max(0, Math.min(1, crush?.front ?? 0));
+      const rear = Math.max(0, Math.min(1, crush?.rear ?? 0));
+      const left = Math.max(0, Math.min(1, crush?.left ?? 0));
+      const right = Math.max(0, Math.min(1, crush?.right ?? 0));
+      for (let partIndex = 0; partIndex < meshes[kind].length; partIndex++) {
+        const mesh = meshes[kind][partIndex]!;
         mesh.setMatrixAt(index, helper.matrix);
-        if (mesh.material === materials.body) mesh.setColorAt(index, color);
+        const crushAttribute = mesh.geometry.getAttribute(
+          'instanceCrush',
+        ) as InstancedBufferAttribute;
+        crushAttribute.setXYZW(index, front, rear, left, right);
+        const scuff =
+          SCUFF_TINT_STRENGTH > 0
+            ? 1 - SCUFF_TINT_STRENGTH * Math.sqrt(rear)
+            : 1;
+        if (mesh.material === materials.body) {
+          instanceTint.copy(color).multiplyScalar(scuff);
+          mesh.setColorAt(index, instanceTint);
+        } else if (SCUFF_TINT_STRENGTH > 0) {
+          instanceTint.setRGB(scuff, scuff, scuff);
+          mesh.setColorAt(index, instanceTint);
+        }
       }
       counts[kind] = index + 1;
       return true;
@@ -270,6 +466,14 @@ export function createCarModelInstances(
           mesh.count = counts[kind];
           mesh.instanceMatrix.needsUpdate = true;
           if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+          if (mesh.count > 0) {
+            const crushAttribute = mesh.geometry.getAttribute(
+              'instanceCrush',
+            ) as InstancedBufferAttribute;
+            crushAttribute.clearUpdateRanges();
+            crushAttribute.addUpdateRange(0, mesh.count * 4);
+            crushAttribute.needsUpdate = true;
+          }
         }
     },
     dispose() {
@@ -277,6 +481,7 @@ export function createCarModelInstances(
         for (const mesh of meshes[kind]) scene.remove(mesh);
       for (const geometry of geometries) geometry.dispose();
       for (const material of Object.values(materials)) material.dispose();
+      depthMaterial.dispose();
     },
   };
 }
