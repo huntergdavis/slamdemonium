@@ -163,26 +163,26 @@ describe('car model catalogue', () => {
     }
     cars.dispose();
   });
-  it('subdivides box-truck parts for a local dent without adding draws', () => {
+  it('subdivides every model for local dents without adding draws', () => {
     const scene = new Scene();
     const cars = createCarModelInstances(scene, 4);
-    const truck = scene.getObjectByName(
-      'traffic.boxTruck.body',
-    ) as InstancedMesh;
-    const sedan = scene.getObjectByName('traffic.sedan.body') as InstancedMesh;
-    expect(truck.geometry.getAttribute('position').count).toBe(294);
-    expect(sedan.geometry.getAttribute('position').count).toBe(24);
-    expect(truck.geometry.getAttribute('instanceCrush')).toBeInstanceOf(
-      InstancedBufferAttribute,
-    );
-    const metrics = truck.geometry.getAttribute('crushMetrics');
-    expect(metrics.getX(0)).toBeCloseTo(CAR_MODELS.boxTruck.halfExtents.x);
-    expect(metrics.getY(0)).toBeCloseTo(CAR_MODELS.boxTruck.halfExtents.z);
-    expect(metrics.getZ(0)).toBeCloseTo(CAR_MODELS.boxTruck.ride);
+    for (const kind of CAR_MODEL_KINDS) {
+      const mesh = scene.getObjectByName(
+        `traffic.${kind}.body`,
+      ) as InstancedMesh;
+      expect(mesh.geometry.getAttribute('position').count).toBe(294);
+      expect(mesh.geometry.getAttribute('instanceCrush')).toBeInstanceOf(
+        InstancedBufferAttribute,
+      );
+      const metrics = mesh.geometry.getAttribute('crushMetrics');
+      expect(metrics.getX(0)).toBeCloseTo(CAR_MODELS[kind].halfExtents.x);
+      expect(metrics.getY(0)).toBeCloseTo(CAR_MODELS[kind].halfExtents.z);
+      expect(metrics.getZ(0)).toBeCloseTo(CAR_MODELS[kind].ride);
+    }
     expect(cars.drawCalls).toBe(14);
     cars.dispose();
   });
-  it('feeds rear-only per-instance damage to matching colour and shadow shaders', () => {
+  it('feeds four-sided per-instance damage to matching colour and shadow shaders', () => {
     const scene = new Scene();
     const cars = createCarModelInstances(scene, 4);
     const body = scene.getObjectByName(
@@ -227,12 +227,14 @@ describe('car model catalogue', () => {
     expect([0, 1, 2, 3].map((i) => crush.getY(i))).toEqual([
       0, 0.30000001192092896, 1, 0,
     ]);
-    expect([0, 1, 2, 3].map((i) => crush.getX(i))).toEqual([0, 0, 0, 0]);
+    expect([0, 1, 2, 3].map((i) => crush.getX(i))).toEqual([0, 0, 0, 1]);
+    expect([0, 1, 2, 3].map((i) => crush.getZ(i))).toEqual([0, 0, 0, 1]);
+    expect([0, 1, 2, 3].map((i) => crush.getW(i))).toEqual([0, 0, 0, 1]);
     expect(
       (
         sedan.geometry.getAttribute('instanceCrush') as InstancedBufferAttribute
       ).getY(0),
-    ).toBe(0);
+    ).toBe(1);
     const intact = new Matrix4();
     const dented = new Matrix4();
     const cargoDented = new Matrix4();
@@ -255,8 +257,13 @@ describe('car model catalogue', () => {
     const shadow = source(body.customDepthMaterial as MeshDepthMaterial);
     expect(visible).toBe(shadow);
     expect(visible).toContain('attribute vec4 instanceCrush;');
-    expect(visible).toContain('transformed.z += 2.4 * trafficRear');
-    expect(visible).toContain('transformed.y -= trafficRear');
+    expect(visible).toContain(
+      'transformed.z += 2.4 * (trafficRear - trafficFront)',
+    );
+    expect(visible).toContain(
+      'transformed.x += 1.15 * (trafficLeft - trafficRight)',
+    );
+    expect(visible).toContain('transformed.y -= roof');
     cars.dispose();
   });
 });

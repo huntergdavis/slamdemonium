@@ -35,7 +35,7 @@ const SCUFF_TINT_STRENGTH = 0;
 
 /** Deform before the instance matrix in both the colour and depth passes.
  * Model metrics are vertex attributes because the three materials are shared
- * by all six kinds; only the box-truck rear strength is nonzero in this probe. */
+ * by all six kinds; damage strengths are per encounter, not per geometry. */
 function installCrushShader(
   material: MeshStandardMaterial | MeshDepthMaterial,
 ): void {
@@ -49,25 +49,38 @@ attribute vec3 crushMetrics;`,
     shader.vertexShader = shader.vertexShader.replace(
       '#include <begin_vertex>',
       `#include <begin_vertex>
-float trafficRear = instanceCrush.y;
-if (trafficRear > 0.0) {
+if (dot(instanceCrush, vec4(1.0)) > 0.0) {
   float halfWidth = crushMetrics.x;
   float halfLength = crushMetrics.y;
   float rideHeight = crushMetrics.z;
   float rearBand = 1.0 - smoothstep(-halfLength * 0.82, -halfLength * 0.08, position.z);
+  float frontBand = smoothstep(halfLength * 0.08, halfLength * 0.82, position.z);
+  float leftBand = 1.0 - smoothstep(-halfWidth * 0.82, -halfWidth * 0.08, position.x);
+  float rightBand = smoothstep(halfWidth * 0.08, halfWidth * 0.82, position.x);
+  float trafficRear = instanceCrush.y * rearBand;
+  float trafficFront = instanceCrush.x * frontBand;
+  float trafficLeft = instanceCrush.z * leftBand;
+  float trafficRight = instanceCrush.w * rightBand;
   float across = clamp(abs(position.x) / halfWidth, 0.0, 1.0);
+  float along = clamp(abs(position.z) / halfLength, 0.0, 1.0);
   float height = clamp((position.y + rideHeight) / (rideHeight * 2.0), 0.0, 1.0);
   float bowl = 0.28 + 0.72 * (1.0 - across * across);
+  float sideBowl = 0.28 + 0.72 * (1.0 - along * along);
   float wrinkle = 0.82 + 0.18 * sin(position.x * 5.7 + position.y * 4.1);
-  transformed.z += 2.4 * trafficRear * rearBand * bowl * wrinkle;
+  float sideWrinkle = 0.82 + 0.18 * sin(position.z * 5.7 + position.y * 4.1);
+  transformed.z += 2.4 * (trafficRear - trafficFront) * bowl * wrinkle;
+  transformed.x += 1.15 * (trafficLeft - trafficRight) * sideBowl * sideWrinkle;
   float roof = smoothstep(0.55, 0.9, height);
   float roofNotch = 1.0 - smoothstep(0.1, 0.95, across);
-  transformed.y -= trafficRear * rearBand * roof * (0.35 + 0.9 * roofNotch);
-  transformed.y += 0.18 * trafficRear * rearBand * roof * sin(position.x * 3.2 + position.z * 1.7);
+  float sideNotch = 1.0 - smoothstep(0.1, 0.95, along);
+  transformed.y -= roof * ((trafficRear + trafficFront) * (0.35 + 0.9 * roofNotch)
+    + (trafficLeft + trafficRight) * (0.35 + 0.9 * sideNotch));
+  transformed.y += 0.18 * roof * ((trafficRear + trafficFront) * sin(position.x * 3.2 + position.z * 1.7)
+    + (trafficLeft + trafficRight) * sin(position.z * 3.2 + position.x * 1.7));
 }`,
     );
   };
-  material.customProgramCacheKey = () => 'traffic-vertex-crush-v1';
+  material.customProgramCacheKey = () => 'traffic-vertex-crush-v2';
 }
 
 /** A box part of a model, in car space: +z is the nose, y up from the
@@ -353,7 +366,7 @@ export function createCarModelInstances(
   for (const kind of CAR_MODEL_KINDS) {
     const model = CAR_MODELS[kind];
     for (const part of model.parts) {
-      const segments = kind === 'boxTruck' ? 6 : 1;
+      const segments = 6;
       const geometry = new BoxGeometry(
         part.size[0],
         part.size[1],
@@ -421,14 +434,17 @@ export function createCarModelInstances(
         .multiply(visualFacing);
       helper.updateMatrix();
       const color = palette[paletteColorIndex(colorIndex)]!;
+      const front = Math.max(0, Math.min(1, crush?.front ?? 0));
       const rear = Math.max(0, Math.min(1, crush?.rear ?? 0));
+      const left = Math.max(0, Math.min(1, crush?.left ?? 0));
+      const right = Math.max(0, Math.min(1, crush?.right ?? 0));
       for (let partIndex = 0; partIndex < meshes[kind].length; partIndex++) {
         const mesh = meshes[kind][partIndex]!;
         mesh.setMatrixAt(index, helper.matrix);
         const crushAttribute = mesh.geometry.getAttribute(
           'instanceCrush',
         ) as InstancedBufferAttribute;
-        crushAttribute.setXYZW(index, 0, kind === 'boxTruck' ? rear : 0, 0, 0);
+        crushAttribute.setXYZW(index, front, rear, left, right);
         const scuff =
           SCUFF_TINT_STRENGTH > 0
             ? 1 - SCUFF_TINT_STRENGTH * Math.sqrt(rear)
@@ -450,12 +466,14 @@ export function createCarModelInstances(
           mesh.count = counts[kind];
           mesh.instanceMatrix.needsUpdate = true;
           if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-          if (kind === 'boxTruck')
-            (
-              mesh.geometry.getAttribute(
-                'instanceCrush',
-              ) as InstancedBufferAttribute
-            ).needsUpdate = true;
+          if (mesh.count > 0) {
+            const crushAttribute = mesh.geometry.getAttribute(
+              'instanceCrush',
+            ) as InstancedBufferAttribute;
+            crushAttribute.clearUpdateRanges();
+            crushAttribute.addUpdateRange(0, mesh.count * 4);
+            crushAttribute.needsUpdate = true;
+          }
         }
     },
     dispose() {
