@@ -71,6 +71,7 @@ interface RecordState {
   crashNormal: V3;
   crashClosingSpeed: number;
   crashBleedRemaining: number;
+  shapeDirty: boolean;
 }
 
 interface Slot {
@@ -210,6 +211,7 @@ export function createTraffic(
     crashNormal: { x: 0, y: 0, z: 0 },
     crashClosingSpeed: 0,
     crashBleedRemaining: 0,
+    shapeDirty: false,
   }));
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
@@ -393,6 +395,7 @@ export function createTraffic(
     if (!slot) return;
     const state = record.state;
     updateSlotShape(slot, record);
+    record.shapeDirty = false;
     physics.activateBody(slot.bodyId, state.position, state.rotation, true);
     setSlotProperties(slot, record.wrecked);
     slot.record = record;
@@ -526,7 +529,10 @@ export function createTraffic(
       if (!slot) continue;
       // Contacts only record damage. Swap after the solver has finished that
       // step, before the next one; shrinking inward leaves no new overlap.
-      updateSlotShape(slot, record);
+      if (record.shapeDirty) {
+        updateSlotShape(slot, record);
+        record.shapeDirty = false;
+      }
       // Wrecks remain physically free to tumble and settle while nearby.
       if (record.wrecked) {
         if (slot.friction !== WRECK_FRICTION) setSlotProperties(slot, true);
@@ -672,7 +678,8 @@ export function createTraffic(
               relativeVelocity.z * nz
             ),
           );
-          recordVisualCrush(record.state, nx, ny, nz, closingSpeed);
+          if (recordVisualCrush(record.state, nx, ny, nz, closingSpeed))
+            record.shapeDirty = true;
         }
       }
       // Gentle contact dents without counting as a wreck or a slam.
