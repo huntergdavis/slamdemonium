@@ -23,6 +23,26 @@ const mass = (kg: number) => ({
   inertiaScale: { x: 1, y: 1, z: 1 },
 });
 
+it('retracts the struck visual side in the chassis frame', () => {
+  const half = CAR_MODELS.sedan.halfExtents;
+  for (const side of ['front', 'rear', 'left', 'right'] as const) {
+    const shape = trafficCrushShape('sedan', {
+      front: side === 'front' ? 1 : 0,
+      rear: side === 'rear' ? 1 : 0,
+      left: side === 'left' ? 1 : 0,
+      right: side === 'right' ? 1 : 0,
+    })!;
+    const xs = shape.vertices.map((vertex) => vertex.x);
+    const zs = shape.vertices.map((vertex) => vertex.z);
+    // The catalogue is drawn 180 degrees around Y: visual front/+Z becomes
+    // chassis front/-Z; visual right/+X becomes chassis right/-X.
+    expect(Math.min(...zs) > -half.z).toBe(side === 'front');
+    expect(Math.max(...zs) < half.z).toBe(side === 'rear');
+    expect(Math.min(...xs) > -half.x).toBe(side === 'right');
+    expect(Math.max(...xs) < half.x).toBe(side === 'left');
+  }
+});
+
 it('swaps an inactive pooled box for a bigger one: still asleep, rests on the new box, weighs what it should', async () => {
   const world = await createPhysicsWorld({ wasmPath });
   worlds.push(world);
@@ -99,7 +119,7 @@ it('retracts the crushed front while touching road and another car without a vel
     { x: 0, y: 0, z: 0, w: 1 },
   );
   const touching = world.createDynamicBox({
-    center: { x: 0, y: model.ride, z: model.halfExtents.z + 2.08 },
+    center: { x: 0, y: model.ride, z: -model.halfExtents.z - 2.08 },
     halfExtents: { x: 1, y: 0.6, z: 2 },
     ...mass(1300),
     friction: 0.7,
@@ -116,9 +136,9 @@ it('retracts the crushed front while touching road and another car without a vel
     point: { x: 0, y: 0, z: 0 },
     normal: { x: 0, y: 0, z: 0 },
   };
-  const rayOrigin = { x: 0, y: model.ride, z: 8 };
+  const rayOrigin = { x: 0, y: model.ride, z: -8 };
   expect(
-    world.rayCast(rayOrigin, { x: 0, y: 0, z: -1 }, 10, hit, touching),
+    world.rayCast(rayOrigin, { x: 0, y: 0, z: 1 }, 10, hit, touching),
   ).toBe(true);
   expect(hit.bodyId).toBe(body);
   const beforeFace = hit.distance;
@@ -135,6 +155,13 @@ it('retracts the crushed front while touching road and another car without a vel
     left: 0,
     right: 0,
   })!;
+  // A front hit retracts -Z in chassis space, and leaves the rear +Z intact.
+  expect(
+    Math.min(...crushed.vertices.map((vertex) => vertex.z)),
+  ).toBeGreaterThan(-model.halfExtents.z + 0.6);
+  expect(Math.max(...crushed.vertices.map((vertex) => vertex.z))).toBe(
+    model.halfExtents.z,
+  );
   world.setBodyConvexShape(
     body,
     crushed.key,
@@ -158,18 +185,18 @@ it('retracts the crushed front while touching road and another car without a vel
     ),
   ).toBeLessThan(0.01);
   expect(
-    world.rayCast(rayOrigin, { x: 0, y: 0, z: -1 }, 10, hit, touching),
+    world.rayCast(rayOrigin, { x: 0, y: 0, z: 1 }, 10, hit, touching),
   ).toBe(true);
   expect(hit.bodyId).toBe(body);
   expect(hit.distance - beforeFace).toBeGreaterThan(0.6);
   // The second contact must meet the new shorter face and remain stable.
   world.setTransform(
     touching,
-    { x: 0, y: model.ride, z: 8 - hit.distance + 2.2 },
+    { x: 0, y: model.ride, z: -8 + hit.distance - 2.2 },
     { x: 0, y: 0, z: 0, w: 1 },
     true,
   );
-  world.setLinearVelocity(touching, { x: 0, y: 0, z: -5 });
+  world.setLinearVelocity(touching, { x: 0, y: 0, z: 5 });
   let repeatContacts = 0;
   world.onContact((a, b) => {
     if ((a === body && b === touching) || (b === body && a === touching))

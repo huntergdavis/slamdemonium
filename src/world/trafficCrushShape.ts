@@ -13,15 +13,17 @@ export function trafficCrushShape(
   if (tiers.every((tier) => tier === 0)) return null;
   const [front, rear, left, right] = tiers.map((tier) => tier / 4);
   const half = CAR_MODELS[kind].halfExtents;
-  const x0 = -half.x + left! * half.x * 0.4;
-  const x1 = half.x - right! * half.x * 0.4;
-  const z0 = -half.z + rear! * Math.min(2, half.z * 0.4);
-  const z1 = half.z - front! * Math.min(2, half.z * 0.4);
+  // The visible catalogue is rotated 180 degrees around Y to face travel.
+  // Its +Z nose and +X right become the chassis's -Z and -X respectively.
+  const x0 = -half.x + right! * half.x * 0.4;
+  const x1 = half.x - left! * half.x * 0.4;
+  const z0 = -half.z + front! * Math.min(2, half.z * 0.4);
+  const z1 = half.z - rear! * Math.min(2, half.z * 0.4);
   const bottom = -half.y;
-  const topRear =
-    bottom + half.y * 2 * (1 - 0.55 * Math.max(rear!, left!, right!));
   const topFront =
     bottom + half.y * 2 * (1 - 0.55 * Math.max(front!, left!, right!));
+  const topRear =
+    bottom + half.y * 2 * (1 - 0.55 * Math.max(rear!, left!, right!));
   return {
     key: `${kind}:${tiers.join('')}`,
     halfExtents: half,
@@ -30,10 +32,10 @@ export function trafficCrushShape(
       { x: x1, y: bottom, z: z0 },
       { x: x0, y: bottom, z: z1 },
       { x: x1, y: bottom, z: z1 },
-      { x: x0, y: topRear, z: z0 },
-      { x: x1, y: topRear, z: z0 },
-      { x: x0, y: topFront, z: z1 },
-      { x: x1, y: topFront, z: z1 },
+      { x: x0, y: topFront, z: z0 },
+      { x: x1, y: topFront, z: z0 },
+      { x: x0, y: topRear, z: z1 },
+      { x: x1, y: topRear, z: z1 },
     ],
   };
 }
