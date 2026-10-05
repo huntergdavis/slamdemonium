@@ -1,6 +1,6 @@
 # Example input scripts
 
-These v1 JSON documents were recorded through the real gamepad mapper and validated against the production `Vehicle` and stock Jolt WASM on the ring's actual colliders. Each includes the complete tuning header, including the two D5 presentation settings, and a fresh spawn at `(130, 1.1, 0)` facing -Z. The first 60 steps are neutral settling input; they are part of the recording and elapsed time. The 5.40 × 2.43 m player car needs this height to settle on four wheels without a startup hop; the ring lap was re-authored because its old steering inputs no longer completed a lap.
+These v1 JSON documents were recorded through the real gamepad mapper and validated against the production `Vehicle` and stock Jolt WASM on the ring's actual colliders. Each includes the complete tuning header, including the two D5 presentation settings, and a fresh spawn at `(130, 1.0, 0)` facing -Z. The first 60 steps are neutral settling input; they are part of the recording and elapsed time. The 4.80 × 2.16 m player car needs this height to settle on four wheels without a startup hop; the ring lap was re-authored for its handling.
 
 | Script | Physics steps | Time at captured 120 Hz | Observed result |
 | --- | ---: | ---: | --- |

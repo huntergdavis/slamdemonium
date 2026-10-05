@@ -41,7 +41,7 @@ A minimal example, the shipped handbrake turn, has four frames: settle for half 
   "name": "handbrake-turn",
   "seed": 20903,
   "spawn": {
-    "position": { "x": 130, "y": 1.1, "z": 0 },
+    "position": { "x": 130, "y": 1.0, "z": 0 },
     "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 }
   },
   "tuning": { "gravity": 20, "timeScale": 1, "... every schema key ...": 0 },
@@ -162,7 +162,7 @@ In the browser the controller is exposed as `window.__game.scripts` with `load`,
 ## Writing a scenario by hand
 
 1. Copy `src/input/examples/standing-start.json`. Its header is a complete, valid tuning set at defaults with the ring spawn.
-2. Change `name`, and `spawn` if you want to start elsewhere. The ring centre line is radius 130 m; the shipped spawn is `(130, 1.1, 0)` facing -Z, which is the standing-start position of the lap timer.
+2. Change `name`, and `spawn` if you want to start elsewhere. The ring centre line is radius 130 m; the shipped spawn is `(130, 1.0, 0)` facing -Z, which is the standing-start position of the lap timer.
 3. Write `frames`. Think in steps at the header's `physicsHz` (120 by default, so 60 steps is half a second). Start with a short neutral hold so the suspension settles. Every frame must carry all six input fields.
 4. Set `durationSteps` to the last step you care about plus one.
 5. Load it with `{ tuning: 'apply' }` and step `progress().totalSteps`. If it fails to parse, the error names the field.

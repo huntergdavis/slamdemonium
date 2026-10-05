@@ -101,7 +101,7 @@ export async function attempt(
       ),
     );
     vehicle.respawn(
-      { x: start.x, y: 1.1, z: start.z },
+      { x: start.x, y: 1.0, z: start.z },
       { x: q.x, y: q.y, z: q.z, w: q.w },
     );
     world.setLinearVelocity(vehicle.body, {
@@ -273,7 +273,9 @@ const SPEEDS_DOWN = [60, 54, 48, 44, 40, 36, 32, 28, 24, 20, 16];
 it('measures entry angle, lateral offset and speed tolerance of both authored loops', async () => {
   const report: Record<string, unknown> = {};
   for (const [name, spec] of Object.entries(LOOPS)) {
-    const good = name === 'small' ? 40 : name === 'west' ? 44 : 50;
+    // The lab R10 control completes at 44 m/s with this chassis (main needs
+    // 60 m/s); keep its entry sweep on a completing speed rather than 40.
+    const good = name === 'small' ? 44 : name === 'west' ? 44 : 50;
     const angles: Record<string, Outcome> = {};
     const offsets: Record<string, Outcome> = {};
     const speeds: Record<string, Outcome> = {};

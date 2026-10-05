@@ -35,7 +35,7 @@ async function ride(speed: number, steer: number): Promise<RideOutcome> {
     const half = halfPipeHalfLength(pipe);
     const yaw = -Math.PI / 2;
     vehicle.respawn(
-      { x: pipe.x - half - 24, y: 1.1, z: pipe.z },
+      { x: pipe.x - half - 24, y: 1.0, z: pipe.z },
       { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) },
     );
     world.setLinearVelocity(vehicle.body, { x: speed, y: 0, z: 0 });

@@ -268,7 +268,7 @@ describe('traffic events', () => {
 
 describe('player half width follows the collider', () => {
   it('is half the vehicle width, so a bigger car is judged on its real edges', () => {
-    // A0P widened the car from 1.8 m to 2.43 m. A hardcoded half width would
+    // A0P widened the car from 1.8 m to 2.16 m. A hardcoded half width would
     // have left near misses measured from the old bodywork, paying the player
     // for passes the new car never made.
     expect(PLAYER_HALF_WIDTH).toBeCloseTo(VEHICLE_GEOMETRY.width / 2, 9);

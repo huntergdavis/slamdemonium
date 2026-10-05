@@ -23,9 +23,9 @@ function fixture() {
     handbrake01: 0,
     wheels: [0, 1, 2, 3].map((i) => ({
       centerLocal: {
-        x: i % 2 ? 1.08 : -1.08,
-        y: -0.806,
-        z: i < 2 ? -1.755 : 1.755,
+        x: i % 2 ? 0.96 : -0.96,
+        y: -0.706,
+        z: i < 2 ? -1.56 : 1.56,
       },
       steerAngle: 0,
       spinAngle: 0,
@@ -33,9 +33,9 @@ function fixture() {
       spinning: false,
       locked: false,
       contactPointWorld: {
-        x: 130 + (i % 2 ? 1.08 : -1.08),
+        x: 130 + (i % 2 ? 0.96 : -0.96),
         y: 0,
-        z: i < 2 ? -1.755 : 1.755,
+        z: i < 2 ? -1.56 : 1.56,
       },
       tireForceWorld: { x: 0, y: 0, z: -4000 },
     })) as [MutableWheel, MutableWheel, MutableWheel, MutableWheel],
@@ -54,43 +54,43 @@ describe('car visual contract', () => {
     new Box3()
       .setFromObject(car.root.getObjectByName('car.body')!)
       .getSize(size);
-    expect(size.toArray()).toEqual([2.43, 1.3, 5.4]);
+    expect(size.toArray()).toEqual([2.16, 1.2, 4.8]);
     for (const [name, a, b] of [
-      ['left', [-0.837, 0.653, -1.1475], [0, 0.653, -2.322]],
-      ['right', [0, 0.653, -2.322], [0.837, 0.653, -1.1475]],
+      ['left', [-0.744, 0.603, -1.02], [0, 0.603, -2.064]],
+      ['right', [0, 0.603, -2.064], [0.744, 0.603, -1.02]],
     ] as const) {
       const strip = car.root.getObjectByName('car.chevron.' + name)!;
       const start = strip.localToWorld(new Vector3(0, -0.5, 0));
       const end = strip.localToWorld(new Vector3(0, 0.5, 0));
       expect(start.distanceTo(new Vector3(...a))).toBeLessThan(1e-12);
       expect(end.distanceTo(new Vector3(...b))).toBeLessThan(1e-12);
-      expect(strip.scale.x).toBeCloseTo(0.216);
+      expect(strip.scale.x).toBeCloseTo(0.192);
     }
     const nose = car.root.getObjectByName('car.nose')!;
-    expect(
-      nose.position.distanceTo(new Vector3(0, 0.1625, -2.703)),
-    ).toBeLessThan(1e-12);
-    expect(nose.scale.distanceTo(new Vector3(0.351, 0.975, 1))).toBeLessThan(
+    expect(nose.position.distanceTo(new Vector3(0, 0.15, -2.403))).toBeLessThan(
+      1e-12,
+    );
+    expect(nose.scale.distanceTo(new Vector3(0.312, 0.9, 1))).toBeLessThan(
       1e-12,
     );
     const tail = car.root.getObjectByName('car.tail')!;
-    expect(tail.position.distanceTo(new Vector3(0, 0.104, 2.703))).toBeLessThan(
+    expect(tail.position.distanceTo(new Vector3(0, 0.096, 2.403))).toBeLessThan(
       1e-12,
     );
-    expect(tail.scale.distanceTo(new Vector3(1.944, 0.182, 1))).toBeLessThan(
+    expect(tail.scale.distanceTo(new Vector3(1.728, 0.168, 1))).toBeLessThan(
       1e-12,
     );
     for (const [i, name] of ['FL', 'FR', 'RL', 'RR'].entries()) {
       const wheel = car.root.getObjectByName('car.wheel.' + name)!;
       new Box3().setFromObject(wheel).getSize(size);
-      expect(size.x).toBeCloseTo(0.324);
+      expect(size.x).toBeCloseTo(0.288);
       expect(size.y).toBeCloseTo(0.88);
       expect(size.z).toBeCloseTo(0.88);
       const witness = car.root.getObjectByName(
         'car.wheel.' + name + '.witness',
       )!;
-      expect(witness.position.x).toBeCloseTo(i % 2 ? 0.16605 : -0.16605);
-      expect(witness.scale.x).toBeCloseTo(0.0675);
+      expect(witness.position.x).toBeCloseTo(i % 2 ? 0.1476 : -0.1476);
+      expect(witness.scale.x).toBeCloseTo(0.06);
       expect(witness.scale.y).toBeCloseTo(0.44);
       expect(witness.scale.z).toBe(1);
     }
@@ -190,12 +190,12 @@ describe('car visual contract', () => {
     car.update(state);
     expect(velocity.rotation.y).toBeCloseTo(-Math.PI / 2);
     const force = scene.getObjectByName('car.gizmos.force.FL')!;
-    expect(force.position.toArray()).toEqual([128.92, 0.06, -1.755]);
+    expect(force.position.toArray()).toEqual([129.04, 0.06, -1.56]);
     const tip = force
       .getObjectByName('car.gizmos.force.FL.head')!
       .localToWorld(new Vector3(0, 0.5, 0));
-    expect(tip.x).toBeCloseTo(128.92);
-    expect(tip.z).toBeCloseTo(-3.755); // 4 kN = 2 m, remains world-forward.
+    expect(tip.x).toBeCloseTo(129.04);
+    expect(tip.z).toBeCloseTo(-3.56); // 4 kN = 2 m, remains world-forward.
     state.wheels[0].grounded = false;
     state.wheels[1].tireForceWorld = { x: 0, y: 0, z: 0 };
     state.velocityWorld = { x: 0, y: 100, z: 0 };

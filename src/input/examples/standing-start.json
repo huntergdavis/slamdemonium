@@ -5,7 +5,7 @@
   "spawn": {
     "position": {
       "x": 130,
-      "y": 1.1,
+      "y": 1,
       "z": 0
     },
     "rotation": {
@@ -61,7 +61,7 @@
     "loadSensitivity": 0.15,
     "downforceAtTopSpeed": 0.6,
     "lowSpeedBlend": 3,
-    "steerMaxLowSpeed": 40,
+    "steerMaxLowSpeed": 37,
     "steerMaxTopSpeed": 4.5,
     "steerSpeedExp": 0.55,
     "steerRiseTime": 0.18,

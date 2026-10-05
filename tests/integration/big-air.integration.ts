@@ -23,7 +23,7 @@ async function jump(rampIndex: number, speed: number) {
     installRamps(surfacedBodies, [ramp]);
     const f = { x: -Math.sin(ramp.heading), z: -Math.cos(ramp.heading) };
     vehicle.respawn(
-      { x: ramp.x - f.x * 80, y: 1.1, z: ramp.z - f.z * 80 },
+      { x: ramp.x - f.x * 80, y: 1.0, z: ramp.z - f.z * 80 },
       {
         x: 0,
         y: Math.sin(ramp.heading / 2),

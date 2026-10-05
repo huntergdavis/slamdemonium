@@ -24,7 +24,7 @@ const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
 );
 export const ringSpawn = {
-  position: { x: 130, y: 1.1, z: 0 },
+  position: { x: 130, y: 1.0, z: 0 },
   rotation: { x: 0, y: 0, z: 0, w: 1 },
 };
 export const neutralScriptInput: ScriptInput = {

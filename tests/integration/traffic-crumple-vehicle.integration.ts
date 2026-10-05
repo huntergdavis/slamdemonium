@@ -27,7 +27,7 @@ for (const kind of ['rear', 'side'] as const) {
         { station: 140, laneSide: -1, speed: 20 },
       ]);
       try {
-        const playerPosition = { x: 3.5, y: 1.1, z: -40 };
+        const playerPosition = { x: 3.5, y: 1.0, z: -40 };
         traffic.preStep(DT, playerPosition);
         world.step(DT);
         traffic.postStep();
@@ -36,8 +36,8 @@ for (const kind of ['rear', 'side'] as const) {
         expect(car.bodyId).toBeGreaterThan(0);
         vehicle.respawn(
           kind === 'rear'
-            ? { x: car.position.x, y: 1.1, z: car.position.z + 10 }
-            : { x: car.position.x - 6, y: 1.1, z: car.position.z + 1.5 },
+            ? { x: car.position.x, y: 1.0, z: car.position.z + 10 }
+            : { x: car.position.x - 6, y: 1.0, z: car.position.z + 1.5 },
           { x: 0, y: 0, z: 0, w: 1 },
         );
         const incoming =

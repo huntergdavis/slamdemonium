@@ -190,10 +190,10 @@ it('brakes from a scripted 60 m/s approach within 15 percent of 77 metres', asyn
   expect(distance).toBeDefined();
   expect(distance!).toBeGreaterThanOrEqual(77 * 0.85);
   expect(distance!).toBeLessThanOrEqual(77 * 1.15);
-  // The 5.40 x 2.43 m player body stops 0.042 m later than the old
+  // The 4.80 x 2.16 m player body stops 0.016 m later than the old
   // 4.00 x 1.80 m body at gravity 20 (71.3531494140625 m). This is the
   // measured A0P geometry change, still within the approved 15% band.
-  expect(distance!).toBeCloseTo(71.3955078125, 3);
+  expect(distance!).toBeCloseTo(71.368896484375, 3);
   expect(stopSeconds).toBeGreaterThan(0);
   expect(stopSeconds).toBeLessThan(4);
 });
