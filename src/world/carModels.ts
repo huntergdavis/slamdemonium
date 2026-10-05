@@ -363,84 +363,61 @@ export function createCarModelInstances(
       const shiftX = (leftDepth - rightDepth) / 2;
       const shiftZ = (tailDepth - noseDepth) / 2;
       const worstDamage = Math.max(front, rear, left, right);
-      // A shortened end alone disappears behind the player's car. Bend the
-      // roof out of the undamaged outline, even for a light knock. A direct
-      // front/rear hit picks a stable lean side from the encounter colour;
-      // side hits lean away from the struck side.
-      const leanSide =
-        left > right
-          ? 1
-          : right > left
-            ? -1
-            : paletteColorIndex(colorIndex) % 2 === 0
-              ? 1
-              : -1;
+      if (damaged) {
+        // The previous version pivoted each box around its own bottom: a
+        // truck's cargo bent away from its base and looked like a loose slab.
+        // One ground-level transform keeps every existing part joined while
+        // still making even a light dent break the chase-view outline.
+        const leanSide =
+          left > right
+            ? 1
+            : right > left
+              ? -1
+              : paletteColorIndex(colorIndex) % 2 === 0
+                ? 1
+                : -1;
+        const bendX = leanSide * 0.55 * worstDamage;
+        const bendZ = (rear - front) * 0.15;
+        const foldX = (right - left) * 0.14;
+        const foldZ = (front - rear) * 0.14;
+        const scaleY =
+          1 -
+          0.12 * Math.min(worstDamage, 0.45) -
+          0.4 * Math.max(0, worstDamage - 0.45);
+        const foldClearance =
+          Math.abs(foldX) * model.halfExtents.x +
+          Math.abs(foldZ) * model.halfExtents.z;
+        localDamage.set(
+          scaleX,
+          bendX,
+          0,
+          shiftX + bendX * model.ride,
+          foldX,
+          scaleY,
+          foldZ,
+          -(1 - scaleY) * model.ride + foldClearance,
+          0,
+          bendZ,
+          scaleZ,
+          shiftZ + bendZ * model.ride,
+          0,
+          0,
+          0,
+          1,
+        );
+        damagedMatrix.multiplyMatrices(helper.matrix, localDamage);
+      }
       for (let partIndex = 0; partIndex < meshes[kind].length; partIndex++) {
         const mesh = meshes[kind][partIndex]!;
         const part = model.parts[partIndex]!;
         let silhouetteDamage = 0;
         if (damaged) {
-          const endDamage =
-            part.zone === 'front'
-              ? front
-              : part.zone === 'rear'
-                ? rear
-                : (front + rear) * 0.35;
-          const roofDrop =
-            part.tone === 'body'
-              ? 0
-              : Math.min(0.3, 0.16 * (endDamage + (left + right) * 0.4));
-          // Lengthwise crush disappears when seen straight from behind. Drop
-          // the struck face too, pivoting each part around its lower edge so
-          // its body stays on the road instead of floating as it buckles.
           silhouetteDamage =
             part.zone === 'front'
               ? Math.max(front, left * 0.8, right * 0.8)
               : part.zone === 'rear'
                 ? Math.max(rear, left * 0.8, right * 0.8)
                 : Math.max(front, rear, left, right) * 0.75;
-          // A small dent vanishes from the moving chase camera if the struck
-          // face stays tall. Spend more height early, while keeping distinct
-          // silhouettes for a solid hit and a full-speed wreck.
-          const compression =
-            0.9 * Math.min(silhouetteDamage, 0.45) +
-            0.7 * Math.max(0, silhouetteDamage - 0.45);
-          const scaleY = 1 - compression;
-          const partBottom = part.offset[1] - model.ride - part.size[1] / 2;
-          // Shear about the part's lower edge: the base stays near its
-          // collider while the roof leans into a clear chase-view silhouette.
-          // The struck edge also folds up into a slanted hood or roof. These
-          // are per-instance matrices, so all kinds keep their shared boxes
-          // and the same number of draws.
-          const bendX =
-            leanSide * 0.6 * worstDamage * (part.tone === 'body' ? 0.55 : 1);
-          const bendZ = (rear - front) * 0.18 * silhouetteDamage;
-          const fold = (part.tone === 'body' ? 0.1 : 0.25) * silhouetteDamage;
-          const foldX = (right > left ? 1 : left > right ? -1 : 0) * fold;
-          const foldZ = (front > rear ? 1 : rear > front ? -1 : 0) * fold;
-          const foldClearance =
-            Math.abs(foldX) * part.size[0] * 0.5 +
-            Math.abs(foldZ) * part.size[2] * 0.5;
-          const shiftY = (1 - scaleY) * partBottom - roofDrop + foldClearance;
-          localDamage.set(
-            scaleX,
-            bendX,
-            0,
-            shiftX - bendX * partBottom,
-            foldX,
-            scaleY,
-            foldZ,
-            shiftY - foldX * part.offset[0] - foldZ * part.offset[2],
-            0,
-            bendZ,
-            scaleZ,
-            shiftZ - bendZ * partBottom,
-            0,
-            0,
-            0,
-            1,
-          );
-          damagedMatrix.multiplyMatrices(helper.matrix, localDamage);
           mesh.setMatrixAt(index, damagedMatrix);
         } else mesh.setMatrixAt(index, helper.matrix);
         const scuff = 1 - SCUFF_TINT_STRENGTH * Math.sqrt(silhouetteDamage);

@@ -257,13 +257,25 @@ describe('car model catalogue', () => {
     cars.end();
     const intact = bounds(0);
     const damaged = bounds(1);
-    expect(intact.max.y - damaged.max.y).toBeGreaterThan(0.2);
+    expect(damaged.max.y - intact.max.y).toBeGreaterThan(0.2);
     expect(
       Math.max(
         Math.abs(damaged.min.x - intact.min.x),
         Math.abs(damaged.max.x - intact.max.x),
       ),
     ).toBeGreaterThan(0.3);
+    const body = scene.getObjectByName(
+      'traffic.boxTruck.body',
+    ) as InstancedMesh;
+    const bodyMatrix = new Matrix4();
+    const cargoMatrix = new Matrix4();
+    body.getMatrixAt(1, bodyMatrix);
+    accent.getMatrixAt(1, cargoMatrix);
+    // Adjacent parts use one ground-level bend. Different part pivots made
+    // the cargo appear detached from its lower body in the moving preview.
+    expect(Array.from(cargoMatrix.elements)).toEqual(
+      Array.from(bodyMatrix.elements),
+    );
     const intactTint = new Color();
     const damagedTint = new Color();
     accent.getColorAt(0, intactTint);
