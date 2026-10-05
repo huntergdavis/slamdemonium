@@ -216,4 +216,16 @@ it('retracts the crushed front while touching road and another car without a vel
     if (cycle === 1) baselineFree = stats.freeBytes;
     if (cycle > 1) expect(stats.freeBytes).toBe(baselineFree);
   }
+  // A crushed hull keeps the authored 1100 kg mass after pooled reuse.
+  world.setGravity(0);
+  world.activateBody(body, { x: 0, y: 10, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+  const velocity = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i < HZ; i++) {
+    world.getTransform(body, afterPos, rotation);
+    world.applyForceAtPoint(body, { x: 0, y: 0, z: 11000 }, afterPos);
+    world.step(1 / HZ);
+  }
+  world.getLinearVelocity(body, velocity);
+  expect(velocity.z).toBeGreaterThan(9.7);
+  expect(velocity.z).toBeLessThan(10.3);
 });

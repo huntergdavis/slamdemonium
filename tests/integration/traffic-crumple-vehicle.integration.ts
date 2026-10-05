@@ -184,6 +184,8 @@ for (const kind of ['rear', 'side'] as const) {
         expect(swapMeasured).toBe(true);
         expect(swapResidual).toBeLessThan(0.1);
         expect(trafficFlipped).toBe(false);
+        expect(trafficSpeedAtOne).toBeGreaterThan(5);
+        expect(playerSpeedAtOne).toBeGreaterThan(2);
         // CTO (2026-10-04): "hit cars should allow to lift off briefly."
         // A hop is part of the crash; a sustained flight or rollover is not.
         expect(trafficAirborneSteps * DT).toBeLessThan(1.0);
