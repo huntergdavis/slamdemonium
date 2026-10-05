@@ -4,6 +4,7 @@ import { SURFACE_IDS } from '../content/surfaces';
 import type { BodyId, IPhysicsWorld, Quat, V3 } from '../physics/adapter';
 import type { RoadPath } from './roadGenerator';
 import type { SurfacedBodies } from './surfacedBodies';
+import { trafficCrushShape } from './trafficCrushShape';
 import {
   CAR_MODELS,
   createCarModelInstances,
@@ -78,6 +79,7 @@ interface Slot {
   friction: number;
   /** The kind whose collision box the pooled body currently carries. */
   kind: CarModelKind | null;
+  shapeKey: string | null;
 }
 
 const BODY_HALF = { x: 0.95, y: 0.55, z: 2.1 };
@@ -132,7 +134,7 @@ function recordVisualCrush(
   ny: number,
   nz: number,
   closingSpeed: number,
-): void {
+): boolean {
   // Even a slow scrape leaves a small visible dent. Ordinary knocks build
   // damage quickly, while 30 and 60 m/s hits remain distinct.
   const speed = Math.max(0, closingSpeed);
@@ -153,7 +155,7 @@ function recordVisualCrush(
   const tz = 2 * (qx * ny - qy * nx);
   const localX = -(nx + q.w * tx + qy * tz - qz * ty);
   const localZ = -(nz + q.w * tz + qx * ty - qy * tx);
-  if (Math.hypot(localX, localZ) < 0.45) return;
+  if (Math.hypot(localX, localZ) < 0.45) return false;
   const side =
     Math.abs(localZ) >= Math.abs(localX)
       ? localZ >= 0
@@ -162,7 +164,9 @@ function recordVisualCrush(
       : localX >= 0
         ? 'right'
         : 'left';
-  state.crush[side] = Math.max(state.crush[side], strength);
+  const old = state.crush[side];
+  state.crush[side] = Math.max(old, strength);
+  return state.crush[side] > old;
 }
 
 /** Every authored car advances continuously. Only nearby cars own a pooled
@@ -240,6 +244,7 @@ export function createTraffic(
     slots.push({
       bodyId,
       kind: null,
+      shapeKey: null,
       record: null,
       friction: DRIVE_FRICTION,
     });
@@ -387,14 +392,7 @@ export function createTraffic(
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
     const state = record.state;
-    if (slot.kind !== state.modelKind) {
-      physics.setBodyShape(
-        slot.bodyId,
-        CAR_MODELS[state.modelKind].halfExtents,
-        BODY_MASS_DESC,
-      );
-      slot.kind = state.modelKind;
-    }
+    updateSlotShape(slot, record);
     physics.activateBody(slot.bodyId, state.position, state.rotation, true);
     setSlotProperties(slot, record.wrecked);
     slot.record = record;
@@ -402,6 +400,30 @@ export function createTraffic(
     state.bodyId = slot.bodyId;
     if (!record.wrecked) physics.setLinearVelocity(slot.bodyId, state.velocity);
     physicalCount++;
+  }
+
+  function updateSlotShape(slot: Slot, record: RecordState): void {
+    const state = record.state;
+    const crushed = trafficCrushShape(state.modelKind, state.crush);
+    if (crushed) {
+      if (slot.shapeKey === crushed.key) return;
+      physics.setBodyConvexShape(
+        slot.bodyId,
+        crushed.key,
+        crushed.vertices,
+        crushed.halfExtents,
+        BODY_MASS_DESC,
+      );
+      slot.shapeKey = crushed.key;
+    } else if (slot.kind !== state.modelKind || slot.shapeKey !== null) {
+      physics.setBodyShape(
+        slot.bodyId,
+        CAR_MODELS[state.modelKind].halfExtents,
+        BODY_MASS_DESC,
+      );
+      slot.shapeKey = null;
+    }
+    slot.kind = state.modelKind;
   }
 
   function demote(record: RecordState): void {
@@ -502,6 +524,9 @@ export function createTraffic(
       }
       const slot = record.slot;
       if (!slot) continue;
+      // Contacts only record damage. Swap after the solver has finished that
+      // step, before the next one; shrinking inward leaves no new overlap.
+      updateSlotShape(slot, record);
       // Wrecks remain physically free to tumble and settle while nearby.
       if (record.wrecked) {
         if (slot.friction !== WRECK_FRICTION) setSlotProperties(slot, true);

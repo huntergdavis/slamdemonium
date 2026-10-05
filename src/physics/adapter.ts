@@ -134,6 +134,15 @@ export interface IPhysicsWorld {
    * was asleep; mass and inertia are recomputed for the new box from `desc`.
    * Flagged addition (2026-10-02, dev-claude). */
   setBodyShape(id: BodyId, halfExtents: V3, desc: MassDesc): void;
+  /** Swap to a cached convex traffic crush shape. `key` identifies immutable
+   * vertices for this world; a repeated key must supply the same points. */
+  setBodyConvexShape(
+    id: BodyId,
+    key: string,
+    vertices: readonly V3[],
+    halfExtents: V3,
+    desc: MassDesc,
+  ): void;
   setContactProperties(id: BodyId, friction: number, restitution: number): void;
   setBodyProperties(id: BodyId, properties: BodyProperties): void;
   /** Diagonal of the local inertia tensor, including the COM shift and scale. */
