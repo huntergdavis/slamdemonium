@@ -175,7 +175,16 @@ it('retracts the crushed front while touching road and another car without a vel
     if ((a === body && b === touching) || (b === body && a === touching))
       repeatContacts++;
   });
-  for (let i = 0; i < 60; i++) world.step(1 / HZ);
+  let repeatCenterDistance = Infinity;
+  const otherPos = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i < 60; i++) {
+    world.step(1 / HZ);
+    if (repeatContacts > 0 && repeatCenterDistance === Infinity) {
+      world.getTransform(body, afterPos, rotation);
+      world.getTransform(touching, otherPos, rotation);
+      repeatCenterDistance = Math.abs(otherPos.z - afterPos.z);
+    }
+  }
   world.getLinearVelocity(body, afterVelocity);
   expect(
     Number.isFinite(afterVelocity.x + afterVelocity.y + afterVelocity.z),
@@ -184,4 +193,27 @@ it('retracts the crushed front while touching road and another car without a vel
     Math.hypot(afterVelocity.x, afterVelocity.y, afterVelocity.z),
   ).toBeLessThan(5);
   expect(repeatContacts).toBeGreaterThan(0);
+  expect(repeatCenterDistance).toBeLessThan(model.halfExtents.z + 2 - 0.4);
+  console.log(
+    `CRUSH_SHAPE ${JSON.stringify({ swapVelocityDelta: +swapDelta.toFixed(3), faceRetraction: +(hit.distance - beforeFace).toFixed(3), repeatCenterDistance: +repeatCenterDistance.toFixed(3) })}`,
+  );
+  world.deactivateBody(body);
+  world.deactivateBody(touching);
+  const stats = { heapBytes: 0, freeBytes: 0 };
+  let baselineFree = 0;
+  for (let cycle = 0; cycle < 6; cycle++) {
+    for (let i = 0; i < 20; i++) {
+      world.setBodyShape(body, model.halfExtents, mass(1100));
+      world.setBodyConvexShape(
+        body,
+        crushed.key,
+        crushed.vertices,
+        crushed.halfExtents,
+        mass(1100),
+      );
+    }
+    world.getMemoryStats(stats);
+    if (cycle === 1) baselineFree = stats.freeBytes;
+    if (cycle > 1) expect(stats.freeBytes).toBe(baselineFree);
+  }
 });
