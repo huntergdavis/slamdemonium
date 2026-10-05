@@ -377,11 +377,17 @@ export function createCarModelInstances(
           // its body stays on the road instead of floating as it buckles.
           const silhouetteDamage =
             part.zone === 'front'
-              ? front
+              ? Math.max(front, left * 0.8, right * 0.8)
               : part.zone === 'rear'
-                ? rear
+                ? Math.max(rear, left * 0.8, right * 0.8)
                 : Math.max(front, rear, left, right) * 0.75;
-          const scaleY = 1 - 0.55 * silhouetteDamage;
+          // A linear squash became nearly invisible above a solid hit:
+          // the remaining tall face masked the difference between 30 and
+          // 60 m/s. Spend more of the height at the wrecked end.
+          const compression =
+            0.55 * Math.min(silhouetteDamage, 0.45) +
+            0.9 * Math.max(0, silhouetteDamage - 0.45);
+          const scaleY = 1 - compression;
           const partBottom = part.offset[1] - model.ride - part.size[1] / 2;
           const shiftY = (1 - scaleY) * partBottom - roofDrop;
           localDamage.makeScale(scaleX, scaleY, scaleZ);

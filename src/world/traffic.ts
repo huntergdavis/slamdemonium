@@ -133,14 +133,17 @@ function recordVisualCrush(
   nz: number,
   closingSpeed: number,
 ): void {
-  // A normal 23 m/s slam must read at chase distance, but 30 and 60 m/s
-  // impacts should not saturate to the same shape.
-  const excess = Math.max(0, closingSpeed - 5);
+  // Even a slow scrape leaves a small visible dent. Ordinary knocks build
+  // damage quickly, while 30 and 60 m/s hits remain distinct.
+  const speed = Math.max(0, closingSpeed);
   const strength =
-    excess <= 18
-      ? excess / 25
-      : Math.min(1, 0.72 + ((excess - 18) * 0.28) / 37);
-  if (strength === 0) return;
+    speed <= 8
+      ? 0.15 + speed * 0.01875
+      : speed <= 15
+        ? 0.3 + ((speed - 8) * 0.15) / 7
+        : speed <= 23
+          ? 0.45 + ((speed - 15) * 0.25) / 8
+          : Math.min(1, 0.7 + ((speed - 23) * 0.3) / 37);
   const q = state.rotation;
   const qx = -q.x;
   const qy = -q.y;
@@ -623,7 +626,6 @@ export function createTraffic(
     normalIntoPlayer?: Readonly<V3>,
     relativeVelocity?: Readonly<V3>,
   ): void {
-    if (impact.severity < 0.25) return;
     for (const slot of slots) {
       if (slot.bodyId !== otherBody || !slot.record) continue;
       const record = slot.record;
@@ -648,6 +650,8 @@ export function createTraffic(
           recordVisualCrush(record.state, nx, ny, nz, closingSpeed);
         }
       }
+      // Gentle contact dents without counting as a wreck or a slam.
+      if (impact.severity < 0.25) return;
       if (record.wrecked) return;
       record.wrecked = true;
       record.state.wrecked = true;

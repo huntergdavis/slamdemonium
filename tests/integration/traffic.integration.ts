@@ -331,6 +331,33 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
     severity: 1,
     estimated: true,
   };
+  const gentleImpact = { ...impact, severity: 0.05 };
+  traffic.onPlayerContact(
+    first.bodyId,
+    gentleImpact,
+    { x: 0, y: 0, z: 1 },
+    { x: 0, y: 0, z: -8 },
+  );
+  const lowSpeedDepth = Math.max(first.crush.front, first.crush.rear);
+  expect(lowSpeedDepth).toBeGreaterThan(0.25);
+  expect(first.wrecked).toBe(false);
+  traffic.onPlayerContact(
+    first.bodyId,
+    gentleImpact,
+    { x: 0, y: 0, z: 1 },
+    { x: 0, y: 0, z: -15 },
+  );
+  expect(Math.max(first.crush.front, first.crush.rear)).toBeGreaterThan(
+    lowSpeedDepth,
+  );
+  traffic.onPlayerContact(
+    first.bodyId,
+    gentleImpact,
+    { x: 1, y: 0, z: 0 },
+    { x: -8, y: 0, z: 0 },
+  );
+  expect(Math.max(first.crush.left, first.crush.right)).toBeGreaterThan(0.25);
+  expect(first.wrecked).toBe(false);
   world.onContact((a, b) => {
     if (
       (a === car && b === first.bodyId) ||
