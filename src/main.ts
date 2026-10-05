@@ -428,6 +428,7 @@ async function boot(): Promise<void> {
   let perfPaused = false;
   let replayStopped = false;
   let replayActive = false;
+  let inspectionCamera: { position: V3; target: V3 } | null = null;
   let respawnRequested = false;
   let retryRequested = false;
   let actionsThisStep = 0;
@@ -592,6 +593,19 @@ async function boot(): Promise<void> {
         trafficVisual?.update();
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
+        if (inspectionCamera) {
+          view.camera.position.set(
+            inspectionCamera.position.x,
+            inspectionCamera.position.y,
+            inspectionCamera.position.z,
+          );
+          view.camera.up.set(0, 1, 0);
+          view.camera.lookAt(
+            inspectionCamera.target.x,
+            inspectionCamera.target.y,
+            inspectionCamera.target.z,
+          );
+        }
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
         view.render(frameTime);
@@ -1009,6 +1023,20 @@ async function boot(): Promise<void> {
     vehicle.setDriftMeter(value);
   };
   game.setCameraPreset = (preset) => cameraRig.setPreset(preset);
+  game.setInspectionCamera = (pose) => {
+    if (pose) {
+      for (const value of [
+        ...Object.values(pose.position),
+        ...Object.values(pose.target),
+      ])
+        if (!Number.isFinite(value))
+          throw new RangeError('Inspection camera pose must be finite.');
+      inspectionCamera = {
+        position: { ...pose.position },
+        target: { ...pose.target },
+      };
+    } else inspectionCamera = null;
+  };
   game.setHudMode = (mode) => hud.setMode(mode);
   game.setOptionsOpen = (open) => options.setOpen(open);
   game.stepMany = (count) => {
@@ -1051,6 +1079,7 @@ async function boot(): Promise<void> {
         id: car.id,
         bodyId: car.bodyId,
         x: car.position.x,
+        y: car.position.y,
         z: car.position.z,
         fx: car.forward.x,
         fz: car.forward.z,
@@ -1059,6 +1088,7 @@ async function boot(): Promise<void> {
         speed: car.speed,
         wrecked: car.wrecked,
         modelKind: (car as { modelKind?: string }).modelKind ?? null,
+        crush: { ...car.crush },
         inFrame,
         screenPixels,
       };

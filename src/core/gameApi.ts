@@ -1,5 +1,5 @@
 import type { PhysicsSpikeResult } from '../physics/spike';
-import type { PhysicsMemory } from '../physics/adapter';
+import type { PhysicsMemory, V3 } from '../physics/adapter';
 import type { PerformanceBatch } from './performance';
 import type { CameraPreset } from '../render/cameraRig';
 import type { ScriptController } from '../input/script';
@@ -26,6 +26,8 @@ export interface GameTestApi {
   /** [0,1] earned boost meter; lets a tuner exercise boost without first drifting. */
   setDriftMeter(value: number): void;
   setCameraPreset(preset: CameraPreset): void;
+  /** Optional fixed pose for repeatable browser inspection; null restores follow. */
+  setInspectionCamera(pose: { position: V3; target: V3 } | null): void;
   setHudMode(mode: HudMode): void;
   setOptionsOpen(open: boolean): void;
   stepMany(steps: number): void;
@@ -71,6 +73,7 @@ export function createGameStub(): GameTestApi {
     releaseInput: unavailable,
     setDriftMeter: unavailable,
     setCameraPreset: unavailable,
+    setInspectionCamera: unavailable,
     setHudMode: unavailable,
     setOptionsOpen: unavailable,
     stepMany: unavailable,
