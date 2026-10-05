@@ -1,5 +1,6 @@
 import {
   Box3,
+  Color,
   InstancedMesh,
   Matrix4,
   Quaternion,
@@ -215,6 +216,40 @@ describe('car model catalogue', () => {
       expect(sideCrushed.max.x).toBeCloseTo(sideIntact.max.x, 5);
       expect(cars.drawCalls).toBe(draws);
     }
+    cars.dispose();
+  });
+  it('low-speed rear damage lowers the struck box-truck face by more than half a metre', () => {
+    const scene = new Scene();
+    const cars = createCarModelInstances(scene, 2);
+    const draws = cars.drawCalls;
+    const accent = scene.getObjectByName(
+      'traffic.boxTruck.accent',
+    ) as InstancedMesh;
+    accent.geometry.computeBoundingBox();
+    const matrix = new Matrix4();
+    const top = (index: number) => {
+      accent.getMatrixAt(index, matrix);
+      return new Box3().copy(accent.geometry.boundingBox!).applyMatrix4(matrix)
+        .max.y;
+    };
+    const position = { x: 0, y: CAR_MODELS.boxTruck.ride, z: 0 };
+    const rotation = { x: 0, y: 0, z: 0, w: 1 };
+    cars.begin();
+    cars.push('boxTruck', position, rotation, 0);
+    cars.push('boxTruck', position, rotation, 0, {
+      front: 0,
+      rear: 0.3,
+      left: 0,
+      right: 0,
+    });
+    cars.end();
+    expect(top(0) - top(1)).toBeGreaterThan(0.5);
+    const intactTint = new Color();
+    const damagedTint = new Color();
+    accent.getColorAt(0, intactTint);
+    accent.getColorAt(1, damagedTint);
+    expect(damagedTint.r).toBeLessThan(intactTint.r - 0.1);
+    expect(cars.drawCalls).toBe(draws);
     cars.dispose();
   });
 });

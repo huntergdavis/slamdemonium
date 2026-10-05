@@ -28,6 +28,9 @@ export const CAR_MODEL_KINDS: readonly CarModelKind[] = Object.freeze([
   'bus',
 ]);
 
+/** Set to zero to remove the secondary scuff cue without changing dent shape. */
+const SCUFF_TINT_STRENGTH = 0.45;
+
 /** A box part of a model, in car space: +z is the nose, y up from the
  * ground plane, x to the right. Sizes are full extents. */
 export interface CarModelPart {
@@ -270,6 +273,7 @@ export function createCarModelInstances(
     accent: new MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.6 }),
   };
   const palette = CAR_PALETTE.map((hex) => new Color(hex));
+  const instanceTint = new Color();
   const helper = new Object3D();
   // Traffic's chassis and velocity point along local -Z; catalogue parts
   // were authored with their nose at +Z. Turn only the visual model.
@@ -360,8 +364,9 @@ export function createCarModelInstances(
       const shiftZ = (tailDepth - noseDepth) / 2;
       for (let partIndex = 0; partIndex < meshes[kind].length; partIndex++) {
         const mesh = meshes[kind][partIndex]!;
+        const part = model.parts[partIndex]!;
+        let silhouetteDamage = 0;
         if (damaged) {
-          const part = model.parts[partIndex]!;
           const endDamage =
             part.zone === 'front'
               ? front
@@ -375,18 +380,18 @@ export function createCarModelInstances(
           // Lengthwise crush disappears when seen straight from behind. Drop
           // the struck face too, pivoting each part around its lower edge so
           // its body stays on the road instead of floating as it buckles.
-          const silhouetteDamage =
+          silhouetteDamage =
             part.zone === 'front'
               ? Math.max(front, left * 0.8, right * 0.8)
               : part.zone === 'rear'
                 ? Math.max(rear, left * 0.8, right * 0.8)
                 : Math.max(front, rear, left, right) * 0.75;
-          // A linear squash became nearly invisible above a solid hit:
-          // the remaining tall face masked the difference between 30 and
-          // 60 m/s. Spend more of the height at the wrecked end.
+          // A small dent vanishes from the moving chase camera if the struck
+          // face stays tall. Spend more height early, while keeping distinct
+          // silhouettes for a solid hit and a full-speed wreck.
           const compression =
-            0.55 * Math.min(silhouetteDamage, 0.45) +
-            0.9 * Math.max(0, silhouetteDamage - 0.45);
+            0.9 * Math.min(silhouetteDamage, 0.45) +
+            0.7 * Math.max(0, silhouetteDamage - 0.45);
           const scaleY = 1 - compression;
           const partBottom = part.offset[1] - model.ride - part.size[1] / 2;
           const shiftY = (1 - scaleY) * partBottom - roofDrop;
@@ -395,7 +400,14 @@ export function createCarModelInstances(
           damagedMatrix.multiplyMatrices(helper.matrix, localDamage);
           mesh.setMatrixAt(index, damagedMatrix);
         } else mesh.setMatrixAt(index, helper.matrix);
-        if (mesh.material === materials.body) mesh.setColorAt(index, color);
+        const scuff = 1 - SCUFF_TINT_STRENGTH * Math.sqrt(silhouetteDamage);
+        if (mesh.material === materials.body) {
+          instanceTint.copy(color).multiplyScalar(scuff);
+          mesh.setColorAt(index, instanceTint);
+        } else if (SCUFF_TINT_STRENGTH > 0) {
+          instanceTint.setRGB(scuff, scuff, scuff);
+          mesh.setColorAt(index, instanceTint);
+        }
       }
       counts[kind] = index + 1;
       return true;
