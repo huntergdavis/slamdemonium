@@ -571,8 +571,14 @@ export async function createPhysicsWorld(
           J.destroy(settings);
           throw new Error(`Invalid traffic crush hull: ${error}`);
         }
-        hull = result.Get();
+        const rawHull = result.Get();
+        rawHull.AddRef();
+        // Keep the same authored chassis CoM as the intact box. A convex
+        // hull's geometric CoM shifts toward its uncrushed end otherwise.
+        vector.Set(desc.comOffset.x, desc.comOffset.y, desc.comOffset.z);
+        hull = new J.OffsetCenterOfMassShape(rawHull, vector);
         hull.AddRef(); // Cache owns a reference until world disposal.
+        rawHull.Release();
         convexShapes.set(key, hull);
         J.destroy(result);
         J.destroy(settings);
