@@ -1,4 +1,11 @@
-import { Box3, InstancedMesh, Matrix4, Scene } from 'three';
+import {
+  Box3,
+  InstancedMesh,
+  Matrix4,
+  Quaternion,
+  Scene,
+  Vector3,
+} from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   CAR_MODELS,
@@ -122,6 +129,37 @@ describe('car model catalogue', () => {
     cars.dispose();
     expect(scene.getObjectByName('traffic.sedan.body')).toBeUndefined();
   });
+  it('draws the cab ahead of a moving traffic car at either heading', () => {
+    const scene = new Scene();
+    const cars = createCarModelInstances(scene, 1);
+    const cabin = scene.getObjectByName(
+      'traffic.boxTruck.cabin',
+    ) as InstancedMesh;
+    const instance = new Matrix4();
+    cabin.geometry.computeBoundingBox();
+    for (const yaw of [0, Math.PI / 2]) {
+      const rotation = new Quaternion().setFromAxisAngle(
+        new Vector3(0, 1, 0),
+        yaw,
+      );
+      const velocity = new Vector3(0, 0, -1).applyQuaternion(rotation);
+      cars.begin();
+      cars.push(
+        'boxTruck',
+        { x: 0, y: CAR_MODELS.boxTruck.ride, z: 0 },
+        rotation,
+        0,
+      );
+      cars.end();
+      cabin.getMatrixAt(0, instance);
+      const cabCenter = new Box3()
+        .copy(cabin.geometry.boundingBox!)
+        .applyMatrix4(instance)
+        .getCenter(new Vector3());
+      expect(cabCenter.dot(velocity)).toBeGreaterThan(2);
+    }
+    cars.dispose();
+  });
   it('visibly crushes the struck end of every kind without extra draws or shared geometry changes', () => {
     const scene = new Scene();
     const cars = createCarModelInstances(scene, 3);
@@ -156,10 +194,10 @@ describe('car model catalogue', () => {
       const intact = extent(kind, 0);
       const front = extent(kind, 1);
       const rear = extent(kind, 2);
-      expect(front.max.z).toBeLessThan(intact.max.z - 0.5);
-      expect(front.min.z).toBeCloseTo(intact.min.z, 5);
-      expect(rear.min.z).toBeGreaterThan(intact.min.z + 0.5);
-      expect(rear.max.z).toBeCloseTo(intact.max.z, 5);
+      expect(front.min.z).toBeGreaterThan(intact.min.z + 0.5);
+      expect(front.max.z).toBeCloseTo(intact.max.z, 5);
+      expect(rear.max.z).toBeLessThan(intact.max.z - 0.5);
+      expect(rear.min.z).toBeCloseTo(intact.min.z, 5);
       expect(rear.max.y).toBeLessThan(intact.max.y - 0.25);
       expect(rear.min.y).toBeCloseTo(intact.min.y, 5);
       cars.begin();
@@ -173,8 +211,8 @@ describe('car model catalogue', () => {
       cars.end();
       const sideIntact = extent(kind, 0);
       const sideCrushed = extent(kind, 1);
-      expect(sideCrushed.max.x).toBeLessThan(sideIntact.max.x - 0.4);
-      expect(sideCrushed.min.x).toBeCloseTo(sideIntact.min.x, 5);
+      expect(sideCrushed.min.x).toBeGreaterThan(sideIntact.min.x + 0.4);
+      expect(sideCrushed.max.x).toBeCloseTo(sideIntact.max.x, 5);
       expect(cars.drawCalls).toBe(draws);
     }
     cars.dispose();

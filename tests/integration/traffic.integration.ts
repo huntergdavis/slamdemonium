@@ -338,8 +338,9 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
     { x: 0, y: 0, z: 1 },
     { x: 0, y: 0, z: -8 },
   );
-  const lowSpeedDepth = Math.max(first.crush.front, first.crush.rear);
+  const lowSpeedDepth = first.crush.rear;
   expect(lowSpeedDepth).toBeGreaterThan(0.25);
+  expect(first.crush.front).toBe(0);
   expect(first.wrecked).toBe(false);
   traffic.onPlayerContact(
     first.bodyId,
@@ -347,16 +348,29 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
     { x: 0, y: 0, z: 1 },
     { x: 0, y: 0, z: -15 },
   );
-  expect(Math.max(first.crush.front, first.crush.rear)).toBeGreaterThan(
-    lowSpeedDepth,
-  );
+  expect(first.crush.rear).toBeGreaterThan(lowSpeedDepth);
   traffic.onPlayerContact(
     first.bodyId,
     gentleImpact,
     { x: 1, y: 0, z: 0 },
     { x: -8, y: 0, z: 0 },
   );
-  expect(Math.max(first.crush.left, first.crush.right)).toBeGreaterThan(0.25);
+  expect(first.crush.left).toBeGreaterThan(0.25);
+  expect(first.crush.right).toBe(0);
+  traffic.onPlayerContact(
+    first.bodyId,
+    gentleImpact,
+    { x: 0, y: 0, z: -1 },
+    { x: 0, y: 0, z: 8 },
+  );
+  expect(first.crush.front).toBeGreaterThan(0.25);
+  traffic.onPlayerContact(
+    first.bodyId,
+    gentleImpact,
+    { x: -1, y: 0, z: 0 },
+    { x: 8, y: 0, z: 0 },
+  );
+  expect(first.crush.right).toBeGreaterThan(0.25);
   expect(first.wrecked).toBe(false);
   world.onContact((a, b) => {
     if (
@@ -381,7 +395,7 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
   expect(first.wrecked).toBe(true);
   const crush = first.crush;
   expect(Math.max(...Object.values(crush))).toBeGreaterThan(0);
-  const firstDepth = Math.max(crush.front, crush.rear);
+  const firstDepth = crush.rear;
   expect(firstDepth).toBeGreaterThan(0.65);
   traffic.onPlayerContact(
     first.bodyId,
@@ -389,7 +403,7 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
     { x: 0, y: 0, z: 1 },
     { x: 0, y: 0, z: -30 },
   );
-  const mediumDepth = Math.max(crush.front, crush.rear);
+  const mediumDepth = crush.rear;
   expect(mediumDepth).toBeGreaterThan(firstDepth);
   traffic.onPlayerContact(
     first.bodyId,
@@ -397,14 +411,14 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
     { x: 0, y: 0, z: 1 },
     { x: 0, y: 0, z: -60 },
   );
-  expect(Math.max(crush.front, crush.rear)).toBeGreaterThan(mediumDepth);
+  expect(crush.rear).toBeGreaterThan(mediumDepth);
   traffic.onPlayerContact(
     first.bodyId,
     impact,
     { x: 1, y: 0, z: 0 },
     { x: -60, y: 0, z: 0 },
   );
-  expect(Math.max(crush.left, crush.right)).toBeGreaterThan(0);
+  expect(crush.left).toBeGreaterThan(0);
   traffic.preStep(1 / 120, player);
   expect(world.isBodyAwake(first.bodyId)).toBe(true);
   const wreckZ = first.position.z;

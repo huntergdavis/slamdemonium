@@ -124,8 +124,8 @@ function wrapAngle(a: number): number {
   return Math.atan2(Math.sin(a), Math.cos(a));
 }
 
-/** Transform the hit normal into the car's local frame. Its catalogue nose
- * is +z; the strongest horizontal component identifies the struck side. */
+/** Transform the hit normal into the visual model's local frame. The
+ * catalogue's +Z nose is turned 180° from the chassis's -Z travel axis. */
 function recordVisualCrush(
   state: TrafficCarState,
   nx: number,
@@ -151,8 +151,8 @@ function recordVisualCrush(
   const tx = 2 * (qy * nz - qz * ny);
   const ty = 2 * (qz * nx - qx * nz);
   const tz = 2 * (qx * ny - qy * nx);
-  const localX = nx + q.w * tx + qy * tz - qz * ty;
-  const localZ = nz + q.w * tz + qx * ty - qy * tx;
+  const localX = -(nx + q.w * tx + qy * tz - qz * ty);
+  const localZ = -(nz + q.w * tz + qx * ty - qy * tx);
   if (Math.hypot(localX, localZ) < 0.45) return;
   const side =
     Math.abs(localZ) >= Math.abs(localX)
