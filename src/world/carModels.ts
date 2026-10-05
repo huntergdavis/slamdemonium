@@ -362,6 +362,19 @@ export function createCarModelInstances(
       const scaleZ = 1 - (noseDepth + tailDepth) / (model.halfExtents.z * 2);
       const shiftX = (leftDepth - rightDepth) / 2;
       const shiftZ = (tailDepth - noseDepth) / 2;
+      const worstDamage = Math.max(front, rear, left, right);
+      // A shortened end alone disappears behind the player's car. Bend the
+      // roof out of the undamaged outline, even for a light knock. A direct
+      // front/rear hit picks a stable lean side from the encounter colour;
+      // side hits lean away from the struck side.
+      const leanSide =
+        left > right
+          ? 1
+          : right > left
+            ? -1
+            : paletteColorIndex(colorIndex) % 2 === 0
+              ? 1
+              : -1;
       for (let partIndex = 0; partIndex < meshes[kind].length; partIndex++) {
         const mesh = meshes[kind][partIndex]!;
         const part = model.parts[partIndex]!;
@@ -394,9 +407,39 @@ export function createCarModelInstances(
             0.7 * Math.max(0, silhouetteDamage - 0.45);
           const scaleY = 1 - compression;
           const partBottom = part.offset[1] - model.ride - part.size[1] / 2;
-          const shiftY = (1 - scaleY) * partBottom - roofDrop;
-          localDamage.makeScale(scaleX, scaleY, scaleZ);
-          localDamage.setPosition(shiftX, shiftY, shiftZ);
+          // Shear about the part's lower edge: the base stays near its
+          // collider while the roof leans into a clear chase-view silhouette.
+          // The struck edge also folds up into a slanted hood or roof. These
+          // are per-instance matrices, so all kinds keep their shared boxes
+          // and the same number of draws.
+          const bendX =
+            leanSide * 0.6 * worstDamage * (part.tone === 'body' ? 0.55 : 1);
+          const bendZ = (rear - front) * 0.18 * silhouetteDamage;
+          const fold = (part.tone === 'body' ? 0.1 : 0.25) * silhouetteDamage;
+          const foldX = (right > left ? 1 : left > right ? -1 : 0) * fold;
+          const foldZ = (front > rear ? 1 : rear > front ? -1 : 0) * fold;
+          const foldClearance =
+            Math.abs(foldX) * part.size[0] * 0.5 +
+            Math.abs(foldZ) * part.size[2] * 0.5;
+          const shiftY = (1 - scaleY) * partBottom - roofDrop + foldClearance;
+          localDamage.set(
+            scaleX,
+            bendX,
+            0,
+            shiftX - bendX * partBottom,
+            foldX,
+            scaleY,
+            foldZ,
+            shiftY - foldX * part.offset[0] - foldZ * part.offset[2],
+            0,
+            bendZ,
+            scaleZ,
+            shiftZ - bendZ * partBottom,
+            0,
+            0,
+            0,
+            1,
+          );
           damagedMatrix.multiplyMatrices(helper.matrix, localDamage);
           mesh.setMatrixAt(index, damagedMatrix);
         } else mesh.setMatrixAt(index, helper.matrix);

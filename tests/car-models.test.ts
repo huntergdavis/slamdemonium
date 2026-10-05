@@ -196,11 +196,21 @@ describe('car model catalogue', () => {
       const front = extent(kind, 1);
       const rear = extent(kind, 2);
       expect(front.min.z).toBeGreaterThan(intact.min.z + 0.5);
-      expect(front.max.z).toBeCloseTo(intact.max.z, 5);
       expect(rear.max.z).toBeLessThan(intact.max.z - 0.5);
-      expect(rear.min.z).toBeCloseTo(intact.min.z, 5);
-      expect(rear.max.y).toBeLessThan(intact.max.y - 0.25);
-      expect(rear.min.y).toBeCloseTo(intact.min.y, 5);
+      expect(front.max.z).toBeLessThan(intact.max.z + 0.6);
+      expect(rear.min.z).toBeGreaterThan(intact.min.z - 0.6);
+      const bodyMesh = scene.getObjectByName(
+        `traffic.${kind}.body`,
+      ) as InstancedMesh;
+      bodyMesh.getMatrixAt(2, matrix);
+      // The roof plane slopes across the struck end, even if its highest
+      // folded corner reaches the original roof height.
+      expect(Math.abs(matrix.elements[9]!)).toBeGreaterThan(0.03);
+      expect(rear.min.y).toBeGreaterThanOrEqual(intact.min.y - 0.05);
+      expect(
+        Math.abs(front.min.x - intact.min.x) +
+          Math.abs(front.max.x - intact.max.x),
+      ).toBeGreaterThan(0.2);
       cars.begin();
       cars.push(kind, position, q, 1);
       cars.push(kind, position, q, 2, {
@@ -212,13 +222,16 @@ describe('car model catalogue', () => {
       cars.end();
       const sideIntact = extent(kind, 0);
       const sideCrushed = extent(kind, 1);
-      expect(sideCrushed.min.x).toBeGreaterThan(sideIntact.min.x + 0.4);
-      expect(sideCrushed.max.x).toBeCloseTo(sideIntact.max.x, 5);
+      expect(
+        Math.abs(sideCrushed.min.x - sideIntact.min.x) +
+          Math.abs(sideCrushed.max.x - sideIntact.max.x),
+      ).toBeGreaterThan(0.3);
+      expect(sideCrushed.min.y).toBeGreaterThanOrEqual(sideIntact.min.y - 0.05);
       expect(cars.drawCalls).toBe(draws);
     }
     cars.dispose();
   });
-  it('low-speed rear damage lowers the struck box-truck face by more than half a metre', () => {
+  it('low-speed rear damage shortens, folds and leans the box-truck outline', () => {
     const scene = new Scene();
     const cars = createCarModelInstances(scene, 2);
     const draws = cars.drawCalls;
@@ -227,10 +240,9 @@ describe('car model catalogue', () => {
     ) as InstancedMesh;
     accent.geometry.computeBoundingBox();
     const matrix = new Matrix4();
-    const top = (index: number) => {
+    const bounds = (index: number) => {
       accent.getMatrixAt(index, matrix);
-      return new Box3().copy(accent.geometry.boundingBox!).applyMatrix4(matrix)
-        .max.y;
+      return new Box3().copy(accent.geometry.boundingBox!).applyMatrix4(matrix);
     };
     const position = { x: 0, y: CAR_MODELS.boxTruck.ride, z: 0 };
     const rotation = { x: 0, y: 0, z: 0, w: 1 };
@@ -243,7 +255,15 @@ describe('car model catalogue', () => {
       right: 0,
     });
     cars.end();
-    expect(top(0) - top(1)).toBeGreaterThan(0.5);
+    const intact = bounds(0);
+    const damaged = bounds(1);
+    expect(intact.max.y - damaged.max.y).toBeGreaterThan(0.2);
+    expect(
+      Math.max(
+        Math.abs(damaged.min.x - intact.min.x),
+        Math.abs(damaged.max.x - intact.max.x),
+      ),
+    ).toBeGreaterThan(0.3);
     const intactTint = new Color();
     const damagedTint = new Color();
     accent.getColorAt(0, intactTint);
