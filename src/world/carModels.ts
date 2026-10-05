@@ -8,8 +8,10 @@ import {
   BoxGeometry,
   Color,
   DynamicDrawUsage,
+  Float32BufferAttribute,
+  InstancedBufferAttribute,
   InstancedMesh,
-  Matrix4,
+  MeshDepthMaterial,
   MeshStandardMaterial,
   Object3D,
   Quaternion,
@@ -28,8 +30,45 @@ export const CAR_MODEL_KINDS: readonly CarModelKind[] = Object.freeze([
   'bus',
 ]);
 
-/** Set to zero to remove the secondary scuff cue without changing dent shape. */
-const SCUFF_TINT_STRENGTH = 0.45;
+/** Keep the secondary scuff cue off while the vertex dent is judged alone. */
+const SCUFF_TINT_STRENGTH = 0;
+
+/** Deform before the instance matrix in both the colour and depth passes.
+ * Model metrics are vertex attributes because the three materials are shared
+ * by all six kinds; only the box-truck rear strength is nonzero in this probe. */
+function installCrushShader(
+  material: MeshStandardMaterial | MeshDepthMaterial,
+): void {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      `#include <common>
+attribute vec4 instanceCrush;
+attribute vec3 crushMetrics;`,
+    );
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+float trafficRear = instanceCrush.y;
+if (trafficRear > 0.0) {
+  float halfWidth = crushMetrics.x;
+  float halfLength = crushMetrics.y;
+  float rideHeight = crushMetrics.z;
+  float rearBand = 1.0 - smoothstep(-halfLength * 0.82, -halfLength * 0.08, position.z);
+  float across = clamp(abs(position.x) / halfWidth, 0.0, 1.0);
+  float height = clamp((position.y + rideHeight) / (rideHeight * 2.0), 0.0, 1.0);
+  float bowl = 0.28 + 0.72 * (1.0 - across * across);
+  float wrinkle = 0.82 + 0.18 * sin(position.x * 5.7 + position.y * 4.1);
+  transformed.z += 2.4 * trafficRear * rearBand * bowl * wrinkle;
+  float roof = smoothstep(0.55, 0.9, height);
+  float roofNotch = 1.0 - smoothstep(0.1, 0.95, across);
+  transformed.y -= trafficRear * rearBand * roof * (0.35 + 0.9 * roofNotch);
+  transformed.y += 0.18 * trafficRear * rearBand * roof * sin(position.x * 3.2 + position.z * 1.7);
+}`,
+    );
+  };
+  material.customProgramCacheKey = () => 'traffic-vertex-crush-v1';
+}
 
 /** A box part of a model, in car space: +z is the nose, y up from the
  * ground plane, x to the right. Sizes are full extents. */
@@ -268,18 +307,31 @@ export function createCarModelInstances(
   capacityPerKind: number,
 ): CarModelInstances {
   const materials = {
-    body: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 }),
-    cabin: new MeshStandardMaterial({ color: 0x344656, roughness: 0.42 }),
-    accent: new MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.6 }),
+    body: new MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.55,
+      flatShading: true,
+    }),
+    cabin: new MeshStandardMaterial({
+      color: 0x344656,
+      roughness: 0.42,
+      flatShading: true,
+    }),
+    accent: new MeshStandardMaterial({
+      color: 0x9aa3ad,
+      roughness: 0.6,
+      flatShading: true,
+    }),
   };
+  for (const material of Object.values(materials)) installCrushShader(material);
+  const depthMaterial = new MeshDepthMaterial();
+  installCrushShader(depthMaterial);
   const palette = CAR_PALETTE.map((hex) => new Color(hex));
   const instanceTint = new Color();
   const helper = new Object3D();
   // Traffic's chassis and velocity point along local -Z; catalogue parts
   // were authored with their nose at +Z. Turn only the visual model.
   const visualFacing = new Quaternion(0, 1, 0, 0);
-  const localDamage = new Matrix4();
-  const damagedMatrix = new Matrix4();
   const counts: Record<CarModelKind, number> = {
     sedan: 0,
     hatch: 0,
@@ -301,10 +353,14 @@ export function createCarModelInstances(
   for (const kind of CAR_MODEL_KINDS) {
     const model = CAR_MODELS[kind];
     for (const part of model.parts) {
+      const segments = kind === 'boxTruck' ? 6 : 1;
       const geometry = new BoxGeometry(
         part.size[0],
         part.size[1],
         part.size[2],
+        segments,
+        segments,
+        segments,
       );
       // Car space has the origin `ride` metres up; parts are authored from
       // the ground, so lower them by the ride height.
@@ -313,6 +369,24 @@ export function createCarModelInstances(
         part.offset[1] - model.ride,
         part.offset[2],
       );
+      const metrics = new Float32Array(
+        geometry.getAttribute('position').count * 3,
+      );
+      for (let i = 0; i < metrics.length; i += 3) {
+        metrics[i] = model.halfExtents.x;
+        metrics[i + 1] = model.halfExtents.z;
+        metrics[i + 2] = model.ride;
+      }
+      geometry.setAttribute(
+        'crushMetrics',
+        new Float32BufferAttribute(metrics, 3),
+      );
+      const crushAttribute = new InstancedBufferAttribute(
+        new Float32Array(capacityPerKind * 4),
+        4,
+      );
+      crushAttribute.setUsage(DynamicDrawUsage);
+      geometry.setAttribute('instanceCrush', crushAttribute);
       geometries.push(geometry);
       const mesh = new InstancedMesh(
         geometry,
@@ -321,6 +395,7 @@ export function createCarModelInstances(
       );
       mesh.name = `traffic.${kind}.${part.tone}`;
       mesh.castShadow = mesh.receiveShadow = true;
+      mesh.customDepthMaterial = depthMaterial;
       // Instances move across a 10 km map; a bounds sphere from their boot
       // positions would cull the whole draw at a distant station.
       mesh.frustumCulled = false;
@@ -346,81 +421,18 @@ export function createCarModelInstances(
         .multiply(visualFacing);
       helper.updateMatrix();
       const color = palette[paletteColorIndex(colorIndex)]!;
-      const model = CAR_MODELS[kind];
-      const front = Math.max(0, Math.min(1, crush?.front ?? 0));
       const rear = Math.max(0, Math.min(1, crush?.rear ?? 0));
-      const left = Math.max(0, Math.min(1, crush?.left ?? 0));
-      const right = Math.max(0, Math.min(1, crush?.right ?? 0));
-      // Keep the opposite edge fixed: front damage pulls +z inward, rear
-      // damage pulls -z inward, and the same rule applies across the width.
-      const noseDepth = front * Math.min(2, model.halfExtents.z * 0.4);
-      const tailDepth = rear * Math.min(2, model.halfExtents.z * 0.4);
-      const leftDepth = left * model.halfExtents.x * 0.4;
-      const rightDepth = right * model.halfExtents.x * 0.4;
-      const damaged = noseDepth + tailDepth + leftDepth + rightDepth > 0;
-      const scaleX = 1 - (leftDepth + rightDepth) / (model.halfExtents.x * 2);
-      const scaleZ = 1 - (noseDepth + tailDepth) / (model.halfExtents.z * 2);
-      const shiftX = (leftDepth - rightDepth) / 2;
-      const shiftZ = (tailDepth - noseDepth) / 2;
-      const worstDamage = Math.max(front, rear, left, right);
-      if (damaged) {
-        // The previous version pivoted each box around its own bottom: a
-        // truck's cargo bent away from its base and looked like a loose slab.
-        // One ground-level transform keeps every existing part joined while
-        // still making even a light dent break the chase-view outline.
-        const leanSide =
-          left > right
-            ? 1
-            : right > left
-              ? -1
-              : paletteColorIndex(colorIndex) % 2 === 0
-                ? 1
-                : -1;
-        const bendX = leanSide * 0.55 * worstDamage;
-        const bendZ = (rear - front) * 0.15;
-        const foldX = (right - left) * 0.14;
-        const foldZ = (front - rear) * 0.14;
-        const scaleY =
-          1 -
-          0.12 * Math.min(worstDamage, 0.45) -
-          0.4 * Math.max(0, worstDamage - 0.45);
-        const foldClearance =
-          Math.abs(foldX) * model.halfExtents.x +
-          Math.abs(foldZ) * model.halfExtents.z;
-        localDamage.set(
-          scaleX,
-          bendX,
-          0,
-          shiftX + bendX * model.ride,
-          foldX,
-          scaleY,
-          foldZ,
-          -(1 - scaleY) * model.ride + foldClearance,
-          0,
-          bendZ,
-          scaleZ,
-          shiftZ + bendZ * model.ride,
-          0,
-          0,
-          0,
-          1,
-        );
-        damagedMatrix.multiplyMatrices(helper.matrix, localDamage);
-      }
       for (let partIndex = 0; partIndex < meshes[kind].length; partIndex++) {
         const mesh = meshes[kind][partIndex]!;
-        const part = model.parts[partIndex]!;
-        let silhouetteDamage = 0;
-        if (damaged) {
-          silhouetteDamage =
-            part.zone === 'front'
-              ? Math.max(front, left * 0.8, right * 0.8)
-              : part.zone === 'rear'
-                ? Math.max(rear, left * 0.8, right * 0.8)
-                : Math.max(front, rear, left, right) * 0.75;
-          mesh.setMatrixAt(index, damagedMatrix);
-        } else mesh.setMatrixAt(index, helper.matrix);
-        const scuff = 1 - SCUFF_TINT_STRENGTH * Math.sqrt(silhouetteDamage);
+        mesh.setMatrixAt(index, helper.matrix);
+        const crushAttribute = mesh.geometry.getAttribute(
+          'instanceCrush',
+        ) as InstancedBufferAttribute;
+        crushAttribute.setXYZW(index, 0, kind === 'boxTruck' ? rear : 0, 0, 0);
+        const scuff =
+          SCUFF_TINT_STRENGTH > 0
+            ? 1 - SCUFF_TINT_STRENGTH * Math.sqrt(rear)
+            : 1;
         if (mesh.material === materials.body) {
           instanceTint.copy(color).multiplyScalar(scuff);
           mesh.setColorAt(index, instanceTint);
@@ -438,6 +450,12 @@ export function createCarModelInstances(
           mesh.count = counts[kind];
           mesh.instanceMatrix.needsUpdate = true;
           if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+          if (kind === 'boxTruck')
+            (
+              mesh.geometry.getAttribute(
+                'instanceCrush',
+              ) as InstancedBufferAttribute
+            ).needsUpdate = true;
         }
     },
     dispose() {
@@ -445,6 +463,7 @@ export function createCarModelInstances(
         for (const mesh of meshes[kind]) scene.remove(mesh);
       for (const geometry of geometries) geometry.dispose();
       for (const material of Object.values(materials)) material.dispose();
+      depthMaterial.dispose();
     },
   };
 }

@@ -1,8 +1,10 @@
 import {
   Box3,
-  Color,
+  InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
+  MeshDepthMaterial,
+  MeshStandardMaterial,
   Quaternion,
   Scene,
   Vector3,
@@ -161,89 +163,35 @@ describe('car model catalogue', () => {
     }
     cars.dispose();
   });
-  it('visibly crushes the struck end of every kind without extra draws or shared geometry changes', () => {
+  it('subdivides box-truck parts for a local dent without adding draws', () => {
     const scene = new Scene();
-    const cars = createCarModelInstances(scene, 3);
-    const draws = cars.drawCalls;
-    const q = { x: 0, y: 0, z: 0, w: 1 };
-    const matrix = new Matrix4();
-    const extent = (kind: (typeof CAR_MODEL_KINDS)[number], index: number) => {
-      const mesh = scene.getObjectByName(
-        `traffic.${kind}.body`,
-      ) as InstancedMesh;
-      mesh.getMatrixAt(index, matrix);
-      mesh.geometry.computeBoundingBox();
-      return new Box3().copy(mesh.geometry.boundingBox!).applyMatrix4(matrix);
-    };
-    for (const kind of CAR_MODEL_KINDS) {
-      const position = { x: 0, y: CAR_MODELS[kind].ride, z: 0 };
-      cars.begin();
-      cars.push(kind, position, q, 1);
-      cars.push(kind, position, q, 2, {
-        front: 1,
-        rear: 0,
-        left: 0,
-        right: 0,
-      });
-      cars.push(kind, position, q, 3, {
-        front: 0,
-        rear: 1,
-        left: 0,
-        right: 0,
-      });
-      cars.end();
-      const intact = extent(kind, 0);
-      const front = extent(kind, 1);
-      const rear = extent(kind, 2);
-      expect(front.min.z).toBeGreaterThan(intact.min.z + 0.5);
-      expect(rear.max.z).toBeLessThan(intact.max.z - 0.5);
-      expect(front.max.z).toBeLessThan(intact.max.z + 0.6);
-      expect(rear.min.z).toBeGreaterThan(intact.min.z - 0.6);
-      const bodyMesh = scene.getObjectByName(
-        `traffic.${kind}.body`,
-      ) as InstancedMesh;
-      bodyMesh.getMatrixAt(2, matrix);
-      // The roof plane slopes across the struck end, even if its highest
-      // folded corner reaches the original roof height.
-      expect(Math.abs(matrix.elements[9]!)).toBeGreaterThan(0.03);
-      expect(rear.min.y).toBeGreaterThanOrEqual(intact.min.y - 0.05);
-      expect(
-        Math.abs(front.min.x - intact.min.x) +
-          Math.abs(front.max.x - intact.max.x),
-      ).toBeGreaterThan(0.2);
-      cars.begin();
-      cars.push(kind, position, q, 1);
-      cars.push(kind, position, q, 2, {
-        front: 0,
-        rear: 0,
-        left: 0,
-        right: 1,
-      });
-      cars.end();
-      const sideIntact = extent(kind, 0);
-      const sideCrushed = extent(kind, 1);
-      expect(
-        Math.abs(sideCrushed.min.x - sideIntact.min.x) +
-          Math.abs(sideCrushed.max.x - sideIntact.max.x),
-      ).toBeGreaterThan(0.3);
-      expect(sideCrushed.min.y).toBeGreaterThanOrEqual(sideIntact.min.y - 0.05);
-      expect(cars.drawCalls).toBe(draws);
-    }
+    const cars = createCarModelInstances(scene, 4);
+    const truck = scene.getObjectByName(
+      'traffic.boxTruck.body',
+    ) as InstancedMesh;
+    const sedan = scene.getObjectByName('traffic.sedan.body') as InstancedMesh;
+    expect(truck.geometry.getAttribute('position').count).toBe(294);
+    expect(sedan.geometry.getAttribute('position').count).toBe(24);
+    expect(truck.geometry.getAttribute('instanceCrush')).toBeInstanceOf(
+      InstancedBufferAttribute,
+    );
+    const metrics = truck.geometry.getAttribute('crushMetrics');
+    expect(metrics.getX(0)).toBeCloseTo(CAR_MODELS.boxTruck.halfExtents.x);
+    expect(metrics.getY(0)).toBeCloseTo(CAR_MODELS.boxTruck.halfExtents.z);
+    expect(metrics.getZ(0)).toBeCloseTo(CAR_MODELS.boxTruck.ride);
+    expect(cars.drawCalls).toBe(14);
     cars.dispose();
   });
-  it('low-speed rear damage shortens, folds and leans the box-truck outline', () => {
+  it('feeds rear-only per-instance damage to matching colour and shadow shaders', () => {
     const scene = new Scene();
-    const cars = createCarModelInstances(scene, 2);
-    const draws = cars.drawCalls;
-    const accent = scene.getObjectByName(
+    const cars = createCarModelInstances(scene, 4);
+    const body = scene.getObjectByName(
+      'traffic.boxTruck.body',
+    ) as InstancedMesh;
+    const cargo = scene.getObjectByName(
       'traffic.boxTruck.accent',
     ) as InstancedMesh;
-    accent.geometry.computeBoundingBox();
-    const matrix = new Matrix4();
-    const bounds = (index: number) => {
-      accent.getMatrixAt(index, matrix);
-      return new Box3().copy(accent.geometry.boundingBox!).applyMatrix4(matrix);
-    };
+    const sedan = scene.getObjectByName('traffic.sedan.body') as InstancedMesh;
     const position = { x: 0, y: CAR_MODELS.boxTruck.ride, z: 0 };
     const rotation = { x: 0, y: 0, z: 0, w: 1 };
     cars.begin();
@@ -254,34 +202,61 @@ describe('car model catalogue', () => {
       left: 0,
       right: 0,
     });
+    cars.push('boxTruck', position, rotation, 0, {
+      front: 0,
+      rear: 1,
+      left: 0,
+      right: 0,
+    });
+    cars.push('boxTruck', position, rotation, 0, {
+      front: 1,
+      rear: 0,
+      left: 1,
+      right: 1,
+    });
+    cars.push('sedan', { x: 0, y: CAR_MODELS.sedan.ride, z: 0 }, rotation, 0, {
+      front: 0,
+      rear: 1,
+      left: 0,
+      right: 0,
+    });
     cars.end();
-    const intact = bounds(0);
-    const damaged = bounds(1);
-    expect(damaged.max.y - intact.max.y).toBeGreaterThan(0.2);
+    const crush = body.geometry.getAttribute(
+      'instanceCrush',
+    ) as InstancedBufferAttribute;
+    expect([0, 1, 2, 3].map((i) => crush.getY(i))).toEqual([
+      0, 0.30000001192092896, 1, 0,
+    ]);
+    expect([0, 1, 2, 3].map((i) => crush.getX(i))).toEqual([0, 0, 0, 0]);
     expect(
-      Math.max(
-        Math.abs(damaged.min.x - intact.min.x),
-        Math.abs(damaged.max.x - intact.max.x),
-      ),
-    ).toBeGreaterThan(0.3);
-    const body = scene.getObjectByName(
-      'traffic.boxTruck.body',
-    ) as InstancedMesh;
-    const bodyMatrix = new Matrix4();
-    const cargoMatrix = new Matrix4();
-    body.getMatrixAt(1, bodyMatrix);
-    accent.getMatrixAt(1, cargoMatrix);
-    // Adjacent parts use one ground-level bend. Different part pivots made
-    // the cargo appear detached from its lower body in the moving preview.
-    expect(Array.from(cargoMatrix.elements)).toEqual(
-      Array.from(bodyMatrix.elements),
+      (
+        sedan.geometry.getAttribute('instanceCrush') as InstancedBufferAttribute
+      ).getY(0),
+    ).toBe(0);
+    const intact = new Matrix4();
+    const dented = new Matrix4();
+    const cargoDented = new Matrix4();
+    body.getMatrixAt(0, intact);
+    body.getMatrixAt(1, dented);
+    cargo.getMatrixAt(1, cargoDented);
+    // The vertex shader owns the dent: no whole-car lean, lift, or detached part.
+    expect(Array.from(dented.elements)).toEqual(Array.from(intact.elements));
+    expect(Array.from(cargoDented.elements)).toEqual(
+      Array.from(intact.elements),
     );
-    const intactTint = new Color();
-    const damagedTint = new Color();
-    accent.getColorAt(0, intactTint);
-    accent.getColorAt(1, damagedTint);
-    expect(damagedTint.r).toBeLessThan(intactTint.r - 0.1);
-    expect(cars.drawCalls).toBe(draws);
+    const source = (material: MeshStandardMaterial | MeshDepthMaterial) => {
+      const shader = {
+        vertexShader: '#include <common>\n#include <begin_vertex>',
+      };
+      material.onBeforeCompile(shader as never, {} as never);
+      return shader.vertexShader;
+    };
+    const visible = source(body.material as MeshStandardMaterial);
+    const shadow = source(body.customDepthMaterial as MeshDepthMaterial);
+    expect(visible).toBe(shadow);
+    expect(visible).toContain('attribute vec4 instanceCrush;');
+    expect(visible).toContain('transformed.z += 2.4 * trafficRear');
+    expect(visible).toContain('transformed.y -= trafficRear');
     cars.dispose();
   });
 });
