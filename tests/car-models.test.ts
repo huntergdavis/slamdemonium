@@ -1,4 +1,11 @@
-import { Scene } from 'three';
+import {
+  Box3,
+  InstancedMesh,
+  Matrix4,
+  Quaternion,
+  Scene,
+  Vector3,
+} from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   CAR_MODELS,
@@ -121,5 +128,36 @@ describe('car model catalogue', () => {
     expect(sedanBody.count).toBe(0);
     cars.dispose();
     expect(scene.getObjectByName('traffic.sedan.body')).toBeUndefined();
+  });
+  it('draws the cab ahead of a moving traffic car at either heading', () => {
+    const scene = new Scene();
+    const cars = createCarModelInstances(scene, 1);
+    const cabin = scene.getObjectByName(
+      'traffic.boxTruck.cabin',
+    ) as InstancedMesh;
+    const instance = new Matrix4();
+    cabin.geometry.computeBoundingBox();
+    for (const yaw of [0, Math.PI / 2]) {
+      const rotation = new Quaternion().setFromAxisAngle(
+        new Vector3(0, 1, 0),
+        yaw,
+      );
+      const velocity = new Vector3(0, 0, -1).applyQuaternion(rotation);
+      cars.begin();
+      cars.push(
+        'boxTruck',
+        { x: 0, y: CAR_MODELS.boxTruck.ride, z: 0 },
+        rotation,
+        0,
+      );
+      cars.end();
+      cabin.getMatrixAt(0, instance);
+      const cabCenter = new Box3()
+        .copy(cabin.geometry.boundingBox!)
+        .applyMatrix4(instance)
+        .getCenter(new Vector3());
+      expect(cabCenter.dot(velocity)).toBeGreaterThan(2);
+    }
+    cars.dispose();
   });
 });

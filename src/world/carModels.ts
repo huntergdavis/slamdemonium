@@ -11,6 +11,7 @@ import {
   InstancedMesh,
   MeshStandardMaterial,
   Object3D,
+  Quaternion,
   type Scene,
 } from 'three';
 
@@ -187,6 +188,9 @@ export function createCarModelInstances(
   };
   const palette = CAR_PALETTE.map((hex) => new Color(hex));
   const helper = new Object3D();
+  // Traffic's chassis and velocity point along local -Z; catalogue parts
+  // were authored with their nose at +Z. Turn only the visual model.
+  const visualFacing = new Quaternion(0, 1, 0, 0);
   const counts: Record<CarModelKind, number> = {
     sedan: 0,
     hatch: 0,
@@ -248,7 +252,9 @@ export function createCarModelInstances(
       const index = counts[kind];
       if (index >= capacityPerKind) return false;
       helper.position.set(position.x, position.y, position.z);
-      helper.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+      helper.quaternion
+        .set(rotation.x, rotation.y, rotation.z, rotation.w)
+        .multiply(visualFacing);
       helper.updateMatrix();
       const color = palette[paletteColorIndex(colorIndex)]!;
       for (const mesh of meshes[kind]) {
