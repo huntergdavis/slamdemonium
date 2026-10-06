@@ -72,6 +72,11 @@ interface RecordState {
   crashClosingSpeed: number;
   crashBleedRemaining: number;
   shapeDirty: boolean;
+  /** Contact episode state: one slam chunk, or one scrape increment per side
+   * per physics step even when Jolt reports several contact points. */
+  contactGap: number;
+  slamApplied: boolean;
+  scrapeSides: number;
 }
 
 interface Slot {
@@ -106,6 +111,12 @@ const WRECK_ANGULAR_DAMPING = 5;
 const WRECK_MAX_ANGULAR_VELOCITY = 5;
 const CRASH_BLEED_SECONDS = 0.3;
 const CRASH_BLEED_RATE = 1.5;
+const SLAM_CLOSING_SPEED = 2.5;
+const CONTACT_EPISODE_GAP = 0.18;
+const SCRAPE_CRUSH_PER_SECOND = 0.16;
+const SCRAPE_CRUSH_CAP = 0.28;
+const CRUSH_SIDES = ['front', 'rear', 'left', 'right'] as const;
+type CrushSide = (typeof CRUSH_SIDES)[number];
 
 function noise(seed: number): number {
   let x = seed | 0;
@@ -129,24 +140,12 @@ function wrapAngle(a: number): number {
 
 /** Transform the hit normal into the visual model's local frame. The
  * catalogue's +Z nose is turned 180° from the chassis's -Z travel axis. */
-function recordVisualCrush(
+function visualCrushSide(
   state: TrafficCarState,
   nx: number,
   ny: number,
   nz: number,
-  closingSpeed: number,
-): boolean {
-  // Even a slow scrape leaves a small visible dent. Ordinary knocks build
-  // damage quickly, while 30 and 60 m/s hits remain distinct.
-  const speed = Math.max(0, closingSpeed);
-  const strength =
-    speed <= 8
-      ? 0.15 + speed * 0.01875
-      : speed <= 15
-        ? 0.3 + ((speed - 8) * 0.15) / 7
-        : speed <= 23
-          ? 0.45 + ((speed - 15) * 0.25) / 8
-          : Math.min(1, 0.7 + ((speed - 23) * 0.3) / 37);
+): CrushSide | undefined {
   const q = state.rotation;
   const qx = -q.x;
   const qy = -q.y;
@@ -156,18 +155,24 @@ function recordVisualCrush(
   const tz = 2 * (qx * ny - qy * nx);
   const localX = -(nx + q.w * tx + qy * tz - qz * ty);
   const localZ = -(nz + q.w * tz + qx * ty - qy * tx);
-  if (Math.hypot(localX, localZ) < 0.45) return false;
-  const side =
-    Math.abs(localZ) >= Math.abs(localX)
-      ? localZ >= 0
-        ? 'front'
-        : 'rear'
-      : localX >= 0
-        ? 'right'
-        : 'left';
-  const old = state.crush[side];
-  state.crush[side] = Math.max(old, strength);
-  return state.crush[side] > old;
+  if (Math.hypot(localX, localZ) < 0.45) return undefined;
+  return Math.abs(localZ) >= Math.abs(localX)
+    ? localZ >= 0
+      ? 'front'
+      : 'rear'
+    : localX >= 0
+      ? 'right'
+      : 'left';
+}
+
+function slamCrushChunk(closingSpeed: number): number {
+  // A gentle knock still changes the outline. Larger slams retain the
+  // measured #182 progression instead of saturating at moderate speed.
+  const speed = Math.max(0, closingSpeed);
+  if (speed <= 8) return 0.15 + speed * 0.01875;
+  if (speed <= 15) return 0.3 + ((speed - 8) * 0.15) / 7;
+  if (speed <= 23) return 0.45 + ((speed - 15) * 0.25) / 8;
+  return Math.min(1, 0.7 + ((speed - 23) * 0.3) / 37);
 }
 
 /** Every authored car advances continuously. Only nearby cars own a pooled
@@ -212,6 +217,9 @@ export function createTraffic(
     crashClosingSpeed: 0,
     crashBleedRemaining: 0,
     shapeDirty: false,
+    contactGap: Infinity,
+    slamApplied: false,
+    scrapeSides: 0,
   }));
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
@@ -219,6 +227,7 @@ export function createTraffic(
   const visualStates: TrafficCarState[] = [];
   let physicalCount = 0;
   let farPoseBucket = 0;
+  let stepDt = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -400,6 +409,9 @@ export function createTraffic(
     setSlotProperties(slot, record.wrecked);
     slot.record = record;
     record.slot = slot;
+    record.contactGap = Infinity;
+    record.slamApplied = false;
+    record.scrapeSides = 0;
     state.bodyId = slot.bodyId;
     if (!record.wrecked) physics.setLinearVelocity(slot.bodyId, state.velocity);
     physicalCount++;
@@ -473,6 +485,7 @@ export function createTraffic(
   }
 
   function preStep(dt: number, player: V3): void {
+    stepDt = dt;
     visualStates.length = 0;
     // Refresh one distant slice per step instead of all authored cars on the
     // same 10 Hz tick. Nearby poses still update every step.
@@ -533,6 +546,9 @@ export function createTraffic(
         updateSlotShape(slot, record);
         record.shapeDirty = false;
       }
+      record.contactGap += dt;
+      if (record.contactGap >= CONTACT_EPISODE_GAP) record.slamApplied = false;
+      record.scrapeSides = 0;
       // Wrecks remain physically free to tumble and settle while nearby.
       if (record.wrecked) {
         if (slot.friction !== WRECK_FRICTION) setSlotProperties(slot, true);
@@ -592,6 +608,19 @@ export function createTraffic(
     for (const slot of slots) {
       const record = slot.record;
       if (!record) continue;
+      for (let sideIndex = 0; sideIndex < CRUSH_SIDES.length; sideIndex++) {
+        if (!(record.scrapeSides & (1 << sideIndex))) continue;
+        const side = CRUSH_SIDES[sideIndex]!;
+        const oldCrush = record.state.crush[side];
+        record.state.crush[side] = Math.max(
+          record.state.crush[side],
+          Math.min(
+            SCRAPE_CRUSH_CAP,
+            record.state.crush[side] + SCRAPE_CRUSH_PER_SECOND * stepDt,
+          ),
+        );
+        if (record.state.crush[side] > oldCrush) record.shapeDirty = true;
+      }
       if (record.crashPending) {
         record.crashPending = false;
         setSlotProperties(slot, true);
@@ -678,8 +707,24 @@ export function createTraffic(
               relativeVelocity.z * nz
             ),
           );
-          if (recordVisualCrush(record.state, nx, ny, nz, closingSpeed))
-            record.shapeDirty = true;
+          const side = visualCrushSide(record.state, nx, ny, nz);
+          if (side) {
+            if (closingSpeed >= SLAM_CLOSING_SPEED) {
+              if (!record.slamApplied) {
+                const oldCrush = record.state.crush[side];
+                record.state.crush[side] = Math.min(
+                  1,
+                  record.state.crush[side] + slamCrushChunk(closingSpeed),
+                );
+                if (record.state.crush[side] > oldCrush)
+                  record.shapeDirty = true;
+                record.slamApplied = true;
+              }
+            } else {
+              record.scrapeSides |= 1 << CRUSH_SIDES.indexOf(side);
+            }
+            record.contactGap = 0;
+          }
         }
       }
       // Gentle contact dents without counting as a wreck or a slam.

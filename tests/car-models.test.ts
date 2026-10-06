@@ -17,6 +17,7 @@ import {
   ORIGINAL_TRAFFIC_BOX,
   carHalfWidth,
   createCarModelInstances,
+  dentSeedForId,
   paletteColorIndex,
   pickCarModelKind,
 } from '../src/world/carModels';
@@ -196,19 +197,19 @@ describe('car model catalogue', () => {
     const rotation = { x: 0, y: 0, z: 0, w: 1 };
     cars.begin();
     cars.push('boxTruck', position, rotation, 0);
-    cars.push('boxTruck', position, rotation, 0, {
+    cars.push('boxTruck', position, rotation, 1, {
       front: 0,
       rear: 0.3,
       left: 0,
       right: 0,
     });
-    cars.push('boxTruck', position, rotation, 0, {
+    cars.push('boxTruck', position, rotation, 2, {
       front: 0,
       rear: 1,
       left: 0,
       right: 0,
     });
-    cars.push('boxTruck', position, rotation, 0, {
+    cars.push('boxTruck', position, rotation, 3, {
       front: 1,
       rear: 0,
       left: 1,
@@ -230,6 +231,12 @@ describe('car model catalogue', () => {
     expect([0, 1, 2, 3].map((i) => crush.getX(i))).toEqual([0, 0, 0, 1]);
     expect([0, 1, 2, 3].map((i) => crush.getZ(i))).toEqual([0, 0, 0, 1]);
     expect([0, 1, 2, 3].map((i) => crush.getW(i))).toEqual([0, 0, 0, 1]);
+    const seeds = body.geometry.getAttribute(
+      'instanceDentSeed',
+    ) as InstancedBufferAttribute;
+    for (let id = 0; id < 4; id++)
+      expect(seeds.getX(id)).toBeCloseTo(dentSeedForId(id), 6);
+    expect(new Set([0, 1, 2, 3].map((id) => seeds.getX(id))).size).toBe(4);
     expect(
       (
         sedan.geometry.getAttribute('instanceCrush') as InstancedBufferAttribute
@@ -257,6 +264,7 @@ describe('car model catalogue', () => {
     const shadow = source(body.customDepthMaterial as MeshDepthMaterial);
     expect(visible).toBe(shadow);
     expect(visible).toContain('attribute vec4 instanceCrush;');
+    expect(visible).toContain('attribute float instanceDentSeed;');
     expect(visible).toContain(
       'transformed.z += 2.4 * (trafficRear - trafficFront)',
     );

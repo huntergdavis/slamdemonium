@@ -44,6 +44,7 @@ function installCrushShader(
       '#include <common>',
       `#include <common>
 attribute vec4 instanceCrush;
+attribute float instanceDentSeed;
 attribute vec3 crushMetrics;`,
     );
     shader.vertexShader = shader.vertexShader.replace(
@@ -61,13 +62,16 @@ if (dot(instanceCrush, vec4(1.0)) > 0.0) {
   float trafficFront = instanceCrush.x * frontBand;
   float trafficLeft = instanceCrush.z * leftBand;
   float trafficRight = instanceCrush.w * rightBand;
-  float across = clamp(abs(position.x) / halfWidth, 0.0, 1.0);
-  float along = clamp(abs(position.z) / halfLength, 0.0, 1.0);
+  float dentPhase = instanceDentSeed * 6.2831853;
+  float across = clamp(abs(position.x / halfWidth - 0.24 * sin(dentPhase * 2.3)), 0.0, 1.0);
+  float along = clamp(abs(position.z / halfLength - 0.24 * cos(dentPhase * 3.7)), 0.0, 1.0);
   float height = clamp((position.y + rideHeight) / (rideHeight * 2.0), 0.0, 1.0);
   float bowl = 0.28 + 0.72 * (1.0 - across * across);
   float sideBowl = 0.28 + 0.72 * (1.0 - along * along);
-  float wrinkle = 0.82 + 0.18 * sin(position.x * 5.7 + position.y * 4.1);
-  float sideWrinkle = 0.82 + 0.18 * sin(position.z * 5.7 + position.y * 4.1);
+  float wrinkle = 0.82 + 0.18 * sin(position.x * (4.7 + instanceDentSeed * 2.1)
+    + position.y * 4.1 + dentPhase * 3.1);
+  float sideWrinkle = 0.82 + 0.18 * sin(position.z * (4.7 + instanceDentSeed * 2.1)
+    + position.y * 4.1 + dentPhase * 4.9);
   transformed.z += 2.4 * (trafficRear - trafficFront) * bowl * wrinkle;
   transformed.x += 1.15 * (trafficLeft - trafficRight) * sideBowl * sideWrinkle;
   float roof = smoothstep(0.55, 0.9, height);
@@ -75,12 +79,12 @@ if (dot(instanceCrush, vec4(1.0)) > 0.0) {
   float sideNotch = 1.0 - smoothstep(0.1, 0.95, along);
   transformed.y -= roof * ((trafficRear + trafficFront) * (0.35 + 0.9 * roofNotch)
     + (trafficLeft + trafficRight) * (0.35 + 0.9 * sideNotch));
-  transformed.y += 0.18 * roof * ((trafficRear + trafficFront) * sin(position.x * 3.2 + position.z * 1.7)
-    + (trafficLeft + trafficRight) * sin(position.z * 3.2 + position.x * 1.7));
+  transformed.y += 0.18 * roof * ((trafficRear + trafficFront) * sin(position.x * 3.2 + position.z * 1.7 + dentPhase)
+    + (trafficLeft + trafficRight) * sin(position.z * 3.2 + position.x * 1.7 + dentPhase * 1.7));
 }`,
     );
   };
-  material.customProgramCacheKey = () => 'traffic-vertex-crush-v2';
+  material.customProgramCacheKey = () => 'traffic-vertex-crush-v3';
 }
 
 /** A box part of a model, in car space: +z is the nose, y up from the
@@ -265,6 +269,12 @@ export function paletteColorIndex(id: number): number {
   return Math.abs(Math.trunc(id)) % CAR_PALETTE.length;
 }
 
+/** A one-to-one 32-bit encounter-id shuffle. The pattern stays the same
+ * through physics/visual LOD handoffs but neighbouring cars dent differently. */
+export function dentSeedForId(id: number): number {
+  return (Math.imul(Math.trunc(id), 0x9e3779b1) >>> 0) / 0x100000000;
+}
+
 /** A deterministic mix by encounter id: mostly sedans and hatches, fewer
  * vans and pickups, the odd truck and bus. A record may author its kind
  * instead; this is the default. */
@@ -300,7 +310,7 @@ export interface CarModelInstances {
       readonly z: number;
       readonly w: number;
     },
-    colorIndex: number,
+    encounterId: number,
     crush?: Readonly<CarCrushState>,
   ): boolean;
   /** Finish the frame: upload counts and matrices. */
@@ -400,6 +410,12 @@ export function createCarModelInstances(
       );
       crushAttribute.setUsage(DynamicDrawUsage);
       geometry.setAttribute('instanceCrush', crushAttribute);
+      const seedAttribute = new InstancedBufferAttribute(
+        new Float32Array(capacityPerKind),
+        1,
+      );
+      seedAttribute.setUsage(DynamicDrawUsage);
+      geometry.setAttribute('instanceDentSeed', seedAttribute);
       geometries.push(geometry);
       const mesh = new InstancedMesh(
         geometry,
@@ -425,7 +441,7 @@ export function createCarModelInstances(
     begin() {
       for (const kind of CAR_MODEL_KINDS) counts[kind] = 0;
     },
-    push(kind, position, rotation, colorIndex, crush) {
+    push(kind, position, rotation, encounterId, crush) {
       const index = counts[kind];
       if (index >= capacityPerKind) return false;
       helper.position.set(position.x, position.y, position.z);
@@ -433,7 +449,8 @@ export function createCarModelInstances(
         .set(rotation.x, rotation.y, rotation.z, rotation.w)
         .multiply(visualFacing);
       helper.updateMatrix();
-      const color = palette[paletteColorIndex(colorIndex)]!;
+      const color = palette[paletteColorIndex(encounterId)]!;
+      const dentSeed = dentSeedForId(encounterId);
       const front = Math.max(0, Math.min(1, crush?.front ?? 0));
       const rear = Math.max(0, Math.min(1, crush?.rear ?? 0));
       const left = Math.max(0, Math.min(1, crush?.left ?? 0));
@@ -445,6 +462,10 @@ export function createCarModelInstances(
           'instanceCrush',
         ) as InstancedBufferAttribute;
         crushAttribute.setXYZW(index, front, rear, left, right);
+        const seedAttribute = mesh.geometry.getAttribute(
+          'instanceDentSeed',
+        ) as InstancedBufferAttribute;
+        seedAttribute.setX(index, dentSeed);
         const scuff =
           SCUFF_TINT_STRENGTH > 0
             ? 1 - SCUFF_TINT_STRENGTH * Math.sqrt(rear)
@@ -473,6 +494,12 @@ export function createCarModelInstances(
             crushAttribute.clearUpdateRanges();
             crushAttribute.addUpdateRange(0, mesh.count * 4);
             crushAttribute.needsUpdate = true;
+            const seedAttribute = mesh.geometry.getAttribute(
+              'instanceDentSeed',
+            ) as InstancedBufferAttribute;
+            seedAttribute.clearUpdateRanges();
+            seedAttribute.addUpdateRange(0, mesh.count);
+            seedAttribute.needsUpdate = true;
           }
         }
     },
