@@ -1,7 +1,13 @@
 import type { Scene } from 'three';
 import type { ImpactSeverity } from '../core/impactSeverity';
 import { SURFACE_IDS } from '../content/surfaces';
-import type { BodyId, IPhysicsWorld, Quat, V3 } from '../physics/adapter';
+import {
+  type BodyId,
+  type ContactVelocityReader,
+  type IPhysicsWorld,
+  type Quat,
+  type V3,
+} from '../physics/adapter';
 import type { RoadPath } from './roadGenerator';
 import type { SurfacedBodies } from './surfacedBodies';
 import { trafficCrushShape } from './trafficCrushShape';
@@ -75,7 +81,7 @@ interface RecordState {
   /** Contact episode state: one slam chunk, or one scrape increment per side
    * per physics step even when Jolt reports several contact points. */
   contactGap: number;
-  slamApplied: boolean;
+  slamSides: number;
   scrapeSides: number;
 }
 
@@ -113,6 +119,9 @@ const CRASH_BLEED_SECONDS = 0.3;
 const CRASH_BLEED_RATE = 1.5;
 const SLAM_CLOSING_SPEED = 2.5;
 const CONTACT_EPISODE_GAP = 0.18;
+// The same estimated-severity 0.25 cutoff used by player-to-traffic hits:
+// 0.8 + 0.25 * (18.8 - 0.8) m/s.
+const WORLD_WRECK_CLOSING_SPEED = 5.3;
 const SCRAPE_CRUSH_PER_SECOND = 0.16;
 const SCRAPE_CRUSH_CAP = 0.28;
 const CRUSH_SIDES = ['front', 'rear', 'left', 'right'] as const;
@@ -218,12 +227,13 @@ export function createTraffic(
     crashBleedRemaining: 0,
     shapeDirty: false,
     contactGap: Infinity,
-    slamApplied: false,
+    slamSides: 0,
     scrapeSides: 0,
   }));
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
   const slots: Slot[] = [];
+  const slotByBodyId = new Map<BodyId, Slot>();
   const visualStates: TrafficCarState[] = [];
   let physicalCount = 0;
   let farPoseBucket = 0;
@@ -232,6 +242,8 @@ export function createTraffic(
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
   const playerVelocity: V3 = { x: 0, y: 0, z: 0 };
+  const contactVelocityA: V3 = { x: 0, y: 0, z: 0 };
+  const contactVelocityB: V3 = { x: 0, y: 0, z: 0 };
   const force: V3 = { x: 0, y: 0, z: 0 };
   const point: V3 = { x: 0, y: 0, z: 0 };
   const angular: V3 = { x: 0, y: 0, z: 0 };
@@ -252,13 +264,15 @@ export function createTraffic(
       maxAngularVelocity: 9,
       angularDamping: 0.25,
     });
-    slots.push({
+    const slot: Slot = {
       bodyId,
       kind: null,
       shapeKey: null,
       record: null,
       friction: DRIVE_FRICTION,
-    });
+    };
+    slots.push(slot);
+    slotByBodyId.set(bodyId, slot);
   }
 
   function routePose(
@@ -410,7 +424,7 @@ export function createTraffic(
     slot.record = record;
     record.slot = slot;
     record.contactGap = Infinity;
-    record.slamApplied = false;
+    record.slamSides = 0;
     record.scrapeSides = 0;
     state.bodyId = slot.bodyId;
     if (!record.wrecked) physics.setLinearVelocity(slot.bodyId, state.velocity);
@@ -547,7 +561,7 @@ export function createTraffic(
         record.shapeDirty = false;
       }
       record.contactGap += dt;
-      if (record.contactGap >= CONTACT_EPISODE_GAP) record.slamApplied = false;
+      if (record.contactGap >= CONTACT_EPISODE_GAP) record.slamSides = 0;
       record.scrapeSides = 0;
       // Wrecks remain physically free to tumble and settle while nearby.
       if (record.wrecked) {
@@ -679,6 +693,100 @@ export function createTraffic(
     }
   }
 
+  function addSlam(
+    record: RecordState,
+    sideIndex: number,
+    speed: number,
+  ): void {
+    const bit = 1 << sideIndex;
+    if (record.slamSides & bit) return;
+    const side = CRUSH_SIDES[sideIndex]!;
+    const oldCrush = record.state.crush[side];
+    record.state.crush[side] = Math.min(1, oldCrush + slamCrushChunk(speed));
+    if (record.state.crush[side] > oldCrush) record.shapeDirty = true;
+    record.slamSides |= bit;
+  }
+
+  function recordContactCrush(
+    record: RecordState,
+    nx: number,
+    ny: number,
+    nz: number,
+    closingSpeed: number,
+    allowScrape: boolean,
+  ): void {
+    if (Math.hypot(nx, nz) < 0.45) {
+      // A hard roof or underbody landing compresses the whole shell. A normal
+      // ground contact never reaches the slam threshold and is ignored.
+      if (Math.abs(ny) < 0.7 || closingSpeed < SLAM_CLOSING_SPEED) return;
+      for (let sideIndex = 0; sideIndex < CRUSH_SIDES.length; sideIndex++)
+        addSlam(record, sideIndex, closingSpeed);
+      record.contactGap = 0;
+      return;
+    }
+    const side = visualCrushSide(record.state, nx, ny, nz);
+    if (!side) return;
+    const sideIndex = CRUSH_SIDES.indexOf(side);
+    if (closingSpeed >= SLAM_CLOSING_SPEED)
+      addSlam(record, sideIndex, closingSpeed);
+    else if (allowScrape) record.scrapeSides |= 1 << sideIndex;
+    else return;
+    record.contactGap = 0;
+  }
+
+  /** Called inside the contact callback: only the supplied Body readers may
+   * be used. Both sides of a traffic-to-traffic impact receive the same
+   * closing speed, with opposite outward struck-face normals. */
+  function onWorldContact(
+    a: BodyId,
+    b: BodyId,
+    normal: Readonly<V3>,
+    readVelocities: ContactVelocityReader,
+  ): void {
+    const recordA = slotByBodyId.get(a)?.record;
+    const recordB = slotByBodyId.get(b)?.record;
+    if (!recordA && !recordB) return;
+    readVelocities(contactVelocityA, contactVelocityB);
+    const dx = contactVelocityA.x - contactVelocityB.x;
+    const dy = contactVelocityA.y - contactVelocityB.y;
+    const dz = contactVelocityA.z - contactVelocityB.z;
+    const normalSpeed = dx * normal.x + dy * normal.y + dz * normal.z;
+    const closingSpeed = Math.max(0, normalSpeed);
+    const tangentSpeedSquared = Math.max(
+      0,
+      dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed,
+    );
+    const grinding = tangentSpeedSquared > 0.8 * 0.8;
+    if (recordA) {
+      recordContactCrush(
+        recordA,
+        normal.x,
+        normal.y,
+        normal.z,
+        closingSpeed,
+        grinding,
+      );
+      if (closingSpeed >= WORLD_WRECK_CLOSING_SPEED) {
+        recordA.wrecked = true;
+        recordA.state.wrecked = true;
+      }
+    }
+    if (recordB) {
+      recordContactCrush(
+        recordB,
+        -normal.x,
+        -normal.y,
+        -normal.z,
+        closingSpeed,
+        grinding,
+      );
+      if (closingSpeed >= WORLD_WRECK_CLOSING_SPEED) {
+        recordB.wrecked = true;
+        recordB.state.wrecked = true;
+      }
+    }
+  }
+
   /** Called inside the contact callback: no physics reads or mutations. */
   function onPlayerContact(
     otherBody: BodyId,
@@ -686,9 +794,8 @@ export function createTraffic(
     normalIntoPlayer?: Readonly<V3>,
     relativeVelocity?: Readonly<V3>,
   ): void {
-    for (const slot of slots) {
-      if (slot.bodyId !== otherBody || !slot.record) continue;
-      const record = slot.record;
+    const record = slotByBodyId.get(otherBody)?.record;
+    if (record) {
       if (normalIntoPlayer && relativeVelocity) {
         const length = Math.hypot(
           normalIntoPlayer.x,
@@ -707,24 +814,7 @@ export function createTraffic(
               relativeVelocity.z * nz
             ),
           );
-          const side = visualCrushSide(record.state, nx, ny, nz);
-          if (side) {
-            if (closingSpeed >= SLAM_CLOSING_SPEED) {
-              if (!record.slamApplied) {
-                const oldCrush = record.state.crush[side];
-                record.state.crush[side] = Math.min(
-                  1,
-                  record.state.crush[side] + slamCrushChunk(closingSpeed),
-                );
-                if (record.state.crush[side] > oldCrush)
-                  record.shapeDirty = true;
-                record.slamApplied = true;
-              }
-            } else {
-              record.scrapeSides |= 1 << CRUSH_SIDES.indexOf(side);
-            }
-            record.contactGap = 0;
-          }
+          recordContactCrush(record, nx, ny, nz, closingSpeed, true);
         }
       }
       // Gentle contact dents without counting as a wreck or a slam.
@@ -760,16 +850,12 @@ export function createTraffic(
           record.crashPending = record.crashClosingSpeed > 0;
         }
       }
-      return;
     }
   }
 
   /** Last post-step velocity, safe to read inside a contact callback. */
   function velocityForBody(bodyId: BodyId): Readonly<V3> | undefined {
-    for (const slot of slots)
-      if (slot.bodyId === bodyId && slot.record)
-        return slot.record.state.velocity;
-    return undefined;
+    return slotByBodyId.get(bodyId)?.record?.state.velocity;
   }
 
   if (initialRules) setRules(initialRules);
@@ -786,6 +872,7 @@ export function createTraffic(
     preStep,
     postStep,
     onPlayerContact,
+    onWorldContact,
     velocityForBody,
     dispose() {
       for (const record of authored) demote(record);

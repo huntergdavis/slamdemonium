@@ -4,6 +4,7 @@ import { DEFAULT_VALUES } from '../tuning/schema';
 import type {
   BodyId,
   ContactCallback,
+  ContactVelocityReader,
   DynamicBoxDesc,
   IPhysicsWorld,
   MassDesc,
@@ -129,6 +130,16 @@ export async function createPhysicsWorld(
   let contactCallback: ContactCallback | undefined;
   const contactPoint: V3 = { x: 0, y: 0, z: 0 };
   const contactNormal: V3 = { x: 0, y: 0, z: 0 };
+  let contactingA: initJolt.Body | undefined;
+  let contactingB: initJolt.Body | undefined;
+  const readContactVelocities: ContactVelocityReader = (outA, outB) => {
+    if (!contactingA || !contactingB)
+      throw new Error('Contact velocities are only available in a callback.');
+    // The supplied Body references are already locked by Jolt. Reading them
+    // directly avoids the BodyInterface lock that would hang inside Step.
+    copyVector(contactingA.GetLinearVelocity(), outA);
+    copyVector(contactingB.GetLinearVelocity(), outB);
+  };
   const contactListener = new J.ContactListenerJS();
   contactListener.OnContactValidate = () =>
     J.ValidateResult_AcceptAllContactsForThisBodyPair;
@@ -141,13 +152,21 @@ export async function createPhysicsWorld(
     copyVector(manifold.GetWorldSpaceContactPointOn1(0), contactPoint);
     copyVector(manifold.mWorldSpaceNormal, contactNormal);
     // Published bindings do not expose the solver's contact impulse.
-    contactCallback(
-      a.GetID().GetIndexAndSequenceNumber(),
-      b.GetID().GetIndexAndSequenceNumber(),
-      null,
-      contactPoint,
-      contactNormal,
-    );
+    contactingA = a;
+    contactingB = b;
+    try {
+      contactCallback(
+        a.GetID().GetIndexAndSequenceNumber(),
+        b.GetID().GetIndexAndSequenceNumber(),
+        null,
+        contactPoint,
+        contactNormal,
+        readContactVelocities,
+      );
+    } finally {
+      contactingA = undefined;
+      contactingB = undefined;
+    }
   }
   contactListener.OnContactAdded = contact;
   contactListener.OnContactPersisted = contact;

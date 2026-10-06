@@ -882,8 +882,11 @@ async function boot(): Promise<void> {
   // separates body B; orient our reused record out of the other surface into
   // the vehicle. Telemetry velocity is pre-step here, which is the approach
   // speed against a static obstacle; the record says it is estimated.
-  physics.onContact((a, b, impulse, point, normal) => {
-    if (a !== vehicle.body && b !== vehicle.body) return;
+  physics.onContact((a, b, impulse, point, normal, readVelocities) => {
+    if (a !== vehicle.body && b !== vehicle.body) {
+      traffic?.onWorldContact(a, b, normal, readVelocities);
+      return;
+    }
     const direction = a === vehicle.body ? -1 : 1;
     impactNormal.x = normal.x * direction;
     impactNormal.y = normal.y * direction;
