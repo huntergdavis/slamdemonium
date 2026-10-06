@@ -15,33 +15,43 @@ import {
   CAR_MODEL_KINDS,
   CAR_PALETTE,
   ORIGINAL_TRAFFIC_BOX,
+  TRAFFIC_MODEL_SCALE,
   carHalfWidth,
   createCarModelInstances,
   dentSeedForId,
   paletteColorIndex,
   pickCarModelKind,
 } from '../src/world/carModels';
+import { trafficCrushShape } from '../src/world/trafficCrushShape';
 
 describe('car model catalogue', () => {
-  it('has six kinds, every one 30 to 40 percent longer and wider than the first traffic box, with distinct shapes', () => {
+  it('scales all six catalogue kinds and their parts by 20 percent', () => {
     expect(CAR_MODEL_KINDS).toHaveLength(6);
+    expect(TRAFFIC_MODEL_SCALE).toBe(1.2);
+    const original = {
+      sedan: [5.7, 2.55, 1.9],
+      hatch: [5.5, 2.5, 2.4],
+      van: [6.0, 2.6, 2.3],
+      pickup: [6.3, 2.6, 2.1],
+      boxTruck: [8.5, 2.9, 3.4],
+      bus: [12.0, 2.9, 3.2],
+    } as const;
     const lengths = new Set<number>();
     for (const kind of CAR_MODEL_KINDS) {
       const m = CAR_MODELS[kind];
       const length = m.halfExtents.z * 2;
       const width = m.halfExtents.x * 2;
-      // Every kind, the small ones included, is at least 1.3 times the old
-      // box in both length and width; the bus and truck run much longer.
-      expect(width / ORIGINAL_TRAFFIC_BOX.width).toBeGreaterThanOrEqual(1.3);
-      expect(width / ORIGINAL_TRAFFIC_BOX.width).toBeLessThanOrEqual(1.6);
-      expect(length / ORIGINAL_TRAFFIC_BOX.length).toBeGreaterThanOrEqual(1.3);
+      expect(length).toBeCloseTo(original[kind][0] * 1.2);
+      expect(width).toBeCloseTo(original[kind][1] * 1.2);
+      expect(m.halfExtents.y * 2).toBeCloseTo(original[kind][2] * 1.2);
+      expect(m.ride).toBeCloseTo((original[kind][2] / 2 + 0.04) * 1.2);
       lengths.add(Math.round(length * 10));
       expect(m.parts.length).toBeGreaterThanOrEqual(2);
       expect(m.share).toBeGreaterThan(0);
     }
     expect(lengths.size).toBe(6);
     expect(CAR_MODELS.sedan.halfExtents.z * 2).toBeCloseTo(
-      ORIGINAL_TRAFFIC_BOX.length * 1.357,
+      ORIGINAL_TRAFFIC_BOX.length * 1.357 * TRAFFIC_MODEL_SCALE,
       1,
     );
     expect(CAR_MODELS.bus.halfExtents.z * 2).toBeGreaterThan(
@@ -101,6 +111,21 @@ describe('car model catalogue', () => {
     expect(paletteColorIndex(13)).toBe(13 % CAR_PALETTE.length);
     expect(carHalfWidth('bus')).toBe(CAR_MODELS.bus.halfExtents.x);
     expect(carHalfWidth(undefined)).toBe(CAR_MODELS.sedan.halfExtents.x);
+  });
+  it('keeps the crushed front hull proportional to the larger sedan and bus', () => {
+    for (const kind of ['sedan', 'bus'] as const) {
+      const half = CAR_MODELS[kind].halfExtents;
+      const shape = trafficCrushShape(kind, {
+        front: 1,
+        rear: 0,
+        left: 0,
+        right: 0,
+      })!;
+      expect(shape.halfExtents).toBe(half);
+      const front = Math.min(...shape.vertices.map((v) => v.z));
+      expect(front).toBeCloseTo(-half.z + Math.min(2.4, half.z * 0.4));
+      expect(Math.max(...shape.vertices.map((v) => v.z))).toBeCloseTo(half.z);
+    }
   });
   it('draws each kind through its own instanced parts, one matrix per car per frame, counts reset each frame', () => {
     const scene = new Scene();
@@ -266,10 +291,10 @@ describe('car model catalogue', () => {
     expect(visible).toContain('attribute vec4 instanceCrush;');
     expect(visible).toContain('attribute float instanceDentSeed;');
     expect(visible).toContain(
-      'transformed.z += 2.4 * (trafficRear - trafficFront)',
+      'transformed.z += 2.88 * (trafficRear - trafficFront)',
     );
     expect(visible).toContain(
-      'transformed.x += 1.15 * (trafficLeft - trafficRight)',
+      'transformed.x += 1.38 * (trafficLeft - trafficRight)',
     );
     expect(visible).toContain('transformed.y -= roof');
     cars.dispose();

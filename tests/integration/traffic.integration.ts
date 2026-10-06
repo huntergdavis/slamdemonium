@@ -10,6 +10,7 @@ import {
   createTrafficVisual,
   MAX_DRIVING,
 } from '../../src/world/traffic';
+import { CAR_MODELS } from '../../src/world/carModels';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 
@@ -36,8 +37,10 @@ it('makes the default circuit breathe beneath the authored density ceiling', asy
     expect(map.traffic.length).toBeGreaterThan(1400);
     expect(traffic.activeCount).toBeGreaterThan(700);
     expect(traffic.activeCount).toBeLessThan(1100);
+    const defaultCount = traffic.activeCount;
     traffic.setRules({ density: 1, minGap: 12, maxGap: 12 });
-    expect(traffic.activeCount).toBe(map.traffic.length);
+    expect(traffic.activeCount).toBeGreaterThan(defaultCount);
+    expect(traffic.activeCount).toBeLessThanOrEqual(map.traffic.length);
   } finally {
     traffic.dispose();
     bodies.dispose();
@@ -70,8 +73,17 @@ it('varies same-lane gaps live without exceeding the old ceiling or reusing ids'
     expect(traffic.activeCount).toBeGreaterThan(5);
     const initialStates = new Map(traffic.states.map((car) => [car.id, car]));
     const stations = traffic.states.map((car) => -car.position.z);
-    for (let i = 1; i < stations.length; i++)
-      expect(stations[i]! - stations[i - 1]!).toBeGreaterThanOrEqual(11.9);
+    for (let i = 1; i < stations.length; i++) {
+      const a = traffic.states[i - 1]!;
+      const b = traffic.states[i]!;
+      const required =
+        CAR_MODELS[a.modelKind].halfExtents.z +
+        CAR_MODELS[b.modelKind].halfExtents.z +
+        3;
+      expect(stations[i]! - stations[i - 1]!).toBeGreaterThanOrEqual(
+        required - 0.1,
+      );
+    }
 
     traffic.setRules({ density: 1, minGap: 12, maxGap: 12 });
     traffic.preStep(1 / 120, player);

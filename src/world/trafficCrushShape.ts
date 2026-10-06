@@ -1,5 +1,10 @@
 import type { V3 } from '../physics/adapter';
-import { CAR_MODELS, type CarCrushState, type CarModelKind } from './carModels';
+import {
+  CAR_MODELS,
+  TRAFFIC_MODEL_SCALE,
+  type CarCrushState,
+  type CarModelKind,
+} from './carModels';
 
 /** Four stable crush tiers keep the native shape cache finite. All changes
  * retract the outline; no new hull can overlap a neighbour or the road. */
@@ -17,8 +22,8 @@ export function trafficCrushShape(
   // Its +Z nose and +X right become the chassis's -Z and -X respectively.
   const x0 = -half.x + right! * half.x * 0.4;
   const x1 = half.x - left! * half.x * 0.4;
-  const z0 = -half.z + front! * Math.min(2, half.z * 0.4);
-  const z1 = half.z - rear! * Math.min(2, half.z * 0.4);
+  const z0 = -half.z + front! * Math.min(2 * TRAFFIC_MODEL_SCALE, half.z * 0.4);
+  const z1 = half.z - rear! * Math.min(2 * TRAFFIC_MODEL_SCALE, half.z * 0.4);
   const bottom = -half.y;
   const topFront =
     bottom + half.y * 2 * (1 - 0.55 * Math.max(front!, left!, right!));
