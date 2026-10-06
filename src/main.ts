@@ -1046,6 +1046,31 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     loop.stepMany(count);
   };
+  // Test-only browser fixture: use the same pooled cars and physics path as
+  // play, but give main and PR an identical multi-car impact on the road.
+  game.stageTrafficPileup = () => {
+    const actors = (traffic?.states ?? [])
+      .filter((car) => car.bodyId > 0)
+      .slice(0, 3);
+    if (actors.length !== 3)
+      throw new Error('Three nearby traffic bodies required.');
+    for (let index = 0; index < actors.length; index++) {
+      const car = actors[index]!;
+      physics.setTransform(
+        car.bodyId,
+        { x: -846.5, y: car.position.y, z: -1445 + index * 15 },
+        { x: 0, y: 1, z: 0, w: 0 },
+        true,
+      );
+      physics.setLinearVelocity(car.bodyId, {
+        x: 0,
+        y: 0,
+        z: index === 0 ? 50 : 0,
+      });
+      physics.setAngularVelocity(car.bodyId, { x: 0, y: 0, z: 0 });
+    }
+    return actors.map((car) => car.id);
+  };
   const trafficScreenPoint = new Vector3();
   game.getTraffic = () =>
     (traffic?.states ?? []).map((car) => {

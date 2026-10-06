@@ -64,6 +64,23 @@ it('crumples both cars in each link of a live A into B into C chain', async () =
   }
 }, 300_000);
 
+it('dents both cars in a gentle chain without disabling their lane drive', async () => {
+  const run = await fixture([
+    { station: 90, laneSide: -1, speed: 8, modelKind: 'sedan' },
+    { station: 99, laneSide: -1, speed: 0, modelKind: 'sedan' },
+  ]);
+  try {
+    for (let i = 0; i < 360; i++) run.step();
+    const [a, b] = run.traffic.states;
+    expect(a?.crush.front).toBeGreaterThan(0);
+    expect(b?.crush.rear).toBeGreaterThan(0);
+    expect(a?.wrecked).toBe(false);
+    expect(b?.wrecked).toBe(false);
+  } finally {
+    run.dispose();
+  }
+}, 300_000);
+
 it('crumples a traffic car against a wall and swaps its physical hull', async () => {
   const run = await fixture([
     { station: 100, laneSide: -1, speed: 25, modelKind: 'sedan' },

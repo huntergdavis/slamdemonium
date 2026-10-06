@@ -1,6 +1,6 @@
-/* Headed GPU gate for traffic pileups. Drive into the opening-straight lane,
- * then time the six seconds after the first nearby traffic wreck. Run main
- * and the PR interleaved on the same box; compare full-step p99 and frame cost.
+/* Headed GPU gate for traffic pileups. Stage three already-pooled cars on the
+ * opening straight, then time six seconds of their impact. Run main and the PR
+ * interleaved on the same box; compare full-step p99 and frame cost.
  *
  * xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/perf/traffic-pileup-browser.mjs <url> <out.json>
  */
@@ -52,68 +52,38 @@ await page.evaluate(() => {
   const game = window.__game;
   game.respawn();
   game.releaseInput();
+  const ids = game.stageTrafficPileup?.();
+  if (!ids || ids.length !== 3)
+    throw new Error('Three-body pileup not staged.');
   const state = {
     done: false,
     timedOut: false,
     started: performance.now(),
-    pileupStart: 0,
     frames: 0,
+    ids,
     crushed: new Set(),
     wrecked: new Set(),
     maxNearby: 0,
   };
   window.__pileup = state;
-  const forward = (rotation) => ({
-    x: -2 * (rotation.x * rotation.z + rotation.y * rotation.w),
-    z: -(1 - 2 * (rotation.x * rotation.x + rotation.y * rotation.y)),
-  });
+  game.perf.start(1e9);
   const tick = () => {
-    const telemetry = game.getTelemetry();
-    const { position, rotation, speed } = telemetry;
-    const heading = forward(rotation);
-    const dx = -846.5 - position.x;
-    const dz = 55;
-    const length = Math.hypot(dx, dz) || 1;
-    const cross = heading.x * (dz / length) - heading.z * (dx / length);
-    const error = 45 - speed;
-    game.setInput({
-      throttle: Math.max(0, Math.min(1, 0.6 * error)),
-      brake: error < -1.5 ? Math.min(1, -0.3 * error) : 0,
-      steer: Math.max(-1, Math.min(1, -3 * cross)),
-      handbrake: false,
-      boost: false,
-    });
-    const now = performance.now();
-    if (
-      state.frames++ % 12 === 0 &&
-      (!state.pileupStart || now - state.pileupStart < 6000)
-    ) {
+    if (state.frames++ % 12 === 0) {
       const traffic = game.getTraffic?.() ?? [];
+      const player = game.getTelemetry().position;
       let nearby = 0;
       for (const car of traffic) {
-        const distance = Math.hypot(car.x - position.x, car.z - position.z);
+        const distance = Math.hypot(car.x - player.x, car.z - player.z);
         if (distance > 80) continue;
         nearby++;
         if (car.wrecked) state.wrecked.add(car.id);
         if (Object.values(car.crush ?? {}).some((value) => value > 0.02))
           state.crushed.add(car.id);
-        if (!state.pileupStart && car.wrecked && distance < 25) {
-          // Start after shaders and the approach have warmed up. This is the
-          // same trigger on main and PR, independent of the new damage rule.
-          game.perf.start(1e9);
-          state.pileupStart = now;
-        }
       }
       state.maxNearby = Math.max(state.maxNearby, nearby);
     }
-    if (state.pileupStart && now - state.pileupStart >= 6000) {
-      game.releaseInput();
-      state.done = true;
-    } else if (now - state.started >= 40_000) {
-      game.releaseInput();
-      state.timedOut = true;
-      state.done = true;
-    } else requestAnimationFrame(tick);
+    if (performance.now() - state.started >= 6000) state.done = true;
+    else requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
 });
@@ -137,9 +107,13 @@ jolt.push(...batch.engineStepMs);
 dropped += batch.droppedSamples;
 const pileup = await page.evaluate(() => ({
   timedOut: window.__pileup.timedOut,
+  stagedIds: window.__pileup.ids,
   crushedIds: [...window.__pileup.crushed],
   wreckedIds: [...window.__pileup.wrecked],
   maxNearby: window.__pileup.maxNearby,
+  stagedCrush: (window.__game.getTraffic?.() ?? [])
+    .filter((car) => window.__pileup.ids.includes(car.id))
+    .map((car) => ({ id: car.id, crush: car.crush, wrecked: car.wrecked })),
 }));
 await browser.close();
 

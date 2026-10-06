@@ -119,9 +119,9 @@ const CRASH_BLEED_SECONDS = 0.3;
 const CRASH_BLEED_RATE = 1.5;
 const SLAM_CLOSING_SPEED = 2.5;
 const CONTACT_EPISODE_GAP = 0.18;
-// The same estimated-severity 0.25 cutoff used by player-to-traffic hits:
-// 0.8 + 0.25 * (18.8 - 0.8) m/s.
-const WORLD_WRECK_CLOSING_SPEED = 5.3;
+// A low-speed chain still dents both cars. Only a hard world hit disables
+// the lane controller; otherwise a packed queue becomes a stationary mound.
+const WORLD_WRECK_CLOSING_SPEED = 12;
 const SCRAPE_CRUSH_PER_SECOND = 0.16;
 const SCRAPE_CRUSH_CAP = 0.28;
 const CRUSH_SIDES = ['front', 'rear', 'left', 'right'] as const;
