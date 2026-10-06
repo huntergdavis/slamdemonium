@@ -74,6 +74,11 @@ for (const kind of ['rear', 'side'] as const) {
         let playerSpeedAtHalf = 0;
         let playerSpeedAtOne = 0;
         let hitStep = -1;
+        let swapMeasured = false;
+        let swapVelocityDelta = 0;
+        let swapResidual = 0;
+        const beforeSwapVelocity = { x: 0, y: 0, z: 0 };
+        const afterSwapVelocity = { x: 0, y: 0, z: 0 };
         world.onContact((a, b, impulse, _point, contactNormal) => {
           const other = a === vehicle.body ? b : b === vehicle.body ? a : -1;
           if (other !== car.bodyId || struck) return;
@@ -105,7 +110,26 @@ for (const kind of ['rear', 'side'] as const) {
         });
         for (let step = 0; step < 4 * 120; step++) {
           vehicle.preStep(DT, neutralScriptInput, 'gamepad');
+          if (struck && !swapMeasured)
+            world.getLinearVelocity(car.bodyId, beforeSwapVelocity);
           traffic.preStep(DT, vehicle.telemetry.position);
+          if (struck && !swapMeasured) {
+            world.getLinearVelocity(car.bodyId, afterSwapVelocity);
+            swapVelocityDelta = Math.hypot(
+              afterSwapVelocity.x - beforeSwapVelocity.x,
+              afterSwapVelocity.y - beforeSwapVelocity.y,
+              afterSwapVelocity.z - beforeSwapVelocity.z,
+            );
+            // Crumple A also bleeds rear-hit velocity during this preStep.
+            // Remove that known change to isolate the shape swap itself.
+            const bleed = kind === 'rear' ? Math.exp(-1.5 * DT) : 1;
+            swapResidual = Math.hypot(
+              afterSwapVelocity.x - beforeSwapVelocity.x * bleed,
+              afterSwapVelocity.y - beforeSwapVelocity.y,
+              afterSwapVelocity.z - beforeSwapVelocity.z * bleed,
+            );
+            swapMeasured = true;
+          }
           world.step(DT);
           traffic.postStep(vehicle.body, vehicle.currentMass);
           vehicle.postStep(DT);
@@ -154,10 +178,14 @@ for (const kind of ['rear', 'side'] as const) {
           if (vehicle.telemetry.groundedWheels === 0) playerAirborneSteps++;
         }
         console.log(
-          `TRAFFIC_VEHICLE ${JSON.stringify({ kind, requestedClosing, closing: +closing.toFixed(2), playerPre: +preImpactPlayerSpeed.toFixed(2), trafficUp: +peakTrafficUp.toFixed(2), trafficHeight: +peakTrafficHeight.toFixed(2), trafficAir: +(trafficAirborneSteps * DT).toFixed(2), trafficMinUpY: +minTrafficUpY.toFixed(2), trafficFlipped, trafficYaw: +peakTrafficYaw.toFixed(2), playerRebound: +peakPlayerRebound.toFixed(2), playerYaw: +peakPlayerYaw.toFixed(2), playerUp: +peakPlayerUp.toFixed(2), playerAir: +(playerAirborneSteps * DT).toFixed(2), firstPlayerV: +firstPlayerV.toFixed(2), trafficV05: +trafficSpeedAtHalf.toFixed(2), trafficV1: +trafficSpeedAtOne.toFixed(2), trafficD1: +trafficTravelAtOne.toFixed(2), gapX1: +lateralGapAtOne.toFixed(2), playerV05: +playerSpeedAtHalf.toFixed(2), playerV1: +playerSpeedAtOne.toFixed(2) })}`,
+          `TRAFFIC_VEHICLE ${JSON.stringify({ kind, requestedClosing, closing: +closing.toFixed(2), swapVelocityDelta: +swapVelocityDelta.toFixed(3), swapResidual: +swapResidual.toFixed(3), playerPre: +preImpactPlayerSpeed.toFixed(2), trafficUp: +peakTrafficUp.toFixed(2), trafficHeight: +peakTrafficHeight.toFixed(2), trafficAir: +(trafficAirborneSteps * DT).toFixed(2), trafficMinUpY: +minTrafficUpY.toFixed(2), trafficFlipped, trafficYaw: +peakTrafficYaw.toFixed(2), playerRebound: +peakPlayerRebound.toFixed(2), playerYaw: +peakPlayerYaw.toFixed(2), playerUp: +peakPlayerUp.toFixed(2), playerAir: +(playerAirborneSteps * DT).toFixed(2), firstPlayerV: +firstPlayerV.toFixed(2), trafficV05: +trafficSpeedAtHalf.toFixed(2), trafficV1: +trafficSpeedAtOne.toFixed(2), trafficD1: +trafficTravelAtOne.toFixed(2), gapX1: +lateralGapAtOne.toFixed(2), playerV05: +playerSpeedAtHalf.toFixed(2), playerV1: +playerSpeedAtOne.toFixed(2) })}`,
         );
         expect(struck).toBe(true);
+        expect(swapMeasured).toBe(true);
+        expect(swapResidual).toBeLessThan(0.1);
         expect(trafficFlipped).toBe(false);
+        expect(trafficSpeedAtOne).toBeGreaterThan(5);
+        expect(playerSpeedAtOne).toBeGreaterThan(2);
         // CTO (2026-10-04): "hit cars should allow to lift off briefly."
         // A hop is part of the crash; a sustained flight or rollover is not.
         expect(trafficAirborneSteps * DT).toBeLessThan(1.0);

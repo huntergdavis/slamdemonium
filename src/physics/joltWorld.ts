@@ -124,6 +124,7 @@ export async function createPhysicsWorld(
       added: boolean;
     }
   >();
+  const convexShapes = new Map<string, initJolt.Shape>();
   let disposed = false;
   let contactCallback: ContactCallback | undefined;
   const contactPoint: V3 = { x: 0, y: 0, z: 0 };
@@ -546,6 +547,49 @@ export async function createPhysicsWorld(
       entry.inertia.y = lastInertia.y;
       entry.inertia.z = lastInertia.z;
     },
+    setBodyConvexShape(id, key, vertices, halfExtents, desc) {
+      assertAlive();
+      validateMass(desc);
+      const entry = record(id);
+      if (!entry.dynamic)
+        throw new Error('Only a dynamic body can change shape.');
+      if (vertices.length < 4)
+        throw new RangeError('A convex hull needs four vertices.');
+      let hull = convexShapes.get(key);
+      if (!hull) {
+        const settings = new J.ConvexHullShapeSettings();
+        settings.mMaxConvexRadius = 0.02;
+        for (const vertex of vertices) {
+          const point = new J.Vec3(vertex.x, vertex.y, vertex.z);
+          settings.mPoints.push_back(point);
+          J.destroy(point);
+        }
+        const result = settings.Create();
+        if (!result.IsValid()) {
+          const error = result.GetError().c_str();
+          J.destroy(result);
+          J.destroy(settings);
+          throw new Error(`Invalid traffic crush hull: ${error}`);
+        }
+        const rawHull = result.Get();
+        rawHull.AddRef();
+        // Keep the same authored chassis CoM as the intact box. A convex
+        // hull's geometric CoM shifts toward its uncrushed end otherwise.
+        vector.Set(desc.comOffset.x, desc.comOffset.y, desc.comOffset.z);
+        hull = new J.OffsetCenterOfMassShape(rawHull, vector);
+        hull.AddRef(); // Cache owns a reference until world disposal.
+        rawHull.Release();
+        convexShapes.set(key, hull);
+        J.destroy(result);
+        J.destroy(settings);
+      }
+      bodies.SetShape(entry.id, hull, false, J.EActivation_DontActivate);
+      setMass(entry.body, hull, desc);
+      entry.halfExtents.x = halfExtents.x;
+      entry.halfExtents.y = halfExtents.y;
+      entry.halfExtents.z = halfExtents.z;
+      Object.assign(entry.inertia, lastInertia);
+    },
     setContactProperties(id, friction, restitution) {
       const body = record(id).body;
       body.SetFriction(friction);
@@ -674,6 +718,8 @@ export async function createPhysicsWorld(
         bodies.DestroyBody(entry.id);
       }
       records.clear();
+      for (const hull of convexShapes.values()) hull.Release();
+      convexShapes.clear();
       // Filters borrow world infrastructure, so destroy them before the world.
       for (const owned of [
         shapeFilter,
