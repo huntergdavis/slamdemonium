@@ -7,6 +7,7 @@ import {
   type TrafficCarView,
 } from '../src/core/trafficEvents';
 import { carHalfWidth } from '../src/world/carModels';
+import { VEHICLE_GEOMETRY } from '../src/vehicle/constants';
 
 const DT = 1 / 120;
 const TUNING = {
@@ -262,5 +263,26 @@ describe('traffic events', () => {
       lastEvent: null,
       grant: 0,
     });
+  });
+});
+
+describe('player half width follows the collider', () => {
+  it('is half the vehicle width, so a bigger car is judged on its real edges', () => {
+    // A0P widened the car from 1.8 m to 2.16 m. A hardcoded half width would
+    // have left near misses measured from the old bodywork, paying the player
+    // for passes the new car never made.
+    expect(PLAYER_HALF_WIDTH).toBeCloseTo(VEHICLE_GEOMETRY.width / 2, 9);
+    expect(PLAYER_HALF_WIDTH).toBeGreaterThan(0);
+  });
+
+  it('turns a centre distance into an edge-to-edge gap against a catalogue car', () => {
+    // Two cars 5 m apart centre to centre, a sedan alongside: the gap is what
+    // is left once both half widths are taken out.
+    const gap = 5 - PLAYER_HALF_WIDTH - carHalfWidth('sedan');
+    expect(gap).toBeCloseTo(
+      5 - VEHICLE_GEOMETRY.width / 2 - carHalfWidth('sedan'),
+      9,
+    );
+    expect(gap).toBeLessThan(5);
   });
 });

@@ -97,7 +97,7 @@ async function jump(speed: number, boost: boolean, southbound = false) {
     const sign = southbound ? -1 : 1;
     const lowEdgeZ = southbound ? giant!.z + 2 * giant!.length : giant!.z;
     vehicle.respawn(
-      { x: 0, y: 0.86, z: lowEdgeZ - sign * 80 },
+      { x: 0, y: 1.0, z: lowEdgeZ - sign * 80 },
       southbound ? { x: 0, y: 0, z: 0, w: 1 } : { x: 0, y: 1, z: 0, w: 0 },
     );
     world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: sign * speed });
@@ -173,7 +173,7 @@ async function completesBigLoop(speed: number): Promise<boolean> {
     const q = new Quaternion().setFromRotationMatrix(
       new Matrix4().makeBasis(right, pose.up, back),
     );
-    const spawn = pose.point.clone().addScaledVector(pose.up, 0.86);
+    const spawn = pose.point.clone().addScaledVector(pose.up, 1.0);
     vehicle.respawn(
       { x: spawn.x, y: spawn.y, z: spawn.z },
       { x: q.x, y: q.y, z: q.z, w: q.w },

@@ -59,7 +59,7 @@ async function rig(
     tuning,
     {
       x: 0,
-      y: contact === 'asphalt' ? 0.86 : 1.36,
+      y: contact === 'asphalt' ? 1.0 : 1.5,
       z: 0,
     },
     resolver,
@@ -160,7 +160,7 @@ for (const contact of ['concrete', 'unknown'] as const) {
       const { vehicle, resolver, contactBody, step } = await rig(contact);
       step({ ...idle, throttle: 1 }, 60);
       expect(vehicle.controls.throttle).toBe(1);
-      expect(vehicle.telemetry.position.y).toBeCloseTo(1.36, 1);
+      expect(vehicle.telemetry.position.y).toBeCloseTo(1.535, 2);
       expect(vehicle.telemetry.groundedWheels).toBe(4);
       for (const wheel of vehicle.telemetry.wheels) {
         expect(wheel.hit.bodyId).toBe(contactBody);

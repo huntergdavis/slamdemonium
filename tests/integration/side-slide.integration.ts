@@ -18,7 +18,7 @@ it('stops charging boost on a side landing and rights the moving car', async () 
   try {
     const { vehicle, loop, setPad, world } = rig;
     const s = vehicle.telemetry;
-    vehicle.respawn({ x: 0, y: 0.86, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+    vehicle.respawn({ x: 0, y: 1.0, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
     setPad(PAD);
     loop.stepMany(HZ / 2); // Rolling on four wheels, so the next lift is a launch.
     expect(s.groundedWheels).toBe(4);

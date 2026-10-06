@@ -36,7 +36,7 @@ export function scenario(
       name,
       seed,
       spawn: {
-        position: { x: 0, y: 0.86, z: 0 },
+        position: { x: 0, y: 1.0, z: 0 },
         rotation: { x: 0, y: 0, z: 0, w: 1 },
       },
       tuning: { ...DEFAULT_VALUES },

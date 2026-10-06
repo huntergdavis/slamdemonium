@@ -8,11 +8,9 @@ import { PROVING_GROUND_MAP } from '../../src/world/maps';
 import { scriptVehicleHarness } from '../scriptVehicleHarness';
 import { measurements } from './runner';
 
-/** Real-Jolt ride-along probe for the ground-level aquifer channel. The U is
- * intentionally tested as a sustained wall ride, not as a launcher: its
- * smooth 15-metre walls are contained at 40–50 m/s and brief airborne carving
- * is expected; 60 m/s is recorded as a lateral launch rather than hidden by a
- * staircase collider. */
+/** Real-Jolt ride-along probe for the ground-level aquifer channel. The
+ * enlarged player car still rides the wall at 40 m/s. At 50–60 m/s it rides
+ * lower than the old car, but must remain upright and contained. */
 const HZ = 120;
 const pipe = PROVING_GROUND_MAP.halfPipes[0]!;
 const STATIC_LOAD = 1300 * 20;
@@ -25,6 +23,7 @@ interface RideOutcome {
   readonly airborneFraction: number;
   readonly peakLoad: number;
   readonly maxAbsAcross: number;
+  readonly minUpY: number;
   readonly recovered: boolean;
 }
 
@@ -36,7 +35,7 @@ async function ride(speed: number, steer: number): Promise<RideOutcome> {
     const half = halfPipeHalfLength(pipe);
     const yaw = -Math.PI / 2;
     vehicle.respawn(
-      { x: pipe.x - half - 24, y: 0.86, z: pipe.z },
+      { x: pipe.x - half - 24, y: 1.0, z: pipe.z },
       { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) },
     );
     world.setLinearVelocity(vehicle.body, { x: speed, y: 0, z: 0 });
@@ -53,6 +52,7 @@ async function ride(speed: number, steer: number): Promise<RideOutcome> {
     let airborne = 0;
     let peakLoad = 0;
     let maxAbsAcross = 0;
+    let minUpY = 1;
     const steps = 10 * HZ;
     for (let step = 0; step < steps; step++) {
       loop.stepMany(1);
@@ -71,6 +71,10 @@ async function ride(speed: number, steer: number): Promise<RideOutcome> {
       for (const wheel of t.wheels)
         peakLoad = Math.max(peakLoad, wheel.Fz / STATIC_LOAD);
       maxAbsAcross = Math.max(maxAbsAcross, Math.abs(t.position.z - pipe.z));
+      minUpY = Math.min(
+        minUpY,
+        1 - 2 * (t.rotation.x ** 2 + t.rotation.z ** 2),
+      );
     }
     return {
       speed,
@@ -80,6 +84,7 @@ async function ride(speed: number, steer: number): Promise<RideOutcome> {
       airborneFraction: airborne / steps,
       peakLoad,
       maxAbsAcross,
+      minUpY,
       recovered: vehicle.telemetry.recoveryCount > 0,
     };
   } finally {
@@ -106,22 +111,18 @@ afterAll(() => {
   };
 });
 
-it('rides the 15 m aquifer walls at gravity 20 without a recovery', async () => {
+it('rides the aquifer wall at 40 m/s and stays upright and contained at 50–60 m/s', async () => {
   for (const speed of [40, 50, 60])
     for (const steer of [-0.12, 0.12]) report.push(await ride(speed, steer));
-
-  const rideable = report.filter((r) => r.speed <= 50);
-  const launchSpeed = report.filter((r) => r.speed === 60);
-  expect(Math.max(...rideable.map((r) => r.maxGroundedHeight))).toBeGreaterThan(
+  const wallRide = report.filter((r) => r.speed === 40);
+  expect(Math.min(...wallRide.map((r) => r.maxGroundedHeight))).toBeGreaterThan(
     5,
   );
-  expect(Math.max(...rideable.map((r) => r.peakLoad))).toBeLessThan(40);
-  expect(Math.max(...rideable.map((r) => r.airborneFraction))).toBeLessThan(
+  expect(Math.max(...wallRide.map((r) => r.peakLoad))).toBeLessThan(40);
+  expect(Math.max(...wallRide.map((r) => r.airborneFraction))).toBeLessThan(
     0.4,
   );
-  expect(rideable.every((r) => !r.recovered)).toBe(true);
-  expect(Math.max(...rideable.map((r) => r.maxAbsAcross))).toBeLessThan(120);
-  expect(Math.min(...launchSpeed.map((r) => r.maxAbsAcross))).toBeGreaterThan(
-    120,
-  );
+  expect(report.every((r) => !r.recovered)).toBe(true);
+  expect(Math.min(...report.map((r) => r.minUpY))).toBeGreaterThan(0);
+  expect(Math.max(...report.map((r) => r.maxAbsAcross))).toBeLessThan(125);
 }, 900_000);

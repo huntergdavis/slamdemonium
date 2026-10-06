@@ -82,7 +82,7 @@ async function completesLoop(speed: number): Promise<boolean> {
     const q = new Quaternion().setFromRotationMatrix(
       new Matrix4().makeBasis(right, pose.up, back),
     );
-    const spawn = pose.point.clone().addScaledVector(pose.up, 0.86);
+    const spawn = pose.point.clone().addScaledVector(pose.up, 1.0);
     vehicle.respawn(
       { x: spawn.x, y: spawn.y, z: spawn.z },
       { x: q.x, y: q.y, z: q.z, w: q.w },

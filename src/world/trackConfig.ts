@@ -81,7 +81,7 @@ export const DEFAULT_TRACK_CONFIG: Readonly<TrackConfig> = Object.freeze({
   tileMeters: SURFACE_UV_REFERENCES['asphalt-world'].tileMeters,
   fogDensity: 0.0025,
   killY: -50,
-  spawnHeight: 0.86,
+  spawnHeight: 1.0,
 });
 
 export function resolveTrackConfig(
