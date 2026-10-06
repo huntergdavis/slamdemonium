@@ -127,6 +127,30 @@ it('uses a moving object’s speed to crumple a stationary traffic car', async (
   }
 }, 300_000);
 
+it('does not dent a traffic car after a small hop', async () => {
+  const run = await fixture([
+    { station: 100, laneSide: -1, speed: 0, modelKind: 'sedan' },
+  ]);
+  try {
+    run.step();
+    const car = run.traffic.states[0]!;
+    run.world.setTransform(
+      car.bodyId,
+      { x: car.position.x, y: car.position.y + 1, z: car.position.z },
+      car.rotation,
+      true,
+    );
+    run.traffic.postStep();
+    for (let i = 0; i < 180; i++) run.step();
+    expect(car.crush.front).toBe(0);
+    expect(car.crush.rear).toBe(0);
+    expect(car.crush.left).toBe(0);
+    expect(car.crush.right).toBe(0);
+  } finally {
+    run.dispose();
+  }
+}, 300_000);
+
 it('compresses the shell and collider when a traffic car lands hard', async () => {
   const run = await fixture([
     { station: 100, laneSide: -1, speed: 0, modelKind: 'sedan' },

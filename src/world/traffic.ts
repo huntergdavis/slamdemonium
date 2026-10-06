@@ -122,6 +122,7 @@ const CONTACT_EPISODE_GAP = 0.18;
 // A low-speed chain still dents both cars. Only a hard world hit disables
 // the lane controller; otherwise a packed queue becomes a stationary mound.
 const WORLD_WRECK_CLOSING_SPEED = 12;
+const HARD_LANDING_CLOSING_SPEED = 12;
 const SCRAPE_CRUSH_PER_SECOND = 0.16;
 const SCRAPE_CRUSH_CAP = 0.28;
 const CRUSH_SIDES = ['front', 'rear', 'left', 'right'] as const;
@@ -718,7 +719,8 @@ export function createTraffic(
     if (Math.hypot(nx, nz) < 0.45) {
       // A hard roof or underbody landing compresses the whole shell. A normal
       // ground contact never reaches the slam threshold and is ignored.
-      if (Math.abs(ny) < 0.7 || closingSpeed < SLAM_CLOSING_SPEED) return;
+      if (Math.abs(ny) < 0.7 || closingSpeed < HARD_LANDING_CLOSING_SPEED)
+        return;
       for (let sideIndex = 0; sideIndex < CRUSH_SIDES.length; sideIndex++)
         addSlam(record, sideIndex, closingSpeed);
       record.contactGap = 0;
