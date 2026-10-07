@@ -1,5 +1,5 @@
-/* Headed GPU gate for traffic pileups. Stage three already-pooled cars on the
- * opening straight, then time six seconds of their impact. Run main and the PR
+/* Headed GPU gate for traffic pileups. Stage five already-pooled cars on the
+ * opening straight, then time ten seconds of their impact. Run main and the PR
  * interleaved on the same box; compare full-step p99 and frame cost.
  *
  * xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/perf/traffic-pileup-browser.mjs <url> <out.json>
@@ -52,9 +52,8 @@ await page.evaluate(() => {
   const game = window.__game;
   game.respawn();
   game.releaseInput();
-  const ids = game.stageTrafficPileup?.();
-  if (!ids || ids.length !== 3)
-    throw new Error('Three-body pileup not staged.');
+  const ids = game.stageTrafficPileup?.(5);
+  if (!ids || ids.length !== 5) throw new Error('Five-body pileup not staged.');
   const state = {
     done: false,
     timedOut: false,
@@ -82,7 +81,7 @@ await page.evaluate(() => {
       }
       state.maxNearby = Math.max(state.maxNearby, nearby);
     }
-    if (performance.now() - state.started >= 6000) state.done = true;
+    if (performance.now() - state.started >= 10000) state.done = true;
     else requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);

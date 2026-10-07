@@ -1048,12 +1048,12 @@ async function boot(): Promise<void> {
   };
   // Test-only browser fixture: use the same pooled cars and physics path as
   // play, but give main and PR an identical multi-car impact on the road.
-  game.stageTrafficPileup = () => {
+  game.stageTrafficPileup = (count = 3) => {
     const actors = (traffic?.states ?? [])
       .filter((car) => car.bodyId > 0)
-      .slice(0, 3);
-    if (actors.length !== 3)
-      throw new Error('Three nearby traffic bodies required.');
+      .slice(0, count);
+    if (actors.length !== count)
+      throw new Error(`${count} nearby traffic bodies required.`);
     for (let index = 0; index < actors.length; index++) {
       const car = actors[index]!;
       physics.setTransform(

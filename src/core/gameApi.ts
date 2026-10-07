@@ -34,8 +34,8 @@ export interface GameTestApi {
   getTelemetry(): Readonly<Record<string, unknown>>;
   /** Traffic cars in play, for headless instruments; absent without traffic. */
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
-  /** Test-only fixed three-body impact for matched browser performance gates. */
-  stageTrafficPileup?: () => readonly number[];
+  /** Test-only pooled-body impact for matched browser performance gates. */
+  stageTrafficPileup?: (count?: number) => readonly number[];
   respawn(): void;
   runPhysicsSpike?: () => Promise<PhysicsSpikeResult>;
   /** Optional diagnostics; scenario input continues through the standard API. */
