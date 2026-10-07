@@ -83,6 +83,10 @@ export interface PhysicsMemory {
   freeBytes: number;
 }
 
+/** Read the two contacting bodies' pre-solver velocities into caller-owned
+ * records. Only call this inside the contact callback. */
+export type ContactVelocityReader = (outA: V3, outB: V3) => void;
+
 /** Point and normal are reused scratch records: copy them if retained. */
 export type ContactCallback = (
   a: BodyId,
@@ -90,6 +94,7 @@ export type ContactCallback = (
   impulse: number | null,
   point: V3,
   normal: V3,
+  readVelocities: ContactVelocityReader,
 ) => void;
 
 export interface IPhysicsWorld {

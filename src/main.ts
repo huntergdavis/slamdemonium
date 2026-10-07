@@ -882,8 +882,11 @@ async function boot(): Promise<void> {
   // separates body B; orient our reused record out of the other surface into
   // the vehicle. Telemetry velocity is pre-step here, which is the approach
   // speed against a static obstacle; the record says it is estimated.
-  physics.onContact((a, b, impulse, point, normal) => {
-    if (a !== vehicle.body && b !== vehicle.body) return;
+  physics.onContact((a, b, impulse, point, normal, readVelocities) => {
+    if (a !== vehicle.body && b !== vehicle.body) {
+      traffic?.onWorldContact(a, b, normal, readVelocities);
+      return;
+    }
     const direction = a === vehicle.body ? -1 : 1;
     impactNormal.x = normal.x * direction;
     impactNormal.y = normal.y * direction;
@@ -1042,6 +1045,31 @@ async function boot(): Promise<void> {
   game.stepMany = (count) => {
     massRebuild.flush();
     loop.stepMany(count);
+  };
+  // Test-only browser fixture: use the same pooled cars and physics path as
+  // play, but give main and PR an identical multi-car impact on the road.
+  game.stageTrafficPileup = () => {
+    const actors = (traffic?.states ?? [])
+      .filter((car) => car.bodyId > 0)
+      .slice(0, 3);
+    if (actors.length !== 3)
+      throw new Error('Three nearby traffic bodies required.');
+    for (let index = 0; index < actors.length; index++) {
+      const car = actors[index]!;
+      physics.setTransform(
+        car.bodyId,
+        { x: -846.5, y: car.position.y, z: -1445 + index * 15 },
+        { x: 0, y: 1, z: 0, w: 0 },
+        true,
+      );
+      physics.setLinearVelocity(car.bodyId, {
+        x: 0,
+        y: 0,
+        z: index === 0 ? 50 : 0,
+      });
+      physics.setAngularVelocity(car.bodyId, { x: 0, y: 0, z: 0 });
+    }
+    return actors.map((car) => car.id);
   };
   const trafficScreenPoint = new Vector3();
   game.getTraffic = () =>
