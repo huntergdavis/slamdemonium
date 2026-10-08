@@ -1382,6 +1382,35 @@ export function createTraffic(
     visualStates: visualStates as readonly TrafficCarState[],
     hasRivals,
     recordCount: authored.length,
+    /** Test-only controller snapshot, allocated only when browser tooling asks. */
+    debugRivals() {
+      return {
+        rivalryStarted,
+        rivalDriveSeconds,
+        rivalSeconds,
+        attackCarId,
+        cars: authored
+          .filter((record) => record.state.rival)
+          .map((record) => {
+            const target = routePose(record, record.station, routeScratch);
+            return {
+              id: record.state.id,
+              selected: record.state.id === attackCarId,
+              enabled: record.enabled,
+              physical: !!record.slot,
+              wrecked: record.wrecked,
+              attackOffset: record.attackOffset,
+              driveSpeed: record.driveSpeed,
+              actualSpeed: record.state.speed,
+              targetX: target.x,
+              targetZ: target.z,
+              errorX: target.x - record.state.position.x,
+              errorZ: target.z - record.state.position.z,
+              station: record.station,
+            };
+          }),
+      };
+    },
     get activeCount() {
       return activeCount;
     },

@@ -34,6 +34,8 @@ export interface GameTestApi {
   getTelemetry(): Readonly<Record<string, unknown>>;
   /** Traffic cars in play, for headless instruments; absent without traffic. */
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
+  /** Read-only rival controller decisions for hosted diagnosis. */
+  getRivalControl?: () => Readonly<Record<string, unknown>> | null;
   /** Read-only takedown state for hosted driving checks. */
   getTakedowns?: () => { count: number; boostSections: number };
   /** Read-only player wreck budget for hosted takedown-road inspection. */

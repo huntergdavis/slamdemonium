@@ -1256,6 +1256,7 @@ async function boot(): Promise<void> {
         screenPixels,
       };
     });
+  game.getRivalControl = () => traffic?.debugRivals() ?? null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
     boostSections: vehicle.telemetry.boostSections,
