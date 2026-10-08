@@ -293,6 +293,8 @@ export function createTraffic(
   let rivalSeconds = 0;
   let rivalDriveSeconds = 0;
   let rivalryStarted = false;
+  let attackWindowIndex = -1;
+  let attackCarId = 0;
   let shapeSlotCursor = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
@@ -680,6 +682,34 @@ export function createTraffic(
       for (const record of authored)
         if (record.state.rival && !record.wrecked)
           rivalTargets.push(record.state.position);
+      if (rivalryStarted) {
+        const windowIndex = Math.floor(rivalSeconds / 3);
+        const previous = authored.find(
+          (record) => record.state.id === attackCarId && !record.wrecked,
+        );
+        if (windowIndex !== attackWindowIndex || !previous) {
+          attackWindowIndex = windowIndex;
+          let selected: RecordState | undefined;
+          let bestScore = Infinity;
+          for (const record of authored) {
+            const car = record.state;
+            if (!car.rival || record.wrecked) continue;
+            const dx = player.x - car.position.x;
+            const dz = player.z - car.position.z;
+            const distance = Math.hypot(dx, dz);
+            if (distance > 120) continue;
+            const assigned =
+              rivalAttackActive(rivalSeconds, car.id) && distance <= 60;
+            const aheadOfCar = dx * car.forward.x + dz * car.forward.z;
+            const score =
+              (assigned ? -1000 : 0) + distance - (aheadOfCar > 0 ? 16 : 0);
+            if (score >= bestScore) continue;
+            bestScore = score;
+            selected = record;
+          }
+          attackCarId = selected?.state.id ?? 0;
+        }
+      }
     }
     if (hasRivals) stationRefresh += dt;
     if (hasRivals && stationRefresh >= 0.2) {
@@ -839,8 +869,7 @@ export function createTraffic(
         state.rival &&
         rivalryStarted &&
         playerSpeed >= RIVAL_PLAYER_ATTACK_MIN_SPEED &&
-        (rivalTargets.length === 1 ||
-          rivalAttackActive(rivalSeconds, state.id));
+        state.id === attackCarId;
       const attackPlayer = attackNow ? player : state.position;
       if (state.rival && !record.wrecked) {
         const target = rivalAttackTarget(
@@ -865,9 +894,8 @@ export function createTraffic(
             (playerStation - record.station + path.length) % path.length;
           const signed = ahead <= behind ? ahead : -behind;
           const packIndex = i % RIVAL_PACK_OFFSETS.length;
-          // The normal 48-65 m contest gap is outside the 32 m shunt window.
-          // During one staggered attack window, close to an alongside gap by
-          // speed control rather than teleporting the rival.
+          // During an attack window, close the pack target to an alongside
+          // gap by speed control rather than teleporting the rival.
           const normalTarget = RIVAL_PACK_OFFSETS[packIndex]!;
           const target = attackNow
             ? Math.sign(normalTarget) * RIVAL_STRIKE_OFFSET
