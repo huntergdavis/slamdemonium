@@ -55,7 +55,7 @@ describe('takedown course', () => {
     const target = rivalLineTarget(car, north, { x: -10, y: 1, z: 104 });
     expect(target).toBe(-4.2);
     expect(rivalLineTarget(car, north, { x: -10, y: 1, z: 140 })).toBe(0);
-    expect(approachRivalLine(0, target, 1 / 120)).toBeCloseTo(-6 / 120);
+    expect(approachRivalLine(0, target, 1 / 120)).toBeCloseTo(-10 / 120);
     expect(approachRivalLine(-4.2, 0, 1)).toBe(0);
   });
 
@@ -67,7 +67,7 @@ describe('takedown course', () => {
     expect(rivalAttackTarget(car, north, farPlayer, [car, opponent])).toBe(
       -4.2,
     );
-    expect(rivalBoostBonus(0, 1)).toBe(20);
+    expect(rivalBoostBonus(0, 1)).toBe(28);
     expect(rivalBoostBonus(3, 1)).toBe(0);
   });
 });

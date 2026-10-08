@@ -143,12 +143,14 @@ const CRASH_BLEED_SECONDS = 0.3;
 const CRASH_BLEED_RATE = 1.5;
 const SLAM_CLOSING_SPEED = 2.5;
 const CONTACT_EPISODE_GAP = 0.18;
-// A low-speed chain still dents both cars. Only a hard world hit disables
-// the lane controller; otherwise a packed queue becomes a stationary mound.
+// Ordinary low-speed chains dent both cars without stopping the lane drive;
+// the takedown course gives rival combat its own more violent threshold.
 const WORLD_WRECK_CLOSING_SPEED = 12;
 /** A rival hitting a solid side-on is an arcade takedown opportunity. */
 const RIVAL_SOLID_WRECK_SPEED = 8;
-const RIVAL_SOLID_CRUSH_MULTIPLIER = 1.8;
+const RIVAL_SOLID_CRUSH_MULTIPLIER = 2.8;
+const RIVAL_TRAFFIC_WRECK_SPEED = 5;
+const RIVAL_TRAFFIC_CRUSH_MULTIPLIER = 2.2;
 const HARD_LANDING_CLOSING_SPEED = 12;
 const SCRAPE_CRUSH_PER_SECOND = 0.16;
 const SCRAPE_CRUSH_CAP = 0.28;
@@ -1126,11 +1128,14 @@ export function createTraffic(
       dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed,
     );
     const grinding = tangentSpeedSquared > 0.8 * 0.8;
+    const horizontalHit = Math.hypot(normal.x, normal.z) >= 0.7;
+    const rivalTrafficHit =
+      !!recordA &&
+      !!recordB &&
+      horizontalHit &&
+      (recordA.state.rival || recordB.state.rival);
     if (recordA) {
-      const rivalSolidHit =
-        recordA.state.rival &&
-        !recordB &&
-        Math.hypot(normal.x, normal.z) >= 0.7;
+      const rivalSolidHit = recordA.state.rival && !recordB && horizontalHit;
       recordContactCrush(
         recordA,
         normal.x,
@@ -1138,20 +1143,25 @@ export function createTraffic(
         normal.z,
         closingSpeed,
         grinding,
-        rivalSolidHit ? RIVAL_SOLID_CRUSH_MULTIPLIER : 1,
+        rivalSolidHit
+          ? RIVAL_SOLID_CRUSH_MULTIPLIER
+          : rivalTrafficHit
+            ? RIVAL_TRAFFIC_CRUSH_MULTIPLIER
+            : 1,
       );
       if (
         closingSpeed >=
-        (rivalSolidHit ? RIVAL_SOLID_WRECK_SPEED : WORLD_WRECK_CLOSING_SPEED)
+        (rivalSolidHit
+          ? RIVAL_SOLID_WRECK_SPEED
+          : rivalTrafficHit
+            ? RIVAL_TRAFFIC_WRECK_SPEED
+            : WORLD_WRECK_CLOSING_SPEED)
       ) {
         markWreck(recordA);
       }
     }
     if (recordB) {
-      const rivalSolidHit =
-        recordB.state.rival &&
-        !recordA &&
-        Math.hypot(normal.x, normal.z) >= 0.7;
+      const rivalSolidHit = recordB.state.rival && !recordA && horizontalHit;
       recordContactCrush(
         recordB,
         -normal.x,
@@ -1159,11 +1169,19 @@ export function createTraffic(
         -normal.z,
         closingSpeed,
         grinding,
-        rivalSolidHit ? RIVAL_SOLID_CRUSH_MULTIPLIER : 1,
+        rivalSolidHit
+          ? RIVAL_SOLID_CRUSH_MULTIPLIER
+          : rivalTrafficHit
+            ? RIVAL_TRAFFIC_CRUSH_MULTIPLIER
+            : 1,
       );
       if (
         closingSpeed >=
-        (rivalSolidHit ? RIVAL_SOLID_WRECK_SPEED : WORLD_WRECK_CLOSING_SPEED)
+        (rivalSolidHit
+          ? RIVAL_SOLID_WRECK_SPEED
+          : rivalTrafficHit
+            ? RIVAL_TRAFFIC_WRECK_SPEED
+            : WORLD_WRECK_CLOSING_SPEED)
       ) {
         markWreck(recordB);
       }

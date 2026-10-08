@@ -241,10 +241,32 @@ it('gives the pack its own speed burst and lets rivals hit each other', async ()
   );
   let rivalContacts = 0;
   let peakRivalSpeed = 0;
-  world.onContact((a, b) => {
+  let rivalWrecks = 0;
+  let peakRivalClosing = 0;
+  let peakHorizontalClosing = 0;
+  const velocityA = { x: 0, y: 0, z: 0 };
+  const velocityB = { x: 0, y: 0, z: 0 };
+  world.onContact((a, b, _impulse, _point, normal, readVelocities) => {
     const first = traffic.stateForBody(a);
     const second = traffic.stateForBody(b);
-    if (first?.rival && second?.rival) rivalContacts++;
+    if (first?.rival && second?.rival) {
+      rivalContacts++;
+      readVelocities(velocityA, velocityB);
+      peakRivalClosing = Math.max(
+        peakRivalClosing,
+        (velocityA.x - velocityB.x) * normal.x +
+          (velocityA.y - velocityB.y) * normal.y +
+          (velocityA.z - velocityB.z) * normal.z,
+      );
+      if (Math.hypot(normal.x, normal.z) >= 0.7)
+        peakHorizontalClosing = Math.max(
+          peakHorizontalClosing,
+          (velocityA.x - velocityB.x) * normal.x +
+            (velocityA.y - velocityB.y) * normal.y +
+            (velocityA.z - velocityB.z) * normal.z,
+        );
+    }
+    traffic.onWorldContact(a, b, normal, readVelocities);
   });
   try {
     let station = 0;
@@ -255,10 +277,17 @@ it('gives the pack its own speed burst and lets rivals hit each other', async ()
       traffic.postStep();
       station += 35 / 120;
       for (const car of traffic.states)
-        if (car.rival) peakRivalSpeed = Math.max(peakRivalSpeed, car.speed);
+        if (car.rival) {
+          peakRivalSpeed = Math.max(peakRivalSpeed, car.speed);
+          if (car.wrecked) rivalWrecks++;
+        }
     }
-    expect(peakRivalSpeed).toBeGreaterThan(60);
+    expect(peakRivalSpeed).toBeGreaterThan(75);
     expect(rivalContacts).toBeGreaterThan(0);
+    expect(
+      rivalWrecks,
+      `peak closing ${peakRivalClosing.toFixed(2)} m/s, horizontal ${peakHorizontalClosing.toFixed(2)} m/s`,
+    ).toBeGreaterThan(0);
   } finally {
     traffic.dispose();
     bodies.dispose();

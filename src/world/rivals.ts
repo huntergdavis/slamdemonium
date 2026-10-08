@@ -21,7 +21,7 @@ export function approachRivalLine(
   target: number,
   dt: number,
 ): number {
-  const step = Math.max(0, dt) * 6;
+  const step = Math.max(0, dt) * 10;
   return current + Math.max(-step, Math.min(step, target - current));
 }
 
@@ -29,7 +29,7 @@ export function approachRivalLine(
  * to use boost. Stable encounter ids stagger the four pulses across the pack. */
 export function rivalBoostBonus(seconds: number, encounterId: number): number {
   const phase = (((seconds + encounterId * 1.37) % 6) + 6) % 6;
-  return phase < 2.2 ? 20 : 0;
+  return phase < 2.2 ? 28 : 0;
 }
 
 /** The nearest shuntable target wins. This includes other rivals; wrecked
@@ -75,7 +75,7 @@ export function rivalRamSpeedBonus(
     const dz = target.z - position.z;
     const along = dx * forward.x + dz * forward.z;
     const across = dx * forward.z - dz * forward.x;
-    if (along > 7 && along < 32 && Math.abs(across) < 11) return 16;
+    if (along > 7 && along < 32 && Math.abs(across) < 11) return 24;
   }
   return 0;
 }
