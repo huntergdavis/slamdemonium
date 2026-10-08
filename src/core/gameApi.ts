@@ -36,6 +36,13 @@ export interface GameTestApi {
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
   /** Read-only takedown state for hosted driving checks. */
   getTakedowns?: () => { count: number; boostSections: number };
+  /** Read-only player wreck budget for hosted takedown-road inspection. */
+  getPlayerDamage?: () => {
+    amount: number;
+    wrecked: boolean;
+    secondsLeft: number;
+    crush: { front: number; rear: number; left: number; right: number };
+  };
   /** Stage a real player-to-rival closing hit for hosted inspection. */
   stageRivalTakedown?: () => number;
   /** Test-only pooled-body impact for matched browser performance gates. */

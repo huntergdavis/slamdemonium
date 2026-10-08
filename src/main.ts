@@ -13,6 +13,7 @@ import {
 import { ImpactFeedback } from './core/impactFeedback';
 import { CrashScore } from './core/crashScore';
 import { Takedowns } from './core/takedowns';
+import { PlayerDamage } from './core/playerDamage';
 import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
@@ -43,6 +44,7 @@ import { LatencyProbeView } from './input/latencyProbe';
 import { Vehicle } from './vehicle/vehicle';
 import { VehicleVisualHistory } from './vehicle/visualState';
 import { createTestTrack, installTrackColliders } from './world/track';
+import { nearestRoadPose } from './world/roadGenerator';
 import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
 import { createLoopVisual, installLoops } from './world/loopDeLoop';
@@ -280,6 +282,7 @@ async function boot(): Promise<void> {
       : undefined;
   const takedowns = mapName === 'takedown' ? new Takedowns() : undefined;
   const takedownMoment = takedowns ? new TakedownMoment() : undefined;
+  const playerDamage = takedowns ? new PlayerDamage() : undefined;
   const trafficVisual = traffic
     ? createTrafficVisual(view.scene, traffic)
     : undefined;
@@ -446,6 +449,14 @@ async function boot(): Promise<void> {
   let inspectionCamera: { position: V3; target: V3 } | null = null;
   let respawnRequested = false;
   let retryRequested = false;
+  let playerWreckPending = false;
+  const wreckInput = {
+    throttle: 0,
+    brake: 0,
+    steer: 0,
+    handbrake: false,
+    boost: false,
+  } as const;
   let actionsThisStep = 0;
   const countActions = (actions: Readonly<ActionCounts>): number => {
     let total = 0;
@@ -499,7 +510,11 @@ async function boot(): Promise<void> {
         history.beforeStep();
         visualHistory.beforeStep();
         stepStart = performance.now();
-        vehicle.preStep(dt, sampled, source);
+        vehicle.preStep(
+          dt,
+          playerDamage?.wrecked ? wreckInput : sampled,
+          source,
+        );
         traffic?.preStep(dt, vehicle.telemetry.position);
       },
       stepPhysics(dt) {
@@ -510,6 +525,11 @@ async function boot(): Promise<void> {
       postStep(dt) {
         traffic?.postStep(vehicle.body, vehicle.currentMass);
         vehicle.postStep(dt);
+        if (playerWreckPending) {
+          vehicle.loseBoostSection();
+          playerWreckPending = false;
+        }
+        const playerWreckRecoveryDue = playerDamage?.step(dt) ?? false;
         if (takedowns) {
           const countBefore = takedowns.count;
           const victim = takedowns.update(dt, traffic?.states ?? []);
@@ -562,7 +582,8 @@ async function boot(): Promise<void> {
           tuning.get('awakeKeepRadius'),
         );
         history.afterStep();
-        track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
+        if (!playerDamage?.wrecked)
+          track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
         if (
           perfCompletedSteps < perfTotalSteps &&
@@ -602,6 +623,7 @@ async function boot(): Promise<void> {
         scripts.afterStep();
         if (retryRequested) retry();
         else if (respawnRequested) respawn();
+        else if (playerWreckRecoveryDue) respawnAfterWreck();
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -611,6 +633,7 @@ async function boot(): Promise<void> {
         vehicle.telemetry.timeScale = tuning.get('timeScale');
         const pose = history.interpolate(alpha);
         carVisual.update(visualHistory.interpolate(alpha, pose));
+        if (playerDamage) carVisual.setCrush(playerDamage.crush);
         breakablePropsVisual.update();
         trafficVisual?.update();
         streamedPropVisual.update();
@@ -675,10 +698,12 @@ async function boot(): Promise<void> {
   }
   function respawn(): void {
     respawnRequested = false;
+    playerWreckPending = false;
     scripts.cancel();
     replayStopped = replayActive = false;
     massRebuild.flush();
     vehicle.respawn(track.spawn.position, track.spawn.rotation);
+    playerDamage?.reset();
     resetPresentation();
     timedRun.abandon();
     scripts.noteRespawn(track.spawn, 0);
@@ -691,18 +716,40 @@ async function boot(): Promise<void> {
   function retry(): void {
     retryRequested = false;
     respawnRequested = false;
+    playerWreckPending = false;
     scripts.cancel();
     replayStopped = replayActive = false;
     massRebuild.flush();
     // Onto the start line itself: the next step is an arrival and the
     // countdown begins at once.
     vehicle.respawn(runStart.position, runStart.rotation);
+    playerDamage?.reset();
     resetPresentation();
     takedowns?.reset();
     crashScore.reset();
     timedRun.reset();
     scripts.noteRespawn(runStart, 0);
     syncPause();
+  }
+  /** A takedown-map wreck preserves the race and earned sections after losing
+   * one, but starts a pristine car at rest on the nearest finish-facing road. */
+  function respawnAfterWreck(): void {
+    if (!playerDamage || !map.path) return;
+    const road = nearestRoadPose(map.path, vehicle.telemetry.position);
+    const sections = vehicle.telemetry.boostSections;
+    const spawn = {
+      position: { x: road.x, y: track.spawn.position.y, z: road.z },
+      rotation: {
+        x: 0,
+        y: Math.sin(road.heading / 2),
+        z: 0,
+        w: Math.cos(road.heading / 2),
+      },
+    };
+    vehicle.respawn(spawn.position, spawn.rotation, sections);
+    playerDamage.reset();
+    resetPresentation();
+    scripts.noteRespawn(spawn, 0);
   }
   const massRebuild = new DebouncedMassRebuild(tuning, () => {
     vehicle.rebuildMassProperties();
@@ -833,6 +880,15 @@ async function boot(): Promise<void> {
     readRun: () => timedRun.state,
     readTrafficEvents: () => trafficEvents.state,
     ...(takedowns ? { readTakedowns: () => takedowns.count } : {}),
+    ...(playerDamage
+      ? {
+          readPlayerDamage: () => ({
+            amount: playerDamage.damage,
+            wrecked: playerDamage.wrecked,
+            secondsLeft: playerDamage.wreckSecondsLeft,
+          }),
+        }
+      : {}),
     readRenderTelemetry: () => renderTelemetry,
     miniMap: {
       landmarks: miniMapLandmarks,
@@ -942,6 +998,15 @@ async function boot(): Promise<void> {
       vehicle.currentMass,
       impact,
     );
+    if (playerDamage) {
+      const wasWrecked = playerDamage.wrecked;
+      playerDamage.noteContact(
+        impactNormal,
+        severityVelocity,
+        vehicle.telemetry.rotation,
+      );
+      if (!wasWrecked && playerDamage.wrecked) playerWreckPending = true;
+    }
     // Breakables consume this same record; they never estimate the contact a
     // second time. Their boundary copies the borrowed point immediately.
     breakableProps.onContact(
@@ -1162,6 +1227,13 @@ async function boot(): Promise<void> {
     count: takedowns?.count ?? 0,
     boostSections: vehicle.telemetry.boostSections,
   });
+  if (playerDamage)
+    game.getPlayerDamage = () => ({
+      amount: playerDamage.damage,
+      wrecked: playerDamage.wrecked,
+      secondsLeft: playerDamage.wreckSecondsLeft,
+      crush: { ...playerDamage.crush },
+    });
   if (takedowns && traffic)
     game.stageRivalTakedown = () => {
       const rival = traffic.states.find((car) => car.rival && !car.wrecked);

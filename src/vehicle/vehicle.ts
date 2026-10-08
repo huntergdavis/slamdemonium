@@ -879,12 +879,16 @@ export class Vehicle {
   respawn(
     position: V3 = this.spawn,
     rotation: Quat = this.spawnRotation,
+    boostSections = 1,
   ): void {
     this.world.setTransform(this.body, position, rotation, true);
     this.controls.reset();
     this.drift.reset();
     this.boostEnvelope = this.meter = 0;
-    this.boostSections = this.telemetry.boostSections = 1;
+    this.boostSections = this.telemetry.boostSections = Math.max(
+      1,
+      Math.min(MAX_BOOST_SECTIONS, Math.trunc(boostSections)),
+    );
     this.telemetry.boostEnvelope =
       this.telemetry.boostMeter =
       this.telemetry.driftMeter =

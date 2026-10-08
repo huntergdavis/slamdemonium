@@ -18,6 +18,7 @@ import {
 } from 'three';
 import type { VehicleVisualState } from './carVisualState';
 import { VEHICLE_GEOMETRY as G } from '../vehicle/constants';
+import type { CarCrushState } from '../world/carModels';
 
 export type { VehicleVisualState, WheelVisualState } from './carVisualState';
 
@@ -45,6 +46,11 @@ export function createCarVisual(scene: Scene) {
     return value;
   }
   const unitBox = geometry(new BoxGeometry(1, 1, 1));
+  // The player's single body can be deformed only when an impact changes its
+  // damage state. Subdivision gives a real folded outline in colour and shadow.
+  const bodyGeometry = geometry(new BoxGeometry(1, 1, 1, 6, 4, 8));
+  const bodyPositions = bodyGeometry.getAttribute('position');
+  const pristineBody = new Float32Array(bodyPositions.array);
   const unitPlane = geometry(new PlaneGeometry(1, 1));
   const bodyMaterial = material(
     new MeshStandardMaterial({
@@ -89,7 +95,7 @@ export function createCarVisual(scene: Scene) {
     parent.add(object);
     return object;
   }
-  const body = mesh(root, 'car.body', unitBox, bodyMaterial);
+  const body = mesh(root, 'car.body', bodyGeometry, bodyMaterial);
   body.scale.set(G.width, G.height, G.length);
   body.castShadow = true;
   body.receiveShadow = true;
@@ -102,7 +108,9 @@ export function createCarVisual(scene: Scene) {
     bx: number,
     bz: number,
   ) {
-    const strip = mesh(root, name, unitPlane, noseMaterial);
+    // Each strip has its own vertices so the white arrow follows a buckled hood.
+    const stripGeometry = geometry(new PlaneGeometry(1, 1, 1, 8));
+    const strip = mesh(root, name, stripGeometry, noseMaterial);
     strip.position.set(
       ((ax + bx) / 2) * WIDTH_SCALE,
       G.height / 2 + 0.003,
@@ -114,7 +122,21 @@ export function createCarVisual(scene: Scene) {
       Math.hypot((bx - ax) * WIDTH_SCALE, (bz - az) * LENGTH_SCALE),
       1,
     );
+    strip.updateMatrix();
+    const positions = stripGeometry.getAttribute('position');
+    chevronStrips.push({
+      strip,
+      positions,
+      pristine: new Float32Array(positions.array),
+      inverse: strip.matrix.clone().invert(),
+    });
   }
+  const chevronStrips: {
+    strip: Mesh;
+    positions: ReturnType<BufferGeometry['getAttribute']>;
+    pristine: Float32Array;
+    inverse: ReturnType<Mesh['matrix']['clone']>;
+  }[] = [];
   topStrip('car.chevron.left', -0.62, -0.85, 0, -1.72);
   topStrip('car.chevron.right', 0, -1.72, 0.62, -0.85);
   const nose = mesh(root, 'car.nose', unitPlane, noseMaterial);
@@ -123,6 +145,93 @@ export function createCarVisual(scene: Scene) {
   const tail = mesh(root, 'car.tail', unitPlane, tailMaterial);
   tail.position.set(0, 0.08 * HEIGHT_SCALE, G.length / 2 + 0.003);
   tail.scale.set(1.44 * WIDTH_SCALE, 0.14 * HEIGHT_SCALE, 1);
+
+  const visibleCrush: CarCrushState = {
+    front: 0,
+    rear: 0,
+    left: 0,
+    right: 0,
+  };
+  const band = (coordinate: number) => {
+    const t = Math.min(1, Math.max(0, (coordinate - 0.06) / 0.38));
+    return t * t * (3 - 2 * t);
+  };
+  const crease = (coordinate: number, center: number, halfWidth: number) =>
+    Math.max(0, 1 - Math.abs(coordinate - center) / halfWidth);
+  function deformedBodyPoint(
+    x: number,
+    y: number,
+    z: number,
+    crush: Readonly<CarCrushState>,
+  ): [number, number, number] {
+    const nx = x / G.width;
+    const ny = y / G.height;
+    const nz = z / G.length;
+    const front = crush.front * band(-nz);
+    const rear = crush.rear * band(nz);
+    const left = crush.left * band(-nx);
+    const right = crush.right * band(nx);
+    const fold = 0.82 + 0.18 * Math.sin(nx * 19 + nz * 13 + ny * 7);
+    const roof = band(ny);
+    // Shorten and pinch the nose, then buckle the hood across the part the
+    // chase camera actually sees. The shifted creases make the fold diagonal.
+    const frontCorner = front * Math.min(1, Math.abs(nx) * 2);
+    const trough = crush.front * crease(nz, -0.3 - nx * 0.05, 0.13);
+    const crest =
+      crush.front *
+      crease(nz, -0.1 + nx * 0.045, 0.145) *
+      (0.82 + 0.18 * Math.cos(nx * 9));
+    return [
+      x + (left - right) * 0.42 * fold - Math.sign(x) * frontCorner * 0.35,
+      y -
+        roof *
+          (0.39 * (front + rear) +
+            0.3 * (left + right) +
+            0.24 * trough +
+            0.15 * frontCorner) +
+        roof * 0.9 * crest,
+      z + front * 1.08 * (0.92 + 0.08 * fold) - rear * 0.72 * fold,
+    ];
+  }
+  function setCrush(next: Readonly<CarCrushState>): void {
+    if (
+      visibleCrush.front === next.front &&
+      visibleCrush.rear === next.rear &&
+      visibleCrush.left === next.left &&
+      visibleCrush.right === next.right
+    )
+      return;
+    Object.assign(visibleCrush, next);
+    for (let i = 0; i < bodyPositions.count; i++) {
+      const [x, y, z] = deformedBodyPoint(
+        pristineBody[i * 3]! * G.width,
+        pristineBody[i * 3 + 1]! * G.height,
+        pristineBody[i * 3 + 2]! * G.length,
+        next,
+      );
+      bodyPositions.setXYZ(i, x / G.width, y / G.height, z / G.length);
+    }
+    bodyPositions.needsUpdate = true;
+    bodyGeometry.computeVertexNormals();
+    for (const { strip, positions, pristine, inverse } of chevronStrips) {
+      for (let i = 0; i < positions.count; i++) {
+        const point = new Vector3(
+          pristine[i * 3]!,
+          pristine[i * 3 + 1]!,
+          pristine[i * 3 + 2]!,
+        ).applyMatrix4(strip.matrix);
+        const [x, y, z] = deformedBodyPoint(point.x, point.y, point.z, next);
+        point.set(x, y, z).applyMatrix4(inverse);
+        positions.setXYZ(i, point.x, point.y, point.z);
+      }
+      positions.needsUpdate = true;
+      strip.geometry.computeVertexNormals();
+    }
+    nose.position.z = -G.length / 2 - 0.003 + next.front * 1.08;
+    nose.position.y = 0.125 * HEIGHT_SCALE - next.front * 0.3;
+    nose.scale.y = (0.75 - next.front * 0.18) * HEIGHT_SCALE;
+    tail.position.z = G.length / 2 + 0.003 - next.rear * 0.55;
+  }
 
   const wheelGeometry = geometry(
     new BoxGeometry(0.24 * WIDTH_SCALE, 2 * G.wheelRadius, 2 * G.wheelRadius),
@@ -317,5 +426,5 @@ export function createCarVisual(scene: Scene) {
     for (const value of materials) value.dispose();
     lastState = undefined;
   }
-  return { root, update, setDebugVisible, toggleDebug, dispose };
+  return { root, update, setCrush, setDebugVisible, toggleDebug, dispose };
 }

@@ -275,6 +275,9 @@ it('extends takedown boost to four sections and removes one after a wreck', asyn
   vehicle.loseBoostSection();
   expect(vehicle.telemetry.boostSections).toBe(3);
   expect(vehicle.telemetry.boostMeter).toBe(3);
+  vehicle.respawn(undefined, undefined, 3);
+  expect(vehicle.telemetry.boostSections).toBe(3);
+  expect(vehicle.telemetry.boostMeter).toBe(0);
   vehicle.respawn();
   expect(vehicle.telemetry.boostSections).toBe(1);
   expect(vehicle.telemetry.boostMeter).toBe(0);
