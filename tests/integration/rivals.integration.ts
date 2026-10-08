@@ -138,6 +138,10 @@ it('keeps a rival in shunting range during cruise and boost', async () => {
       let counted = 0;
       let tooClose = 0;
       let tooFar = 0;
+      let visible = 0;
+      let closestSeen = Infinity;
+      let lastNearest = Infinity;
+      let lastCars = '';
       for (let step = 0; step < 15 * 60; step++) {
         const road = poseAt(map.path!, distanceAlong);
         const player = { x: road.x, y: 1, z: road.z };
@@ -153,6 +157,17 @@ it('keeps a rival in shunting range during cruise and boost', async () => {
               Math.hypot(car.position.x - player.x, car.position.z - player.z),
             ),
         );
+        if (Number.isFinite(nearest)) visible++;
+        closestSeen = Math.min(closestSeen, nearest);
+        lastNearest = nearest;
+        if (step === 15 * 60 - 1)
+          lastCars = traffic.states
+            .filter((car) => car.rival)
+            .map(
+              (car) =>
+                `${car.id}:${Math.hypot(car.position.x - player.x, car.position.z - player.z).toFixed(0)}m/${car.wrecked ? 'wreck' : 'live'}`,
+            )
+            .join(',');
         if (nearest >= 20 && nearest <= 60) inRange++;
         else if (nearest < 20) tooClose++;
         else tooFar++;
@@ -160,9 +175,49 @@ it('keeps a rival in shunting range during cruise and boost', async () => {
       }
       expect(
         inRange / counted,
-        `${speed} m/s: ${inRange} in range, ${tooClose} too close, ${tooFar} too far`,
+        `${speed} m/s: ${inRange} in range, ${tooClose} too close, ${tooFar} too far, ${visible} visible, closest ${closestSeen.toFixed(1)}, last ${lastNearest.toFixed(1)}; ${lastCars}`,
       ).toBeGreaterThan(0.7);
     }
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 60_000);
+
+it('keeps the solved car pose continuous when a lagging rival demotes', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  world.setGravity(20);
+  world.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 2000, y: 0.5, z: 2000 });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const map = createTakedownMap();
+  const path = map.path!;
+  const ahead = poseAt(path, 200);
+  const behind = poseAt(path, 10);
+  const player = { x: ahead.x, y: 1, z: ahead.z };
+  const traffic = createTraffic(world, bodies, path, [
+    { station: 200, laneSide: -1, speed: 35, rival: true },
+  ]);
+  try {
+    traffic.preStep(1 / 120, player, 35);
+    world.step(1 / 120);
+    traffic.postStep();
+    const car = traffic.states[0]!;
+    expect(car.bodyId).toBeGreaterThan(0);
+    world.activateBody(
+      car.bodyId,
+      { x: car.position.x, y: car.position.y, z: behind.z },
+      car.rotation,
+      true,
+    );
+    world.step(1 / 120);
+    traffic.postStep();
+    const before = { ...car.position };
+    traffic.preStep(1 / 120, player, 35);
+    expect(car.bodyId).toBe(-1);
+    expect(
+      Math.hypot(car.position.x - before.x, car.position.z - before.z),
+    ).toBeLessThan(10);
   } finally {
     traffic.dispose();
     bodies.dispose();

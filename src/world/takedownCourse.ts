@@ -49,7 +49,7 @@ export function createTakedownMap(): MapDefinition {
       modelKind: 'sedan',
     },
     {
-      station: path.length - 45,
+      station: path.length - 25,
       laneSide: 1,
       direction: 1,
       speed: 38,

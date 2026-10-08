@@ -111,7 +111,7 @@ const EXIT = 180;
 const VISUAL_RADIUS = 400;
 /** Signed station offsets keep one rival in shunting range and leave room for
  * challengers ahead and behind. Only the takedown map authors rival records. */
-const RIVAL_PACK_OFFSETS = [45, -45, 90, -100] as const;
+const RIVAL_PACK_OFFSETS = [45, -25, 90, -100] as const;
 const RIVAL_REJOIN_SECONDS = 8;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
@@ -341,6 +341,19 @@ export function createTraffic(
       Math.sin(out.heading) *
         (record.authored.laneSide * 3.5 + record.attackOffset);
     return out;
+  }
+
+  function nearestRoadStation(position: V3): number {
+    let best = Infinity;
+    let station = 0;
+    for (const sample of path.samples) {
+      const distance = horizontalDistanceSquared(position, sample.x, sample.z);
+      if (distance < best) {
+        best = distance;
+        station = sample.s;
+      }
+    }
+    return station;
   }
 
   function updateVisualPose(record: RecordState): void {
@@ -579,6 +592,13 @@ export function createTraffic(
       );
       Object.assign(record.state.position, record.wreckPosition);
       Object.assign(record.state.rotation, record.wreckRotation);
+    } else {
+      // The limited-force body can lag far behind its authored station after
+      // contact. Continue the visual follower from the solved road position,
+      // or demotion would teleport it to the stale target station.
+      physics.getTransform(slot.bodyId, readPosition, readRotation);
+      Object.assign(record.state.position, readPosition);
+      record.station = nearestRoadStation(readPosition);
     }
     physics.deactivateBody(slot.bodyId);
     record.state.bodyId = -1;
@@ -623,14 +643,7 @@ export function createTraffic(
     if (hasRivals) stationRefresh += dt;
     if (hasRivals && stationRefresh >= 0.2) {
       stationRefresh = 0;
-      let best = Infinity;
-      for (const sample of path.samples) {
-        const distance = horizontalDistanceSquared(player, sample.x, sample.z);
-        if (distance < best) {
-          best = distance;
-          playerStation = sample.s;
-        }
-      }
+      playerStation = nearestRoadStation(player);
     }
     if (hasRivals)
       for (const record of authored) {
@@ -775,7 +788,10 @@ export function createTraffic(
           const behind =
             (playerStation - record.station + path.length) % path.length;
           const signed = ahead <= behind ? ahead : -behind;
-          const target = RIVAL_PACK_OFFSETS[i % RIVAL_PACK_OFFSETS.length]!;
+          const packIndex = i % RIVAL_PACK_OFFSETS.length;
+          const target =
+            RIVAL_PACK_OFFSETS[packIndex]! +
+            (packIndex === 1 ? Math.max(0, Math.min(20, playerSpeed - 40)) : 0);
           // A rival ahead eases off; one behind closes. The authored lane and
           // collision controller still govern the actual path and acceleration.
           desiredSpeed = Math.max(
@@ -902,11 +918,17 @@ export function createTraffic(
       const desiredZ =
         -Math.cos(nextHeading) * record.driveSpeed +
         Math.max(-3, Math.min(3, (pose.z - state.position.z) * 0.7));
-      // Soft speed hold, capped at 5 m/s²; a hit wins over the controller.
+      // Soft speed hold; a hit still wins over the controller.
       force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
       force.z = (desiredZ - state.velocity.z) * BODY_MASS * 2;
       const magnitude = Math.hypot(force.x, force.z);
-      const accelerationCap = record.obstacle ? WRECK_BRAKE : 5;
+      // Rivals can close after boost without a position warp; ordinary
+      // traffic keeps the calmer five-metre-per-second-squared controller.
+      const accelerationCap = record.obstacle
+        ? WRECK_BRAKE
+        : state.rival
+          ? 20
+          : 5;
       if (magnitude > BODY_MASS * accelerationCap) {
         const scale = (BODY_MASS * accelerationCap) / magnitude;
         force.x *= scale;
