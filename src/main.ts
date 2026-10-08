@@ -544,6 +544,20 @@ async function boot(): Promise<void> {
           for (let count = countBefore; count < takedowns.count; count++)
             vehicle.awardTakedown();
           if (victim) takedownMoment?.start(victim.id, performance.now());
+          else if (takedowns.lastObservedVictim) {
+            const other = takedowns.lastObservedVictim;
+            const player = vehicle.telemetry.position;
+            if (
+              Math.hypot(
+                other.position.x - player.x,
+                other.position.z - player.z,
+              ) < 140
+            ) {
+              const nowMs = performance.now();
+              takedownMoment?.start(other.id, nowMs);
+              rivalGuidance?.showRivalWreck(nowMs);
+            }
+          }
         }
         breakableProps.update(dt);
         {

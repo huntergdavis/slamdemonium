@@ -98,6 +98,21 @@ it('crumples a traffic car against a wall and swaps its physical hull', async ()
   }
 }, 300_000);
 
+it('instacrushes a rival that is shunted hard into a solid wall', async () => {
+  const run = await fixture([
+    { station: 100, laneSide: -1, speed: 25, modelKind: 'sedan', rival: true },
+  ]);
+  run.world.createStaticBox({ x: 3.5, y: 1, z: -112 }, { x: 5, y: 2, z: 0.5 });
+  try {
+    for (let i = 0; i < 240; i++) run.step();
+    const rival = run.traffic.states[0]!;
+    expect(rival.wrecked).toBe(true);
+    expect(rival.crush.front).toBeGreaterThan(0.8);
+  } finally {
+    run.dispose();
+  }
+}, 300_000);
+
 it('uses a moving object’s speed to crumple a stationary traffic car', async () => {
   const run = await fixture([
     { station: 100, laneSide: -1, speed: 0, modelKind: 'sedan' },

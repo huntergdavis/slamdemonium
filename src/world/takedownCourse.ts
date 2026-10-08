@@ -41,7 +41,7 @@ export function createTakedownMap(): MapDefinition {
   const spawn = at(0);
   const traffic: TrafficCarRecord[] = [
     {
-      station: 45,
+      station: 65,
       laneSide: -1,
       direction: 1,
       speed: 35,
@@ -49,7 +49,7 @@ export function createTakedownMap(): MapDefinition {
       modelKind: 'sedan',
     },
     {
-      station: path.length - 25,
+      station: 48,
       laneSide: 1,
       direction: 1,
       speed: 38,
@@ -57,7 +57,7 @@ export function createTakedownMap(): MapDefinition {
       modelKind: 'hatch',
     },
     {
-      station: 90,
+      station: path.length - 48,
       laneSide: -1,
       direction: 1,
       speed: 41,
@@ -65,7 +65,7 @@ export function createTakedownMap(): MapDefinition {
       modelKind: 'pickup',
     },
     {
-      station: path.length - 100,
+      station: path.length - 65,
       laneSide: 1,
       direction: 1,
       speed: 39,
@@ -97,6 +97,37 @@ export function createTakedownMap(): MapDefinition {
       [3640, 1, 86],
       [4950, 1, 70],
       [5700, -1, 78],
+      // Each 420 m left sweeper has a chain of hard blocks on its outside
+      // shoulder. A shunt gets several chances rather than one isolated wall.
+      [1810, -1, 64],
+      [1930, -1, 64],
+      [2050, -1, 64],
+      [2170, -1, 64],
+      [2290, -1, 64],
+      [2930, -1, 64],
+      [3050, -1, 64],
+      [3170, -1, 64],
+      [3290, -1, 64],
+      [3410, -1, 64],
+      [5350, -1, 64],
+      [5470, -1, 64],
+      [5590, -1, 64],
+      [5830, -1, 64],
+      [6470, -1, 64],
+      [6590, -1, 64],
+      [6710, -1, 64],
+      [6830, -1, 64],
+      [6950, -1, 64],
+      // Opposite-shoulder pinch blocks and short concrete crash objects.
+      [730, 1, 52],
+      [1550, 1, 52],
+      [2730, 1, 52],
+      [4900, -1, 52],
+      [6290, 1, 52],
+      [920, -1, 24],
+      [2580, 1, 24],
+      [4200, -1, 24],
+      [6080, 1, 24],
     ] as const
   ).map(([station, side, length]) =>
     shuntWallAt(path, station, side, length, TAKEDOWN_ROAD_WIDTH),

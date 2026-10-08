@@ -9,7 +9,12 @@ import {
   type V3,
 } from '../physics/adapter';
 import type { RoadPath } from './roadGenerator';
-import { approachRivalLine, rivalLineTarget } from './rivals';
+import {
+  approachRivalLine,
+  rivalAttackTarget,
+  rivalBoostBonus,
+  rivalRamSpeedBonus,
+} from './rivals';
 import type { SurfacedBodies } from './surfacedBodies';
 import { trafficCrushShape } from './trafficCrushShape';
 import {
@@ -111,7 +116,7 @@ const EXIT = 180;
 const VISUAL_RADIUS = 400;
 /** Signed station offsets keep one rival in shunting range and leave room for
  * challengers ahead and behind. Only the takedown map authors rival records. */
-const RIVAL_PACK_OFFSETS = [45, -25, 90, -100] as const;
+const RIVAL_PACK_OFFSETS = [65, 48, -48, -65] as const;
 const RIVAL_REJOIN_SECONDS = 8;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
@@ -141,6 +146,9 @@ const CONTACT_EPISODE_GAP = 0.18;
 // A low-speed chain still dents both cars. Only a hard world hit disables
 // the lane controller; otherwise a packed queue becomes a stationary mound.
 const WORLD_WRECK_CLOSING_SPEED = 12;
+/** A rival hitting a solid side-on is an arcade takedown opportunity. */
+const RIVAL_SOLID_WRECK_SPEED = 8;
+const RIVAL_SOLID_CRUSH_MULTIPLIER = 1.8;
 const HARD_LANDING_CLOSING_SPEED = 12;
 const SCRAPE_CRUSH_PER_SECOND = 0.16;
 const SCRAPE_CRUSH_CAP = 0.28;
@@ -265,6 +273,7 @@ export function createTraffic(
   const visualStates: TrafficCarState[] = [];
   const wreckRecords: RecordState[] = [];
   const nearbyWrecks: RecordState[] = [];
+  const rivalTargets: V3[] = [];
   let hadNearbyWrecks = false;
   let physicalCount = 0;
   let farPoseBucket = 0;
@@ -272,6 +281,7 @@ export function createTraffic(
   let nextEncounterId = records.length + 1;
   let playerStation = 0;
   let stationRefresh = 0.2;
+  let rivalSeconds = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -640,6 +650,13 @@ export function createTraffic(
 
   function preStep(dt: number, player: V3, playerSpeed = 0): void {
     stepDt = dt;
+    if (hasRivals) {
+      rivalSeconds += dt;
+      rivalTargets.length = 0;
+      for (const record of authored)
+        if (record.state.rival && !record.wrecked)
+          rivalTargets.push(record.state.position);
+    }
     if (hasRivals) stationRefresh += dt;
     if (hasRivals && stationRefresh >= 0.2) {
       stationRefresh = 0;
@@ -772,7 +789,12 @@ export function createTraffic(
         updateVisualPose(record);
       }
       if (state.rival && !record.wrecked) {
-        const target = rivalLineTarget(state.position, state.forward, player);
+        const target = rivalAttackTarget(
+          state.position,
+          state.forward,
+          player,
+          rivalTargets,
+        );
         record.attackOffset = approachRivalLine(
           record.attackOffset,
           target,
@@ -789,17 +811,26 @@ export function createTraffic(
             (playerStation - record.station + path.length) % path.length;
           const signed = ahead <= behind ? ahead : -behind;
           const packIndex = i % RIVAL_PACK_OFFSETS.length;
-          const target =
-            RIVAL_PACK_OFFSETS[packIndex]! +
-            (packIndex === 1 ? Math.max(0, Math.min(20, playerSpeed - 40)) : 0);
-          // A rival ahead eases off; one behind closes. The authored lane and
-          // collision controller still govern the actual path and acceleration.
+          const target = RIVAL_PACK_OFFSETS[packIndex]!;
+          // Own boost raises the speed ceiling for a short pulse. A rival
+          // ahead eases off only when it leaves the contest; one behind closes
+          // at boosted pace. The force controller still governs acceleration.
+          const error = signed - target;
+          const boosted =
+            error <= 10 ? rivalBoostBonus(rivalSeconds, state.id) : 0;
           desiredSpeed = Math.max(
-            0,
+            18,
             Math.min(
-              85,
-              playerSpeed -
-                Math.max(-20, Math.min(20, (signed - target) * 0.28)),
+              88,
+              Math.max(52, playerSpeed + 4) +
+                boosted -
+                Math.max(-24, Math.min(50, error * 1.25)) +
+                rivalRamSpeedBonus(
+                  state.position,
+                  state.forward,
+                  player,
+                  rivalTargets,
+                ),
             ),
           );
         }
@@ -927,7 +958,7 @@ export function createTraffic(
       const accelerationCap = record.obstacle
         ? WRECK_BRAKE
         : state.rival
-          ? 20
+          ? 26
           : 5;
       if (magnitude > BODY_MASS * accelerationCap) {
         const scale = (BODY_MASS * accelerationCap) / magnitude;
@@ -1029,12 +1060,16 @@ export function createTraffic(
     record: RecordState,
     sideIndex: number,
     speed: number,
+    multiplier = 1,
   ): void {
     const bit = 1 << sideIndex;
     if (record.slamSides & bit) return;
     const side = CRUSH_SIDES[sideIndex]!;
     const oldCrush = record.state.crush[side];
-    record.state.crush[side] = Math.min(1, oldCrush + slamCrushChunk(speed));
+    record.state.crush[side] = Math.min(
+      1,
+      oldCrush + slamCrushChunk(speed) * multiplier,
+    );
     if (record.state.crush[side] > oldCrush) record.shapeDirty = true;
     record.slamSides |= bit;
   }
@@ -1046,6 +1081,7 @@ export function createTraffic(
     nz: number,
     closingSpeed: number,
     allowScrape: boolean,
+    slamMultiplier = 1,
   ): void {
     if (Math.hypot(nx, nz) < 0.45) {
       // A hard roof or underbody landing compresses the whole shell. A normal
@@ -1053,7 +1089,7 @@ export function createTraffic(
       if (Math.abs(ny) < 0.7 || closingSpeed < HARD_LANDING_CLOSING_SPEED)
         return;
       for (let sideIndex = 0; sideIndex < CRUSH_SIDES.length; sideIndex++)
-        addSlam(record, sideIndex, closingSpeed);
+        addSlam(record, sideIndex, closingSpeed, slamMultiplier);
       record.contactGap = 0;
       return;
     }
@@ -1061,7 +1097,7 @@ export function createTraffic(
     if (!side) return;
     const sideIndex = CRUSH_SIDES.indexOf(side);
     if (closingSpeed >= SLAM_CLOSING_SPEED)
-      addSlam(record, sideIndex, closingSpeed);
+      addSlam(record, sideIndex, closingSpeed, slamMultiplier);
     else if (allowScrape) record.scrapeSides |= 1 << sideIndex;
     else return;
     record.contactGap = 0;
@@ -1091,6 +1127,10 @@ export function createTraffic(
     );
     const grinding = tangentSpeedSquared > 0.8 * 0.8;
     if (recordA) {
+      const rivalSolidHit =
+        recordA.state.rival &&
+        !recordB &&
+        Math.hypot(normal.x, normal.z) >= 0.7;
       recordContactCrush(
         recordA,
         normal.x,
@@ -1098,12 +1138,20 @@ export function createTraffic(
         normal.z,
         closingSpeed,
         grinding,
+        rivalSolidHit ? RIVAL_SOLID_CRUSH_MULTIPLIER : 1,
       );
-      if (closingSpeed >= WORLD_WRECK_CLOSING_SPEED) {
+      if (
+        closingSpeed >=
+        (rivalSolidHit ? RIVAL_SOLID_WRECK_SPEED : WORLD_WRECK_CLOSING_SPEED)
+      ) {
         markWreck(recordA);
       }
     }
     if (recordB) {
+      const rivalSolidHit =
+        recordB.state.rival &&
+        !recordA &&
+        Math.hypot(normal.x, normal.z) >= 0.7;
       recordContactCrush(
         recordB,
         -normal.x,
@@ -1111,8 +1159,12 @@ export function createTraffic(
         -normal.z,
         closingSpeed,
         grinding,
+        rivalSolidHit ? RIVAL_SOLID_CRUSH_MULTIPLIER : 1,
       );
-      if (closingSpeed >= WORLD_WRECK_CLOSING_SPEED) {
+      if (
+        closingSpeed >=
+        (rivalSolidHit ? RIVAL_SOLID_WRECK_SPEED : WORLD_WRECK_CLOSING_SPEED)
+      ) {
         markWreck(recordB);
       }
     }

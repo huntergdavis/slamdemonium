@@ -11,6 +11,8 @@ export class Takedowns {
   private readonly counted = new Set<number>();
   count = 0;
   lastVictimId = -1;
+  /** Any newly wrecked rival, including an uncredited AI-versus-AI wreck. */
+  lastObservedVictim: TrafficCarState | undefined;
 
   notePlayerContact(
     car: Readonly<TrafficCarState> | undefined,
@@ -41,12 +43,14 @@ export class Takedowns {
     cars: readonly TrafficCarState[],
   ): TrafficCarState | undefined {
     this.seconds += dt;
+    this.lastObservedVictim = undefined;
     let victim: TrafficCarState | undefined;
     for (const car of cars) {
       if (!car.rival || !car.wrecked || this.counted.has(car.id)) continue;
+      this.counted.add(car.id);
+      this.lastObservedVictim = car;
       if ((this.influencedUntil.get(car.id) ?? -Infinity) < this.seconds)
         continue;
-      this.counted.add(car.id);
       this.count++;
       this.lastVictimId = car.id;
       victim = car;
@@ -66,5 +70,6 @@ export class Takedowns {
     this.counted.clear();
     this.count = 0;
     this.lastVictimId = -1;
+    this.lastObservedVictim = undefined;
   }
 }

@@ -12,7 +12,13 @@ export function createRivalGuidance(host: HTMLElement) {
   pointer.className = 'sl-rival-pointer';
   pointer.textContent = 'RIVAL';
   root.append(pointer);
+  const wreckNotice = host.ownerDocument.createElement('div');
+  wreckNotice.className = 'sl-rival-wreck-notice';
+  wreckNotice.textContent = 'RIVAL DOWN';
+  wreckNotice.hidden = true;
+  root.append(wreckNotice);
   host.append(root);
+  let wreckNoticeUntilMs = 0;
   const projected = new Vector3();
   const toCar = new Vector3();
   const look = new Vector3();
@@ -22,6 +28,7 @@ export function createRivalGuidance(host: HTMLElement) {
     states: readonly TrafficCarState[],
     player: V3,
   ) {
+    wreckNotice.hidden = performance.now() >= wreckNoticeUntilMs;
     camera.updateMatrixWorld();
     camera.getWorldDirection(look);
     // Reading clientWidth after last frame's style writes forces layout at
@@ -118,5 +125,12 @@ export function createRivalGuidance(host: HTMLElement) {
     }
   }
 
-  return { update, dispose: () => root.remove() };
+  return {
+    update,
+    showRivalWreck(nowMs: number) {
+      wreckNoticeUntilMs = nowMs + 1400;
+      wreckNotice.hidden = false;
+    },
+    dispose: () => root.remove(),
+  };
 }

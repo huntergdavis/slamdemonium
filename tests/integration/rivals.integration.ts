@@ -178,7 +178,7 @@ it('keeps a rival in shunting range during cruise and boost', async () => {
     for (const speed of [35, 60]) {
       let inRange = 0;
       let counted = 0;
-      let tooClose = 0;
+      let attackRange = 0;
       let tooFar = 0;
       let visible = 0;
       let closestSeen = Infinity;
@@ -210,16 +210,55 @@ it('keeps a rival in shunting range during cruise and boost', async () => {
                 `${car.id}:${Math.hypot(car.position.x - player.x, car.position.z - player.z).toFixed(0)}m/${car.wrecked ? 'wreck' : 'live'}`,
             )
             .join(',');
-        if (nearest >= 20 && nearest <= 60) inRange++;
-        else if (nearest < 20) tooClose++;
+        if (nearest <= 60) inRange++;
         else tooFar++;
+        if (nearest < 20) attackRange++;
         counted++;
       }
       expect(
         inRange / counted,
-        `${speed} m/s: ${inRange} in range, ${tooClose} too close, ${tooFar} too far, ${visible} visible, closest ${closestSeen.toFixed(1)}, last ${lastNearest.toFixed(1)}; ${lastCars}`,
+        `${speed} m/s: ${inRange} in range, ${attackRange} in attack range, ${tooFar} too far, ${visible} visible, closest ${closestSeen.toFixed(1)}, last ${lastNearest.toFixed(1)}; ${lastCars}`,
       ).toBeGreaterThan(0.7);
     }
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 60_000);
+
+it('gives the pack its own speed burst and lets rivals hit each other', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  world.setGravity(20);
+  world.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 2000, y: 0.5, z: 2000 });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const map = createTakedownMap();
+  const traffic = createTraffic(
+    world,
+    bodies,
+    map.path!,
+    map.traffic!.filter((car) => car.rival),
+  );
+  let rivalContacts = 0;
+  let peakRivalSpeed = 0;
+  world.onContact((a, b) => {
+    const first = traffic.stateForBody(a);
+    const second = traffic.stateForBody(b);
+    if (first?.rival && second?.rival) rivalContacts++;
+  });
+  try {
+    let station = 0;
+    for (let step = 0; step < 12 * 120; step++) {
+      const road = poseAt(map.path!, station);
+      traffic.preStep(1 / 120, { x: road.x, y: 1, z: road.z }, 35);
+      world.step(1 / 120);
+      traffic.postStep();
+      station += 35 / 120;
+      for (const car of traffic.states)
+        if (car.rival) peakRivalSpeed = Math.max(peakRivalSpeed, car.speed);
+    }
+    expect(peakRivalSpeed).toBeGreaterThan(60);
+    expect(rivalContacts).toBeGreaterThan(0);
   } finally {
     traffic.dispose();
     bodies.dispose();

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MAPS, isMapName } from '../src/world/maps';
-import { rivalLineTarget, approachRivalLine } from '../src/world/rivals';
+import {
+  rivalLineTarget,
+  approachRivalLine,
+  rivalAttackTarget,
+  rivalBoostBonus,
+} from '../src/world/rivals';
 import {
   createTakedownMap,
   TAKEDOWN_ROAD_WIDTH,
@@ -23,12 +28,24 @@ describe('takedown course', () => {
     expect(map.traffic?.filter((car) => car.rival)).toHaveLength(4);
     expect(map.traffic!.length).toBeGreaterThan(40);
     expect(map.traffic!.length).toBeLessThan(65);
-    expect(map.shuntWalls).toHaveLength(8);
+    expect(map.shuntWalls).toHaveLength(36);
     expect(map.placements!.length).toBeGreaterThan(400);
     expect(map.placements!.length).toBeLessThan(800);
     for (const wall of map.shuntWalls!) {
-      expect(wall.halfExtents.z * 2).toBeGreaterThanOrEqual(70);
+      expect(wall.halfExtents.z * 2).toBeGreaterThanOrEqual(24);
       expect(wall.center.y - wall.halfExtents.y).toBeCloseTo(0);
+    }
+    // These are road-side objects, not an invisible lane obstruction.
+    for (const wall of map.shuntWalls!) {
+      const nearest = map.path!.samples.reduce(
+        (best, sample) =>
+          Math.min(
+            best,
+            Math.hypot(sample.x - wall.center.x, sample.z - wall.center.z),
+          ),
+        Infinity,
+      );
+      expect(nearest).toBeGreaterThan(TAKEDOWN_ROAD_WIDTH / 2);
     }
   });
 
@@ -40,5 +57,17 @@ describe('takedown course', () => {
     expect(rivalLineTarget(car, north, { x: -10, y: 1, z: 140 })).toBe(0);
     expect(approachRivalLine(0, target, 1 / 120)).toBeCloseTo(-6 / 120);
     expect(approachRivalLine(-4.2, 0, 1)).toBe(0);
+  });
+
+  it('can shunt the closest rival and pulses its own boost', () => {
+    const car = { x: -3.5, y: 1, z: 100 };
+    const north = { x: 0, y: 0, z: 1 };
+    const farPlayer = { x: 10, y: 1, z: 100 };
+    const opponent = { x: -10, y: 1, z: 104 };
+    expect(rivalAttackTarget(car, north, farPlayer, [car, opponent])).toBe(
+      -4.2,
+    );
+    expect(rivalBoostBonus(0, 1)).toBe(20);
+    expect(rivalBoostBonus(3, 1)).toBe(0);
   });
 });

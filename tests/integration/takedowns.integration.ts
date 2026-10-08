@@ -29,17 +29,21 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
   const normal = { x: 0, y: 0, z: 0 };
   const relative = { x: 0, y: 0, z: 0 };
   let contacts = 0;
+  let peakSeverity = 0;
   try {
     traffic.preStep(DT, { x: 3.5, y: 1, z: -130 });
     world.step(DT);
     traffic.postStep();
     const rival = traffic.states[0]!;
     expect(rival.bodyId).toBeGreaterThan(0);
+    // A boosted rear-end against a slowing rival must still award the
+    // takedown even though the race AI now reaches boosted pace itself.
+    world.setLinearVelocity(rival.bodyId, { x: 0, y: 0, z: 0 });
     vehicle.respawn(
-      { x: rival.position.x, y: 1, z: rival.position.z + 10 },
+      { x: rival.position.x, y: 1, z: rival.position.z + 12 },
       { x: 0, y: 0, z: 0, w: 1 },
     );
-    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -60 });
+    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -80 });
     world.onContact((a, b, impulse, _point, contactNormal) => {
       const other = a === vehicle.body ? b : b === vehicle.body ? a : -1;
       if (other !== rival.bodyId) return;
@@ -58,13 +62,14 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
         vehicle.currentMass,
         impact,
       );
+      peakSeverity = Math.max(peakSeverity, impact.severity);
       takedowns.notePlayerContact(traffic.stateForBody(other), impact.severity);
       traffic.onPlayerContact(other, impact, normal, relative);
       contacts++;
     });
     for (let step = 0; step < 240; step++) {
       vehicle.preStep(DT, neutralScriptInput, 'gamepad');
-      traffic.preStep(DT, vehicle.telemetry.position);
+      traffic.preStep(DT, vehicle.telemetry.position, vehicle.telemetry.speed);
       world.step(DT);
       traffic.postStep(vehicle.body, vehicle.currentMass);
       vehicle.postStep(DT);
@@ -72,6 +77,7 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
       if (victim) vehicle.awardTakedown();
     }
     expect(contacts).toBeGreaterThan(0);
+    expect(peakSeverity).toBeGreaterThan(0.25);
     expect(rival.wrecked).toBe(true);
     expect(takedowns.count).toBe(1);
     expect(vehicle.telemetry.boostSections).toBe(2);

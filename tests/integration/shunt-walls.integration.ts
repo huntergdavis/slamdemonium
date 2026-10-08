@@ -50,7 +50,7 @@ it('puts solid shunt walls exactly where the visible roadside blocks stand', asy
     expect(hit.distance).toBeLessThan(17);
     const batch = visual.root.getObjectByName('shunt-walls.concrete');
     expect(batch).toBeInstanceOf(InstancedMesh);
-    expect((batch as InstancedMesh).count).toBe(8);
+    expect((batch as InstancedMesh).count).toBe(map.shuntWalls!.length);
   } finally {
     visual.dispose();
     material.dispose();
