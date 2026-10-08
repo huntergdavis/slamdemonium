@@ -3,6 +3,7 @@ import type { BoostPadSpec } from './boostPads';
 import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { createCircuitMap } from './circuit';
+import { createTakedownMap } from './takedownCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
@@ -16,6 +17,7 @@ import type { TrackConfig } from './trackConfig';
 import type { JumpRampSpec } from './jumpRamp';
 import type { RoadPath } from './roadGenerator';
 import type { TrafficCarRecord } from './traffic';
+import type { ShuntWallSpec } from './shuntWalls';
 
 /** A named world: track geometry overrides, where the car starts, and the
  * structures built on it. Every placement is data in absolute metres, so a
@@ -46,11 +48,13 @@ export interface MapDefinition {
   readonly placements?: readonly BreakablePlacement[];
   /** A polyline the mini-map draws as the route, for maps that are a road. */
   readonly route?: readonly { readonly x: number; readonly z: number }[];
-  /** A closed driving path and authored traffic, used by the circuit only. */
+  /** A closed driving path and authored moving cars. */
   readonly path?: RoadPath;
   readonly traffic?: readonly TrafficCarRecord[];
+  /** Short walls beside a road, shared by collision and visuals. */
+  readonly shuntWalls?: readonly ShuntWallSpec[];
 }
-export type MapName = 'lab' | 'proving-ground' | 'circuit';
+export type MapName = 'lab' | 'proving-ground' | 'circuit' | 'takedown';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -331,6 +335,7 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   lab: LAB_MAP,
   'proving-ground': PROVING_GROUND_MAP,
   circuit: createCircuitMap(),
+  takedown: createTakedownMap(),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 

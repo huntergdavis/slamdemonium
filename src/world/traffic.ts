@@ -9,6 +9,7 @@ import {
   type V3,
 } from '../physics/adapter';
 import type { RoadPath } from './roadGenerator';
+import { approachRivalLine, rivalLineTarget } from './rivals';
 import type { SurfacedBodies } from './surfacedBodies';
 import { trafficCrushShape } from './trafficCrushShape';
 import {
@@ -33,6 +34,8 @@ export interface TrafficCarRecord {
   readonly direction?: -1 | 1;
   /** The catalogue kind; picked by id when not authored. */
   readonly modelKind?: CarModelKind;
+  /** Rivals contest the player's line and remain identifiable through LOD. */
+  readonly rival?: boolean;
 }
 
 /** Centre-to-centre spacing in metres. The 12 m authored grid is the hard
@@ -56,6 +59,7 @@ export interface TrafficCarState {
   direction: -1 | 1;
   speed: number;
   wrecked: boolean;
+  rival: boolean;
   /** The catalogue kind: collision box, visual parts and ride height. */
   modelKind: CarModelKind;
   /** Visual crush persists with this encounter across body LOD handoffs. */
@@ -72,6 +76,7 @@ interface RecordState {
   slot: Slot | null;
   enabled: boolean;
   driveSpeed: number;
+  attackOffset: number;
   leader: RecordState | null;
   obstacle: RecordState | null;
   obstacleClearance: number;
@@ -221,6 +226,7 @@ export function createTraffic(
       direction: record.direction ?? 1,
       speed: record.speed,
       wrecked: false,
+      rival: record.rival === true,
       modelKind: record.modelKind ?? pickCarModelKind(index + 1),
       crush: { front: 0, rear: 0, left: 0, right: 0 },
     },
@@ -230,6 +236,7 @@ export function createTraffic(
     slot: null,
     enabled: true,
     driveSpeed: record.speed,
+    attackOffset: 0,
     leader: null,
     obstacle: null,
     obstacleClearance: Infinity,
@@ -316,11 +323,13 @@ export function createTraffic(
     out.x =
       a.x +
       (b.x - a.x) * t -
-      Math.cos(out.heading) * record.authored.laneSide * 3.5;
+      Math.cos(out.heading) *
+        (record.authored.laneSide * 3.5 + record.attackOffset);
     out.z =
       a.z +
       (b.z - a.z) * t +
-      Math.sin(out.heading) * record.authored.laneSide * 3.5;
+      Math.sin(out.heading) *
+        (record.authored.laneSide * 3.5 + record.attackOffset);
     return out;
   }
 
@@ -670,6 +679,14 @@ export function createTraffic(
     for (let i = 0; i < authored.length; i++) {
       const record = authored[i]!;
       const state = record.state;
+      if (state.rival && !record.wrecked) {
+        const target = rivalLineTarget(state.position, state.forward, player);
+        record.attackOffset = approachRivalLine(
+          record.attackOffset,
+          target,
+          dt,
+        );
+      }
       if (!record.wrecked) {
         const direction = state.direction;
         if (rules && record.enabled && record.leader) {
@@ -1090,6 +1107,7 @@ export function createTrafficVisual(
         state.rotation,
         state.id,
         state.crush,
+        state.rival ? 0 : undefined,
       );
     cars.end();
   }

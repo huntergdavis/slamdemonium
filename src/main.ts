@@ -73,6 +73,7 @@ import {
 import { createSurfacedBodies } from './world/surfacedBodies';
 import { createSurfaceRegistry } from './world/surfaceRegistry';
 import { createTraffic, createTrafficVisual } from './world/traffic';
+import { createShuntWallVisual, installShuntWalls } from './world/shuntWalls';
 import { Vector3 } from 'three';
 import './style.css';
 
@@ -151,6 +152,16 @@ async function boot(): Promise<void> {
     surfaceRegistry,
   );
   const surfacedBodies = createSurfacedBodies(physics, surfaceRegistry);
+  if (map.shuntWalls?.length) {
+    installShuntWalls(surfacedBodies, map.shuntWalls);
+    resources.push(
+      createShuntWallVisual(
+        view.scene,
+        track.materials.barrier,
+        map.shuntWalls,
+      ),
+    );
+  }
   // Ramps are static geometry installed through the facade, so each one
   // registers its asphalt surface in the call that creates it (design slice
   // B5). Collider and mesh come from the same descriptor.

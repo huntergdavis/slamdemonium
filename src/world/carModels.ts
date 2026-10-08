@@ -331,6 +331,7 @@ export interface CarModelInstances {
     },
     encounterId: number,
     crush?: Readonly<CarCrushState>,
+    paintIndex?: number,
   ): boolean;
   /** Finish the frame: upload counts and matrices. */
   end(): void;
@@ -460,7 +461,7 @@ export function createCarModelInstances(
     begin() {
       for (const kind of CAR_MODEL_KINDS) counts[kind] = 0;
     },
-    push(kind, position, rotation, encounterId, crush) {
+    push(kind, position, rotation, encounterId, crush, paintIndex) {
       const index = counts[kind];
       if (index >= capacityPerKind) return false;
       helper.position.set(position.x, position.y, position.z);
@@ -468,7 +469,7 @@ export function createCarModelInstances(
         .set(rotation.x, rotation.y, rotation.z, rotation.w)
         .multiply(visualFacing);
       helper.updateMatrix();
-      const color = palette[paletteColorIndex(encounterId)]!;
+      const color = palette[paletteColorIndex(paintIndex ?? encounterId)]!;
       const dentSeed = dentSeedForId(encounterId);
       const front = Math.max(0, Math.min(1, crush?.front ?? 0));
       const rear = Math.max(0, Math.min(1, crush?.rear ?? 0));
