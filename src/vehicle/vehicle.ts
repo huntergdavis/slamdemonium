@@ -48,6 +48,7 @@ import {
 /** Righting torque was tuned against the original 14.7 m/s² default; scale
  * its cap with gravity so heavier ground contact cannot strand a roofed car. */
 const RIGHTING_REFERENCE_GRAVITY = 14.7;
+export const MAX_BOOST_SECTIONS = 4;
 
 import { VehicleTelemetry } from './telemetry';
 import {
@@ -94,6 +95,7 @@ export class Vehicle {
   private frontShare = 0.5;
   private lock = 0;
   private meter = 0;
+  private boostSections = 1;
   private boostEnvelope = 0;
   /** Derived rpm and virtual gear for presentation; reads telemetry, writes
    * telemetry, never touches forces or controls. */
@@ -705,9 +707,23 @@ export class Vehicle {
       this.world.setLinearVelocity(this.body, this.padVelocity);
     }
     if (Number.isFinite(boost) && boost > 0) {
-      this.meter = Math.min(1, this.meter + boost);
+      this.meter = Math.min(this.boostSections, this.meter + boost);
       s.boostMeter = s.driftMeter = this.meter;
     }
+  }
+  /** A takedown adds one spendable bar section, capped at four. */
+  awardTakedown(): void {
+    this.boostSections = Math.min(MAX_BOOST_SECTIONS, this.boostSections + 1);
+    this.meter = Math.min(this.boostSections, this.meter + 1);
+    this.telemetry.boostSections = this.boostSections;
+    this.telemetry.boostMeter = this.telemetry.driftMeter = this.meter;
+  }
+  /** A player wreck removes one earned section; wired by the wreck slice. */
+  loseBoostSection(): void {
+    this.boostSections = Math.max(1, this.boostSections - 1);
+    this.meter = Math.min(this.meter, this.boostSections);
+    this.telemetry.boostSections = this.boostSections;
+    this.telemetry.boostMeter = this.telemetry.driftMeter = this.meter;
   }
   private readonly padVelocity: V3 = { x: 0, y: 0, z: 0 };
   /** The current flight launched upward, so it earns boost (see updateMeter). */
@@ -739,7 +755,7 @@ export class Vehicle {
       s.groundedWheels >= 2;
     if (s.charging)
       this.meter = Math.min(
-        1,
+        this.boostSections,
         this.meter +
           t.get('driftChargeRate') *
             (Math.abs(s.beta) / (30 * DEG)) *
@@ -761,7 +777,7 @@ export class Vehicle {
       this.flightCounts = false;
     if (s.airborne && this.flightCounts)
       this.meter = Math.min(
-        1,
+        this.boostSections,
         this.meter + t.get('airChargeRate') * s.airTime * dt,
       );
     s.boostMeter = s.driftMeter = this.meter;
@@ -857,7 +873,7 @@ export class Vehicle {
   setDriftMeter(value: number): void {
     if (!Number.isFinite(value))
       throw new RangeError('Drift meter must be finite.');
-    this.meter = clamp(value, 0, 1);
+    this.meter = clamp(value, 0, this.boostSections);
     this.telemetry.boostMeter = this.telemetry.driftMeter = this.meter;
   }
   respawn(
@@ -868,6 +884,7 @@ export class Vehicle {
     this.controls.reset();
     this.drift.reset();
     this.boostEnvelope = this.meter = 0;
+    this.boostSections = this.telemetry.boostSections = 1;
     this.telemetry.boostEnvelope =
       this.telemetry.boostMeter =
       this.telemetry.driftMeter =

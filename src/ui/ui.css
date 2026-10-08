@@ -525,6 +525,14 @@
   transform: scaleX(clamp(0, var(--sl-fill), 1));
   transform-origin: left;
 }
+.sl-meter__section-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--sl-control-border);
+  pointer-events: none;
+}
 .sl-meter--drift {
   --sl-meter-color: var(--sl-drift);
 }
@@ -731,6 +739,17 @@
   letter-spacing: 0.08em;
   color: var(--sl-accent);
   text-align: right;
+}
+.sl-hud__takedowns {
+  margin-top: 8px;
+  font: 700 13px/1 var(--sl-mono);
+  letter-spacing: 0.06em;
+  color: var(--sl-text);
+  text-align: right;
+}
+.sl-hud__takedowns[data-flash='true'] {
+  color: var(--sl-accent);
+  text-shadow: 0 0 12px var(--sl-accent);
 }
 .sl-drive__value {
   font: 700 34px/1 var(--sl-mono);

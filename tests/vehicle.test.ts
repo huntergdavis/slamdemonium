@@ -265,6 +265,21 @@ it('recovers a non-finite returned state and resets derivative/filter history', 
   error.mockRestore();
 });
 
+it('extends takedown boost to four sections and removes one after a wreck', async () => {
+  const { vehicle } = await setup();
+  for (let index = 0; index < 4; index++) vehicle.awardTakedown();
+  expect(vehicle.telemetry.boostSections).toBe(4);
+  expect(vehicle.telemetry.boostMeter).toBe(4);
+  vehicle.awardTakedown();
+  expect(vehicle.telemetry.boostMeter).toBe(4);
+  vehicle.loseBoostSection();
+  expect(vehicle.telemetry.boostSections).toBe(3);
+  expect(vehicle.telemetry.boostMeter).toBe(3);
+  vehicle.respawn();
+  expect(vehicle.telemetry.boostSections).toBe(1);
+  expect(vehicle.telemetry.boostMeter).toBe(0);
+});
+
 it('measures default 0-100 km/h and 0-55 m/s on the actual suspended vehicle', async () => {
   const { vehicle, step } = await setup();
   let steps = 0,

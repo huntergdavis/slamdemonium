@@ -60,6 +60,8 @@ export interface HudOptions extends RecorderOptions {
   readRun?: () => Readonly<TimedRunState>;
   /** Traffic events: the one short label beside the boost bar. */
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
+  /** Takedown mode's persistent counter, visible even with the HUD off. */
+  readTakedowns?: () => number;
   miniMap?: Omit<MiniMapOptions, 'host'>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
   /** Optional export sink for tests/integration. Default downloads a CSV. */
@@ -70,6 +72,7 @@ interface Meter {
   value: Text;
   load: Text;
   flags: Text;
+  segmentMarks?: HTMLElement[];
 }
 
 /** m:ss.hh, the way a stopwatch reads; under a minute just ss.hh. */
@@ -138,6 +141,9 @@ export class Hud {
   private readonly drive: HTMLElement;
   private readonly driveBoost: Meter;
   private readonly driveEvent: HTMLElement;
+  private readonly takedownCount: HTMLElement | null;
+  private lastTakedownCount = 0;
+  private takedownFlashUntilMs = 0;
   private driveEventShown = '';
   private readonly hintState = new HudHintState();
   private activitySinceUpdate = false;
@@ -243,6 +249,10 @@ export class Hud {
     this.driveEvent.setAttribute('role', 'status');
     this.driveEvent.hidden = true;
     this.drive.append(this.driveEvent);
+    this.takedownCount = options.readTakedowns
+      ? node(doc, 'div', 'sl-hud__takedowns', 'TAKEDOWNS 0')
+      : null;
+    if (this.takedownCount) this.drive.append(this.takedownCount);
     this.element.append(this.drive);
     this.notice = node(doc, 'div', 'sl-card sl-hud__recording');
     this.notice.dataset.hudPersistent = '';
@@ -394,6 +404,14 @@ export class Hud {
     const track = node(doc, 'div', 'sl-meter__track');
     track.setAttribute('aria-hidden', 'true');
     track.append(node(doc, 'span', 'sl-meter__fill'));
+    const segmentMarks: HTMLElement[] = [];
+    if (label === 'Boost')
+      for (let index = 0; index < 3; index++) {
+        const mark = node(doc, 'span', 'sl-meter__section-mark');
+        mark.hidden = true;
+        track.append(mark);
+        segmentMarks.push(mark);
+      }
     if (wheel) track.append(node(doc, 'span', 'sl-meter__threshold'));
     const meta = node(doc, 'div', 'sl-wheel__meta');
     const load = doc.createTextNode('— kN'),
@@ -406,7 +424,7 @@ export class Hud {
     element.append(header, track);
     if (wheel) element.append(meta);
     host.append(element);
-    return { element, value, load, flags };
+    return { element, value, load, flags, segmentMarks };
   }
 
   setMode(mode: HudMode): void {
@@ -505,9 +523,10 @@ export class Hud {
     // Persistent instruments read in every mode, including off and collapsed.
     if (telemetry) {
       this.set('driveMph', fixed(telemetry.speed * MPH_PER_MPS, 0));
-      this.fill(this.driveBoost, telemetry.boostMeter);
+      this.fillBoost(this.driveBoost, telemetry);
     }
     this.updateTrafficEvent(this.options.readTrafficEvents?.());
+    this.updateTakedowns(nowMs);
     if (this.mode === 'off' || collapsed) return;
     const render = this.options.readRenderTelemetry?.();
     const store = this.options.store;
@@ -562,8 +581,8 @@ export class Hud {
     this.gauge.dataset.valid = String(Number.isFinite(telemetry.beta));
     this.set('step', fixed(telemetry.physicsStepMs, 2) + ' ms/step');
     this.set('steps', fixed(telemetry.stepsPerFrame, 0) + ' steps/frame');
-    this.fill(this.boost, telemetry.boostMeter);
-    this.fill(this.drift, telemetry.driftMeter);
+    this.fillBoost(this.boost, telemetry);
+    this.fill(this.drift, telemetry.driftMeter, telemetry.boostSections);
     this.set('charging', telemetry.charging ? 'CHARGING' : 'Not charging');
     this.charging.dataset.charging = String(telemetry.charging);
     if (this.mode !== 'full') return;
@@ -737,7 +756,38 @@ export class Hud {
             (maximum === 1 ? '%' : '')
         : 'Unavailable',
     );
-    write(meter.value, valid ? fixed(value * 100, 0) + '%' : '—');
+    write(
+      meter.value,
+      valid
+        ? maximum === 1
+          ? fixed(value * 100, 0) + '%'
+          : fixed(value, 1) + ' / ' + maximum
+        : '—',
+    );
+  }
+
+  private fillBoost(meter: Meter, telemetry: HudTelemetry): void {
+    const sections = Math.max(1, Math.min(4, telemetry.boostSections));
+    this.fill(meter, telemetry.boostMeter, sections);
+    for (let index = 0; index < (meter.segmentMarks?.length ?? 0); index++) {
+      const mark = meter.segmentMarks![index]!;
+      mark.hidden = index + 1 >= sections;
+      if (!mark.hidden) mark.style.left = ((index + 1) / sections) * 100 + '%';
+    }
+  }
+
+  private updateTakedowns(nowMs: number): void {
+    if (!this.takedownCount) return;
+    const count = this.options.readTakedowns?.() ?? 0;
+    if (count !== this.lastTakedownCount) {
+      this.lastTakedownCount = count;
+      this.takedownFlashUntilMs = nowMs + 1500;
+    }
+    const flashing = nowMs < this.takedownFlashUntilMs;
+    const label = flashing ? 'TAKEDOWN! · ' + count : 'TAKEDOWNS ' + count;
+    if (this.takedownCount.textContent !== label)
+      this.takedownCount.textContent = label;
+    this.takedownCount.dataset.flash = String(flashing);
   }
 
   private set(key: string, value: string): void {

@@ -23,7 +23,7 @@ export interface GameTestApi {
   };
   setInput(input: Partial<GameInput>): void;
   releaseInput(): void;
-  /** [0,1] earned boost meter; lets a tuner exercise boost without first drifting. */
+  /** Fill earned boost units, up to the current section capacity. */
   setDriftMeter(value: number): void;
   setCameraPreset(preset: CameraPreset): void;
   /** Optional fixed pose for repeatable browser inspection; null restores follow. */
@@ -34,6 +34,10 @@ export interface GameTestApi {
   getTelemetry(): Readonly<Record<string, unknown>>;
   /** Traffic cars in play, for headless instruments; absent without traffic. */
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
+  /** Read-only takedown state for hosted driving checks. */
+  getTakedowns?: () => { count: number; boostSections: number };
+  /** Stage a real player-to-rival closing hit for hosted inspection. */
+  stageRivalTakedown?: () => number;
   /** Test-only pooled-body impact for matched browser performance gates. */
   stageTrafficPileup?: (count?: number) => readonly number[];
   respawn(): void;

@@ -12,6 +12,7 @@ import {
 } from './core/impactSeverity';
 import { ImpactFeedback } from './core/impactFeedback';
 import { CrashScore } from './core/crashScore';
+import { Takedowns } from './core/takedowns';
 import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
@@ -19,6 +20,7 @@ import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
 import { createRenderer } from './render/renderer';
 import { CameraRig } from './render/cameraRig';
+import { TakedownMoment } from './render/takedownMoment';
 import { createCarVisual } from './render/carVisual';
 import { createSkidMarks } from './render/skidMarks';
 import { createSpeedCues } from './render/speedCues';
@@ -276,6 +278,8 @@ async function boot(): Promise<void> {
           maxGap: tuning.get('trafficMaxGap'),
         })
       : undefined;
+  const takedowns = mapName === 'takedown' ? new Takedowns() : undefined;
+  const takedownMoment = takedowns ? new TakedownMoment() : undefined;
   const trafficVisual = traffic
     ? createTrafficVisual(view.scene, traffic)
     : undefined;
@@ -474,7 +478,7 @@ async function boot(): Promise<void> {
         return tuning.get('physicsHz');
       },
       get timeScale() {
-        return tuning.get('timeScale');
+        return tuning.get('timeScale') * (takedownMoment?.timeScale ?? 1);
       },
     },
     {
@@ -506,6 +510,13 @@ async function boot(): Promise<void> {
       postStep(dt) {
         traffic?.postStep(vehicle.body, vehicle.currentMass);
         vehicle.postStep(dt);
+        if (takedowns) {
+          const countBefore = takedowns.count;
+          const victim = takedowns.update(dt, traffic?.states ?? []);
+          for (let count = countBefore; count < takedowns.count; count++)
+            vehicle.awardTakedown();
+          if (victim) takedownMoment?.start(victim.id, performance.now());
+        }
         breakableProps.update(dt);
         {
           const entered = boostPads.update(
@@ -604,6 +615,8 @@ async function boot(): Promise<void> {
         trafficVisual?.update();
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
+        if (takedownMoment && traffic)
+          takedownMoment.apply(view.camera, traffic.states, frameTime);
         if (inspectionCamera) {
           view.camera.position.set(
             inspectionCamera.position.x,
@@ -646,6 +659,7 @@ async function boot(): Promise<void> {
   function resetPresentation(): void {
     boostPads.reset();
     trafficEvents.reset();
+    takedownMoment?.reset();
     history.reset();
     visualHistory.reset();
     cameraRig.reset();
@@ -684,6 +698,7 @@ async function boot(): Promise<void> {
     // countdown begins at once.
     vehicle.respawn(runStart.position, runStart.rotation);
     resetPresentation();
+    takedowns?.reset();
     crashScore.reset();
     timedRun.reset();
     scripts.noteRespawn(runStart, 0);
@@ -817,6 +832,7 @@ async function boot(): Promise<void> {
     readScore: () => crashScore.state,
     readRun: () => timedRun.state,
     readTrafficEvents: () => trafficEvents.state,
+    ...(takedowns ? { readTakedowns: () => takedowns.count } : {}),
     readRenderTelemetry: () => renderTelemetry,
     miniMap: {
       landmarks: miniMapLandmarks,
@@ -895,6 +911,10 @@ async function boot(): Promise<void> {
   // speed against a static obstacle; the record says it is estimated.
   physics.onContact((a, b, impulse, point, normal, readVelocities) => {
     if (a !== vehicle.body && b !== vehicle.body) {
+      takedowns?.noteCarContact(
+        traffic?.stateForBody(a),
+        traffic?.stateForBody(b),
+      );
       traffic?.onWorldContact(a, b, normal, readVelocities);
       return;
     }
@@ -932,6 +952,10 @@ async function boot(): Promise<void> {
       vehicle.telemetry.velocity,
       impact,
     );
+    takedowns?.notePlayerContact(
+      traffic?.stateForBody(otherBody),
+      impact.severity,
+    );
     traffic?.onPlayerContact(otherBody, impact, impactNormal, severityVelocity);
     if (trafficVelocity) trafficEvents.noteContact(otherBody, impact.severity);
     // Touching the static world ends a flight; a prop or debris does not.
@@ -965,7 +989,8 @@ async function boot(): Promise<void> {
     // Test cheat: B fills the boost bar so boost behaviour can be judged
     // without earning it. Shipped in every build, like T and F9: the CTO
     // evaluates production preview builds, which carry no test API.
-    if (actions.fillBoost > 0) vehicle.setDriftMeter(1);
+    if (actions.fillBoost > 0)
+      vehicle.setDriftMeter(vehicle.telemetry.boostSections);
     if (actions.slowMotion % 2)
       tuning.set('timeScale', tuning.get('timeScale') === 0.25 ? 1 : 0.25);
     if (actions.pause % 2) {
@@ -1126,12 +1151,39 @@ async function boot(): Promise<void> {
         vz: car.velocity.z,
         speed: car.speed,
         wrecked: car.wrecked,
+        rival: car.rival,
         modelKind: (car as { modelKind?: string }).modelKind ?? null,
         crush: { ...car.crush },
         inFrame,
         screenPixels,
       };
     });
+  game.getTakedowns = () => ({
+    count: takedowns?.count ?? 0,
+    boostSections: vehicle.telemetry.boostSections,
+  });
+  if (takedowns && traffic)
+    game.stageRivalTakedown = () => {
+      const rival = traffic.states.find((car) => car.rival && !car.wrecked);
+      if (!rival) throw new Error('No unwrecked rival remains in view.');
+      vehicle.respawn(
+        {
+          x: rival.position.x - rival.forward.x * 12,
+          y: track.spawn.position.y,
+          z: rival.position.z - rival.forward.z * 12,
+        },
+        rival.rotation,
+      );
+      physics.setLinearVelocity(vehicle.body, {
+        x: rival.forward.x * (rival.speed + 30),
+        y: 0,
+        z: rival.forward.z * (rival.speed + 30),
+      });
+      history.reset();
+      visualHistory.reset();
+      cameraRig.reset();
+      return rival.id;
+    };
   game.getTelemetry = () => {
     const s = vehicle.telemetry;
     return {
