@@ -5,6 +5,7 @@ import {
   approachRivalLine,
   rivalAttackTarget,
   rivalBoostBonus,
+  rivalAttackActive,
 } from '../src/world/rivals';
 import {
   createTakedownMap,
@@ -67,7 +68,9 @@ describe('takedown course', () => {
     expect(rivalAttackTarget(car, north, farPlayer, [car, opponent])).toBe(
       -4.2,
     );
-    expect(rivalBoostBonus(0, 1)).toBe(28);
+    expect(rivalBoostBonus(0, 1)).toBe(32);
     expect(rivalBoostBonus(3, 1)).toBe(0);
+    expect(rivalAttackActive(0, 1)).toBe(true);
+    expect(rivalAttackActive(0, 2)).toBe(false);
   });
 });

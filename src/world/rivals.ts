@@ -29,7 +29,17 @@ export function approachRivalLine(
  * to use boost. Stable encounter ids stagger the four pulses across the pack. */
 export function rivalBoostBonus(seconds: number, encounterId: number): number {
   const phase = (((seconds + encounterId * 1.37) % 6) + 6) % 6;
-  return phase < 2.2 ? 28 : 0;
+  return phase < 2.2 ? 32 : 0;
+}
+
+/** Only one member of the opening pack commits to a shove at a time. Their
+ * staggered windows keep a live chase instead of four instant wrecks. */
+export function rivalAttackActive(
+  seconds: number,
+  encounterId: number,
+): boolean {
+  const phase = (((seconds + (encounterId - 1) * 2) % 8) + 8) % 8;
+  return phase < 2;
 }
 
 /** The nearest shuntable target wins. This includes other rivals; wrecked

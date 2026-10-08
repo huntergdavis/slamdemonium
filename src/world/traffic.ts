@@ -11,6 +11,7 @@ import {
 import type { RoadPath } from './roadGenerator';
 import {
   approachRivalLine,
+  rivalAttackActive,
   rivalAttackTarget,
   rivalBoostBonus,
   rivalRamSpeedBonus,
@@ -118,6 +119,9 @@ const VISUAL_RADIUS = 400;
  * challengers ahead and behind. Only the takedown map authors rival records. */
 const RIVAL_PACK_OFFSETS = [65, 48, -48, -65] as const;
 const RIVAL_REJOIN_SECONDS = 8;
+const RIVAL_ATTACK_GRACE_SECONDS = 6;
+const RIVAL_PLAYER_ATTACK_MIN_SPEED = 20;
+const CRUSH_SHAPE_UPDATES_PER_STEP = 1;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
 const WRECK_LOOKAHEAD = 100;
@@ -284,6 +288,9 @@ export function createTraffic(
   let playerStation = 0;
   let stationRefresh = 0.2;
   let rivalSeconds = 0;
+  let rivalDriveSeconds = 0;
+  let rivalryStarted = false;
+  let shapeSlotCursor = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -652,8 +659,12 @@ export function createTraffic(
 
   function preStep(dt: number, player: V3, playerSpeed = 0): void {
     stepDt = dt;
+    if (!rivalryStarted && playerSpeed > 10) {
+      rivalDriveSeconds += dt;
+      rivalryStarted = rivalDriveSeconds >= RIVAL_ATTACK_GRACE_SECONDS;
+    }
     if (hasRivals) {
-      rivalSeconds += dt;
+      if (rivalryStarted) rivalSeconds += dt;
       rivalTargets.length = 0;
       for (const record of authored)
         if (record.state.rival && !record.wrecked)
@@ -769,6 +780,24 @@ export function createTraffic(
     // same 10 Hz tick. Nearby poses still update every step.
     const farPoseBuckets = Math.max(1, Math.round(0.1 / dt));
     farPoseBucket = (farPoseBucket + 1) % farPoseBuckets;
+    // Convex hull replacement is expensive during a pileup. Apply at most one
+    // latest crush state per step, rotating through the physical pool so a
+    // sustained scrape cannot starve another car's pending shape update.
+    let shapeUpdates = 0;
+    for (
+      let scanned = 0;
+      scanned < slots.length && shapeUpdates < CRUSH_SHAPE_UPDATES_PER_STEP;
+      scanned++
+    ) {
+      const index = (shapeSlotCursor + scanned) % slots.length;
+      const slot = slots[index]!;
+      const record = slot.record;
+      if (!record?.shapeDirty) continue;
+      updateSlotShape(slot, record);
+      record.shapeDirty = false;
+      shapeSlotCursor = (index + 1) % slots.length;
+      shapeUpdates++;
+    }
     for (let i = 0; i < authored.length; i++) {
       const record = authored[i]!;
       const state = record.state;
@@ -790,16 +819,22 @@ export function createTraffic(
           path.length;
         updateVisualPose(record);
       }
+      const attackNow =
+        state.rival &&
+        rivalryStarted &&
+        playerSpeed >= RIVAL_PLAYER_ATTACK_MIN_SPEED &&
+        rivalAttackActive(rivalSeconds, state.id);
+      const attackPlayer = attackNow ? player : state.position;
       if (state.rival && !record.wrecked) {
         const target = rivalAttackTarget(
           state.position,
           state.forward,
-          player,
+          attackPlayer,
           rivalTargets,
         );
         record.attackOffset = approachRivalLine(
           record.attackOffset,
-          target,
+          attackNow ? target : 0,
           dt,
         );
       }
@@ -814,27 +849,47 @@ export function createTraffic(
           const signed = ahead <= behind ? ahead : -behind;
           const packIndex = i % RIVAL_PACK_OFFSETS.length;
           const target = RIVAL_PACK_OFFSETS[packIndex]!;
-          // Own boost raises the speed ceiling for a short pulse. A rival
-          // ahead eases off only when it leaves the contest; one behind closes
-          // at boosted pace. The force controller still governs acceleration.
-          const error = signed - target;
-          const boosted =
-            error <= 10 ? rivalBoostBonus(rivalSeconds, state.id) : 0;
-          desiredSpeed = Math.max(
-            18,
-            Math.min(
-              88,
-              Math.max(52, playerSpeed + 4) +
-                boosted -
-                Math.max(-24, Math.min(50, error * 1.25)) +
-                rivalRamSpeedBonus(
-                  state.position,
-                  state.forward,
-                  player,
-                  rivalTargets,
-                ),
-            ),
-          );
+          if (!rivalryStarted) {
+            // Preserve the proven #195 launch behaviour during the grace:
+            // parked players do not attract a 52 m/s pack through spawn.
+            const launchTarget =
+              target +
+              (packIndex === 1
+                ? Math.max(0, Math.min(20, playerSpeed - 40))
+                : 0);
+            desiredSpeed = Math.max(
+              0,
+              Math.min(
+                85,
+                playerSpeed -
+                  Math.max(-20, Math.min(20, (signed - launchTarget) * 0.28)),
+              ),
+            );
+          } else {
+            // Own boost raises the speed ceiling for a short pulse. A rival
+            // ahead eases off only when it leaves the contest; one behind closes
+            // at boosted pace. The force controller still governs acceleration.
+            const error = signed - target;
+            const boosted = rivalBoostBonus(rivalSeconds, state.id);
+            const packCorrection = Math.max(-18, Math.min(20, error * 0.4));
+            desiredSpeed = Math.max(
+              18,
+              Math.min(
+                88,
+                Math.max(52, playerSpeed + 4) +
+                  boosted -
+                  packCorrection +
+                  (attackNow
+                    ? rivalRamSpeedBonus(
+                        state.position,
+                        state.forward,
+                        attackPlayer,
+                        rivalTargets,
+                      )
+                    : 0),
+              ),
+            );
+          }
         }
         if (rules && record.enabled && record.leader) {
           let ahead: RecordState | null = record.leader;
@@ -912,12 +967,8 @@ export function createTraffic(
       }
       const slot = record.slot;
       if (!slot) continue;
-      // Contacts only record damage. Swap after the solver has finished that
-      // step, before the next one; shrinking inward leaves no new overlap.
-      if (record.shapeDirty) {
-        updateSlotShape(slot, record);
-        record.shapeDirty = false;
-      }
+      // Contacts only record damage. The pool pass above performs at most one
+      // inward hull swap before the next solver step.
       record.contactGap += dt;
       if (record.contactGap >= CONTACT_EPISODE_GAP) record.slamSides = 0;
       record.scrapeSides = 0;
@@ -945,12 +996,26 @@ export function createTraffic(
         nextScratch,
       );
       const nextHeading = Math.atan2(-(next.x - pose.x), -(next.z - pose.z));
+      const lateralCorrectionCap = state.rival && rivalryStarted ? 6 : 3;
+      const laneFollowGain = state.rival && rivalryStarted ? 2 : 0.7;
       const desiredX =
         -Math.sin(nextHeading) * record.driveSpeed +
-        Math.max(-3, Math.min(3, (pose.x - state.position.x) * 0.7));
+        Math.max(
+          -lateralCorrectionCap,
+          Math.min(
+            lateralCorrectionCap,
+            (pose.x - state.position.x) * laneFollowGain,
+          ),
+        );
       const desiredZ =
         -Math.cos(nextHeading) * record.driveSpeed +
-        Math.max(-3, Math.min(3, (pose.z - state.position.z) * 0.7));
+        Math.max(
+          -lateralCorrectionCap,
+          Math.min(
+            lateralCorrectionCap,
+            (pose.z - state.position.z) * laneFollowGain,
+          ),
+        );
       // Soft speed hold; a hit still wins over the controller.
       force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
       force.z = (desiredZ - state.velocity.z) * BODY_MASS * 2;

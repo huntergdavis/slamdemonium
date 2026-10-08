@@ -55,6 +55,56 @@ it('keeps rivals rendered between 120 and 240 Hz physics updates', async () => {
   }
 }, 60_000);
 
+it('keeps the spawn pack in its lanes until the player starts driving', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  world.setGravity(20);
+  const map = createTakedownMap();
+  world.createStaticBox(
+    { x: map.spawn!.x, y: -0.5, z: map.spawn!.z },
+    { x: 1000, y: 0.5, z: 1000 },
+  );
+  const parkedPlayer = world.createStaticBox(
+    { x: map.spawn!.x, y: 0.75, z: map.spawn!.z },
+    { x: 1.08, y: 0.75, z: 2.4 },
+  );
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(
+    world,
+    bodies,
+    map.path!,
+    map.traffic!.filter((car) => car.rival),
+  );
+  const player = { x: map.spawn!.x, y: 1, z: map.spawn!.z };
+  let spawnHits = 0;
+  world.onContact((a, b, _impulse, _point, normal, readVelocities) => {
+    if (
+      (a === parkedPlayer && traffic.stateForBody(b)?.rival) ||
+      (b === parkedPlayer && traffic.stateForBody(a)?.rival)
+    )
+      spawnHits++;
+    traffic.onWorldContact(a, b, normal, readVelocities);
+  });
+  traffic.preStep(1 / 120, player, 0);
+  world.step(1 / 120);
+  traffic.postStep();
+  try {
+    for (let step = 0; step < 4 * 120; step++) {
+      traffic.preStep(1 / 120, player, 0);
+      world.step(1 / 120);
+      traffic.postStep();
+    }
+    expect(spawnHits).toBe(0);
+    for (const car of traffic.states) {
+      expect(car.wrecked).toBe(false);
+      expect(car.speed).toBeLessThan(70);
+    }
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 60_000);
+
 async function drive(rival: boolean) {
   const world = await createPhysicsWorld({ wasmPath });
   world.setGravity(20);
@@ -71,7 +121,7 @@ async function drive(rival: boolean) {
   try {
     const player = { x: -10, y: 1, z: 100 };
     let nearest = Infinity;
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 8 * 120; i++) {
       const car = traffic.states[0];
       if (car) player.z = car.position.z;
       traffic.preStep(1 / 120, player, 35);
@@ -244,6 +294,7 @@ it('gives the pack its own speed burst and lets rivals hit each other', async ()
   let rivalWrecks = 0;
   let peakRivalClosing = 0;
   let peakHorizontalClosing = 0;
+  const speedTimeline: string[] = [];
   const velocityA = { x: 0, y: 0, z: 0 };
   const velocityB = { x: 0, y: 0, z: 0 };
   world.onContact((a, b, _impulse, _point, normal, readVelocities) => {
@@ -276,13 +327,26 @@ it('gives the pack its own speed burst and lets rivals hit each other', async ()
       world.step(1 / 120);
       traffic.postStep();
       station += 35 / 120;
+      if (step % 120 === 0)
+        speedTimeline.push(
+          `${step / 120}s:${traffic.states
+            .filter((car) => car.rival)
+            .map(
+              (car) =>
+                `${car.id}=${car.speed.toFixed(0)}${car.wrecked ? 'W' : ''}`,
+            )
+            .join(',')}`,
+        );
       for (const car of traffic.states)
         if (car.rival) {
           peakRivalSpeed = Math.max(peakRivalSpeed, car.speed);
           if (car.wrecked) rivalWrecks++;
         }
     }
-    expect(peakRivalSpeed).toBeGreaterThan(75);
+    expect(
+      peakRivalSpeed,
+      `${speedTimeline.join(' | ')}; contacts=${rivalContacts}, closing=${peakRivalClosing.toFixed(1)}, wreckFrames=${rivalWrecks}`,
+    ).toBeGreaterThan(75);
     expect(rivalContacts).toBeGreaterThan(0);
     expect(
       rivalWrecks,

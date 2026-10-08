@@ -5,6 +5,7 @@ import { sampleRoad } from '../../src/world/roadGenerator';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 import { createTraffic, type TrafficCarRecord } from '../../src/world/traffic';
+import { createImpactSeverity } from '../../src/core/impactSeverity';
 
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
@@ -108,6 +109,37 @@ it('instacrushes a rival that is shunted hard into a solid wall', async () => {
     const rival = run.traffic.states[0]!;
     expect(rival.wrecked).toBe(true);
     expect(rival.crush.front).toBeGreaterThan(0.8);
+  } finally {
+    run.dispose();
+  }
+}, 300_000);
+
+it('spreads simultaneous crushed-hull replacements over physics steps', async () => {
+  const run = await fixture([
+    { station: 80, laneSide: -1, speed: 0, modelKind: 'sedan' },
+    { station: 110, laneSide: -1, speed: 0, modelKind: 'sedan' },
+    { station: 140, laneSide: -1, speed: 0, modelKind: 'sedan' },
+  ]);
+  try {
+    run.step();
+    const cars = [...run.traffic.states];
+    expect(cars).toHaveLength(3);
+    const shapeSwap = vi.spyOn(run.world, 'setBodyConvexShape');
+    const impact = createImpactSeverity();
+    impact.severity = 1;
+    for (const car of cars)
+      run.traffic.onPlayerContact(
+        car.bodyId,
+        impact,
+        { x: 0, y: 0, z: 1 },
+        { x: 0, y: 0, z: -25 },
+      );
+    for (let step = 0; step < 3; step++) {
+      const before = shapeSwap.mock.calls.length;
+      run.step();
+      expect(shapeSwap.mock.calls.length - before).toBeLessThanOrEqual(1);
+    }
+    expect(shapeSwap).toHaveBeenCalledTimes(3);
   } finally {
     run.dispose();
   }
