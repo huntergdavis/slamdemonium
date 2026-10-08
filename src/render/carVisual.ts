@@ -156,6 +156,8 @@ export function createCarVisual(scene: Scene) {
     const t = Math.min(1, Math.max(0, (coordinate - 0.06) / 0.38));
     return t * t * (3 - 2 * t);
   };
+  const crease = (coordinate: number, center: number, halfWidth: number) =>
+    Math.max(0, 1 - Math.abs(coordinate - center) / halfWidth);
   function deformedBodyPoint(
     x: number,
     y: number,
@@ -171,18 +173,24 @@ export function createCarVisual(scene: Scene) {
     const right = crush.right * band(nx);
     const fold = 0.82 + 0.18 * Math.sin(nx * 19 + nz * 13 + ny * 7);
     const roof = band(ny);
-    // The front edge folds down while the metal just behind it buckles upward.
-    // This changes the chase-view outline instead of merely shortening the hood.
+    // Shorten and pinch the nose, then buckle the hood across the part the
+    // chase camera actually sees. The shifted creases make the fold diagonal.
+    const frontCorner = front * Math.min(1, Math.abs(nx) * 2);
+    const trough = crush.front * crease(nz, -0.3 - nx * 0.05, 0.13);
     const crest =
       crush.front *
-      Math.max(0, 1 - Math.abs(nz + 0.24) / 0.17) *
-      (0.85 + 0.15 * Math.cos(nx * 13));
+      crease(nz, -0.1 + nx * 0.045, 0.145) *
+      (0.82 + 0.18 * Math.cos(nx * 9));
     return [
-      x + (left - right) * 0.42 * fold,
+      x + (left - right) * 0.42 * fold - Math.sign(x) * frontCorner * 0.35,
       y -
-        roof * (0.48 * (front + rear) + 0.3 * (left + right)) +
-        roof * 0.5 * crest,
-      z + (front - rear) * 0.72 * fold,
+        roof *
+          (0.39 * (front + rear) +
+            0.3 * (left + right) +
+            0.24 * trough +
+            0.15 * frontCorner) +
+        roof * 0.9 * crest,
+      z + front * 1.08 * (0.92 + 0.08 * fold) - rear * 0.72 * fold,
     ];
   }
   function setCrush(next: Readonly<CarCrushState>): void {
@@ -219,8 +227,8 @@ export function createCarVisual(scene: Scene) {
       positions.needsUpdate = true;
       strip.geometry.computeVertexNormals();
     }
-    nose.position.z = -G.length / 2 - 0.003 + next.front * 0.72;
-    nose.position.y = 0.125 * HEIGHT_SCALE - next.front * 0.22;
+    nose.position.z = -G.length / 2 - 0.003 + next.front * 1.08;
+    nose.position.y = 0.125 * HEIGHT_SCALE - next.front * 0.3;
     nose.scale.y = (0.75 - next.front * 0.18) * HEIGHT_SCALE;
     tail.position.z = G.length / 2 + 0.003 - next.rear * 0.55;
   }

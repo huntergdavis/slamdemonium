@@ -87,27 +87,33 @@ it('folds the player hood and its arrow into a visible crease', () => {
     body.geometry.computeBoundingBox();
     const pristineNose = body.geometry.boundingBox!.min.z;
     const positions = body.geometry.getAttribute('position');
-    visual.setCrush({ front: 0.7, rear: 0, left: 0, right: 0 });
+    const roofVertices = Array.from(
+      { length: positions.count },
+      (_, index) => index,
+    ).filter((index) => positions.getY(index) > 0.49);
+    const frontCorners = Array.from(
+      { length: positions.count },
+      (_, index) => index,
+    ).filter(
+      (index) =>
+        positions.getZ(index) < -0.49 && Math.abs(positions.getX(index)) > 0.49,
+    );
+    visual.setCrush({ front: 1, rear: 0, left: 0, right: 0 });
     body.geometry.computeBoundingBox();
     expect(body.geometry.boundingBox!.min.z).toBeGreaterThan(
-      pristineNose + 0.05,
+      pristineNose + 0.18,
     );
-    const top = Array.from({ length: positions.count }, (_, i) => ({
-      y: positions.getY(i),
-      z: positions.getZ(i),
-    })).filter(({ y }) => y > 0.15);
-    const noseRoof = Math.min(
-      ...top.filter(({ z }) => z < -0.2).map(({ y }) => y),
+    const roofHeights = roofVertices.map((index) => positions.getY(index));
+    expect(Math.max(...roofHeights)).toBeGreaterThan(1);
+    expect(Math.min(...roofHeights)).toBeLessThan(0.2);
+    const cornerWidths = frontCorners.map((index) => positions.getX(index));
+    expect(Math.max(...cornerWidths) - Math.min(...cornerWidths)).toBeLessThan(
+      0.8,
     );
-    const crease = Math.max(
-      ...top.filter(({ z }) => z > -0.25 && z < -0.1).map(({ y }) => y),
-    );
-    expect(noseRoof).toBeLessThan(0.3);
-    expect(crease).toBeGreaterThan(0.53);
     expect(
       Array.from({ length: arrowPositions.count }, (_, i) =>
         Math.abs(arrowPositions.getY(i) - pristineArrow[i]!),
-      ).some((delta) => delta > 0.05),
+      ).some((delta) => delta > 0.1),
     ).toBe(true);
   } finally {
     visual.dispose();
