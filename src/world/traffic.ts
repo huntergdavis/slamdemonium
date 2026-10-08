@@ -117,8 +117,11 @@ const EXIT = 180;
 const VISUAL_RADIUS = 400;
 /** Signed station offsets keep one rival in shunting range and leave room for
  * challengers ahead and behind. Only the takedown map authors rival records. */
-const RIVAL_PACK_OFFSETS = [65, 48, -48, -65] as const;
-const RIVAL_REJOIN_SECONDS = 8;
+const RIVAL_START_OFFSETS = [65, 48, -48, -65] as const;
+const RIVAL_PACK_OFFSETS = [36, 24, -24, -36] as const;
+const RIVAL_STRIKE_OFFSET = 12;
+const RIVAL_REJOIN_SECONDS = 4;
+const RIVAL_REJOIN_BEHIND = 220;
 const RIVAL_ATTACK_GRACE_SECONDS = 6;
 const RIVAL_PLAYER_ATTACK_MIN_SPEED = 20;
 const CRUSH_SHAPE_UPDATES_PER_STEP = 1;
@@ -550,6 +553,14 @@ export function createTraffic(
           chosen[i]!.leader =
             chosen[i + 1] ?? (path.closed ? chosen[0]! : null);
     }
+    // The density slider controls background traffic, never the four authored
+    // opponents. They also need their own pace controller rather than an
+    // ordinary follower speed limit from the sparse traffic selection.
+    for (const record of authored)
+      if (record.state.rival && !record.wrecked) {
+        record.enabled = true;
+        record.leader = null;
+      }
     for (const record of authored) {
       if (!record.enabled && record.slot) demote(record);
       if (record.enabled && !record.wrecked) updateVisualPose(record);
@@ -679,14 +690,19 @@ export function createTraffic(
       for (const record of authored) {
         if (!record.state.rival || !record.wrecked) continue;
         record.wreckAge += dt;
+        const behind =
+          (playerStation - record.station + path.length) % path.length;
+        const outOfRearView =
+          behind >= RIVAL_REJOIN_BEHIND && behind < path.length / 2;
         if (
           record.wreckAge < RIVAL_REJOIN_SECONDS ||
-          horizontalDistanceSquared(
-            player,
-            record.state.position.x,
-            record.state.position.z,
-          ) <
-            (VISUAL_RADIUS + 40) ** 2
+          (!outOfRearView &&
+            horizontalDistanceSquared(
+              player,
+              record.state.position.x,
+              record.state.position.z,
+            ) <
+              (VISUAL_RADIUS + 40) ** 2)
         )
           continue;
         demote(record);
@@ -823,7 +839,8 @@ export function createTraffic(
         state.rival &&
         rivalryStarted &&
         playerSpeed >= RIVAL_PLAYER_ATTACK_MIN_SPEED &&
-        rivalAttackActive(rivalSeconds, state.id);
+        (rivalTargets.length === 1 ||
+          rivalAttackActive(rivalSeconds, state.id));
       const attackPlayer = attackNow ? player : state.position;
       if (state.rival && !record.wrecked) {
         const target = rivalAttackTarget(
@@ -848,12 +865,18 @@ export function createTraffic(
             (playerStation - record.station + path.length) % path.length;
           const signed = ahead <= behind ? ahead : -behind;
           const packIndex = i % RIVAL_PACK_OFFSETS.length;
-          const target = RIVAL_PACK_OFFSETS[packIndex]!;
+          // The normal 48-65 m contest gap is outside the 32 m shunt window.
+          // During one staggered attack window, close to an alongside gap by
+          // speed control rather than teleporting the rival.
+          const normalTarget = RIVAL_PACK_OFFSETS[packIndex]!;
+          const target = attackNow
+            ? Math.sign(normalTarget) * RIVAL_STRIKE_OFFSET
+            : normalTarget;
           if (!rivalryStarted) {
             // Preserve the proven #195 launch behaviour during the grace:
             // parked players do not attract a 52 m/s pack through spawn.
             const launchTarget =
-              target +
+              RIVAL_START_OFFSETS[packIndex]! +
               (packIndex === 1
                 ? Math.max(0, Math.min(20, playerSpeed - 40))
                 : 0);

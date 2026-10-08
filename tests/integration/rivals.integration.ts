@@ -24,6 +24,7 @@ it('keeps rivals rendered between 120 and 240 Hz physics updates', async () => {
     bodies,
     map.path!,
     map.traffic!.filter((car) => car.rival),
+    { density: 0.85, minGap: 12, maxGap: 36 },
   );
   const visual = createTrafficVisual(scene, traffic);
   const player = { x: map.spawn!.x, y: 1, z: map.spawn!.z };
@@ -73,6 +74,7 @@ it('keeps the spawn pack in its lanes until the player starts driving', async ()
     bodies,
     map.path!,
     map.traffic!.filter((car) => car.rival),
+    { density: 0.85, minGap: 12, maxGap: 36 },
   );
   const player = { x: map.spawn!.x, y: 1, z: map.spawn!.z };
   let spawnHits = 0;

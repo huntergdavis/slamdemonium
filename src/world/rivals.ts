@@ -29,7 +29,7 @@ export function approachRivalLine(
  * to use boost. Stable encounter ids stagger the four pulses across the pack. */
 export function rivalBoostBonus(seconds: number, encounterId: number): number {
   const phase = (((seconds + encounterId * 1.37) % 6) + 6) % 6;
-  return phase < 2.2 ? 32 : 0;
+  return phase < 2.2 ? 36 : 0;
 }
 
 /** Only one member of the opening pack commits to a shove at a time. Their
@@ -38,8 +38,10 @@ export function rivalAttackActive(
   seconds: number,
   encounterId: number,
 ): boolean {
-  const phase = (((seconds + (encounterId - 1) * 2) % 8) + 8) % 8;
-  return phase < 2;
+  // The trailing challenger closes first when the grace ends. Scheduling the
+  // lead car first spends the opening attack window outside shunt range.
+  const phase = (((seconds + ((encounterId + 1) % 4) * 3) % 12) + 12) % 12;
+  return phase < 3;
 }
 
 /** The nearest shuntable target wins. This includes other rivals; wrecked

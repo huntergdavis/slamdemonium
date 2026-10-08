@@ -68,9 +68,9 @@ describe('takedown course', () => {
     expect(rivalAttackTarget(car, north, farPlayer, [car, opponent])).toBe(
       -4.2,
     );
-    expect(rivalBoostBonus(0, 1)).toBe(32);
+    expect(rivalBoostBonus(0, 1)).toBe(36);
     expect(rivalBoostBonus(3, 1)).toBe(0);
-    expect(rivalAttackActive(0, 1)).toBe(true);
-    expect(rivalAttackActive(0, 2)).toBe(false);
+    expect(rivalAttackActive(0, 3)).toBe(true);
+    expect(rivalAttackActive(0, 1)).toBe(false);
   });
 });
