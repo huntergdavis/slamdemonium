@@ -70,7 +70,7 @@ export function createRivalGuidance(host: HTMLElement) {
       toCar.copy(projected).sub(camera.position);
       const inFront = toCar.dot(look) > 0;
       projected.project(camera);
-      const x = (1 - projected.x) * width * 0.5;
+      const x = (1 + projected.x) * width * 0.5;
       const y = (1 - projected.y) * height * 0.5;
       const inFrame =
         inFront && x > 36 && x < width - 36 && y > 28 && y < height - 36;

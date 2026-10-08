@@ -42,6 +42,11 @@ function fakeDocument() {
 function mount(
   landmarks: { x: number; z: number }[] = [],
   route?: { x: number; z: number }[],
+  rivals?: {
+    position: { x: number; z: number };
+    rival: boolean;
+    wrecked: boolean;
+  }[],
 ) {
   const { calls, host } = fakeDocument();
   const map = new MiniMap({
@@ -49,12 +54,27 @@ function mount(
     landmarks: landmarks.map((l) => ({ ...l, label: 'X', color: '#fff' })),
     halfSize: 100,
     ...(route ? { route } : {}),
+    ...(rivals ? { readRivals: () => rivals } : {}),
   });
   const canvas = host.children[0] as { children: { width: number }[] };
   return { map, calls, canvas: canvas.children[1]! };
 }
 
 describe('the mini-map axes', () => {
+  it('moves rival dots across a fixed course overview as cars advance', () => {
+    const rivals = [{ position: { x: 0, z: 20 }, rival: true, wrecked: false }];
+    const { map, calls } = mount([], undefined, rivals);
+    const telemetry = new VehicleTelemetry();
+    map.update(telemetry);
+    const before = calls.find((call) => call.op === 'arc')!;
+    calls.length = 0;
+    telemetry.position.z = 20;
+    rivals[0]!.position.z = 40;
+    map.update(telemetry);
+    const after = calls.find((call) => call.op === 'arc')!;
+    expect(after.y).toBeCloseTo(before.y - 16, 3);
+  });
+
   // The world is y-up, right-handed, north is +z: a driver facing north has
   // +x on the LEFT. North up on the map therefore puts -x on the right. The
   // map once drew +x on the right and was mirrored for two days of builds.

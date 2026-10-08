@@ -1,10 +1,11 @@
 import { createRequire } from 'node:module';
 import { expect, it } from 'vitest';
+import { InstancedMesh, Scene } from 'three';
 import { createPhysicsWorld } from '../../src/physics/joltWorld';
 import { sampleRoad } from '../../src/world/roadGenerator';
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
-import { createTraffic } from '../../src/world/traffic';
+import { createTraffic, createTrafficVisual } from '../../src/world/traffic';
 import { createTakedownMap } from '../../src/world/takedownCourse';
 import { createImpactSeverity } from '../../src/core/impactSeverity';
 import { poseAt } from '../../src/world/roadGenerator';
@@ -12,6 +13,47 @@ import { poseAt } from '../../src/world/roadGenerator';
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
 );
+
+it('keeps rivals rendered between 120 and 240 Hz physics updates', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const map = createTakedownMap();
+  const scene = new Scene();
+  const traffic = createTraffic(
+    world,
+    bodies,
+    map.path!,
+    map.traffic!.filter((car) => car.rival),
+  );
+  const visual = createTrafficVisual(scene, traffic);
+  const player = { x: map.spawn!.x, y: 1, z: map.spawn!.z };
+  try {
+    for (const hz of [120, 240]) {
+      for (let step = 0; step < 30; step++) {
+        traffic.preStep(1 / hz, player, 35);
+        world.step(1 / hz);
+        traffic.postStep();
+        expect(traffic.visualStates.filter((car) => car.rival)).toHaveLength(4);
+        // Render frames without a physics step must reuse the current visual
+        // state rather than emptying or culling the catalogue instances.
+        for (let frame = 0; frame < 3; frame++) {
+          visual.update();
+          const live = scene.children
+            .filter(
+              (child): child is InstancedMesh => child instanceof InstancedMesh,
+            )
+            .some((mesh) => mesh.count > 0);
+          expect(live).toBe(true);
+        }
+      }
+    }
+  } finally {
+    visual.dispose();
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 60_000);
 
 async function drive(rival: boolean) {
   const world = await createPhysicsWorld({ wasmPath });
