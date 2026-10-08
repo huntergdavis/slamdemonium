@@ -109,8 +109,9 @@ const IDENTITY: Quat = { x: 0, y: 0, z: 0, w: 1 };
 const ENTER = 120;
 const EXIT = 180;
 const VISUAL_RADIUS = 400;
-const RIVAL_NEAR = 65;
-const RIVAL_FAR = 260;
+/** Signed station offsets keep one rival in shunting range and leave room for
+ * challengers ahead and behind. Only the takedown map authors rival records. */
+const RIVAL_PACK_OFFSETS = [45, -45, 90, -100] as const;
 const RIVAL_REJOIN_SECONDS = 8;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
@@ -657,7 +658,10 @@ export function createTraffic(
           record.state.crush.right =
             0;
         record.station =
-          (playerStation - 170 - (record.state.id % 4) * 28 + path.length) %
+          (playerStation -
+            115 -
+            (authored.indexOf(record) % RIVAL_PACK_OFFSETS.length) * 20 +
+            path.length) %
           path.length;
         record.driveSpeed = record.authored.speed;
         record.wreckAge = 0;
@@ -747,7 +751,11 @@ export function createTraffic(
         // camera. This preserves a continuous nearby contest without a car
         // appearing suddenly in the forward road scene.
         record.station =
-          (playerStation - 170 - (i % 4) * 28 + path.length) % path.length;
+          (playerStation -
+            115 -
+            (i % RIVAL_PACK_OFFSETS.length) * 20 +
+            path.length) %
+          path.length;
         updateVisualPose(record);
       }
       if (state.rival && !record.wrecked) {
@@ -767,12 +775,17 @@ export function createTraffic(
           const behind =
             (playerStation - record.station + path.length) % path.length;
           const signed = ahead <= behind ? ahead : -behind;
-          desiredSpeed =
-            signed < -RIVAL_NEAR
-              ? Math.min(85, Math.max(desiredSpeed, playerSpeed + 8))
-              : signed > RIVAL_FAR
-                ? Math.max(17, Math.min(desiredSpeed, playerSpeed - 10))
-                : Math.min(49, Math.max(desiredSpeed, playerSpeed - 1));
+          const target = RIVAL_PACK_OFFSETS[i % RIVAL_PACK_OFFSETS.length]!;
+          // A rival ahead eases off; one behind closes. The authored lane and
+          // collision controller still govern the actual path and acceleration.
+          desiredSpeed = Math.max(
+            0,
+            Math.min(
+              85,
+              playerSpeed -
+                Math.max(-20, Math.min(20, (signed - target) * 0.28)),
+            ),
+          );
         }
         if (rules && record.enabled && record.leader) {
           let ahead: RecordState | null = record.leader;

@@ -41,7 +41,7 @@ export function createTakedownMap(): MapDefinition {
   const spawn = at(0);
   const traffic: TrafficCarRecord[] = [
     {
-      station: 130,
+      station: 45,
       laneSide: -1,
       direction: 1,
       speed: 35,
@@ -49,7 +49,7 @@ export function createTakedownMap(): MapDefinition {
       modelKind: 'sedan',
     },
     {
-      station: 190,
+      station: path.length - 45,
       laneSide: 1,
       direction: 1,
       speed: 38,
@@ -57,7 +57,7 @@ export function createTakedownMap(): MapDefinition {
       modelKind: 'hatch',
     },
     {
-      station: 250,
+      station: 90,
       laneSide: -1,
       direction: 1,
       speed: 41,
@@ -65,7 +65,7 @@ export function createTakedownMap(): MapDefinition {
       modelKind: 'pickup',
     },
     {
-      station: 310,
+      station: path.length - 100,
       laneSide: 1,
       direction: 1,
       speed: 39,

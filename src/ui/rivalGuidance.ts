@@ -24,10 +24,37 @@ export function createRivalGuidance(host: HTMLElement) {
   ) {
     camera.updateMatrixWorld();
     camera.getWorldDirection(look);
-    const width = root.clientWidth || window.innerWidth;
-    const height = root.clientHeight || window.innerHeight;
+    // Reading clientWidth after last frame's style writes forces layout at
+    // uncapped render rates. The full-screen overlay uses viewport dimensions.
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     const live = new Set<number>();
     let nearest: { x: number; y: number; distance: number } | undefined;
+    let nearestId = -1;
+    let secondId = -1;
+    let nearestOverallId = -1;
+    let nearestOverallDistance = Infinity;
+    let nearestDistance = 120 * 120;
+    let secondDistance = 120 * 120;
+    for (const state of states) {
+      if (!state.rival || state.wrecked) continue;
+      const dx = state.position.x - player.x;
+      const dz = state.position.z - player.z;
+      const distance = dx * dx + dz * dz;
+      if (distance < nearestOverallDistance) {
+        nearestOverallDistance = distance;
+        nearestOverallId = state.id;
+      }
+      if (distance < nearestDistance) {
+        secondDistance = nearestDistance;
+        secondId = nearestId;
+        nearestDistance = distance;
+        nearestId = state.id;
+      } else if (distance < secondDistance) {
+        secondDistance = distance;
+        secondId = state.id;
+      }
+    }
     for (const state of states) {
       if (!state.rival || state.wrecked) continue;
       live.add(state.id);
@@ -47,12 +74,15 @@ export function createRivalGuidance(host: HTMLElement) {
       const y = (1 - projected.y) * height * 0.5;
       const inFrame =
         inFront && x > 36 && x < width - 36 && y > 28 && y < height - 36;
-      marker.style.display = inFrame ? '' : 'none';
+      marker.style.display =
+        inFrame && (state.id === nearestId || state.id === secondId)
+          ? ''
+          : 'none';
       if (inFrame) marker.style.transform = `translate(${x}px, ${y}px)`;
       const dx = state.position.x - player.x;
       const dz = state.position.z - player.z;
       const distance = dx * dx + dz * dz;
-      if (!inFrame && (!nearest || distance < nearest.distance)) {
+      if (!inFrame && state.id === nearestOverallId) {
         const vx = (inFront ? x : width - x) - width * 0.5;
         let vy = (inFront ? y : height - y) - height * 0.5;
         if (Math.abs(vx) + Math.abs(vy) < 1) vy = height;
