@@ -73,6 +73,10 @@ interface RecordState {
   enabled: boolean;
   driveSpeed: number;
   leader: RecordState | null;
+  obstacle: RecordState | null;
+  obstacleClearance: number;
+  obstacleLate: boolean;
+  threatened: boolean;
   crashPending: boolean;
   crashNormal: V3;
   crashClosingSpeed: number;
@@ -101,6 +105,11 @@ const EXIT = 180;
 const VISUAL_RADIUS = 400;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
+const WRECK_LOOKAHEAD = 100;
+const WRECK_PHYSICS_RADIUS = 220;
+const WRECK_BRAKE = 9;
+const WRECK_PLANNED_BRAKE = 4;
+const WRECK_STOP_MARGIN = 12;
 const BODY_MASS = 1100;
 /** Every kind weighs the same in v1; per-kind mass waits for crumple. */
 const BODY_MASS_DESC = {
@@ -222,6 +231,10 @@ export function createTraffic(
     enabled: true,
     driveSpeed: record.speed,
     leader: null,
+    obstacle: null,
+    obstacleClearance: Infinity,
+    obstacleLate: false,
+    threatened: false,
     crashPending: false,
     crashNormal: { x: 0, y: 0, z: 0 },
     crashClosingSpeed: 0,
@@ -236,6 +249,9 @@ export function createTraffic(
   const slots: Slot[] = [];
   const slotByBodyId = new Map<BodyId, Slot>();
   const visualStates: TrafficCarState[] = [];
+  const wreckRecords: RecordState[] = [];
+  const nearbyWrecks: RecordState[] = [];
+  let hadNearbyWrecks = false;
   let physicalCount = 0;
   let farPoseBucket = 0;
   let stepDt = 0;
@@ -326,6 +342,69 @@ export function createTraffic(
     state.velocity.y = 0;
     state.velocity.z = state.forward.z * record.driveSpeed;
     state.speed = record.driveSpeed;
+  }
+
+  /** Find a wreck on this car's path from the wreck's solved world pose, not
+   * its former route station. A sideways wreck can block both lanes. */
+  function updateObstacle(record: RecordState): void {
+    const previousObstacle = record.obstacle;
+    const previousLate = record.obstacleLate;
+    record.obstacle = null;
+    record.obstacleClearance = Infinity;
+    record.obstacleLate = false;
+    const car = record.state;
+    const forwardX = car.forward.x;
+    const forwardZ = car.forward.z;
+    const rightX = -forwardZ;
+    const rightZ = forwardX;
+    const carShape = CAR_MODELS[car.modelKind].halfExtents;
+    for (const wreck of nearbyWrecks) {
+      if (wreck === record) continue;
+      const other = wreck.state;
+      const dx = other.position.x - car.position.x;
+      const dz = other.position.z - car.position.z;
+      const ahead = dx * forwardX + dz * forwardZ;
+      if (ahead < -carShape.z || ahead > WRECK_LOOKAHEAD) continue;
+      const side = Math.abs(dx * rightX + dz * rightZ);
+      const wreckShape = CAR_MODELS[other.modelKind].halfExtents;
+      const wreckForwardX = other.forward.x;
+      const wreckForwardZ = other.forward.z;
+      const wreckRightX = -wreckForwardZ;
+      const wreckRightZ = wreckForwardX;
+      const longExtent =
+        Math.abs(forwardX * wreckForwardX + forwardZ * wreckForwardZ) *
+          wreckShape.z +
+        Math.abs(forwardX * wreckRightX + forwardZ * wreckRightZ) *
+          wreckShape.x;
+      const sideExtent =
+        Math.abs(rightX * wreckForwardX + rightZ * wreckForwardZ) *
+          wreckShape.z +
+        Math.abs(rightX * wreckRightX + rightZ * wreckRightZ) * wreckShape.x;
+      if (side > carShape.x + sideExtent + 0.5) continue;
+      const clearance = ahead - carShape.z - longExtent;
+      if (clearance >= record.obstacleClearance) continue;
+      record.obstacle = wreck;
+      record.obstacleClearance = clearance;
+    }
+    const obstacle = record.obstacle;
+    if (!obstacle) return;
+    obstacle.threatened = true;
+    const speed = record.slot ? car.speed : record.driveSpeed;
+    record.obstacleLate =
+      obstacle === previousObstacle
+        ? previousLate
+        : speed > 8 &&
+          record.obstacleClearance <
+            (speed * speed) / (2 * WRECK_BRAKE) + WRECK_STOP_MARGIN;
+  }
+
+  function markWreck(record: RecordState): void {
+    if (record.wrecked) return;
+    record.wrecked = true;
+    record.state.wrecked = true;
+    wreckRecords.push(record);
+    // Keep the existing ordered lane links. Followers skip wrecked entries
+    // when they read the chain, avoiding a full-circuit sort on each impact.
   }
 
   for (const record of authored) updateVisualPose(record);
@@ -489,11 +568,15 @@ export function createTraffic(
     physicalCount--;
   }
 
-  function makeRoomFor(player: V3, candidateDistanceSquared: number): void {
+  function makeRoomFor(
+    player: V3,
+    candidateDistanceSquared: number,
+    urgent = false,
+  ): void {
     if (physicalCount < MAX_DRIVING) return;
     // A closer intact car takes a body from a farther one. Hysteresis keeps
     // two cars at the edge from swapping bodies every step.
-    const threshold = Math.sqrt(candidateDistanceSquared) + 20;
+    const threshold = urgent ? 0 : Math.sqrt(candidateDistanceSquared) + 20;
     let farthest = threshold * threshold;
     let victim: RecordState | null = null;
     for (const slot of slots) {
@@ -504,6 +587,10 @@ export function createTraffic(
         record.state.position.x,
         record.state.position.z,
       );
+      // A distant collision must not steal the player's immediately hittable
+      // car. If no safe slot exists, that follower will queue visually.
+      if (urgent && candidateDistanceSquared > 60 ** 2 && distance < 60 ** 2)
+        continue;
       if (distance > farthest) {
         farthest = distance;
         victim = record;
@@ -515,6 +602,67 @@ export function createTraffic(
   function preStep(dt: number, player: V3): void {
     stepDt = dt;
     visualStates.length = 0;
+    nearbyWrecks.length = 0;
+    for (const record of wreckRecords) {
+      record.threatened = false;
+      if (
+        record.enabled &&
+        horizontalDistanceSquared(
+          player,
+          record.state.position.x,
+          record.state.position.z,
+        ) <=
+          (VISUAL_RADIUS + WRECK_LOOKAHEAD) ** 2
+      )
+        nearbyWrecks.push(record);
+    }
+    if (nearbyWrecks.length) {
+      for (const record of authored) {
+        if (
+          record.enabled &&
+          !record.wrecked &&
+          horizontalDistanceSquared(
+            player,
+            record.state.position.x,
+            record.state.position.z,
+          ) <=
+            (VISUAL_RADIUS + WRECK_LOOKAHEAD) ** 2
+        )
+          updateObstacle(record);
+        else record.obstacle = null;
+      }
+    } else if (hadNearbyWrecks) {
+      for (const record of authored) record.obstacle = null;
+    }
+    hadNearbyWrecks = nearbyWrecks.length > 0;
+    // A wreck is the obstacle itself. Preserve/promote its collider before
+    // assigning a body to any incoming car, even if the wreck moved away
+    // from its authored station after the hit.
+    for (const wreck of nearbyWrecks) {
+      if (!wreck.threatened || wreck.slot) continue;
+      const distanceSquared = horizontalDistanceSquared(
+        player,
+        wreck.state.position.x,
+        wreck.state.position.z,
+      );
+      if (distanceSquared > WRECK_PHYSICS_RADIUS ** 2) continue;
+      makeRoomFor(player, distanceSquared, true);
+      if (physicalCount < MAX_DRIVING) promote(wreck);
+    }
+    // A car too close to brake must get a real collision, rather than keep
+    // following its visual-only lane pose through the wreck.
+    for (const record of authored) {
+      if (!record.obstacleLate || !record.obstacle?.slot || record.slot)
+        continue;
+      const distanceSquared = horizontalDistanceSquared(
+        player,
+        record.state.position.x,
+        record.state.position.z,
+      );
+      if (distanceSquared > WRECK_PHYSICS_RADIUS ** 2) continue;
+      makeRoomFor(player, distanceSquared, true);
+      if (physicalCount < MAX_DRIVING) promote(record);
+    }
     // Refresh one distant slice per step instead of all authored cars on the
     // same 10 Hz tick. Nearby poses still update every step.
     const farPoseBuckets = Math.max(1, Math.round(0.1 / dt));
@@ -525,22 +673,42 @@ export function createTraffic(
       if (!record.wrecked) {
         const direction = state.direction;
         if (rules && record.enabled && record.leader) {
-          const ahead = record.leader;
-          const gap =
-            (((direction * (ahead.station - record.station)) % path.length) +
-              path.length) %
-            path.length;
-          // A faster car queues behind a slower one, without lane swapping.
-          const safeGap = Math.max(
-            rules.minGap,
-            safeFollowingGap(record, ahead),
-          );
-          const followingSpeed = ahead.driveSpeed + (gap - safeGap) * 0.6;
-          record.driveSpeed = Math.max(
-            0,
-            Math.min(record.authored.speed, followingSpeed),
-          );
+          let ahead: RecordState | null = record.leader;
+          while (ahead?.wrecked) ahead = ahead.leader;
+          if (ahead === record) ahead = null;
+          if (ahead) {
+            const gap =
+              (((direction * (ahead.station - record.station)) % path.length) +
+                path.length) %
+              path.length;
+            // A faster car queues behind a slower one, without lane swapping.
+            const safeGap = Math.max(
+              rules.minGap,
+              safeFollowingGap(record, ahead),
+            );
+            const followingSpeed = ahead.driveSpeed + (gap - safeGap) * 0.6;
+            record.driveSpeed = Math.max(
+              0,
+              Math.min(record.authored.speed, followingSpeed),
+            );
+          } else record.driveSpeed = record.authored.speed;
         } else record.driveSpeed = record.authored.speed;
+        if (record.obstacle) {
+          const canHit =
+            record.obstacleLate && record.slot && record.obstacle.slot;
+          if (!canHit) {
+            const clearance = Math.max(
+              0,
+              record.obstacleClearance - WRECK_STOP_MARGIN,
+            );
+            record.driveSpeed = Math.min(
+              record.driveSpeed,
+              Math.sqrt(2 * WRECK_PLANNED_BRAKE * clearance),
+            );
+            if (!record.slot)
+              record.driveSpeed = Math.min(record.driveSpeed, clearance / dt);
+          }
+        }
         record.station += direction * record.driveSpeed * dt;
         if (record.station >= path.length) record.station -= path.length;
         else if (record.station < 0) record.station += path.length;
@@ -561,7 +729,15 @@ export function createTraffic(
         : oldDistanceSquared;
       if (distanceSquared <= VISUAL_RADIUS * VISUAL_RADIUS)
         visualStates.push(state);
-      if (record.slot && distanceSquared > EXIT * EXIT) {
+      if (
+        record.slot &&
+        distanceSquared > EXIT * EXIT &&
+        !(
+          record.wrecked &&
+          record.threatened &&
+          distanceSquared <= WRECK_PHYSICS_RADIUS ** 2
+        )
+      ) {
         demote(record);
         updateVisualPose(record);
         continue;
@@ -615,8 +791,9 @@ export function createTraffic(
       force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
       force.z = (desiredZ - state.velocity.z) * BODY_MASS * 2;
       const magnitude = Math.hypot(force.x, force.z);
-      if (magnitude > BODY_MASS * 5) {
-        const scale = (BODY_MASS * 5) / magnitude;
+      const accelerationCap = record.obstacle ? WRECK_BRAKE : 5;
+      if (magnitude > BODY_MASS * accelerationCap) {
+        const scale = (BODY_MASS * accelerationCap) / magnitude;
         force.x *= scale;
         force.z *= scale;
       }
@@ -786,8 +963,7 @@ export function createTraffic(
         grinding,
       );
       if (closingSpeed >= WORLD_WRECK_CLOSING_SPEED) {
-        recordA.wrecked = true;
-        recordA.state.wrecked = true;
+        markWreck(recordA);
       }
     }
     if (recordB) {
@@ -800,8 +976,7 @@ export function createTraffic(
         grinding,
       );
       if (closingSpeed >= WORLD_WRECK_CLOSING_SPEED) {
-        recordB.wrecked = true;
-        recordB.state.wrecked = true;
+        markWreck(recordB);
       }
     }
   }
@@ -839,8 +1014,7 @@ export function createTraffic(
       // Gentle contact dents without counting as a wreck or a slam.
       if (impact.severity < 0.25) return;
       if (record.wrecked) return;
-      record.wrecked = true;
-      record.state.wrecked = true;
+      markWreck(record);
       record.crashBleedRemaining = 0;
       if (normalIntoPlayer && relativeVelocity) {
         const length = Math.hypot(
