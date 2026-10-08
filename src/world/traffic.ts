@@ -76,6 +76,7 @@ interface RecordState {
   slot: Slot | null;
   enabled: boolean;
   driveSpeed: number;
+  wreckAge: number;
   attackOffset: number;
   leader: RecordState | null;
   obstacle: RecordState | null;
@@ -108,6 +109,10 @@ const IDENTITY: Quat = { x: 0, y: 0, z: 0, w: 1 };
 const ENTER = 120;
 const EXIT = 180;
 const VISUAL_RADIUS = 400;
+/** Signed station offsets keep one rival in shunting range and leave room for
+ * challengers ahead and behind. Only the takedown map authors rival records. */
+const RIVAL_PACK_OFFSETS = [45, -25, 90, -100] as const;
+const RIVAL_REJOIN_SECONDS = 8;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
 const WRECK_LOOKAHEAD = 100;
@@ -236,6 +241,7 @@ export function createTraffic(
     slot: null,
     enabled: true,
     driveSpeed: record.speed,
+    wreckAge: 0,
     attackOffset: 0,
     leader: null,
     obstacle: null,
@@ -251,6 +257,7 @@ export function createTraffic(
     slamSides: 0,
     scrapeSides: 0,
   }));
+  const hasRivals = records.some((record) => record.rival === true);
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
   const slots: Slot[] = [];
@@ -262,6 +269,9 @@ export function createTraffic(
   let physicalCount = 0;
   let farPoseBucket = 0;
   let stepDt = 0;
+  let nextEncounterId = records.length + 1;
+  let playerStation = 0;
+  let stationRefresh = 0.2;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -331,6 +341,19 @@ export function createTraffic(
       Math.sin(out.heading) *
         (record.authored.laneSide * 3.5 + record.attackOffset);
     return out;
+  }
+
+  function nearestRoadStation(position: V3): number {
+    let best = Infinity;
+    let station = 0;
+    for (const sample of path.samples) {
+      const distance = horizontalDistanceSquared(position, sample.x, sample.z);
+      if (distance < best) {
+        best = distance;
+        station = sample.s;
+      }
+    }
+    return station;
   }
 
   function updateVisualPose(record: RecordState): void {
@@ -569,6 +592,13 @@ export function createTraffic(
       );
       Object.assign(record.state.position, record.wreckPosition);
       Object.assign(record.state.rotation, record.wreckRotation);
+    } else {
+      // The limited-force body can lag far behind its authored station after
+      // contact. Continue the visual follower from the solved road position,
+      // or demotion would teleport it to the stale target station.
+      physics.getTransform(slot.bodyId, readPosition, readRotation);
+      Object.assign(record.state.position, readPosition);
+      record.station = nearestRoadStation(readPosition);
     }
     physics.deactivateBody(slot.bodyId);
     record.state.bodyId = -1;
@@ -608,8 +638,52 @@ export function createTraffic(
     if (victim) demote(victim);
   }
 
-  function preStep(dt: number, player: V3): void {
+  function preStep(dt: number, player: V3, playerSpeed = 0): void {
     stepDt = dt;
+    if (hasRivals) stationRefresh += dt;
+    if (hasRivals && stationRefresh >= 0.2) {
+      stationRefresh = 0;
+      playerStation = nearestRoadStation(player);
+    }
+    if (hasRivals)
+      for (const record of authored) {
+        if (!record.state.rival || !record.wrecked) continue;
+        record.wreckAge += dt;
+        if (
+          record.wreckAge < RIVAL_REJOIN_SECONDS ||
+          horizontalDistanceSquared(
+            player,
+            record.state.position.x,
+            record.state.position.z,
+          ) <
+            (VISUAL_RADIUS + 40) ** 2
+        )
+          continue;
+        demote(record);
+        const index = wreckRecords.indexOf(record);
+        if (index >= 0) wreckRecords.splice(index, 1);
+        record.wrecked = false;
+        record.state.wrecked = false;
+        record.state.id = nextEncounterId++;
+        record.state.crush.front =
+          record.state.crush.rear =
+          record.state.crush.left =
+          record.state.crush.right =
+            0;
+        record.station =
+          (playerStation -
+            115 -
+            (authored.indexOf(record) % RIVAL_PACK_OFFSETS.length) * 20 +
+            path.length) %
+          path.length;
+        record.driveSpeed = record.authored.speed;
+        record.wreckAge = 0;
+        record.attackOffset = 0;
+        record.obstacle = null;
+        record.obstacleLate = false;
+        record.shapeDirty = true;
+        updateVisualPose(record);
+      }
     visualStates.length = 0;
     nearbyWrecks.length = 0;
     for (const record of wreckRecords) {
@@ -679,6 +753,24 @@ export function createTraffic(
     for (let i = 0; i < authored.length; i++) {
       const record = authored[i]!;
       const state = record.state;
+      if (
+        state.rival &&
+        !record.wrecked &&
+        !record.slot &&
+        horizontalDistanceSquared(player, state.position.x, state.position.z) >
+          (VISUAL_RADIUS + 40) ** 2
+      ) {
+        // Once fully outside the rendered world, return behind the chase
+        // camera. This preserves a continuous nearby contest without a car
+        // appearing suddenly in the forward road scene.
+        record.station =
+          (playerStation -
+            115 -
+            (i % RIVAL_PACK_OFFSETS.length) * 20 +
+            path.length) %
+          path.length;
+        updateVisualPose(record);
+      }
       if (state.rival && !record.wrecked) {
         const target = rivalLineTarget(state.position, state.forward, player);
         record.attackOffset = approachRivalLine(
@@ -689,6 +781,28 @@ export function createTraffic(
       }
       if (!record.wrecked) {
         const direction = state.direction;
+        let desiredSpeed = record.authored.speed;
+        if (state.rival) {
+          const ahead =
+            (record.station - playerStation + path.length) % path.length;
+          const behind =
+            (playerStation - record.station + path.length) % path.length;
+          const signed = ahead <= behind ? ahead : -behind;
+          const packIndex = i % RIVAL_PACK_OFFSETS.length;
+          const target =
+            RIVAL_PACK_OFFSETS[packIndex]! +
+            (packIndex === 1 ? Math.max(0, Math.min(20, playerSpeed - 40)) : 0);
+          // A rival ahead eases off; one behind closes. The authored lane and
+          // collision controller still govern the actual path and acceleration.
+          desiredSpeed = Math.max(
+            0,
+            Math.min(
+              85,
+              playerSpeed -
+                Math.max(-20, Math.min(20, (signed - target) * 0.28)),
+            ),
+          );
+        }
         if (rules && record.enabled && record.leader) {
           let ahead: RecordState | null = record.leader;
           while (ahead?.wrecked) ahead = ahead.leader;
@@ -706,10 +820,10 @@ export function createTraffic(
             const followingSpeed = ahead.driveSpeed + (gap - safeGap) * 0.6;
             record.driveSpeed = Math.max(
               0,
-              Math.min(record.authored.speed, followingSpeed),
+              Math.min(desiredSpeed, followingSpeed),
             );
-          } else record.driveSpeed = record.authored.speed;
-        } else record.driveSpeed = record.authored.speed;
+          } else record.driveSpeed = desiredSpeed;
+        } else record.driveSpeed = desiredSpeed;
         if (record.obstacle) {
           const canHit =
             record.obstacleLate && record.slot && record.obstacle.slot;
@@ -804,11 +918,17 @@ export function createTraffic(
       const desiredZ =
         -Math.cos(nextHeading) * record.driveSpeed +
         Math.max(-3, Math.min(3, (pose.z - state.position.z) * 0.7));
-      // Soft speed hold, capped at 5 m/s²; a hit wins over the controller.
+      // Soft speed hold; a hit still wins over the controller.
       force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
       force.z = (desiredZ - state.velocity.z) * BODY_MASS * 2;
       const magnitude = Math.hypot(force.x, force.z);
-      const accelerationCap = record.obstacle ? WRECK_BRAKE : 5;
+      // Rivals can close after boost without a position warp; ordinary
+      // traffic keeps the calmer five-metre-per-second-squared controller.
+      const accelerationCap = record.obstacle
+        ? WRECK_BRAKE
+        : state.rival
+          ? 20
+          : 5;
       if (magnitude > BODY_MASS * accelerationCap) {
         const scale = (BODY_MASS * accelerationCap) / magnitude;
         force.x *= scale;
@@ -1074,6 +1194,7 @@ export function createTraffic(
     /** Reused array and records; safe to iterate after physics without allocation. */
     states: visualStates as readonly TrafficCarState[],
     visualStates: visualStates as readonly TrafficCarState[],
+    hasRivals,
     recordCount: authored.length,
     get activeCount() {
       return activeCount;
@@ -1110,7 +1231,7 @@ export function createTrafficVisual(
         state.rotation,
         state.id,
         state.crush,
-        state.rival ? 0 : undefined,
+        state.rival ? 0 : traffic.hasRivals ? (state.id % 7) + 1 : undefined,
       );
     cars.end();
   }

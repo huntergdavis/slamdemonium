@@ -38,6 +38,7 @@ import { ScriptController } from './input/script';
 import type { ActionCounts } from './input/types';
 import { mountOptionsPanel } from './ui/optionsPanel';
 import { mountHud } from './ui/hud';
+import { createRivalGuidance } from './ui/rivalGuidance';
 import { mountPauseMenu } from './ui/pauseMenu';
 import { mountControllerSupport } from './ui/controllerSupport';
 import { LatencyProbeView } from './input/latencyProbe';
@@ -287,6 +288,9 @@ async function boot(): Promise<void> {
     ? createTrafficVisual(view.scene, traffic)
     : undefined;
   if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
+  const rivalGuidance =
+    mapName === 'takedown' ? createRivalGuidance(host!) : undefined;
+  if (rivalGuidance) resources.push(rivalGuidance);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
   // cheap far-field instance elsewhere; the record format is shared with a
@@ -515,7 +519,11 @@ async function boot(): Promise<void> {
           playerDamage?.wrecked ? wreckInput : sampled,
           source,
         );
-        traffic?.preStep(dt, vehicle.telemetry.position);
+        traffic?.preStep(
+          dt,
+          vehicle.telemetry.position,
+          vehicle.telemetry.speed,
+        );
       },
       stepPhysics(dt) {
         const engineStarted = performance.now();
@@ -653,6 +661,12 @@ async function boot(): Promise<void> {
             inspectionCamera.target.z,
           );
         }
+        if (rivalGuidance && traffic)
+          rivalGuidance.update(
+            view.camera,
+            traffic.states,
+            vehicle.telemetry.position,
+          );
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
         view.render(frameTime);
@@ -893,10 +907,15 @@ async function boot(): Promise<void> {
     miniMap: {
       landmarks: miniMapLandmarks,
       route: map.route,
-      halfSize: Math.max(
-        track.config.pavedRadius,
-        track.config.barrierInnerRadius,
-      ),
+      halfSize:
+        mapName === 'takedown'
+          ? 200
+          : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
+      followPlayer: mapName === 'takedown',
+      headingUp: mapName === 'takedown',
+      ...(mapName === 'takedown'
+        ? { readRivals: () => traffic?.states ?? [] }
+        : {}),
     },
   });
   const scripts = new ScriptController({

@@ -42,19 +42,81 @@ function fakeDocument() {
 function mount(
   landmarks: { x: number; z: number }[] = [],
   route?: { x: number; z: number }[],
+  rivals?: {
+    position: { x: number; z: number };
+    rival: boolean;
+    wrecked: boolean;
+  }[],
+  options: {
+    halfSize?: number;
+    followPlayer?: boolean;
+    headingUp?: boolean;
+  } = {},
 ) {
   const { calls, host } = fakeDocument();
   const map = new MiniMap({
     host: host as unknown as HTMLElement,
     landmarks: landmarks.map((l) => ({ ...l, label: 'X', color: '#fff' })),
-    halfSize: 100,
+    halfSize: options.halfSize ?? 100,
+    followPlayer: options.followPlayer ?? false,
+    headingUp: options.headingUp ?? false,
     ...(route ? { route } : {}),
+    ...(rivals ? { readRivals: () => rivals } : {}),
   });
   const canvas = host.children[0] as { children: { width: number }[] };
   return { map, calls, canvas: canvas.children[1]! };
 }
 
 describe('the mini-map axes', () => {
+  it('scrolls a zoomed road under a fixed heading-up arrow while rivals hold a gap', () => {
+    const rivals = [{ position: { x: 0, z: 40 }, rival: true, wrecked: false }];
+    const route = [
+      { x: 0, z: 0 },
+      { x: 0, z: 100 },
+      { x: 50, z: 100 },
+    ];
+    const { map, calls } = mount([], route, rivals, {
+      halfSize: 200,
+      followPlayer: true,
+      headingUp: true,
+    });
+    const telemetry = new VehicleTelemetry();
+    Object.assign(telemetry.rotation, { x: 0, y: 1, z: 0, w: 0 });
+    const draw = () => {
+      calls.length = 0;
+      map.update(telemetry);
+      const rival = calls.find((call) => call.op === 'arc')!;
+      const bend = calls.find(
+        (call) => call.op === 'lineTo' && Math.abs(call.x - 70) < 0.01,
+      )!;
+      const arrow = calls.filter((call) => call.op === 'moveTo').at(-1)!;
+      return { rival, bend, arrow };
+    };
+    const before = draw();
+    expect(before.rival.y).toBeCloseTo(74, 3);
+    expect(before.arrow.y).toBeLessThan(90);
+    telemetry.position.z = 20;
+    rivals[0]!.position.z = 60; // Rubber-banded rival holds its gap.
+    const after = draw();
+    expect(after.rival.y).toBeCloseTo(before.rival.y, 3);
+    expect(after.bend.y).toBeCloseTo(before.bend.y + 8, 3);
+    expect(after.arrow.y).toBeCloseTo(before.arrow.y, 3);
+  });
+
+  it('moves rival dots across a fixed course overview as cars advance', () => {
+    const rivals = [{ position: { x: 0, z: 20 }, rival: true, wrecked: false }];
+    const { map, calls } = mount([], undefined, rivals);
+    const telemetry = new VehicleTelemetry();
+    map.update(telemetry);
+    const before = calls.find((call) => call.op === 'arc')!;
+    calls.length = 0;
+    telemetry.position.z = 20;
+    rivals[0]!.position.z = 40;
+    map.update(telemetry);
+    const after = calls.find((call) => call.op === 'arc')!;
+    expect(after.y).toBeCloseTo(before.y - 16, 3);
+  });
+
   // The world is y-up, right-handed, north is +z: a driver facing north has
   // +x on the LEFT. North up on the map therefore puts -x on the right. The
   // map once drew +x on the right and was mirrored for two days of builds.

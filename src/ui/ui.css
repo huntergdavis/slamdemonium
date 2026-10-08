@@ -773,6 +773,35 @@
   width: 180px;
   height: 180px;
 }
+.sl-rival-guidance {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sl-rival-marker,
+.sl-rival-pointer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: #fff;
+  background: #b61f2c;
+  border: 2px solid #fff;
+  border-radius: 5px;
+  padding: 4px 7px;
+  font: 900 13px/1 sans-serif;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px #561019;
+  box-shadow: 0 2px 8px #000b;
+  white-space: nowrap;
+}
+.sl-rival-marker {
+  margin: -36px 0 0 -37px;
+}
+.sl-rival-pointer {
+  margin: -14px 0 0 -37px;
+}
 .sl-hud__score [data-reading='scoreTotal'] {
   display: block;
   font-size: 1.35rem;
