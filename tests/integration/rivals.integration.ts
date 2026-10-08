@@ -6,6 +6,8 @@ import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createTraffic } from '../../src/world/traffic';
 import { createTakedownMap } from '../../src/world/takedownCourse';
+import { createImpactSeverity } from '../../src/core/impactSeverity';
+import { poseAt } from '../../src/world/roadGenerator';
 
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
@@ -78,6 +80,43 @@ it('returns an unseen rival near a boosted player without changing its encounter
     ).toBeLessThan(230);
     expect(car.speed).toBeGreaterThan(60);
     expect(car.bodyId).toBe(-1);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 60_000);
+
+it('keeps a visible wreck, then rejoins offscreen with a fresh encounter id', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const map = createTakedownMap();
+  const road = map.path!;
+  const atCar = poseAt(road, 140);
+  const near = { x: atCar.x, y: 1, z: atCar.z };
+  const traffic = createTraffic(world, bodies, road, [
+    { station: 140, laneSide: -1, speed: 35, rival: true },
+  ]);
+  try {
+    traffic.preStep(1 / 120, near);
+    world.step(1 / 120);
+    traffic.postStep();
+    const car = traffic.states[0]!;
+    expect(car.bodyId).toBeGreaterThan(0);
+    const impact = createImpactSeverity();
+    impact.severity = 1;
+    traffic.onPlayerContact(car.bodyId, impact);
+    expect(car.wrecked).toBe(true);
+    for (let second = 0; second < 9; second++) traffic.preStep(1, near);
+    expect(car.wrecked).toBe(true);
+    expect(car.id).toBe(1);
+    const far = poseAt(road, 1100);
+    traffic.preStep(1 / 120, { x: far.x, y: 1, z: far.z });
+    expect(car.wrecked).toBe(false);
+    expect(car.id).toBe(2);
+    expect(
+      car.crush.front + car.crush.rear + car.crush.left + car.crush.right,
+    ).toBe(0);
   } finally {
     traffic.dispose();
     bodies.dispose();
