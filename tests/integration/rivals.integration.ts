@@ -5,6 +5,7 @@ import { sampleRoad } from '../../src/world/roadGenerator';
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createTraffic } from '../../src/world/traffic';
+import { createTakedownMap } from '../../src/world/takedownCourse';
 
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
@@ -54,4 +55,32 @@ it('lets a rival contest the line without changing an ordinary car', async () =>
   expect(rival.nearest).toBeLessThan(ordinary.nearest - 0.5);
   expect(rival.speed).toBeGreaterThan(25);
   expect(ordinary.speed).toBeGreaterThan(25);
+}, 60_000);
+
+it('returns an unseen rival near a boosted player without changing its encounter', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const map = createTakedownMap();
+  const player = { x: map.spawn!.x, y: 1, z: map.spawn!.z };
+  const traffic = createTraffic(world, bodies, map.path!, [
+    { station: 620, laneSide: -1, speed: 35, rival: true },
+  ]);
+  try {
+    traffic.preStep(1 / 60, player, 60);
+    const car = traffic.states[0]!;
+    expect(car).toBeDefined();
+    expect(car.id).toBe(1);
+    expect(
+      Math.hypot(car.position.x - player.x, car.position.z - player.z),
+    ).toBeGreaterThan(150);
+    expect(
+      Math.hypot(car.position.x - player.x, car.position.z - player.z),
+    ).toBeLessThan(230);
+    expect(car.speed).toBeGreaterThan(60);
+    expect(car.bodyId).toBe(-1);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
 }, 60_000);

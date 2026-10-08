@@ -356,7 +356,7 @@ export function createCarModelInstances(
       flatShading: true,
     }),
     cabin: new MeshStandardMaterial({
-      color: 0x344656,
+      color: 0xffffff,
       roughness: 0.42,
       flatShading: true,
     }),
@@ -492,6 +492,11 @@ export function createCarModelInstances(
             : 1;
         if (mesh.material === materials.body) {
           instanceTint.copy(color).multiplyScalar(scuff);
+          mesh.setColorAt(index, instanceTint);
+        } else if (mesh.material === materials.cabin) {
+          // Paint zero is reserved for takedown rivals. A yellow roof/cab
+          // against their red body stays distinct from ordinary traffic.
+          instanceTint.setHex(paintIndex === 0 ? 0xffdc47 : 0x344656);
           mesh.setColorAt(index, instanceTint);
         } else if (SCUFF_TINT_STRENGTH > 0) {
           instanceTint.setRGB(scuff, scuff, scuff);

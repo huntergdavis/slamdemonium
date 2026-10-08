@@ -12,6 +12,13 @@ export interface MiniMapOptions {
   readonly landmarks: readonly MiniMapLandmark[];
   /** Half-width of the square world view, in metres. */
   readonly halfSize: number;
+  /** Keep the player centred on the long takedown course. */
+  readonly followPlayer?: boolean;
+  readonly readRivals?: () => readonly {
+    position: { x: number; z: number };
+    wrecked: boolean;
+    rival: boolean;
+  }[];
   /** A route to draw as a closed outline: the road on a map that is one. */
   readonly route?:
     readonly { readonly x: number; readonly z: number }[] | undefined;
@@ -27,6 +34,8 @@ export class MiniMap {
   private readonly route:
     readonly { readonly x: number; readonly z: number }[] | undefined;
   private readonly halfSize: number;
+  private readonly followPlayer: boolean;
+  private readonly readRivals: MiniMapOptions['readRivals'];
   private disposed = false;
 
   constructor(options: MiniMapOptions) {
@@ -51,6 +60,8 @@ export class MiniMap {
     if (!Number.isFinite(options.halfSize) || options.halfSize <= 0)
       throw new RangeError('Mini-map half-size must be positive.');
     this.halfSize = options.halfSize;
+    this.followPlayer = options.followPlayer ?? false;
+    this.readRivals = options.readRivals;
   }
 
   update(telemetry: HudTelemetry | undefined): void {
@@ -67,8 +78,10 @@ export class MiniMap {
     // marker left, in every direction of travel, for two days of builds
     // (2026-09-27 to 28). The forward vector from the rotation is correct
     // and so is the triangle's perpendicular; only this axis was wrong.
-    const mapX = (worldX: number) => center - worldX * scale;
-    const mapY = (worldZ: number) => center - worldZ * scale;
+    const originX = this.followPlayer ? (telemetry?.position.x ?? 0) : 0;
+    const originZ = this.followPlayer ? (telemetry?.position.z ?? 0) : 0;
+    const mapX = (worldX: number) => center - (worldX - originX) * scale;
+    const mapY = (worldZ: number) => center - (worldZ - originZ) * scale;
     ctx.clearRect(0, 0, size, size);
     ctx.fillStyle = '#07111c';
     ctx.fillRect(0, 0, size, size);
@@ -82,6 +95,10 @@ export class MiniMap {
     ctx.lineTo(size - margin, center);
     ctx.stroke();
 
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(margin, margin, size - margin * 2, size - margin * 2);
+    ctx.clip();
     if (this.route && this.route.length > 1) {
       ctx.strokeStyle = 'rgba(190, 210, 220, 0.7)';
       ctx.lineWidth = 2;
@@ -111,7 +128,25 @@ export class MiniMap {
       ctx.fillText(landmark.label, x, y - 6);
     }
 
-    if (!telemetry) return;
+    for (const rival of this.readRivals?.() ?? []) {
+      if (!rival.rival || rival.wrecked) continue;
+      const x = mapX(rival.position.x);
+      const y = mapY(rival.position.z);
+      if (x < margin || x > size - margin || y < margin || y > size - margin)
+        continue;
+      ctx.fillStyle = '#ff3e48';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    if (!telemetry) {
+      ctx.restore();
+      return;
+    }
     const playerX = mapX(telemetry.position.x);
     const playerY = mapY(telemetry.position.z);
     const q = telemetry.rotation;
@@ -137,6 +172,7 @@ export class MiniMap {
     );
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
   }
 
   dispose(): void {

@@ -76,6 +76,7 @@ interface RecordState {
   slot: Slot | null;
   enabled: boolean;
   driveSpeed: number;
+  wreckAge: number;
   attackOffset: number;
   leader: RecordState | null;
   obstacle: RecordState | null;
@@ -108,6 +109,9 @@ const IDENTITY: Quat = { x: 0, y: 0, z: 0, w: 1 };
 const ENTER = 120;
 const EXIT = 180;
 const VISUAL_RADIUS = 400;
+const RIVAL_NEAR = 65;
+const RIVAL_FAR = 260;
+const RIVAL_REJOIN_SECONDS = 8;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
 const WRECK_LOOKAHEAD = 100;
@@ -236,6 +240,7 @@ export function createTraffic(
     slot: null,
     enabled: true,
     driveSpeed: record.speed,
+    wreckAge: 0,
     attackOffset: 0,
     leader: null,
     obstacle: null,
@@ -262,6 +267,9 @@ export function createTraffic(
   let physicalCount = 0;
   let farPoseBucket = 0;
   let stepDt = 0;
+  let nextEncounterId = records.length + 1;
+  let playerStation = 0;
+  let stationRefresh = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -608,8 +616,55 @@ export function createTraffic(
     if (victim) demote(victim);
   }
 
-  function preStep(dt: number, player: V3): void {
+  function preStep(dt: number, player: V3, playerSpeed = 0): void {
     stepDt = dt;
+    stationRefresh += dt;
+    if (stationRefresh >= 0.2) {
+      stationRefresh = 0;
+      let best = Infinity;
+      for (const sample of path.samples) {
+        const distance = horizontalDistanceSquared(player, sample.x, sample.z);
+        if (distance < best) {
+          best = distance;
+          playerStation = sample.s;
+        }
+      }
+    }
+    for (const record of authored) {
+      if (!record.state.rival || !record.wrecked) continue;
+      record.wreckAge += dt;
+      if (
+        record.wreckAge < RIVAL_REJOIN_SECONDS ||
+        horizontalDistanceSquared(
+          player,
+          record.state.position.x,
+          record.state.position.z,
+        ) <
+          (VISUAL_RADIUS + 40) ** 2
+      )
+        continue;
+      demote(record);
+      const index = wreckRecords.indexOf(record);
+      if (index >= 0) wreckRecords.splice(index, 1);
+      record.wrecked = false;
+      record.state.wrecked = false;
+      record.state.id = nextEncounterId++;
+      record.state.crush.front =
+        record.state.crush.rear =
+        record.state.crush.left =
+        record.state.crush.right =
+          0;
+      record.station =
+        (playerStation - 170 - (record.state.id % 4) * 28 + path.length) %
+        path.length;
+      record.driveSpeed = record.authored.speed;
+      record.wreckAge = 0;
+      record.attackOffset = 0;
+      record.obstacle = null;
+      record.obstacleLate = false;
+      record.shapeDirty = true;
+      updateVisualPose(record);
+    }
     visualStates.length = 0;
     nearbyWrecks.length = 0;
     for (const record of wreckRecords) {
@@ -679,6 +734,20 @@ export function createTraffic(
     for (let i = 0; i < authored.length; i++) {
       const record = authored[i]!;
       const state = record.state;
+      if (
+        state.rival &&
+        !record.wrecked &&
+        !record.slot &&
+        horizontalDistanceSquared(player, state.position.x, state.position.z) >
+          (VISUAL_RADIUS + 40) ** 2
+      ) {
+        // Once fully outside the rendered world, return behind the chase
+        // camera. This preserves a continuous nearby contest without a car
+        // appearing suddenly in the forward road scene.
+        record.station =
+          (playerStation - 170 - (i % 4) * 28 + path.length) % path.length;
+        updateVisualPose(record);
+      }
       if (state.rival && !record.wrecked) {
         const target = rivalLineTarget(state.position, state.forward, player);
         record.attackOffset = approachRivalLine(
@@ -689,6 +758,20 @@ export function createTraffic(
       }
       if (!record.wrecked) {
         const direction = state.direction;
+        let desiredSpeed = record.authored.speed;
+        if (state.rival) {
+          const ahead =
+            (record.station - playerStation + path.length) % path.length;
+          const behind =
+            (playerStation - record.station + path.length) % path.length;
+          const signed = ahead <= behind ? ahead : -behind;
+          desiredSpeed =
+            signed < -RIVAL_NEAR
+              ? Math.min(85, Math.max(desiredSpeed, playerSpeed + 8))
+              : signed > RIVAL_FAR
+                ? Math.max(17, Math.min(desiredSpeed, playerSpeed - 10))
+                : Math.min(49, Math.max(desiredSpeed, playerSpeed - 1));
+        }
         if (rules && record.enabled && record.leader) {
           let ahead: RecordState | null = record.leader;
           while (ahead?.wrecked) ahead = ahead.leader;
@@ -706,10 +789,10 @@ export function createTraffic(
             const followingSpeed = ahead.driveSpeed + (gap - safeGap) * 0.6;
             record.driveSpeed = Math.max(
               0,
-              Math.min(record.authored.speed, followingSpeed),
+              Math.min(desiredSpeed, followingSpeed),
             );
-          } else record.driveSpeed = record.authored.speed;
-        } else record.driveSpeed = record.authored.speed;
+          } else record.driveSpeed = desiredSpeed;
+        } else record.driveSpeed = desiredSpeed;
         if (record.obstacle) {
           const canHit =
             record.obstacleLate && record.slot && record.obstacle.slot;
@@ -1110,7 +1193,7 @@ export function createTrafficVisual(
         state.rotation,
         state.id,
         state.crush,
-        state.rival ? 0 : undefined,
+        state.rival ? 0 : (state.id % 7) + 1,
       );
     cars.end();
   }
