@@ -108,7 +108,9 @@ export function createCarVisual(scene: Scene) {
     bx: number,
     bz: number,
   ) {
-    const strip = mesh(root, name, unitPlane, noseMaterial);
+    // Each strip has its own vertices so the white arrow follows a buckled hood.
+    const stripGeometry = geometry(new PlaneGeometry(1, 1, 1, 8));
+    const strip = mesh(root, name, stripGeometry, noseMaterial);
     strip.position.set(
       ((ax + bx) / 2) * WIDTH_SCALE,
       G.height / 2 + 0.003,
@@ -120,7 +122,21 @@ export function createCarVisual(scene: Scene) {
       Math.hypot((bx - ax) * WIDTH_SCALE, (bz - az) * LENGTH_SCALE),
       1,
     );
+    strip.updateMatrix();
+    const positions = stripGeometry.getAttribute('position');
+    chevronStrips.push({
+      strip,
+      positions,
+      pristine: new Float32Array(positions.array),
+      inverse: strip.matrix.clone().invert(),
+    });
   }
+  const chevronStrips: {
+    strip: Mesh;
+    positions: ReturnType<BufferGeometry['getAttribute']>;
+    pristine: Float32Array;
+    inverse: ReturnType<Mesh['matrix']['clone']>;
+  }[] = [];
   topStrip('car.chevron.left', -0.62, -0.85, 0, -1.72);
   topStrip('car.chevron.right', 0, -1.72, 0.62, -0.85);
   const nose = mesh(root, 'car.nose', unitPlane, noseMaterial);
@@ -140,6 +156,35 @@ export function createCarVisual(scene: Scene) {
     const t = Math.min(1, Math.max(0, (coordinate - 0.06) / 0.38));
     return t * t * (3 - 2 * t);
   };
+  function deformedBodyPoint(
+    x: number,
+    y: number,
+    z: number,
+    crush: Readonly<CarCrushState>,
+  ): [number, number, number] {
+    const nx = x / G.width;
+    const ny = y / G.height;
+    const nz = z / G.length;
+    const front = crush.front * band(-nz);
+    const rear = crush.rear * band(nz);
+    const left = crush.left * band(-nx);
+    const right = crush.right * band(nx);
+    const fold = 0.82 + 0.18 * Math.sin(nx * 19 + nz * 13 + ny * 7);
+    const roof = band(ny);
+    // The front edge folds down while the metal just behind it buckles upward.
+    // This changes the chase-view outline instead of merely shortening the hood.
+    const crest =
+      crush.front *
+      Math.max(0, 1 - Math.abs(nz + 0.24) / 0.17) *
+      (0.85 + 0.15 * Math.cos(nx * 13));
+    return [
+      x + (left - right) * 0.42 * fold,
+      y -
+        roof * (0.48 * (front + rear) + 0.3 * (left + right)) +
+        roof * 0.5 * crest,
+      z + (front - rear) * 0.72 * fold,
+    ];
+  }
   function setCrush(next: Readonly<CarCrushState>): void {
     if (
       visibleCrush.front === next.front &&
@@ -150,25 +195,33 @@ export function createCarVisual(scene: Scene) {
       return;
     Object.assign(visibleCrush, next);
     for (let i = 0; i < bodyPositions.count; i++) {
-      const x = pristineBody[i * 3]!;
-      const y = pristineBody[i * 3 + 1]!;
-      const z = pristineBody[i * 3 + 2]!;
-      const front = next.front * band(-z);
-      const rear = next.rear * band(z);
-      const left = next.left * band(-x);
-      const right = next.right * band(x);
-      const fold = 0.82 + 0.18 * Math.sin(x * 19 + z * 13 + y * 7);
-      const roof = band(y);
-      bodyPositions.setXYZ(
-        i,
-        x + ((left - right) * 0.42 * fold) / G.width,
-        y - (roof * (0.34 * (front + rear) + 0.26 * (left + right))) / G.height,
-        z + ((front - rear) * 0.72 * fold) / G.length,
+      const [x, y, z] = deformedBodyPoint(
+        pristineBody[i * 3]! * G.width,
+        pristineBody[i * 3 + 1]! * G.height,
+        pristineBody[i * 3 + 2]! * G.length,
+        next,
       );
+      bodyPositions.setXYZ(i, x / G.width, y / G.height, z / G.length);
     }
     bodyPositions.needsUpdate = true;
     bodyGeometry.computeVertexNormals();
-    nose.position.z = -G.length / 2 - 0.003 + next.front * 0.55;
+    for (const { strip, positions, pristine, inverse } of chevronStrips) {
+      for (let i = 0; i < positions.count; i++) {
+        const point = new Vector3(
+          pristine[i * 3]!,
+          pristine[i * 3 + 1]!,
+          pristine[i * 3 + 2]!,
+        ).applyMatrix4(strip.matrix);
+        const [x, y, z] = deformedBodyPoint(point.x, point.y, point.z, next);
+        point.set(x, y, z).applyMatrix4(inverse);
+        positions.setXYZ(i, point.x, point.y, point.z);
+      }
+      positions.needsUpdate = true;
+      strip.geometry.computeVertexNormals();
+    }
+    nose.position.z = -G.length / 2 - 0.003 + next.front * 0.72;
+    nose.position.y = 0.125 * HEIGHT_SCALE - next.front * 0.22;
+    nose.scale.y = (0.75 - next.front * 0.18) * HEIGHT_SCALE;
     tail.position.z = G.length / 2 + 0.003 - next.rear * 0.55;
   }
 

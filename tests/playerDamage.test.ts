@@ -75,27 +75,40 @@ it('recovers to the nearest road facing increasing station', () => {
   expect(road.heading).toBeCloseTo(Math.PI);
 });
 
-it('moves the player nose and roof vertices instead of only changing a label', () => {
+it('folds the player hood and its arrow into a visible crease', () => {
   const visual = createCarVisual(new Scene());
   try {
     const body = visual.root.getObjectByName('car.body') as Mesh<BoxGeometry>;
+    const arrow = visual.root.getObjectByName('car.chevron.left') as Mesh;
+    const arrowPositions = arrow.geometry.getAttribute('position');
+    const pristineArrow = Array.from({ length: arrowPositions.count }, (_, i) =>
+      arrowPositions.getY(i),
+    );
     body.geometry.computeBoundingBox();
     const pristineNose = body.geometry.boundingBox!.min.z;
     const positions = body.geometry.getAttribute('position');
-    let pristineFrontRoof = 0;
-    for (let index = 0; index < positions.count; index++)
-      if (positions.getZ(index) < -0.49)
-        pristineFrontRoof = Math.max(pristineFrontRoof, positions.getY(index));
     visual.setCrush({ front: 0.7, rear: 0, left: 0, right: 0 });
     body.geometry.computeBoundingBox();
     expect(body.geometry.boundingBox!.min.z).toBeGreaterThan(
       pristineNose + 0.05,
     );
-    let damagedFrontRoof = -Infinity;
-    for (let index = 0; index < positions.count; index++)
-      if (positions.getZ(index) < -0.3)
-        damagedFrontRoof = Math.max(damagedFrontRoof, positions.getY(index));
-    expect(damagedFrontRoof).toBeLessThan(pristineFrontRoof);
+    const top = Array.from({ length: positions.count }, (_, i) => ({
+      y: positions.getY(i),
+      z: positions.getZ(i),
+    })).filter(({ y }) => y > 0.15);
+    const noseRoof = Math.min(
+      ...top.filter(({ z }) => z < -0.2).map(({ y }) => y),
+    );
+    const crease = Math.max(
+      ...top.filter(({ z }) => z > -0.25 && z < -0.1).map(({ y }) => y),
+    );
+    expect(noseRoof).toBeLessThan(0.3);
+    expect(crease).toBeGreaterThan(0.53);
+    expect(
+      Array.from({ length: arrowPositions.count }, (_, i) =>
+        Math.abs(arrowPositions.getY(i) - pristineArrow[i]!),
+      ).some((delta) => delta > 0.05),
+    ).toBe(true);
   } finally {
     visual.dispose();
   }
