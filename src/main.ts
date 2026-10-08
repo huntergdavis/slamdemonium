@@ -907,13 +907,12 @@ async function boot(): Promise<void> {
     miniMap: {
       landmarks: miniMapLandmarks,
       route: map.route,
-      // The whole takedown course stays fixed while player and rival icons
-      // move around it. A player-centred crop made rubber-banded rivals look
-      // stationary even though their world positions updated every step.
       halfSize:
         mapName === 'takedown'
-          ? 1400
+          ? 200
           : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
+      followPlayer: mapName === 'takedown',
+      headingUp: mapName === 'takedown',
       ...(mapName === 'takedown'
         ? { readRivals: () => traffic?.states ?? [] }
         : {}),

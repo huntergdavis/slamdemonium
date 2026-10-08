@@ -12,8 +12,10 @@ export interface MiniMapOptions {
   readonly landmarks: readonly MiniMapLandmark[];
   /** Half-width of the square world view, in metres. */
   readonly halfSize: number;
-  /** Keep the player centred on the long takedown course. */
+  /** Keep the player centred on a local view of the course. */
   readonly followPlayer?: boolean;
+  /** Rotate the local view so the car always points upward. */
+  readonly headingUp?: boolean;
   readonly readRivals?: () => readonly {
     position: { x: number; z: number };
     wrecked: boolean;
@@ -35,6 +37,7 @@ export class MiniMap {
     readonly { readonly x: number; readonly z: number }[] | undefined;
   private readonly halfSize: number;
   private readonly followPlayer: boolean;
+  private readonly headingUp: boolean;
   private readonly readRivals: MiniMapOptions['readRivals'];
   private disposed = false;
 
@@ -61,6 +64,7 @@ export class MiniMap {
       throw new RangeError('Mini-map half-size must be positive.');
     this.halfSize = options.halfSize;
     this.followPlayer = options.followPlayer ?? false;
+    this.headingUp = options.headingUp ?? false;
     this.readRivals = options.readRivals;
   }
 
@@ -80,8 +84,23 @@ export class MiniMap {
     // and so is the triangle's perpendicular; only this axis was wrong.
     const originX = this.followPlayer ? (telemetry?.position.x ?? 0) : 0;
     const originZ = this.followPlayer ? (telemetry?.position.z ?? 0) : 0;
-    const mapX = (worldX: number) => center - (worldX - originX) * scale;
-    const mapY = (worldZ: number) => center - (worldZ - originZ) * scale;
+    const q = telemetry?.rotation;
+    const forwardX = q ? -2 * (q.x * q.z + q.y * q.w) : 0;
+    const forwardZ = q ? -(1 - 2 * (q.x * q.x + q.y * q.y)) : 1;
+    const mapX = (worldX: number, worldZ: number) => {
+      const dx = worldX - originX;
+      const dz = worldZ - originZ;
+      return this.headingUp
+        ? center + (dz * forwardX - dx * forwardZ) * scale
+        : center - dx * scale;
+    };
+    const mapY = (worldX: number, worldZ: number) => {
+      const dx = worldX - originX;
+      const dz = worldZ - originZ;
+      return this.headingUp
+        ? center - (dx * forwardX + dz * forwardZ) * scale
+        : center - dz * scale;
+    };
     ctx.clearRect(0, 0, size, size);
     ctx.fillStyle = '#07111c';
     ctx.fillRect(0, 0, size, size);
@@ -102,19 +121,21 @@ export class MiniMap {
     if (this.route && this.route.length > 1) {
       ctx.strokeStyle = 'rgba(190, 210, 220, 0.7)';
       ctx.lineWidth = 2;
+      if (this.headingUp) ctx.setLineDash([8, 8]);
       ctx.beginPath();
       this.route.forEach((p, i) => {
-        const x = mapX(p.x);
-        const y = mapY(p.z);
+        const x = mapX(p.x, p.z);
+        const y = mapY(p.x, p.z);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
       ctx.closePath();
       ctx.stroke();
+      if (this.headingUp) ctx.setLineDash([]);
     }
     for (const landmark of this.landmarks) {
-      const x = mapX(landmark.x);
-      const y = mapY(landmark.z);
+      const x = mapX(landmark.x, landmark.z);
+      const y = mapY(landmark.x, landmark.z);
       if (x < margin || x > size - margin || y < margin || y > size - margin)
         continue;
       ctx.fillStyle = landmark.color;
@@ -130,15 +151,15 @@ export class MiniMap {
 
     for (const rival of this.readRivals?.() ?? []) {
       if (!rival.rival || rival.wrecked) continue;
-      const x = mapX(rival.position.x);
-      const y = mapY(rival.position.z);
+      const x = mapX(rival.position.x, rival.position.z);
+      const y = mapY(rival.position.x, rival.position.z);
       if (x < margin || x > size - margin || y < margin || y > size - margin)
         continue;
       ctx.fillStyle = '#ff3e48';
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = this.headingUp ? '#ffe082' : '#ffffff';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.arc(x, y, this.headingUp ? 4 : 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     }
@@ -147,16 +168,12 @@ export class MiniMap {
       ctx.restore();
       return;
     }
-    const playerX = mapX(telemetry.position.x);
-    const playerY = mapY(telemetry.position.z);
-    const q = telemetry.rotation;
-    // The car's forward, the world's -z axis rotated by its orientation.
-    const forwardX = -2 * (q.x * q.z + q.y * q.w);
-    const forwardZ = -(1 - 2 * (q.x * q.x + q.y * q.y));
+    const playerX = mapX(telemetry.position.x, telemetry.position.z);
+    const playerY = mapY(telemetry.position.x, telemetry.position.z);
     // The same direction in canvas units: through the same axis mapping as
     // positions, so the arrow and the motion cannot disagree.
-    const dirX = -forwardX;
-    const dirY = -forwardZ;
+    const dirX = this.headingUp ? 0 : -forwardX;
+    const dirY = this.headingUp ? -1 : -forwardZ;
     const length = 9;
     const width = 5;
     ctx.fillStyle = '#ffffff';
