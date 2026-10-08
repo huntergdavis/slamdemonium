@@ -256,6 +256,7 @@ export function createTraffic(
     slamSides: 0,
     scrapeSides: 0,
   }));
+  const hasRivals = records.some((record) => record.rival === true);
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
   const slots: Slot[] = [];
@@ -269,7 +270,7 @@ export function createTraffic(
   let stepDt = 0;
   let nextEncounterId = records.length + 1;
   let playerStation = 0;
-  let stationRefresh = 0;
+  let stationRefresh = 0.2;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -618,8 +619,8 @@ export function createTraffic(
 
   function preStep(dt: number, player: V3, playerSpeed = 0): void {
     stepDt = dt;
-    stationRefresh += dt;
-    if (stationRefresh >= 0.2) {
+    if (hasRivals) stationRefresh += dt;
+    if (hasRivals && stationRefresh >= 0.2) {
       stationRefresh = 0;
       let best = Infinity;
       for (const sample of path.samples) {
@@ -630,41 +631,42 @@ export function createTraffic(
         }
       }
     }
-    for (const record of authored) {
-      if (!record.state.rival || !record.wrecked) continue;
-      record.wreckAge += dt;
-      if (
-        record.wreckAge < RIVAL_REJOIN_SECONDS ||
-        horizontalDistanceSquared(
-          player,
-          record.state.position.x,
-          record.state.position.z,
-        ) <
-          (VISUAL_RADIUS + 40) ** 2
-      )
-        continue;
-      demote(record);
-      const index = wreckRecords.indexOf(record);
-      if (index >= 0) wreckRecords.splice(index, 1);
-      record.wrecked = false;
-      record.state.wrecked = false;
-      record.state.id = nextEncounterId++;
-      record.state.crush.front =
-        record.state.crush.rear =
-        record.state.crush.left =
-        record.state.crush.right =
-          0;
-      record.station =
-        (playerStation - 170 - (record.state.id % 4) * 28 + path.length) %
-        path.length;
-      record.driveSpeed = record.authored.speed;
-      record.wreckAge = 0;
-      record.attackOffset = 0;
-      record.obstacle = null;
-      record.obstacleLate = false;
-      record.shapeDirty = true;
-      updateVisualPose(record);
-    }
+    if (hasRivals)
+      for (const record of authored) {
+        if (!record.state.rival || !record.wrecked) continue;
+        record.wreckAge += dt;
+        if (
+          record.wreckAge < RIVAL_REJOIN_SECONDS ||
+          horizontalDistanceSquared(
+            player,
+            record.state.position.x,
+            record.state.position.z,
+          ) <
+            (VISUAL_RADIUS + 40) ** 2
+        )
+          continue;
+        demote(record);
+        const index = wreckRecords.indexOf(record);
+        if (index >= 0) wreckRecords.splice(index, 1);
+        record.wrecked = false;
+        record.state.wrecked = false;
+        record.state.id = nextEncounterId++;
+        record.state.crush.front =
+          record.state.crush.rear =
+          record.state.crush.left =
+          record.state.crush.right =
+            0;
+        record.station =
+          (playerStation - 170 - (record.state.id % 4) * 28 + path.length) %
+          path.length;
+        record.driveSpeed = record.authored.speed;
+        record.wreckAge = 0;
+        record.attackOffset = 0;
+        record.obstacle = null;
+        record.obstacleLate = false;
+        record.shapeDirty = true;
+        updateVisualPose(record);
+      }
     visualStates.length = 0;
     nearbyWrecks.length = 0;
     for (const record of wreckRecords) {
@@ -1157,6 +1159,7 @@ export function createTraffic(
     /** Reused array and records; safe to iterate after physics without allocation. */
     states: visualStates as readonly TrafficCarState[],
     visualStates: visualStates as readonly TrafficCarState[],
+    hasRivals,
     recordCount: authored.length,
     get activeCount() {
       return activeCount;
@@ -1193,7 +1196,7 @@ export function createTrafficVisual(
         state.rotation,
         state.id,
         state.crush,
-        state.rival ? 0 : (state.id % 7) + 1,
+        state.rival ? 0 : traffic.hasRivals ? (state.id % 7) + 1 : undefined,
       );
     cars.end();
   }

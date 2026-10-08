@@ -912,7 +912,9 @@ async function boot(): Promise<void> {
           ? 250
           : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
       followPlayer: mapName === 'takedown',
-      readRivals: () => traffic?.states ?? [],
+      ...(mapName === 'takedown'
+        ? { readRivals: () => traffic?.states ?? [] }
+        : {}),
     },
   });
   const scripts = new ScriptController({

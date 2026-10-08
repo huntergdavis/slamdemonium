@@ -10,7 +10,7 @@ export function createRivalGuidance(host: HTMLElement) {
   const markers = new Map<number, HTMLElement>();
   const pointer = host.ownerDocument.createElement('div');
   pointer.className = 'sl-rival-pointer';
-  pointer.textContent = '◆ RIVAL';
+  pointer.textContent = 'RIVAL';
   root.append(pointer);
   host.append(root);
   const projected = new Vector3();
@@ -53,9 +53,12 @@ export function createRivalGuidance(host: HTMLElement) {
       const dz = state.position.z - player.z;
       const distance = dx * dx + dz * dz;
       if (!inFrame && (!nearest || distance < nearest.distance)) {
+        const vx = (inFront ? x : width - x) - width * 0.5;
+        let vy = (inFront ? y : height - y) - height * 0.5;
+        if (Math.abs(vx) + Math.abs(vy) < 1) vy = height;
         nearest = {
-          x: inFront ? x : width - x,
-          y: inFront ? y : height - y,
+          x: vx,
+          y: vy,
           distance,
         };
       }
@@ -67,8 +70,20 @@ export function createRivalGuidance(host: HTMLElement) {
     }
     pointer.style.display = nearest ? '' : 'none';
     if (nearest) {
-      const x = Math.max(46, Math.min(width - 46, nearest.x));
-      const y = Math.max(42, Math.min(height - 42, nearest.y));
+      const scale = Math.min(
+        (width * 0.5 - 46) / Math.max(0.01, Math.abs(nearest.x)),
+        (height * 0.5 - 42) / Math.max(0.01, Math.abs(nearest.y)),
+      );
+      const x = width * 0.5 + nearest.x * scale;
+      const y = height * 0.5 + nearest.y * scale;
+      pointer.textContent =
+        Math.abs(nearest.x / width) > Math.abs(nearest.y / height)
+          ? nearest.x < 0
+            ? '◀ RIVAL'
+            : 'RIVAL ▶'
+          : nearest.y < 0
+            ? '▲ RIVAL'
+            : '▼ RIVAL';
       pointer.style.transform = `translate(${x}px, ${y}px)`;
     }
   }
