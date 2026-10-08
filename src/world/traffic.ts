@@ -1083,6 +1083,9 @@ export function createTraffic(
     postStep,
     onPlayerContact,
     onWorldContact,
+    stateForBody(bodyId: BodyId): TrafficCarState | undefined {
+      return slotByBodyId.get(bodyId)?.record?.state;
+    },
     velocityForBody,
     dispose() {
       for (const record of authored) demote(record);

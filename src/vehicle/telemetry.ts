@@ -78,6 +78,8 @@ export class VehicleTelemetry {
   brake01 = 0;
   handbrake01 = 0;
   boostMeter = 0;
+  /** Number of one-bar sections earned by takedowns, from one to four. */
+  boostSections = 1;
   driftMeter = 0;
   boostEnvelope = 0;
   charging = false;

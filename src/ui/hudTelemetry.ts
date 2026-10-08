@@ -21,6 +21,7 @@ export type HudTelemetry = Readonly<
     | 'brake01'
     | 'handbrake01'
     | 'boostMeter'
+    | 'boostSections'
     | 'driftMeter'
     | 'boostEnvelope'
     | 'charging'
