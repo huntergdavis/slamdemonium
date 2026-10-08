@@ -25,6 +25,7 @@ async function fixture(records: readonly TrafficCarRecord[]) {
   const bodies = createSurfacedBodies(world, createSurfaceRegistry());
   const path = sampleRoad([{ kind: 'straight', length: 400 }]);
   const traffic = createTraffic(world, bodies, path, records);
+  const player = { ...PLAYER };
   const carContacts = new Set<string>();
   world.onContact((a, b, _impulse, _point, normal, velocities) => {
     const carA = traffic.states.find((car) => car.bodyId === a);
@@ -36,13 +37,14 @@ async function fixture(records: readonly TrafficCarRecord[]) {
     traffic.onWorldContact(a, b, normal, velocities);
   });
   const step = () => {
-    traffic.preStep(DT, PLAYER);
+    traffic.preStep(DT, player);
     world.step(DT);
     traffic.postStep();
   };
   return {
     world,
     traffic,
+    player,
     carContacts,
     step,
     dispose() {
@@ -128,6 +130,131 @@ it('queues or collides through ten seeded five-wreck pileups without a ghost pas
     } finally {
       run.dispose();
     }
+  }
+}, 300_000);
+
+it('queues behind a thirteen-wreck pile even when the physical pool is full', async () => {
+  const farWrecks: TrafficCarRecord[] = [
+    ...Array.from({ length: 6 }, (_, i) => ({
+      station: 224 + 10 * i,
+      laneSide: -1 as const,
+      speed: 0,
+      modelKind: 'sedan' as const,
+    })),
+    ...Array.from({ length: 6 }, (_, i) => ({
+      station: 224 + 10 * i,
+      laneSide: 1 as const,
+      speed: 0,
+      modelKind: 'sedan' as const,
+    })),
+  ];
+  const run = await fixture([
+    { station: 180, laneSide: -1, speed: 0, modelKind: 'sedan' },
+    ...farWrecks,
+    { station: 40, laneSide: -1, speed: 45, modelKind: 'sedan' },
+  ]);
+  try {
+    run.player.z = -180;
+    run.traffic.preStep(DT, run.player);
+    const cars = [...run.traffic.states];
+    const target = cars[0]!;
+    const follower = cars.at(-1)!;
+    for (const wreck of cars.slice(0, 12)) {
+      expect(wreck.bodyId).toBeGreaterThan(0);
+      run.traffic.onPlayerContact(wreck.bodyId, HARD_HIT);
+      run.world.setLinearVelocity(wreck.bodyId, { x: 0, y: 0, z: 0 });
+    }
+    run.player.z = -390;
+    run.step();
+    expect(target.bodyId).toBe(-1);
+    const thirteenth = cars[12]!;
+    expect(thirteenth.bodyId).toBeGreaterThan(0);
+    run.traffic.onPlayerContact(thirteenth.bodyId, HARD_HIT);
+    run.world.setLinearVelocity(thirteenth.bodyId, { x: 0, y: 0, z: 0 });
+    run.player.z = -100;
+    run.step();
+    expect(cars.slice(0, 13).filter((car) => car.wrecked)).toHaveLength(13);
+    expect(cars.filter((car) => car.bodyId > 0)).toHaveLength(12);
+    expect(target.bodyId).toBe(-1);
+    let ghostPasses = 0;
+    let queued = false;
+    for (let frame = 0; frame < 12 * 120; frame++) {
+      run.step();
+      expect(cars.filter((car) => car.bodyId > 0).length).toBeLessThanOrEqual(
+        12,
+      );
+      const sameLane = Math.abs(follower.position.x - target.position.x) < 3.5;
+      if (!sameLane || follower.wrecked) continue;
+      if (follower.speed < 2 && follower.position.z > target.position.z)
+        queued = true;
+      if (
+        (follower.bodyId === -1 || target.bodyId === -1) &&
+        Math.abs(follower.position.z - target.position.z) < 7
+      )
+        ghostPasses++;
+      if (
+        follower.position.z < target.position.z - 7 &&
+        !run.carContacts.has(`${target.id}:${follower.id}`)
+      )
+        ghostPasses++;
+    }
+    expect(ghostPasses).toBe(0);
+    expect(
+      queued,
+      JSON.stringify({
+        followerZ: follower.position.z,
+        followerSpeed: follower.speed,
+        followerWrecked: follower.wrecked,
+        followerBodyId: follower.bodyId,
+        targetZ: target.position.z,
+        targetBodyId: target.bodyId,
+        contacted: run.carContacts.has(`${target.id}:${follower.id}`),
+      }),
+    ).toBe(true);
+  } finally {
+    run.dispose();
+  }
+}, 300_000);
+
+it('holds a follower before a wreck more than 120 m ahead', async () => {
+  const run = await fixture([
+    { station: 190, laneSide: -1, speed: 0, modelKind: 'sedan' },
+    { station: 110, laneSide: -1, speed: 40, modelKind: 'sedan' },
+  ]);
+  try {
+    run.player.z = -190;
+    run.traffic.preStep(DT, run.player);
+    const [wreck, follower] = run.traffic.states;
+    run.traffic.onPlayerContact(wreck!.bodyId, HARD_HIT);
+    run.world.setLinearVelocity(wreck!.bodyId, { x: 0, y: 0, z: 0 });
+    run.player.z = 40;
+    run.step();
+    expect(Math.abs(run.player.z - wreck!.position.z)).toBeGreaterThan(220);
+    expect(wreck!.bodyId).toBe(-1);
+    let ghostPasses = 0;
+    for (let frame = 0; frame < 8 * 120; frame++) {
+      run.step();
+      if (follower!.wrecked) continue;
+      if (
+        (follower!.bodyId === -1 || wreck!.bodyId === -1) &&
+        Math.abs(follower!.position.x - wreck!.position.x) < 3.5 &&
+        Math.abs(follower!.position.z - wreck!.position.z) < 7
+      )
+        ghostPasses++;
+      if (
+        follower!.position.z < wreck!.position.z - 7 &&
+        !run.carContacts.has(`${wreck!.id}:${follower!.id}`)
+      )
+        ghostPasses++;
+    }
+    expect(ghostPasses).toBe(0);
+    expect(follower!.speed).toBeLessThan(3);
+    run.player.z = -120;
+    for (let frame = 0; frame < 120; frame++) run.step();
+    expect(wreck!.bodyId).toBeGreaterThan(0);
+    expect(follower!.position.z).toBeGreaterThan(wreck!.position.z + 7);
+  } finally {
+    run.dispose();
   }
 }, 300_000);
 
