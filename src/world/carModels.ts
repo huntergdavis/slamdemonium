@@ -1,5 +1,5 @@
 /** The car catalogue (2026-10-02): every traffic car is one of six kinds,
- * each 30 to 40 percent larger than the first traffic box (4.2 x 1.9 x 0.9 m),
+ * now 20 percent larger than its original catalogue dimensions,
  * so the street has sedans, hatches, vans, pickups, box trucks and buses.
  * One place owns a kind's collision box, its visual parts and the palette,
  * so the near-miss gap, the slam and the picture all agree on how big a
@@ -29,6 +29,9 @@ export const CAR_MODEL_KINDS: readonly CarModelKind[] = Object.freeze([
   'boxTruck',
   'bus',
 ]);
+
+/** Uniformly grows the catalogue's visuals, collision boxes and dent depths. */
+export const TRAFFIC_MODEL_SCALE = 1.2;
 
 /** Keep the secondary scuff cue off while the vertex dent is judged alone. */
 const SCUFF_TINT_STRENGTH = 0;
@@ -72,14 +75,14 @@ if (dot(instanceCrush, vec4(1.0)) > 0.0) {
     + position.y * 4.1 + dentPhase * 3.1);
   float sideWrinkle = 0.82 + 0.18 * sin(position.z * (4.7 + instanceDentSeed * 2.1)
     + position.y * 4.1 + dentPhase * 4.9);
-  transformed.z += 2.4 * (trafficRear - trafficFront) * bowl * wrinkle;
-  transformed.x += 1.15 * (trafficLeft - trafficRight) * sideBowl * sideWrinkle;
+  transformed.z += ${2.4 * TRAFFIC_MODEL_SCALE} * (trafficRear - trafficFront) * bowl * wrinkle;
+  transformed.x += ${1.15 * TRAFFIC_MODEL_SCALE} * (trafficLeft - trafficRight) * sideBowl * sideWrinkle;
   float roof = smoothstep(0.55, 0.9, height);
   float roofNotch = 1.0 - smoothstep(0.1, 0.95, across);
   float sideNotch = 1.0 - smoothstep(0.1, 0.95, along);
-  transformed.y -= roof * ((trafficRear + trafficFront) * (0.35 + 0.9 * roofNotch)
+  transformed.y -= roof * ${TRAFFIC_MODEL_SCALE} * ((trafficRear + trafficFront) * (0.35 + 0.9 * roofNotch)
     + (trafficLeft + trafficRight) * (0.35 + 0.9 * sideNotch));
-  transformed.y += 0.18 * roof * ((trafficRear + trafficFront) * sin(position.x * 3.2 + position.z * 1.7 + dentPhase)
+  transformed.y += ${0.18 * TRAFFIC_MODEL_SCALE} * roof * ((trafficRear + trafficFront) * sin(position.x * 3.2 + position.z * 1.7 + dentPhase)
     + (trafficLeft + trafficRight) * sin(position.z * 3.2 + position.x * 1.7 + dentPhase * 1.7));
 }`,
     );
@@ -125,9 +128,7 @@ export interface CarModelSpec {
   readonly share: number;
 }
 
-/** The first traffic box: 4.2 long, 1.9 wide, 0.9 tall body. Every kind
- * below is at least 1.3 times that in both length and width (the CTO's
- * '30-40% bigger' applies to every car, the small ones included). */
+/** The first traffic box, retained as a historical size reference. */
 export const ORIGINAL_TRAFFIC_BOX = Object.freeze({
   length: 4.2,
   width: 1.9,
@@ -146,16 +147,34 @@ const spec = (
   Object.freeze({
     kind,
     label,
-    halfExtents: Object.freeze({ x: width / 2, y: height / 2, z: length / 2 }),
-    ride: height / 2 + 0.04,
-    parts: Object.freeze(parts.map((p) => Object.freeze(p))),
+    halfExtents: Object.freeze({
+      x: (width * TRAFFIC_MODEL_SCALE) / 2,
+      y: (height * TRAFFIC_MODEL_SCALE) / 2,
+      z: (length * TRAFFIC_MODEL_SCALE) / 2,
+    }),
+    ride: (height / 2 + 0.04) * TRAFFIC_MODEL_SCALE,
+    parts: Object.freeze(
+      parts.map((p) =>
+        Object.freeze({
+          ...p,
+          size: p.size.map((value) => value * TRAFFIC_MODEL_SCALE) as [
+            number,
+            number,
+            number,
+          ],
+          offset: p.offset.map((value) => value * TRAFFIC_MODEL_SCALE) as [
+            number,
+            number,
+            number,
+          ],
+        }),
+      ),
+    ),
     share,
   });
 
-/** Lengths and widths are 1.35 times the original box; the height of a
- * kind is its roof, so the collision box covers everything drawn (a van is
- * tall, a hatch is short and boxy, a bus is long and tall). Part offsets
- * are in car space with y measured from the ground. */
+/** The authored dimensions below are the catalogue before this 20% scale.
+ * Part offsets are in car space with y measured from the ground. */
 export const CAR_MODELS: Readonly<Record<CarModelKind, CarModelSpec>> =
   Object.freeze({
     // Three-box: a low body, a short cabin in the middle, a long tail.

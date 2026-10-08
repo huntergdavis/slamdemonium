@@ -342,6 +342,14 @@ export function createTraffic(
 
   /** A tuning edit only changes which stable records are present. Wrecks stay
    * present and keep their ids; intact hidden cars continue around the lap. */
+  function safeFollowingGap(a: RecordState, b: RecordState): number {
+    return (
+      CAR_MODELS[a.state.modelKind].halfExtents.z +
+      CAR_MODELS[b.state.modelKind].halfExtents.z +
+      3
+    );
+  }
+
   function setRules(next: TrafficSpacingRules): void {
     const density = Math.max(0.35, Math.min(1, next.density));
     const minGap = Math.max(12, next.minGap);
@@ -370,7 +378,12 @@ export function createTraffic(
       let nextGap = 0;
       for (const record of lane) {
         const progress = direction * record.station;
-        if (progress - lastProgress + 0.001 < nextGap) continue;
+        const last = chosen.at(-1);
+        if (
+          progress - lastProgress + 0.001 <
+          Math.max(nextGap, last ? safeFollowingGap(last, record) : 0)
+        )
+          continue;
         record.enabled = true;
         chosen.push(record);
         lastProgress = progress;
@@ -397,7 +410,7 @@ export function createTraffic(
           (((direction * (first.station - last.station)) % path.length) +
             path.length) %
           path.length;
-        if (wrapGap < minGap) {
+        if (wrapGap < Math.max(minGap, safeFollowingGap(first, last))) {
           last.enabled = false;
           chosen.pop();
         }
@@ -518,7 +531,11 @@ export function createTraffic(
               path.length) %
             path.length;
           // A faster car queues behind a slower one, without lane swapping.
-          const followingSpeed = ahead.driveSpeed + (gap - rules.minGap) * 0.6;
+          const safeGap = Math.max(
+            rules.minGap,
+            safeFollowingGap(record, ahead),
+          );
+          const followingSpeed = ahead.driveSpeed + (gap - safeGap) * 0.6;
           record.driveSpeed = Math.max(
             0,
             Math.min(record.authored.speed, followingSpeed),
