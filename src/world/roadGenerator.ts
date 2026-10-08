@@ -39,6 +39,28 @@ export interface RoadPose {
   readonly heading: number;
 }
 
+/** Used only on wreck recovery: the closest sampled centreline gives both a
+ * safe road position and the finish-facing travel direction. */
+export function nearestRoadPose(
+  path: RoadPath,
+  position: Readonly<V3>,
+): RoadPose {
+  const first = path.samples[0];
+  if (!first) throw new RangeError('Cannot recover on an empty road path.');
+  let nearest = first;
+  let best = Infinity;
+  for (const sample of path.samples) {
+    const dx = sample.x - position.x;
+    const dz = sample.z - position.z;
+    const distanceSquared = dx * dx + dz * dz;
+    if (distanceSquared < best) {
+      best = distanceSquared;
+      nearest = sample;
+    }
+  }
+  return { x: nearest.x, z: nearest.z, heading: nearest.heading };
+}
+
 function forward(heading: number): { x: number; z: number } {
   return { x: -Math.sin(heading), z: -Math.cos(heading) };
 }

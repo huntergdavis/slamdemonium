@@ -18,6 +18,7 @@ import {
 } from 'three';
 import type { VehicleVisualState } from './carVisualState';
 import { VEHICLE_GEOMETRY as G } from '../vehicle/constants';
+import type { CarCrushState } from '../world/carModels';
 
 export type { VehicleVisualState, WheelVisualState } from './carVisualState';
 
@@ -45,6 +46,11 @@ export function createCarVisual(scene: Scene) {
     return value;
   }
   const unitBox = geometry(new BoxGeometry(1, 1, 1));
+  // The player's single body can be deformed only when an impact changes its
+  // damage state. Subdivision gives a real folded outline in colour and shadow.
+  const bodyGeometry = geometry(new BoxGeometry(1, 1, 1, 6, 4, 8));
+  const bodyPositions = bodyGeometry.getAttribute('position');
+  const pristineBody = new Float32Array(bodyPositions.array);
   const unitPlane = geometry(new PlaneGeometry(1, 1));
   const bodyMaterial = material(
     new MeshStandardMaterial({
@@ -89,7 +95,7 @@ export function createCarVisual(scene: Scene) {
     parent.add(object);
     return object;
   }
-  const body = mesh(root, 'car.body', unitBox, bodyMaterial);
+  const body = mesh(root, 'car.body', bodyGeometry, bodyMaterial);
   body.scale.set(G.width, G.height, G.length);
   body.castShadow = true;
   body.receiveShadow = true;
@@ -123,6 +129,48 @@ export function createCarVisual(scene: Scene) {
   const tail = mesh(root, 'car.tail', unitPlane, tailMaterial);
   tail.position.set(0, 0.08 * HEIGHT_SCALE, G.length / 2 + 0.003);
   tail.scale.set(1.44 * WIDTH_SCALE, 0.14 * HEIGHT_SCALE, 1);
+
+  const visibleCrush: CarCrushState = {
+    front: 0,
+    rear: 0,
+    left: 0,
+    right: 0,
+  };
+  const band = (coordinate: number) => {
+    const t = Math.min(1, Math.max(0, (coordinate - 0.06) / 0.38));
+    return t * t * (3 - 2 * t);
+  };
+  function setCrush(next: Readonly<CarCrushState>): void {
+    if (
+      visibleCrush.front === next.front &&
+      visibleCrush.rear === next.rear &&
+      visibleCrush.left === next.left &&
+      visibleCrush.right === next.right
+    )
+      return;
+    Object.assign(visibleCrush, next);
+    for (let i = 0; i < bodyPositions.count; i++) {
+      const x = pristineBody[i * 3]!;
+      const y = pristineBody[i * 3 + 1]!;
+      const z = pristineBody[i * 3 + 2]!;
+      const front = next.front * band(-z);
+      const rear = next.rear * band(z);
+      const left = next.left * band(-x);
+      const right = next.right * band(x);
+      const fold = 0.82 + 0.18 * Math.sin(x * 19 + z * 13 + y * 7);
+      const roof = band(y);
+      bodyPositions.setXYZ(
+        i,
+        x + ((left - right) * 0.42 * fold) / G.width,
+        y - (roof * (0.34 * (front + rear) + 0.26 * (left + right))) / G.height,
+        z + ((front - rear) * 0.72 * fold) / G.length,
+      );
+    }
+    bodyPositions.needsUpdate = true;
+    bodyGeometry.computeVertexNormals();
+    nose.position.z = -G.length / 2 - 0.003 + next.front * 0.55;
+    tail.position.z = G.length / 2 + 0.003 - next.rear * 0.55;
+  }
 
   const wheelGeometry = geometry(
     new BoxGeometry(0.24 * WIDTH_SCALE, 2 * G.wheelRadius, 2 * G.wheelRadius),
@@ -317,5 +365,5 @@ export function createCarVisual(scene: Scene) {
     for (const value of materials) value.dispose();
     lastState = undefined;
   }
-  return { root, update, setDebugVisible, toggleDebug, dispose };
+  return { root, update, setCrush, setDebugVisible, toggleDebug, dispose };
 }

@@ -751,6 +751,17 @@
   color: var(--sl-accent);
   text-shadow: 0 0 12px var(--sl-accent);
 }
+.sl-hud__player-damage {
+  margin-top: 4px;
+  font: 700 12px/1 var(--sl-mono);
+  letter-spacing: 0.06em;
+  color: var(--sl-text);
+  text-align: right;
+}
+.sl-hud__player-damage[data-wrecked='true'] {
+  color: #ff6570;
+  text-shadow: 0 0 12px #ff6570;
+}
 .sl-drive__value {
   font: 700 34px/1 var(--sl-mono);
 }

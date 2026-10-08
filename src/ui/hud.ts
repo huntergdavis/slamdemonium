@@ -62,6 +62,12 @@ export interface HudOptions extends RecorderOptions {
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
   readTakedowns?: () => number;
+  /** Takedown-map player damage and the short wreck/recovery beat. */
+  readPlayerDamage?: () => {
+    amount: number;
+    wrecked: boolean;
+    secondsLeft: number;
+  };
   miniMap?: Omit<MiniMapOptions, 'host'>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
   /** Optional export sink for tests/integration. Default downloads a CSV. */
@@ -142,6 +148,7 @@ export class Hud {
   private readonly driveBoost: Meter;
   private readonly driveEvent: HTMLElement;
   private readonly takedownCount: HTMLElement | null;
+  private readonly playerDamageNotice: HTMLElement | null;
   private lastTakedownCount = 0;
   private takedownFlashUntilMs = 0;
   private driveEventShown = '';
@@ -253,6 +260,13 @@ export class Hud {
       ? node(doc, 'div', 'sl-hud__takedowns', 'TAKEDOWNS 0')
       : null;
     if (this.takedownCount) this.drive.append(this.takedownCount);
+    this.playerDamageNotice = options.readPlayerDamage
+      ? node(doc, 'div', 'sl-hud__player-damage', '')
+      : null;
+    if (this.playerDamageNotice) {
+      this.playerDamageNotice.hidden = true;
+      this.drive.append(this.playerDamageNotice);
+    }
     this.element.append(this.drive);
     this.notice = node(doc, 'div', 'sl-card sl-hud__recording');
     this.notice.dataset.hudPersistent = '';
@@ -527,6 +541,7 @@ export class Hud {
     }
     this.updateTrafficEvent(this.options.readTrafficEvents?.());
     this.updateTakedowns(nowMs);
+    this.updatePlayerDamage();
     if (this.mode === 'off' || collapsed) return;
     const render = this.options.readRenderTelemetry?.();
     const store = this.options.store;
@@ -788,6 +803,19 @@ export class Hud {
     if (this.takedownCount.textContent !== label)
       this.takedownCount.textContent = label;
     this.takedownCount.dataset.flash = String(flashing);
+  }
+
+  private updatePlayerDamage(): void {
+    if (!this.playerDamageNotice) return;
+    const state = this.options.readPlayerDamage?.();
+    if (!state) return;
+    this.playerDamageNotice.hidden = !state.wrecked && state.amount <= 0;
+    const label = state.wrecked
+      ? 'WRECKED · RESPAWNING'
+      : 'DAMAGE ' + Math.round(state.amount * 100) + '%';
+    if (this.playerDamageNotice.textContent !== label)
+      this.playerDamageNotice.textContent = label;
+    this.playerDamageNotice.dataset.wrecked = String(state.wrecked);
   }
 
   private set(key: string, value: string): void {

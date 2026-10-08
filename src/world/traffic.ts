@@ -189,7 +189,7 @@ function visualCrushSide(
       : 'left';
 }
 
-function slamCrushChunk(closingSpeed: number): number {
+export function slamCrushChunk(closingSpeed: number): number {
   // A gentle knock still changes the outline. Larger slams retain the
   // measured #182 progression instead of saturating at moderate speed.
   const speed = Math.max(0, closingSpeed);
