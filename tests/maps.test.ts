@@ -142,6 +142,7 @@ describe('map selection', () => {
       'circuit',
       'lab',
       'proving-ground',
+      'takedown',
     ]);
   });
 

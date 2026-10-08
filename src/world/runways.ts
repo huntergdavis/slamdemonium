@@ -16,6 +16,8 @@ export interface RunwaySpec {
   readonly length: number;
   readonly width: number;
   readonly markerMeters: number;
+  /** Extra dashed dividers measured from the road centre, in metres. */
+  readonly laneStripes?: readonly number[];
 }
 
 export const RUNWAY_CROSSBAR_WIDTH = 0.4;
@@ -78,13 +80,14 @@ export function runwayInstances(
       place(0, side * (spec.width / 2), config.edgeWidth, spec.length);
     const period = config.dashLength + config.dashGap;
     const dashes = Math.floor(spec.length / period);
-    for (let i = 0; i < dashes; i++)
-      place(
-        -half + i * period + config.dashLength / 2,
-        0,
-        config.centerLineWidth,
-        config.dashLength,
-      );
+    for (const divider of [0, ...(spec.laneStripes ?? [])])
+      for (let i = 0; i < dashes; i++)
+        place(
+          -half + i * period + config.dashLength / 2,
+          divider,
+          config.centerLineWidth,
+          config.dashLength,
+        );
     if (spec.markerMeters > 0) {
       const inner = spec.width - 2 * config.edgeWidth;
       for (
