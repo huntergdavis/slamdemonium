@@ -16,20 +16,15 @@ const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
 );
 
-it('puts solid shunt walls exactly where the visible roadside blocks stand', async () => {
+it('covers over 90% of both roadsides with visible solid walls and clear run-offs', async () => {
   const map = createTakedownMap();
-  const wall = map.shuntWalls![0]!;
   const world = await createPhysicsWorld({ wasmPath });
   const bodies = createSurfacedBodies(world, createSurfaceRegistry());
   const scene = new Scene();
   const material = new MeshStandardMaterial();
   const visual = createShuntWallVisual(scene, material, map.shuntWalls!);
   try {
-    const ids = installShuntWalls(bodies, [wall]);
-    const pose = poseAt(map.path!, 340);
-    const dx = wall.center.x - pose.x;
-    const dz = wall.center.z - pose.z;
-    const span = Math.hypot(dx, dz);
+    const ids = installShuntWalls(bodies, map.shuntWalls!);
     const hit: RayHit = {
       distance: 0,
       point: { x: 0, y: 0, z: 0 },
@@ -37,17 +32,37 @@ it('puts solid shunt walls exactly where the visible roadside blocks stand', asy
       bodyId: 0,
       surfaceId: 0,
     };
-    expect(
-      world.rayCast(
-        { x: pose.x, y: wall.center.y, z: pose.z },
-        { x: dx / span, y: 0, z: dz / span },
-        30,
+    const seesWall = (station: number, side: -1 | 1): boolean => {
+      const pose = poseAt(map.path!, station);
+      const found = world.rayCast(
+        { x: pose.x, y: 1.1, z: pose.z },
+        {
+          x: -Math.cos(pose.heading) * side,
+          y: 0,
+          z: Math.sin(pose.heading) * side,
+        },
+        20,
         hit,
-      ),
-    ).toBe(true);
-    expect(hit.bodyId).toBe(ids[0]);
-    expect(hit.distance).toBeGreaterThan(14);
-    expect(hit.distance).toBeLessThan(17);
+      );
+      if (found) {
+        expect(ids).toContain(hit.bodyId);
+        // The 28 m road stays entirely clear, including on the inside of
+        // every sweeper and at the joins between adjacent static boxes.
+        expect(hit.distance).toBeGreaterThan(14);
+      }
+      return found;
+    };
+    for (const side of [-1, 1] as const) {
+      let covered = 0;
+      let sampled = 0;
+      for (let station = 0; station < map.path!.length; station += 10) {
+        if (seesWall(station, side)) covered++;
+        sampled++;
+      }
+      expect(covered / sampled).toBeGreaterThan(0.9);
+      expect(seesWall(340, side)).toBe(true);
+      expect(seesWall(90, side)).toBe(false); // spawn run-off
+    }
     const batch = visual.root.getObjectByName('shunt-walls.concrete');
     expect(batch).toBeInstanceOf(InstancedMesh);
     expect((batch as InstancedMesh).count).toBe(map.shuntWalls!.length);

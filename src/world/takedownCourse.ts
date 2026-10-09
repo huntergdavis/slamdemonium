@@ -26,6 +26,96 @@ export const TAKEDOWN_PLAN: readonly RoadSegment[] = Object.freeze([
   { kind: 'arc', radius: CORNER, angle: 90 * DEG },
 ]);
 
+/** Three run-offs per side, all on straights. The opening at the start gives
+ * cars room to join the road; the others alternate sides so a shunt target
+ * remains opposite each opening. Each side retains over 90% solid wall. */
+const WALL_RUNOFFS: Readonly<
+  Record<-1 | 1, readonly (readonly [number, number])[]>
+> = {
+  [-1]: [
+    [0, 180],
+    [1000, 1240],
+    [4350, 4590],
+  ],
+  [1]: [
+    [0, 180],
+    [1400, 1640],
+    [4800, 5040],
+  ],
+};
+
+/** Use long simple boxes on straights and 40 m chords on the sweepers. At
+ * radius 420 m a 40 m chord cuts only 0.48 m inside the curve, leaving the
+ * inside face beyond the 14 m paved edge. Adjacent boxes overlap by 0.3 m
+ * at each end so there is no collision seam. */
+function roadsideWalls(
+  path: ReturnType<typeof sampleRoad>,
+): ReturnType<typeof shuntWallAt>[] {
+  const walls: ReturnType<typeof shuntWallAt>[] = [];
+  for (const side of [-1, 1] as const) {
+    let segmentStart = 0;
+    for (const segment of TAKEDOWN_PLAN) {
+      const segmentEnd =
+        segmentStart +
+        (segment.kind === 'straight'
+          ? segment.length
+          : segment.radius * Math.abs(segment.angle));
+      const cuts = [segmentStart, segmentEnd];
+      for (const [from, to] of WALL_RUNOFFS[side]) {
+        if (from > segmentStart && from < segmentEnd) cuts.push(from);
+        if (to > segmentStart && to < segmentEnd) cuts.push(to);
+      }
+      cuts.sort((a, b) => a - b);
+      for (let i = 0; i < cuts.length - 1; i++) {
+        const from = cuts[i]!;
+        const to = cuts[i + 1]!;
+        const midpoint = (from + to) / 2;
+        if (
+          WALL_RUNOFFS[side].some(
+            ([gapStart, gapEnd]) => midpoint >= gapStart && midpoint < gapEnd,
+          )
+        )
+          continue;
+        const maxLength = segment.kind === 'arc' ? 40 : 1000;
+        const count = Math.ceil((to - from) / maxLength);
+        for (let part = 0; part < count; part++) {
+          const start = from + ((to - from) * part) / count;
+          const end = from + ((to - from) * (part + 1)) / count;
+          walls.push(
+            shuntWallAt(
+              path,
+              (start + end) / 2,
+              side,
+              end - start + 0.6,
+              TAKEDOWN_ROAD_WIDTH,
+            ),
+          );
+        }
+      }
+      segmentStart = segmentEnd;
+    }
+  }
+  return walls;
+}
+
+/** Keep shoulder props that stand beyond the wall, but remove ones intersecting
+ * the actual rotated box rather than a huge circle around a long wall. */
+function overlapsWall(
+  position: Readonly<{ x: number; z: number }>,
+  wall: ReturnType<typeof shuntWallAt>,
+): boolean {
+  const dx = position.x - wall.center.x;
+  const dz = position.z - wall.center.z;
+  const c = Math.cos(wall.heading);
+  const s = Math.sin(wall.heading);
+  const across = c * dx - s * dz;
+  const along = s * dx + c * dz;
+  return (
+    Math.abs(across) < wall.halfExtents.x + 2 &&
+    Math.abs(along) < wall.halfExtents.z + 2
+  );
+}
+
 /** A broad 7.1 km loop with 420 m sweepers. Four red rivals are encounter
  * records in the existing physics/visual traffic lifecycle; the rest of the
  * road has about one ordinary car every 140 m across both directions. */
@@ -87,65 +177,14 @@ export function createTakedownMap(): MapDefinition {
       speed: 22 + (Math.round(station / 7) % 6),
     });
   }
-  const walls = (
-    [
-      [340, -1, 72],
-      [450, 1, 76],
-      [1180, 1, 90],
-      [1510, -1, 70],
-      [2850, -1, 80],
-      [3640, 1, 86],
-      [4950, 1, 70],
-      [5700, -1, 78],
-      // Each 420 m left sweeper has a chain of hard blocks on its outside
-      // shoulder. A shunt gets several chances rather than one isolated wall.
-      [1810, -1, 64],
-      [1930, -1, 64],
-      [2050, -1, 64],
-      [2170, -1, 64],
-      [2290, -1, 64],
-      [2930, -1, 64],
-      [3050, -1, 64],
-      [3170, -1, 64],
-      [3290, -1, 64],
-      [3410, -1, 64],
-      [5350, -1, 64],
-      [5470, -1, 64],
-      [5590, -1, 64],
-      [5830, -1, 64],
-      [6470, -1, 64],
-      [6590, -1, 64],
-      [6710, -1, 64],
-      [6830, -1, 64],
-      [6950, -1, 64],
-      // Opposite-shoulder pinch blocks and short concrete crash objects.
-      [730, 1, 52],
-      [1550, 1, 52],
-      [2730, 1, 52],
-      [4900, -1, 52],
-      [6290, 1, 52],
-      [920, -1, 24],
-      [2580, 1, 24],
-      [4200, -1, 24],
-      [6080, 1, 24],
-    ] as const
-  ).map(([station, side, length]) =>
-    shuntWallAt(path, station, side, length, TAKEDOWN_ROAD_WIDTH),
-  );
+  const walls = roadsideWalls(path);
   const placements: BreakablePlacement[] = shoulderPlacements(path, {
     density: 0.1,
     nearest: TAKEDOWN_ROAD_WIDTH / 2 + 4,
     farthest: TAKEDOWN_ROAD_WIDTH / 2 + 23,
     seed: 261,
   }).filter((prop) =>
-    walls.every(
-      (wall) =>
-        Math.hypot(
-          prop.position.x - wall.center.x,
-          prop.position.z - wall.center.z,
-        ) >
-        wall.halfExtents.z + 8,
-    ),
+    walls.every((wall) => !overlapsWall(prop.position, wall)),
   );
   return {
     name: 'takedown',

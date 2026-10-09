@@ -13,7 +13,7 @@ import {
 } from '../src/world/takedownCourse';
 
 describe('takedown course', () => {
-  it('is a selectable, wide and sparse closed road with four rivals and shunt points', () => {
+  it('is a selectable, wide and sparse closed road with four rivals and roadside walls', () => {
     const map = createTakedownMap();
     expect(isMapName('takedown')).toBe(true);
     expect(MAPS.takedown.name).toBe('takedown');
@@ -29,7 +29,10 @@ describe('takedown course', () => {
     expect(map.traffic?.filter((car) => car.rival)).toHaveLength(4);
     expect(map.traffic!.length).toBeGreaterThan(40);
     expect(map.traffic!.length).toBeLessThan(65);
-    expect(map.shuntWalls).toHaveLength(36);
+    // Long straight boxes keep the collider count well below one per road
+    // paint chunk while short chords follow the 420 m sweepers.
+    expect(map.shuntWalls!.length).toBeGreaterThan(130);
+    expect(map.shuntWalls!.length).toBeLessThan(180);
     expect(map.placements!.length).toBeGreaterThan(400);
     expect(map.placements!.length).toBeLessThan(800);
     for (const wall of map.shuntWalls!) {
