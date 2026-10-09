@@ -9,7 +9,13 @@ import {
   type V3,
 } from '../physics/adapter';
 import type { RoadPath } from './roadGenerator';
-import { approachRivalLine, rivalLineTarget } from './rivals';
+import {
+  approachRivalLine,
+  rivalAttackActive,
+  rivalAttackTarget,
+  rivalBoostBonus,
+  rivalRamSpeedBonus,
+} from './rivals';
 import type { SurfacedBodies } from './surfacedBodies';
 import { trafficCrushShape } from './trafficCrushShape';
 import {
@@ -111,8 +117,14 @@ const EXIT = 180;
 const VISUAL_RADIUS = 400;
 /** Signed station offsets keep one rival in shunting range and leave room for
  * challengers ahead and behind. Only the takedown map authors rival records. */
-const RIVAL_PACK_OFFSETS = [45, -25, 90, -100] as const;
-const RIVAL_REJOIN_SECONDS = 8;
+const RIVAL_START_OFFSETS = [65, 48, -48, -65] as const;
+const RIVAL_PACK_OFFSETS = [36, 24, -24, -36] as const;
+const RIVAL_STRIKE_OFFSET = 12;
+const RIVAL_REJOIN_SECONDS = 4;
+const RIVAL_REJOIN_BEHIND = 220;
+const RIVAL_ATTACK_GRACE_SECONDS = 6;
+const RIVAL_PLAYER_ATTACK_MIN_SPEED = 20;
+const CRUSH_SHAPE_UPDATES_PER_STEP = 1;
 export const MAX_DRIVING = 12;
 const POOL_SIZE = MAX_DRIVING;
 const WRECK_LOOKAHEAD = 100;
@@ -138,9 +150,14 @@ const CRASH_BLEED_SECONDS = 0.3;
 const CRASH_BLEED_RATE = 1.5;
 const SLAM_CLOSING_SPEED = 2.5;
 const CONTACT_EPISODE_GAP = 0.18;
-// A low-speed chain still dents both cars. Only a hard world hit disables
-// the lane controller; otherwise a packed queue becomes a stationary mound.
+// Ordinary low-speed chains dent both cars without stopping the lane drive;
+// the takedown course gives rival combat its own more violent threshold.
 const WORLD_WRECK_CLOSING_SPEED = 12;
+/** A rival hitting a solid side-on is an arcade takedown opportunity. */
+const RIVAL_SOLID_WRECK_SPEED = 8;
+const RIVAL_SOLID_CRUSH_MULTIPLIER = 2.8;
+const RIVAL_TRAFFIC_WRECK_SPEED = 5;
+const RIVAL_TRAFFIC_CRUSH_MULTIPLIER = 2.2;
 const HARD_LANDING_CLOSING_SPEED = 12;
 const SCRAPE_CRUSH_PER_SECOND = 0.16;
 const SCRAPE_CRUSH_CAP = 0.28;
@@ -263,8 +280,10 @@ export function createTraffic(
   const slots: Slot[] = [];
   const slotByBodyId = new Map<BodyId, Slot>();
   const visualStates: TrafficCarState[] = [];
+  const newlyWrecked: TrafficCarState[] = [];
   const wreckRecords: RecordState[] = [];
   const nearbyWrecks: RecordState[] = [];
+  const rivalTargets: V3[] = [];
   let hadNearbyWrecks = false;
   let physicalCount = 0;
   let farPoseBucket = 0;
@@ -272,6 +291,12 @@ export function createTraffic(
   let nextEncounterId = records.length + 1;
   let playerStation = 0;
   let stationRefresh = 0.2;
+  let rivalSeconds = 0;
+  let rivalDriveSeconds = 0;
+  let rivalryStarted = false;
+  let attackWindowIndex = -1;
+  let attackCarId = 0;
+  let shapeSlotCursor = 0;
   const readPosition: V3 = { x: 0, y: 0, z: 0 };
   const readRotation: Quat = { ...IDENTITY };
   const readVelocity: V3 = { x: 0, y: 0, z: 0 };
@@ -434,6 +459,7 @@ export function createTraffic(
     if (record.wrecked) return;
     record.wrecked = true;
     record.state.wrecked = true;
+    newlyWrecked.push(record.state);
     wreckRecords.push(record);
     // Keep the existing ordered lane links. Followers skip wrecked entries
     // when they read the chain, avoiding a full-circuit sort on each impact.
@@ -531,6 +557,14 @@ export function createTraffic(
           chosen[i]!.leader =
             chosen[i + 1] ?? (path.closed ? chosen[0]! : null);
     }
+    // The density slider controls background traffic, never the four authored
+    // opponents. They also need their own pace controller rather than an
+    // ordinary follower speed limit from the sparse traffic selection.
+    for (const record of authored)
+      if (record.state.rival && !record.wrecked) {
+        record.enabled = true;
+        record.leader = null;
+      }
     for (const record of authored) {
       if (!record.enabled && record.slot) demote(record);
       if (record.enabled && !record.wrecked) updateVisualPose(record);
@@ -639,7 +673,47 @@ export function createTraffic(
   }
 
   function preStep(dt: number, player: V3, playerSpeed = 0): void {
+    newlyWrecked.length = 0;
     stepDt = dt;
+    if (!rivalryStarted && playerSpeed > 10) {
+      rivalDriveSeconds += dt;
+      rivalryStarted = rivalDriveSeconds >= RIVAL_ATTACK_GRACE_SECONDS;
+    }
+    if (hasRivals) {
+      if (rivalryStarted) rivalSeconds += dt;
+      rivalTargets.length = 0;
+      for (const record of authored)
+        if (record.state.rival && !record.wrecked)
+          rivalTargets.push(record.state.position);
+      if (rivalryStarted) {
+        const windowIndex = Math.floor(rivalSeconds / 3);
+        const previous = authored.find(
+          (record) => record.state.id === attackCarId && !record.wrecked,
+        );
+        if (windowIndex !== attackWindowIndex || !previous) {
+          attackWindowIndex = windowIndex;
+          let selected: RecordState | undefined;
+          let bestScore = Infinity;
+          for (const record of authored) {
+            const car = record.state;
+            if (!car.rival || record.wrecked) continue;
+            const dx = player.x - car.position.x;
+            const dz = player.z - car.position.z;
+            const distance = Math.hypot(dx, dz);
+            if (distance > 120) continue;
+            const assigned =
+              rivalAttackActive(rivalSeconds, car.id) && distance <= 60;
+            const aheadOfCar = dx * car.forward.x + dz * car.forward.z;
+            const score =
+              (assigned ? -1000 : 0) + distance - (aheadOfCar > 0 ? 16 : 0);
+            if (score >= bestScore) continue;
+            bestScore = score;
+            selected = record;
+          }
+          attackCarId = selected?.state.id ?? 0;
+        }
+      }
+    }
     if (hasRivals) stationRefresh += dt;
     if (hasRivals && stationRefresh >= 0.2) {
       stationRefresh = 0;
@@ -649,14 +723,19 @@ export function createTraffic(
       for (const record of authored) {
         if (!record.state.rival || !record.wrecked) continue;
         record.wreckAge += dt;
+        const behind =
+          (playerStation - record.station + path.length) % path.length;
+        const outOfRearView =
+          behind >= RIVAL_REJOIN_BEHIND && behind < path.length / 2;
         if (
           record.wreckAge < RIVAL_REJOIN_SECONDS ||
-          horizontalDistanceSquared(
-            player,
-            record.state.position.x,
-            record.state.position.z,
-          ) <
-            (VISUAL_RADIUS + 40) ** 2
+          (!outOfRearView &&
+            horizontalDistanceSquared(
+              player,
+              record.state.position.x,
+              record.state.position.z,
+            ) <
+              (VISUAL_RADIUS + 40) ** 2)
         )
           continue;
         demote(record);
@@ -750,6 +829,24 @@ export function createTraffic(
     // same 10 Hz tick. Nearby poses still update every step.
     const farPoseBuckets = Math.max(1, Math.round(0.1 / dt));
     farPoseBucket = (farPoseBucket + 1) % farPoseBuckets;
+    // Convex hull replacement is expensive during a pileup. Apply at most one
+    // latest crush state per step, rotating through the physical pool so a
+    // sustained scrape cannot starve another car's pending shape update.
+    let shapeUpdates = 0;
+    for (
+      let scanned = 0;
+      scanned < slots.length && shapeUpdates < CRUSH_SHAPE_UPDATES_PER_STEP;
+      scanned++
+    ) {
+      const index = (shapeSlotCursor + scanned) % slots.length;
+      const slot = slots[index]!;
+      const record = slot.record;
+      if (!record?.shapeDirty) continue;
+      updateSlotShape(slot, record);
+      record.shapeDirty = false;
+      shapeSlotCursor = (index + 1) % slots.length;
+      shapeUpdates++;
+    }
     for (let i = 0; i < authored.length; i++) {
       const record = authored[i]!;
       const state = record.state;
@@ -771,11 +868,22 @@ export function createTraffic(
           path.length;
         updateVisualPose(record);
       }
+      const attackNow =
+        state.rival &&
+        rivalryStarted &&
+        playerSpeed >= RIVAL_PLAYER_ATTACK_MIN_SPEED &&
+        state.id === attackCarId;
+      const attackPlayer = attackNow ? player : state.position;
       if (state.rival && !record.wrecked) {
-        const target = rivalLineTarget(state.position, state.forward, player);
+        const target = rivalAttackTarget(
+          state.position,
+          state.forward,
+          attackPlayer,
+          rivalTargets,
+        );
         record.attackOffset = approachRivalLine(
           record.attackOffset,
-          target,
+          attackNow ? target : 0,
           dt,
         );
       }
@@ -789,19 +897,53 @@ export function createTraffic(
             (playerStation - record.station + path.length) % path.length;
           const signed = ahead <= behind ? ahead : -behind;
           const packIndex = i % RIVAL_PACK_OFFSETS.length;
-          const target =
-            RIVAL_PACK_OFFSETS[packIndex]! +
-            (packIndex === 1 ? Math.max(0, Math.min(20, playerSpeed - 40)) : 0);
-          // A rival ahead eases off; one behind closes. The authored lane and
-          // collision controller still govern the actual path and acceleration.
-          desiredSpeed = Math.max(
-            0,
-            Math.min(
-              85,
-              playerSpeed -
-                Math.max(-20, Math.min(20, (signed - target) * 0.28)),
-            ),
-          );
+          // During an attack window, close the pack target to an alongside
+          // gap by speed control rather than teleporting the rival.
+          const normalTarget = RIVAL_PACK_OFFSETS[packIndex]!;
+          const target = attackNow
+            ? Math.sign(normalTarget) * RIVAL_STRIKE_OFFSET
+            : normalTarget;
+          if (!rivalryStarted) {
+            // Preserve the proven #195 launch behaviour during the grace:
+            // parked players do not attract a 52 m/s pack through spawn.
+            const launchTarget =
+              RIVAL_START_OFFSETS[packIndex]! +
+              (packIndex === 1
+                ? Math.max(0, Math.min(20, playerSpeed - 40))
+                : 0);
+            desiredSpeed = Math.max(
+              0,
+              Math.min(
+                85,
+                playerSpeed -
+                  Math.max(-20, Math.min(20, (signed - launchTarget) * 0.28)),
+              ),
+            );
+          } else {
+            // Own boost raises the speed ceiling for a short pulse. A rival
+            // ahead eases off only when it leaves the contest; one behind closes
+            // at boosted pace. The force controller still governs acceleration.
+            const error = signed - target;
+            const boosted = rivalBoostBonus(rivalSeconds, state.id);
+            const packCorrection = Math.max(-18, Math.min(20, error * 0.4));
+            desiredSpeed = Math.max(
+              18,
+              Math.min(
+                88,
+                Math.max(52, playerSpeed + 4) +
+                  boosted -
+                  packCorrection +
+                  (attackNow
+                    ? rivalRamSpeedBonus(
+                        state.position,
+                        state.forward,
+                        attackPlayer,
+                        rivalTargets,
+                      )
+                    : 0),
+              ),
+            );
+          }
         }
         if (rules && record.enabled && record.leader) {
           let ahead: RecordState | null = record.leader;
@@ -879,12 +1021,8 @@ export function createTraffic(
       }
       const slot = record.slot;
       if (!slot) continue;
-      // Contacts only record damage. Swap after the solver has finished that
-      // step, before the next one; shrinking inward leaves no new overlap.
-      if (record.shapeDirty) {
-        updateSlotShape(slot, record);
-        record.shapeDirty = false;
-      }
+      // Contacts only record damage. The pool pass above performs at most one
+      // inward hull swap before the next solver step.
       record.contactGap += dt;
       if (record.contactGap >= CONTACT_EPISODE_GAP) record.slamSides = 0;
       record.scrapeSides = 0;
@@ -912,12 +1050,26 @@ export function createTraffic(
         nextScratch,
       );
       const nextHeading = Math.atan2(-(next.x - pose.x), -(next.z - pose.z));
+      const lateralCorrectionCap = state.rival && rivalryStarted ? 6 : 3;
+      const laneFollowGain = state.rival && rivalryStarted ? 2 : 0.7;
       const desiredX =
         -Math.sin(nextHeading) * record.driveSpeed +
-        Math.max(-3, Math.min(3, (pose.x - state.position.x) * 0.7));
+        Math.max(
+          -lateralCorrectionCap,
+          Math.min(
+            lateralCorrectionCap,
+            (pose.x - state.position.x) * laneFollowGain,
+          ),
+        );
       const desiredZ =
         -Math.cos(nextHeading) * record.driveSpeed +
-        Math.max(-3, Math.min(3, (pose.z - state.position.z) * 0.7));
+        Math.max(
+          -lateralCorrectionCap,
+          Math.min(
+            lateralCorrectionCap,
+            (pose.z - state.position.z) * laneFollowGain,
+          ),
+        );
       // Soft speed hold; a hit still wins over the controller.
       force.x = (desiredX - state.velocity.x) * BODY_MASS * 2;
       force.z = (desiredZ - state.velocity.z) * BODY_MASS * 2;
@@ -927,7 +1079,7 @@ export function createTraffic(
       const accelerationCap = record.obstacle
         ? WRECK_BRAKE
         : state.rival
-          ? 20
+          ? 26
           : 5;
       if (magnitude > BODY_MASS * accelerationCap) {
         const scale = (BODY_MASS * accelerationCap) / magnitude;
@@ -1029,12 +1181,16 @@ export function createTraffic(
     record: RecordState,
     sideIndex: number,
     speed: number,
+    multiplier = 1,
   ): void {
     const bit = 1 << sideIndex;
     if (record.slamSides & bit) return;
     const side = CRUSH_SIDES[sideIndex]!;
     const oldCrush = record.state.crush[side];
-    record.state.crush[side] = Math.min(1, oldCrush + slamCrushChunk(speed));
+    record.state.crush[side] = Math.min(
+      1,
+      oldCrush + slamCrushChunk(speed) * multiplier,
+    );
     if (record.state.crush[side] > oldCrush) record.shapeDirty = true;
     record.slamSides |= bit;
   }
@@ -1046,6 +1202,7 @@ export function createTraffic(
     nz: number,
     closingSpeed: number,
     allowScrape: boolean,
+    slamMultiplier = 1,
   ): void {
     if (Math.hypot(nx, nz) < 0.45) {
       // A hard roof or underbody landing compresses the whole shell. A normal
@@ -1053,7 +1210,7 @@ export function createTraffic(
       if (Math.abs(ny) < 0.7 || closingSpeed < HARD_LANDING_CLOSING_SPEED)
         return;
       for (let sideIndex = 0; sideIndex < CRUSH_SIDES.length; sideIndex++)
-        addSlam(record, sideIndex, closingSpeed);
+        addSlam(record, sideIndex, closingSpeed, slamMultiplier);
       record.contactGap = 0;
       return;
     }
@@ -1061,7 +1218,7 @@ export function createTraffic(
     if (!side) return;
     const sideIndex = CRUSH_SIDES.indexOf(side);
     if (closingSpeed >= SLAM_CLOSING_SPEED)
-      addSlam(record, sideIndex, closingSpeed);
+      addSlam(record, sideIndex, closingSpeed, slamMultiplier);
     else if (allowScrape) record.scrapeSides |= 1 << sideIndex;
     else return;
     record.contactGap = 0;
@@ -1090,7 +1247,14 @@ export function createTraffic(
       dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed,
     );
     const grinding = tangentSpeedSquared > 0.8 * 0.8;
+    const horizontalHit = Math.hypot(normal.x, normal.z) >= 0.7;
+    const rivalTrafficHit =
+      !!recordA &&
+      !!recordB &&
+      horizontalHit &&
+      (recordA.state.rival || recordB.state.rival);
     if (recordA) {
+      const rivalSolidHit = recordA.state.rival && !recordB && horizontalHit;
       recordContactCrush(
         recordA,
         normal.x,
@@ -1098,12 +1262,25 @@ export function createTraffic(
         normal.z,
         closingSpeed,
         grinding,
+        rivalSolidHit
+          ? RIVAL_SOLID_CRUSH_MULTIPLIER
+          : rivalTrafficHit
+            ? RIVAL_TRAFFIC_CRUSH_MULTIPLIER
+            : 1,
       );
-      if (closingSpeed >= WORLD_WRECK_CLOSING_SPEED) {
+      if (
+        closingSpeed >=
+        (rivalSolidHit
+          ? RIVAL_SOLID_WRECK_SPEED
+          : rivalTrafficHit
+            ? RIVAL_TRAFFIC_WRECK_SPEED
+            : WORLD_WRECK_CLOSING_SPEED)
+      ) {
         markWreck(recordA);
       }
     }
     if (recordB) {
+      const rivalSolidHit = recordB.state.rival && !recordA && horizontalHit;
       recordContactCrush(
         recordB,
         -normal.x,
@@ -1111,8 +1288,20 @@ export function createTraffic(
         -normal.z,
         closingSpeed,
         grinding,
+        rivalSolidHit
+          ? RIVAL_SOLID_CRUSH_MULTIPLIER
+          : rivalTrafficHit
+            ? RIVAL_TRAFFIC_CRUSH_MULTIPLIER
+            : 1,
       );
-      if (closingSpeed >= WORLD_WRECK_CLOSING_SPEED) {
+      if (
+        closingSpeed >=
+        (rivalSolidHit
+          ? RIVAL_SOLID_WRECK_SPEED
+          : rivalTrafficHit
+            ? RIVAL_TRAFFIC_WRECK_SPEED
+            : WORLD_WRECK_CLOSING_SPEED)
+      ) {
         markWreck(recordB);
       }
     }
@@ -1194,8 +1383,39 @@ export function createTraffic(
     /** Reused array and records; safe to iterate after physics without allocation. */
     states: visualStates as readonly TrafficCarState[],
     visualStates: visualStates as readonly TrafficCarState[],
+    /** Wreck transitions from this physics step, including off-screen cars. */
+    newlyWrecked: newlyWrecked as readonly TrafficCarState[],
     hasRivals,
     recordCount: authored.length,
+    /** Test-only controller snapshot, allocated only when browser tooling asks. */
+    debugRivals() {
+      return {
+        rivalryStarted,
+        rivalDriveSeconds,
+        rivalSeconds,
+        attackCarId,
+        cars: authored
+          .filter((record) => record.state.rival)
+          .map((record) => {
+            const target = routePose(record, record.station, routeScratch);
+            return {
+              id: record.state.id,
+              selected: record.state.id === attackCarId,
+              enabled: record.enabled,
+              physical: !!record.slot,
+              wrecked: record.wrecked,
+              attackOffset: record.attackOffset,
+              driveSpeed: record.driveSpeed,
+              actualSpeed: record.state.speed,
+              targetX: target.x,
+              targetZ: target.z,
+              errorX: target.x - record.state.position.x,
+              errorZ: target.z - record.state.position.z,
+              station: record.station,
+            };
+          }),
+      };
+    },
     get activeCount() {
       return activeCount;
     },

@@ -21,7 +21,7 @@ import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
 import { runPhysicsSpike } from './physics/spike';
 import { createRenderer } from './render/renderer';
 import { CameraRig } from './render/cameraRig';
-import { TakedownMoment } from './render/takedownMoment';
+import { TakedownMoment, canFocusTakedown } from './render/takedownMoment';
 import { createCarVisual } from './render/carVisual';
 import { createSkidMarks } from './render/skidMarks';
 import { createSpeedCues } from './render/speedCues';
@@ -533,6 +533,16 @@ async function boot(): Promise<void> {
       postStep(dt) {
         traffic?.postStep(vehicle.body, vehicle.currentMass);
         vehicle.postStep(dt);
+        const playerRotation = vehicle.telemetry.rotation;
+        playerView.forward.x =
+          -2 *
+          (playerRotation.x * playerRotation.z +
+            playerRotation.y * playerRotation.w);
+        playerView.forward.z = -(
+          1 -
+          2 * (playerRotation.x ** 2 + playerRotation.y ** 2)
+        );
+        playerView.speed = vehicle.telemetry.speed;
         if (playerWreckPending) {
           vehicle.loseBoostSection();
           playerWreckPending = false;
@@ -540,10 +550,31 @@ async function boot(): Promise<void> {
         const playerWreckRecoveryDue = playerDamage?.step(dt) ?? false;
         if (takedowns) {
           const countBefore = takedowns.count;
-          const victim = takedowns.update(dt, traffic?.states ?? []);
+          const victim = takedowns.update(dt, traffic?.newlyWrecked ?? []);
           for (let count = countBefore; count < takedowns.count; count++)
             vehicle.awardTakedown();
-          if (victim) takedownMoment?.start(victim.id, performance.now());
+          if (
+            victim &&
+            canFocusTakedown(
+              victim,
+              vehicle.telemetry.position,
+              playerView.forward,
+            )
+          )
+            takedownMoment?.start(victim.id, performance.now());
+          else if (!victim && takedowns.lastObservedVictim) {
+            const other = takedowns.lastObservedVictim;
+            const player = vehicle.telemetry.position;
+            if (
+              Math.hypot(
+                other.position.x - player.x,
+                other.position.z - player.z,
+              ) < 140
+            ) {
+              const nowMs = performance.now();
+              rivalGuidance?.showRivalWreck(nowMs);
+            }
+          }
         }
         breakableProps.update(dt);
         {
@@ -558,11 +589,6 @@ async function boot(): Promise<void> {
             );
         }
         {
-          const t = vehicle.telemetry,
-            q = t.rotation;
-          playerView.forward.x = -2 * (q.x * q.z + q.y * q.w);
-          playerView.forward.z = -(1 - 2 * (q.x * q.x + q.y * q.y));
-          playerView.speed = t.speed;
           trafficTuning.nearMissGap = tuning.get('nearMissGap');
           trafficTuning.nearMissClosing = tuning.get('nearMissClosing');
           trafficTuning.nearMissBoost = tuning.get('nearMissBoost');
@@ -647,7 +673,13 @@ async function boot(): Promise<void> {
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
         if (takedownMoment && traffic)
-          takedownMoment.apply(view.camera, traffic.states, frameTime);
+          takedownMoment.apply(
+            view.camera,
+            traffic.states,
+            vehicle.telemetry.position,
+            playerView.forward,
+            frameTime,
+          );
         if (inspectionCamera) {
           view.camera.position.set(
             inspectionCamera.position.x,
@@ -1242,6 +1274,7 @@ async function boot(): Promise<void> {
         screenPixels,
       };
     });
+  game.getRivalControl = () => traffic?.debugRivals() ?? null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
     boostSections: vehicle.telemetry.boostSections,

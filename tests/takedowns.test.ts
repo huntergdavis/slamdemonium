@@ -48,11 +48,25 @@ describe('takedown attribution', () => {
     const unrelated = car(1, true);
     unrelated.wrecked = true;
     expect(tracker.update(0.1, [unrelated])).toBeUndefined();
+    expect(tracker.lastObservedVictim).toBe(unrelated);
+    expect(tracker.update(0.1, [unrelated])).toBeUndefined();
+    expect(tracker.lastObservedVictim).toBeUndefined();
     const late = car(2, true);
     tracker.notePlayerContact(late, 0.1);
     tracker.update(3.1, [late]);
     late.wrecked = true;
     expect(tracker.update(1 / 120, [late])).toBeUndefined();
     expect(tracker.count).toBe(0);
+  });
+
+  it('shows an AI wreck without giving the player a takedown or boost credit', () => {
+    const tracker = new Takedowns();
+    const rival = car(11, true);
+    rival.wrecked = true;
+    expect(tracker.update(1 / 120, [rival])).toBeUndefined();
+    expect(tracker.lastObservedVictim).toBe(rival);
+    expect(tracker.count).toBe(0);
+    expect(tracker.update(1 / 120, [rival])).toBeUndefined();
+    expect(tracker.lastObservedVictim).toBeUndefined();
   });
 });

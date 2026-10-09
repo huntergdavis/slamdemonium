@@ -802,6 +802,22 @@
 .sl-rival-pointer {
   margin: -14px 0 0 -37px;
 }
+.sl-rival-wreck-notice {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border: 2px solid #fff;
+  border-radius: 5px;
+  background: #b61f2c;
+  color: #fff;
+  font: 900 20px/1 sans-serif;
+  letter-spacing: 0.09em;
+  text-shadow: 0 2px #561019;
+  box-shadow: 0 3px 12px #000b;
+  white-space: nowrap;
+}
 .sl-hud__score [data-reading='scoreTotal'] {
   display: block;
   font-size: 1.35rem;
