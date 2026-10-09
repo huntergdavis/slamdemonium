@@ -73,3 +73,55 @@ it('covers over 90% of both roadsides with visible solid walls and clear run-off
     world.dispose();
   }
 }, 60_000);
+
+it('stops a moving car-size body at the authored roadside collider', async () => {
+  const map = createTakedownMap();
+  const world = await createPhysicsWorld({ wasmPath });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  try {
+    world.setGravity(0);
+    const wallIds = installShuntWalls(bodies, map.shuntWalls!);
+    const road = poseAt(map.path!, 340);
+    const side = -1;
+    const outward = {
+      x: -Math.cos(road.heading) * side,
+      z: Math.sin(road.heading) * side,
+    };
+    const car = world.createDynamicBox({
+      center: { x: road.x, y: 1.1, z: road.z },
+      halfExtents: { x: 1.08, y: 0.65, z: 2.4 },
+      mass: 1300,
+      comOffset: { x: 0, y: 0, z: 0 },
+      inertiaScale: { x: 1, y: 1, z: 1 },
+      friction: 0.2,
+      restitution: 0,
+      ccd: true,
+      maxAngularVelocity: 12,
+      angularDamping: 0,
+    });
+    let wallContacts = 0;
+    world.onContact((a, b) => {
+      if (
+        (a === car && wallIds.includes(b)) ||
+        (b === car && wallIds.includes(a))
+      )
+        wallContacts++;
+    });
+    world.setLinearVelocity(car, {
+      x: outward.x * 35,
+      y: 0,
+      z: outward.z * 35,
+    });
+    for (let step = 0; step < 120; step++) world.step(1 / 120);
+    const position = { x: 0, y: 0, z: 0 };
+    world.getTransform(car, position, { x: 0, y: 0, z: 0, w: 1 });
+    const travel =
+      (position.x - road.x) * outward.x + (position.z - road.z) * outward.z;
+    expect(wallContacts).toBeGreaterThan(0);
+    expect(travel).toBeGreaterThan(10);
+    expect(travel).toBeLessThan(18); // 35 m without the solid roadside wall.
+  } finally {
+    bodies.dispose();
+    world.dispose();
+  }
+}, 60_000);
