@@ -30,6 +30,7 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
   const relative = { x: 0, y: 0, z: 0 };
   let contacts = 0;
   let peakSeverity = 0;
+  let wreckEventSteps = 0;
   try {
     traffic.preStep(DT, { x: 3.5, y: 1, z: -130 });
     world.step(DT);
@@ -73,12 +74,18 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
       world.step(DT);
       traffic.postStep(vehicle.body, vehicle.currentMass);
       vehicle.postStep(DT);
-      const victim = takedowns.update(DT, traffic.states);
+      if (traffic.newlyWrecked.length > 0) {
+        expect(traffic.newlyWrecked).toContain(rival);
+        wreckEventSteps++;
+      }
+      const victim = takedowns.update(DT, traffic.newlyWrecked);
       if (victim) vehicle.awardTakedown();
     }
     expect(contacts).toBeGreaterThan(0);
     expect(peakSeverity).toBeGreaterThan(0.25);
     expect(rival.wrecked).toBe(true);
+    expect(wreckEventSteps).toBe(1);
+    expect(traffic.newlyWrecked).toHaveLength(0);
     expect(takedowns.count).toBe(1);
     expect(vehicle.telemetry.boostSections).toBe(2);
   } finally {

@@ -1,10 +1,26 @@
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three';
+import type { V3 } from '../physics/adapter';
 import type { TrafficCarState } from '../world/traffic';
 
 /** Wall time, not slowed simulation time: the player regains the chase view promptly. */
 export const TAKEDOWN_MOMENT_MS = 750;
 const SLOW_MS = 450;
 const SLOW_SCALE = 0.4;
+const MAX_FOCUS_DISTANCE = 60;
+
+/** Keep the camera on an immediate, nearby wreck in the player's forward view. */
+export function canFocusTakedown(
+  victim: Readonly<TrafficCarState>,
+  player: Readonly<V3>,
+  playerForward: Readonly<Pick<V3, 'x' | 'z'>>,
+): boolean {
+  const dx = victim.position.x - player.x;
+  const dz = victim.position.z - player.z;
+  return (
+    dx * dx + dz * dz <= MAX_FOCUS_DISTANCE * MAX_FOCUS_DISTANCE &&
+    dx * playerForward.x + dz * playerForward.z >= 0
+  );
+}
 
 /** Short visual focus on a wreck, leaving the physics and camera rig unchanged. */
 export class TakedownMoment {
@@ -39,12 +55,17 @@ export class TakedownMoment {
   apply(
     camera: PerspectiveCamera,
     cars: readonly TrafficCarState[],
+    player: Readonly<V3>,
+    playerForward: Readonly<Pick<V3, 'x' | 'z'>>,
     nowMs: number,
   ): void {
     const elapsed = nowMs - this.startedMs;
     if (elapsed < 0 || elapsed >= TAKEDOWN_MOMENT_MS) return;
     const victim = cars.find((car) => car.id === this.victimId);
-    if (!victim) return;
+    if (!victim || !canFocusTakedown(victim, player, playerForward)) {
+      this.reset();
+      return;
+    }
     const progress = elapsed / TAKEDOWN_MOMENT_MS;
     const weight = 0.85 * Math.sin(Math.PI * progress);
     if (weight <= 0) return;

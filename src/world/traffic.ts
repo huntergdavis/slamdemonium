@@ -280,6 +280,7 @@ export function createTraffic(
   const slots: Slot[] = [];
   const slotByBodyId = new Map<BodyId, Slot>();
   const visualStates: TrafficCarState[] = [];
+  const newlyWrecked: TrafficCarState[] = [];
   const wreckRecords: RecordState[] = [];
   const nearbyWrecks: RecordState[] = [];
   const rivalTargets: V3[] = [];
@@ -458,6 +459,7 @@ export function createTraffic(
     if (record.wrecked) return;
     record.wrecked = true;
     record.state.wrecked = true;
+    newlyWrecked.push(record.state);
     wreckRecords.push(record);
     // Keep the existing ordered lane links. Followers skip wrecked entries
     // when they read the chain, avoiding a full-circuit sort on each impact.
@@ -671,6 +673,7 @@ export function createTraffic(
   }
 
   function preStep(dt: number, player: V3, playerSpeed = 0): void {
+    newlyWrecked.length = 0;
     stepDt = dt;
     if (!rivalryStarted && playerSpeed > 10) {
       rivalDriveSeconds += dt;
@@ -1380,6 +1383,8 @@ export function createTraffic(
     /** Reused array and records; safe to iterate after physics without allocation. */
     states: visualStates as readonly TrafficCarState[],
     visualStates: visualStates as readonly TrafficCarState[],
+    /** Wreck transitions from this physics step, including off-screen cars. */
+    newlyWrecked: newlyWrecked as readonly TrafficCarState[],
     hasRivals,
     recordCount: authored.length,
     /** Test-only controller snapshot, allocated only when browser tooling asks. */
