@@ -98,24 +98,6 @@ function roadsideWalls(
   return walls;
 }
 
-/** Keep shoulder props that stand beyond the wall, but remove ones intersecting
- * the actual rotated box rather than a huge circle around a long wall. */
-function overlapsWall(
-  position: Readonly<{ x: number; z: number }>,
-  wall: ReturnType<typeof shuntWallAt>,
-): boolean {
-  const dx = position.x - wall.center.x;
-  const dz = position.z - wall.center.z;
-  const c = Math.cos(wall.heading);
-  const s = Math.sin(wall.heading);
-  const across = c * dx - s * dz;
-  const along = s * dx + c * dz;
-  return (
-    Math.abs(across) < wall.halfExtents.x + 2 &&
-    Math.abs(along) < wall.halfExtents.z + 2
-  );
-}
-
 /** A broad 7.1 km loop with 420 m sweepers. Four red rivals are encounter
  * records in the existing physics/visual traffic lifecycle; the rest of the
  * road has about one ordinary car every 140 m across both directions. */
@@ -178,14 +160,14 @@ export function createTakedownMap(): MapDefinition {
     });
   }
   const walls = roadsideWalls(path);
+  // Props begin 18 m from the centreline. Even on curved chords the authored
+  // shoulder stays over a metre clear of the wall boxes.
   const placements: BreakablePlacement[] = shoulderPlacements(path, {
     density: 0.1,
     nearest: TAKEDOWN_ROAD_WIDTH / 2 + 4,
     farthest: TAKEDOWN_ROAD_WIDTH / 2 + 23,
     seed: 261,
-  }).filter((prop) =>
-    walls.every((wall) => !overlapsWall(prop.position, wall)),
-  );
+  });
   return {
     name: 'takedown',
     label: 'Takedown road (7 km)',

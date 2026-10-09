@@ -51,6 +51,23 @@ describe('takedown course', () => {
       );
       expect(nearest).toBeGreaterThan(TAKEDOWN_ROAD_WIDTH / 2);
     }
+    // The shoulder field remains beyond the long boxes, including their
+    // rotated corners on the sweepers, without a runtime placement filter.
+    let leastPropClearance = Infinity;
+    for (const prop of map.placements!)
+      for (const wall of map.shuntWalls!) {
+        const dx = prop.position.x - wall.center.x;
+        const dz = prop.position.z - wall.center.z;
+        const c = Math.cos(wall.heading);
+        const s = Math.sin(wall.heading);
+        const along = Math.abs(s * dx + c * dz) - wall.halfExtents.z;
+        if (along > 0.6) continue;
+        leastPropClearance = Math.min(
+          leastPropClearance,
+          Math.abs(c * dx - s * dz) - wall.halfExtents.x,
+        );
+      }
+    expect(leastPropClearance).toBeGreaterThan(0.6);
   });
 
   it('aims a bounded nudge toward an alongside player and eases back', () => {
