@@ -71,6 +71,7 @@ import { createRunwayVisual } from './world/runways';
 import { createRoadDeckVisual } from './world/roadDeck';
 import { createCityBuildingsVisual } from './world/cityBuildings';
 import { createCoastVisual } from './world/coastVisual';
+import { createHighwayVisual } from './world/highwayVisual';
 import { createTimedRun } from './core/timedRun';
 import { createRaceEvent, type RaceCar } from './core/raceEvent';
 import { awardFaceOffWin, createFaceOffReward } from './core/faceOffReward';
@@ -159,6 +160,8 @@ async function boot(): Promise<void> {
   resources.push(track);
   if (mapName === 'coast-shoreline' || mapName === 'coast-headland')
     resources.push(createCoastVisual(view.scene));
+  if (mapName === 'highway-express' || mapName === 'highway-interchange')
+    resources.push(createHighwayVisual(view.scene));
   view.renderer.shadowMap.enabled = true;
   const trackBodies = installTrackColliders(
     physics,

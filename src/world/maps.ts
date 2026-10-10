@@ -6,6 +6,7 @@ import { CIRCUIT_STATIONS, createCircuitMap } from './circuit';
 import { createCityMap } from './cityCourse';
 import { createTakedownMap } from './takedownCourse';
 import { COAST_HEADLAND_MAP, COAST_SHORELINE_MAP } from './coastCourse';
+import { HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP } from './highwayCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
@@ -63,7 +64,7 @@ export interface MapDefinition {
   readonly cityBuildings?: readonly CityBuildingSpec[];
 }
 export type MapName =
-  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off' | 'city' | 'city-reverse' | 'coast-shoreline' | 'coast-headland';
+  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off' | 'city' | 'city-reverse' | 'coast-shoreline' | 'coast-headland' | 'highway-express' | 'highway-interchange';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -513,6 +514,8 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   'city-reverse': createCityMap(true),
   'coast-shoreline': COAST_SHORELINE_MAP,
   'coast-headland': COAST_HEADLAND_MAP,
+  'highway-express': HIGHWAY_EXPRESS_MAP,
+  'highway-interchange': HIGHWAY_INTERCHANGE_MAP,
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 

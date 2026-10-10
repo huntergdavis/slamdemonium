@@ -146,6 +146,8 @@ describe('map selection', () => {
       'city-reverse',
       'coast-headland',
       'coast-shoreline',
+      'highway-express',
+      'highway-interchange',
       'lab',
       'proving-ground',
       'road-rage',
