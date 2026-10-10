@@ -21,7 +21,10 @@ import {
   type Scene,
 } from 'three';
 import type { VehicleVisualState } from './carVisualState';
-import { VEHICLE_GEOMETRY as G } from '../vehicle/constants';
+import {
+  VEHICLE_GEOMETRY as G,
+  type VehicleGeometry,
+} from '../vehicle/constants';
 import type { CarCrushState } from '../world/carModels';
 import type { HeroPaint } from '../vehicle/vehicleDefinition';
 import type { HeroCarModel } from './heroCarModel';
@@ -46,9 +49,16 @@ export function nextHeroLod(
 }
 
 /** Mount once; update with render-ready state. Owns no physics, input or camera. */
-export function createCarVisual(scene: Scene) {
+export function createCarVisual(
+  scene: Scene,
+  vehicleGeometry: VehicleGeometry = G,
+) {
   const root = new Group();
   root.name = 'car';
+  const scaleX = vehicleGeometry.width / G.width;
+  const scaleY = vehicleGeometry.height / G.height;
+  const scaleZ = vehicleGeometry.length / G.length;
+  root.scale.set(scaleX, scaleY, scaleZ);
   const debug = new Group();
   debug.name = 'car.gizmos';
   debug.visible = false;
@@ -507,7 +517,9 @@ export function createCarVisual(scene: Scene) {
     const depth = -cameraPoint.z;
     const pixels =
       depth > 0
-        ? (G.length * camera.projectionMatrix.elements[5]! * viewportHeight) /
+        ? (vehicleGeometry.length *
+            camera.projectionMatrix.elements[5]! *
+            viewportHeight) /
           (2 * depth)
         : Infinity;
     heroPixels = pixels;
@@ -566,7 +578,13 @@ export function createCarVisual(scene: Scene) {
     for (let index = 0; index < 4; index++) {
       const source = state.wheels[index]!;
       const wheel = wheels[index]!;
-      wheel.pivot.position.copy(source.centerLocal);
+      // The shell is scaled as one graybox; wheel telemetry is already in the
+      // selected car's metres, so convert it back to this root's local space.
+      wheel.pivot.position.set(
+        source.centerLocal.x / scaleX,
+        source.centerLocal.y / scaleY,
+        source.centerLocal.z / scaleZ,
+      );
       wheel.pivot.rotation.y = index < 2 ? source.steerAngle : 0;
       wheel.spin.rotation.x = ((source.spinAngle % TAU) + TAU) % TAU;
     }

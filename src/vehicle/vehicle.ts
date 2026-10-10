@@ -14,7 +14,7 @@ import type {
 } from '../physics/adapter';
 import { TuningStore } from '../tuning/store';
 import { DriftAssist, gripYawTorque } from './assists';
-import { DEG, VEHICLE_GEOMETRY as G } from './constants';
+import { DEG, VEHICLE_GEOMETRY as G, type VehicleGeometry } from './constants';
 import { DEFAULT_ENGINE, type EngineProfile } from './engineProfile';
 import { RpmModel } from './rpmModel';
 import { AirStateTracker } from './airState';
@@ -146,6 +146,7 @@ export class Vehicle {
     spawn: V3,
     private readonly resolveSurface: SurfaceResolver,
     engineProfile: EngineProfile = DEFAULT_ENGINE,
+    private readonly geometry: VehicleGeometry = G,
   ) {
     this.rpmModel = new RpmModel(engineProfile);
     this.telemetry = new VehicleTelemetry(resolveSurface.diagnostics);
@@ -154,7 +155,11 @@ export class Vehicle {
     this.readBodySettings();
     this.body = world.createDynamicBox({
       center: this.spawn,
-      halfExtents: { x: G.width / 2, y: G.height / 2, z: G.length / 2 },
+      halfExtents: {
+        x: this.geometry.width / 2,
+        y: this.geometry.height / 2,
+        z: this.geometry.length / 2,
+      },
       ...this.mass,
       ...this.properties,
       ccd: true,
@@ -237,8 +242,8 @@ export class Vehicle {
   private suspension(dt: number): void {
     const t = this.tuning,
       s = this.telemetry;
-    const rest = t.get('suspRestLength') + G.wheelRadius;
-    const maximum = rest + G.maxDroop;
+    const rest = t.get('suspRestLength') + this.geometry.wheelRadius;
+    const maximum = rest + this.geometry.maxDroop;
     const frequency = t.get('suspFrequency');
     s.groundedWheels = 0;
     for (let i = 0; i < s.wheels.length; i++) {
@@ -246,7 +251,7 @@ export class Vehicle {
       const oldCompression = wheel.compression;
       const wasGrounded = wheel.grounded;
       wheel.mount
-        .copy(G.mounts[i]!)
+        .copy(this.geometry.mounts[i]!)
         .applyQuaternion(s.rotation)
         .add(s.position);
       wheel.grounded = this.world.rayCast(
@@ -279,17 +284,24 @@ export class Vehicle {
       wheel.spinning = wheel.locked = false;
       wheel.tireForceWorld.set(0, 0, 0);
       if (!wheel.grounded) {
-        wheel.compression = -G.maxDroop;
-        wheel.suspensionLength = t.get('suspRestLength') + G.maxDroop;
+        wheel.compression = -this.geometry.maxDroop;
+        wheel.suspensionLength =
+          t.get('suspRestLength') + this.geometry.maxDroop;
         wheel.alpha = wheel.rawAlpha = 0;
-        wheel.centerLocal.copy(G.mounts[i]!);
+        wheel.centerLocal.copy(this.geometry.mounts[i]!);
         wheel.centerLocal.y -= wheel.suspensionLength;
         continue;
       }
       s.groundedWheels++;
-      wheel.compression = Math.max(-G.maxDroop, rest - wheel.hit.distance);
-      wheel.suspensionLength = Math.max(0, wheel.hit.distance - G.wheelRadius);
-      wheel.centerLocal.copy(G.mounts[i]!);
+      wheel.compression = Math.max(
+        -this.geometry.maxDroop,
+        rest - wheel.hit.distance,
+      );
+      wheel.suspensionLength = Math.max(
+        0,
+        wheel.hit.distance - this.geometry.wheelRadius,
+      );
+      wheel.centerLocal.copy(this.geometry.mounts[i]!);
       wheel.centerLocal.y -= wheel.suspensionLength;
       this.world.getPointVelocity(this.body, wheel.mount, this.pointVelocity);
       this.world.getPointVelocity(
@@ -366,7 +378,7 @@ export class Vehicle {
     );
     this.temp
       .copy(this.forward)
-      .multiplyScalar(G.wheelbase / 2)
+      .multiplyScalar(this.geometry.wheelbase / 2)
       .add(s.position);
     this.world.getPointVelocity(this.body, this.temp, this.pointVelocity);
     const betaFront = Math.atan2(
@@ -680,7 +692,7 @@ export class Vehicle {
           .multiplyScalar(this.mass.mass * t.get('gravity') * 0.6);
         this.temp
           .copy(this.centerOfMass)
-          .addScaledVector(this.right, G.width / 2);
+          .addScaledVector(this.right, this.geometry.width / 2);
         this.world.applyForceAtPoint(this.body, this.force, this.temp);
       }
     }
@@ -865,7 +877,8 @@ export class Vehicle {
     for (const wheel of s.wheels) {
       wheel.spinDelta = wheel.locked
         ? 0
-        : ((-wheel.vx * dt) / G.wheelRadius) * (wheel.spinning ? 1.5 : 1);
+        : ((-wheel.vx * dt) / this.geometry.wheelRadius) *
+          (wheel.spinning ? 1.5 : 1);
       wheel.spinAngle =
         (((wheel.spinAngle + wheel.spinDelta) % (2 * Math.PI)) + 2 * Math.PI) %
         (2 * Math.PI);
@@ -913,7 +926,7 @@ export class Vehicle {
       wheel.alpha = wheel.rawAlpha = wheel.vx = wheel.vy = wheel.spinAngle = 0;
       wheel.tireForceWorld.set(0, 0, 0);
       wheel.suspensionLength = this.tuning.get('suspRestLength');
-      wheel.centerLocal.copy(G.mounts[i]!);
+      wheel.centerLocal.copy(this.geometry.mounts[i]!);
       wheel.centerLocal.y -= wheel.suspensionLength;
     }
     this.telemetry.longitudinalAcceleration =
