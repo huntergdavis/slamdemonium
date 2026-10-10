@@ -14,6 +14,7 @@ import {
 } from './hudTelemetry';
 import { HudPlots } from './hudPlots';
 import type { TimedRunState } from '../core/timedRun';
+import type { RoadRageState } from '../core/roadRage';
 import { HudChainState, isChainAlive } from './hudChain';
 import type { TrafficEventsState } from '../core/trafficEvents';
 import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
@@ -58,6 +59,8 @@ export interface HudOptions extends RecorderOptions {
   readScore?: () => Readonly<CrashScoreState>;
   /** The timed run (NS3): countdown, clock and finish on the persistent seam. */
   readRun?: () => Readonly<TimedRunState>;
+  /** Road Rage's fixed-step event, persistent even when the HUD is off. */
+  readRoadRage?: () => Readonly<RoadRageState>;
   /** Traffic events: the one short label beside the boost bar. */
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
@@ -148,6 +151,8 @@ export class Hud {
   private readonly driveBoost: Meter;
   private readonly driveEvent: HTMLElement;
   private readonly takedownCount: HTMLElement | null;
+  private readonly roadRageCard: HTMLElement | null;
+  private readonly roadRageResult: HTMLElement | null;
   private readonly playerDamageNotice: HTMLElement | null;
   private lastTakedownCount = 0;
   private takedownFlashUntilMs = 0;
@@ -260,6 +265,23 @@ export class Hud {
       ? node(doc, 'div', 'sl-hud__takedowns', 'TAKEDOWNS 0')
       : null;
     if (this.takedownCount) this.drive.append(this.takedownCount);
+    this.roadRageCard = options.readRoadRage
+      ? node(doc, 'section', 'sl-card sl-hud__road-rage', '')
+      : null;
+    if (this.roadRageCard) {
+      this.roadRageCard.dataset.hudPersistent = '';
+      this.roadRageCard.setAttribute('aria-live', 'polite');
+      this.element.append(this.roadRageCard);
+    }
+    this.roadRageResult = options.readRoadRage
+      ? node(doc, 'section', 'sl-card sl-hud__road-rage-result', '')
+      : null;
+    if (this.roadRageResult) {
+      this.roadRageResult.dataset.hudPersistent = '';
+      this.roadRageResult.setAttribute('aria-live', 'assertive');
+      this.roadRageResult.hidden = true;
+      this.element.append(this.roadRageResult);
+    }
     this.playerDamageNotice = options.readPlayerDamage
       ? node(doc, 'div', 'sl-hud__player-damage', '')
       : null;
@@ -528,6 +550,7 @@ export class Hud {
     this.updateNotice();
     this.updateScore(nowMs, this.options.readScore?.());
     this.updateRun(this.options.readRun?.());
+    this.updateRoadRage();
     const collapsed = this.element.dataset.collapsed === 'true';
     // The mini-map is HUD-persistent, so keep its position live while the
     // instrument cards are collapsed or the HUD mode is off. HUDs without a
@@ -803,6 +826,32 @@ export class Hud {
     if (this.takedownCount.textContent !== label)
       this.takedownCount.textContent = label;
     this.takedownCount.dataset.flash = String(flashing);
+  }
+
+  private updateRoadRage(): void {
+    if (!this.roadRageCard || !this.roadRageResult) return;
+    const state = this.options.readRoadRage?.();
+    if (!state) return;
+    const seconds = Math.ceil(state.remaining);
+    const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+    const target =
+      state.nextTarget === null ? 'GOLD SECURED' : `NEXT ${state.nextTarget}`;
+    const takedownWord = state.count === 1 ? 'TAKEDOWN' : 'TAKEDOWNS';
+    const label =
+      state.phase === 'countdown'
+        ? `ROAD RAGE · ${Math.ceil(state.countdown)}`
+        : state.goCue > 0
+          ? 'ROAD RAGE · GO!'
+          : `ROAD RAGE · ${clock} · ${state.count} ${takedownWord} · ${target}`;
+    if (this.roadRageCard.textContent !== label)
+      this.roadRageCard.textContent = label;
+    this.roadRageCard.dataset.phase = state.phase;
+    this.roadRageResult.hidden = state.phase !== 'finished';
+    if (state.phase === 'finished') {
+      const result = `${state.medal.toUpperCase()} · ${state.count} ${takedownWord} · ENTER TO RETRY`;
+      if (this.roadRageResult.textContent !== result)
+        this.roadRageResult.textContent = result;
+    }
   }
 
   private updatePlayerDamage(): void {
