@@ -23,6 +23,10 @@ const pitch = (value: number): number => Math.max(0.5, Math.min(4, value));
  * the layer ceiling (sfxVolume), about 3.6 dB above a full four-wheel screech
  * whose own level is unchanged. */
 const ENGINE_GAIN = 3;
+/** The inserted master-limiter path measured about +3 dB on the no-contact
+ * engine bed. This compensation restores the main build's matched-speed level
+ * while leaving headroom for layered crashes. */
+const LIMITER_OUTPUT_GAIN = 0.71;
 /** Howler loops plus the engine worklet module. */
 const CORE_CRASH_CLIPS = [
   'light',
@@ -118,6 +122,7 @@ export class HowlerOutput implements AudioOutput {
         limiter.attack.value = 0.003;
         limiter.release.value = 0.13;
         const output = Howler.ctx.createGain();
+        output.gain.value = LIMITER_OUTPUT_GAIN;
         Howler.masterGain.disconnect();
         Howler.masterGain.connect(limiter);
         limiter.connect(output);
