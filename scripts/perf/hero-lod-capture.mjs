@@ -48,6 +48,7 @@ try {
   const target = await page.evaluate(() => {
     const game = window.__game;
     game.releaseInput();
+    game.perf.pauseSimulation(true);
     game.setHudMode('off');
     return { ...game.getTelemetry().position };
   });
