@@ -4,6 +4,8 @@ import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { createCircuitMap } from './circuit';
 import { createTakedownMap } from './takedownCourse';
+import { COAST_HEADLAND_MAP, COAST_SHORELINE_MAP } from './coastCourse';
+import { HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP } from './highwayCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
@@ -54,7 +56,15 @@ export interface MapDefinition {
   /** Short walls beside a road, shared by collision and visuals. */
   readonly shuntWalls?: readonly ShuntWallSpec[];
 }
-export type MapName = 'lab' | 'proving-ground' | 'circuit' | 'takedown';
+export type MapName =
+  | 'lab'
+  | 'proving-ground'
+  | 'circuit'
+  | 'takedown'
+  | 'coast-shoreline'
+  | 'coast-headland'
+  | 'highway-express'
+  | 'highway-interchange';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -336,6 +346,10 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   'proving-ground': PROVING_GROUND_MAP,
   circuit: createCircuitMap(),
   takedown: createTakedownMap(),
+  'coast-shoreline': COAST_SHORELINE_MAP,
+  'coast-headland': COAST_HEADLAND_MAP,
+  'highway-express': HIGHWAY_EXPRESS_MAP,
+  'highway-interchange': HIGHWAY_INTERCHANGE_MAP,
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 

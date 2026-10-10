@@ -140,6 +140,10 @@ describe('map selection', () => {
     expect(resolveMapName('')).toBe('proving-ground');
     expect(Object.keys(MAPS).sort()).toEqual([
       'circuit',
+      'coast-headland',
+      'coast-shoreline',
+      'highway-express',
+      'highway-interchange',
       'lab',
       'proving-ground',
       'takedown',
