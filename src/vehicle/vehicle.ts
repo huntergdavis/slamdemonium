@@ -15,7 +15,7 @@ import type {
 import { TuningStore } from '../tuning/store';
 import { DriftAssist, gripYawTorque } from './assists';
 import { DEG, VEHICLE_GEOMETRY as G } from './constants';
-import { DEFAULT_ENGINE } from './engineProfile';
+import { DEFAULT_ENGINE, type EngineProfile } from './engineProfile';
 import { RpmModel } from './rpmModel';
 import { AirStateTracker } from './airState';
 import { airControlTorques } from './airControl';
@@ -99,7 +99,7 @@ export class Vehicle {
   private boostEnvelope = 0;
   /** Derived rpm and virtual gear for presentation; reads telemetry, writes
    * telemetry, never touches forces or controls. */
-  private readonly rpmModel = new RpmModel(DEFAULT_ENGINE);
+  private readonly rpmModel: RpmModel;
   private readonly airState = new AirStateTracker();
   private wasAirborneForControl = false;
   /** Seconds with every wheel off the ground, last step's value: the air
@@ -145,7 +145,9 @@ export class Vehicle {
     readonly tuning: TuningStore,
     spawn: V3,
     private readonly resolveSurface: SurfaceResolver,
+    engineProfile: EngineProfile = DEFAULT_ENGINE,
   ) {
+    this.rpmModel = new RpmModel(engineProfile);
     this.telemetry = new VehicleTelemetry(resolveSurface.diagnostics);
     this.spawn.copy(spawn);
     this.readMassSettings();

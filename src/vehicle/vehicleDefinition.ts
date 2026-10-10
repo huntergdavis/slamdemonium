@@ -1,4 +1,5 @@
 import { VEHICLE_GEOMETRY } from './constants';
+import { SPORTS_SEDAN_ENGINE } from './engineProfile';
 
 /** One player vehicle definition; the Jolt body and drivetrain remain unchanged. */
 export const HERO_SEDAN = {
@@ -12,7 +13,8 @@ export const HERO_SEDAN = {
   },
   wheelMounts: VEHICLE_GEOMETRY.mounts,
   wheelRadius: VEHICLE_GEOMETRY.wheelRadius,
-  soundProfile: 'current-arcade',
+  soundProfile: 'sports-sedan',
+  engineProfile: SPORTS_SEDAN_ENGINE,
 } as const;
 
 export type HeroPaint = 'orange' | 'blue' | 'green';
