@@ -454,7 +454,11 @@ async function boot(): Promise<void> {
   );
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
-  const carVisual = createCarVisual(view.scene, garageClass.geometry);
+  const carVisual = createCarVisual(
+    view.scene,
+    garageClass.geometry,
+    garageClassId,
+  );
   carVisual.setPaint(faceOffReward.selected);
   await carVisual.loadHeroModel();
   // Line of sight for the camera: static geometry between car and camera
