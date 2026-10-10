@@ -356,6 +356,44 @@ export async function mountHeroCarModel(
     mounted.push(wheel);
   }
 
+  // A single bright radial marker makes wheel rotation readable from either
+  // quarter view. Share its geometry across the four existing spin groups.
+  const spokeParts: BoxGeometry[] = [];
+  for (const face of [-1, 1]) {
+    const spoke = new BoxGeometry(
+      0.018,
+      G.wheelRadius * 0.72,
+      G.wheelRadius * 0.17,
+    );
+    spoke.translate(face * 0.159, G.wheelRadius * 0.43, 0);
+    spokeParts.push(spoke);
+    const accent = new BoxGeometry(
+      0.018,
+      G.wheelRadius * 0.36,
+      G.wheelRadius * 0.12,
+    );
+    accent.translate(face * 0.159, G.wheelRadius * 0.32, 0);
+    accent.rotateX(2.25);
+    spokeParts.push(accent);
+  }
+  const spokesShape = mergeGeometries(spokeParts, false);
+  for (const shape of spokeParts) shape.dispose();
+  if (!spokesShape) throw new Error('Hero wheel spokes unavailable');
+  ownedGeometries.add(spokesShape);
+  const spokesMaterial = new MeshStandardMaterial({
+    color: 0xf0f5f8,
+    emissive: 0x303840,
+    metalness: 0.55,
+    roughness: 0.4,
+  });
+  ownedMaterials.add(spokesMaterial);
+  for (let i = 0; i < WHEEL_NODES.length; i++) {
+    const spokes = new Mesh(spokesShape, spokesMaterial);
+    spokes.name = 'car.hero.wheel.spokes.' + i;
+    wheelSpins[i]!.add(spokes);
+    mounted.push(spokes);
+  }
+
   // At 8 screen pixels the source mesh cannot resolve. Construct the three
   // draw far proxy here so it ships in the already lazy-loaded model chunk.
   const far = new Group();
