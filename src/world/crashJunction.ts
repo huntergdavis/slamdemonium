@@ -54,16 +54,23 @@ export function crashJunctionTraffic(
   ] as const)
     for (const direction of [1, -1] as const)
       for (let index = 0; index < 3; index++) {
+        // One van arrives beside the lead sedan, so an early heavy-player
+        // impact reaches a second body without waiting for a trailing car.
         const offset =
           (firstWave ? 240 : 390) +
           (direction === 1 ? 0 : 20) +
-          index * PLATOON_GAP;
+          (firstWave && direction === 1 && index === 1
+            ? 0
+            : index * PLATOON_GAP);
         records.push({
           path,
           station: station - direction * offset,
           laneSide: direction === 1 ? -1 : 1,
+          ...(firstWave && direction === 1 && index === 1
+            ? { laneOffset: -6.5 }
+            : {}),
           direction,
-          speed: 26 - index,
+          speed: firstWave && direction === 1 && index === 1 ? 26 : 26 - index,
           modelKind: (['sedan', 'van', 'boxTruck'] as const)[index]!,
         });
       }
