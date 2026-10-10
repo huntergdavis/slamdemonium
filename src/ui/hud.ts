@@ -65,6 +65,7 @@ export interface HudOptions extends RecorderOptions {
   readRoadRage?: () => Readonly<RoadRageState>;
   readRoadRageBest?: () => Readonly<RoadRageBestResult> | null;
   readRace?: () => Readonly<RaceState>;
+  raceKind?: 'circuit' | 'face-off';
   /** Traffic events: the one short label beside the boost bar. */
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
@@ -797,9 +798,15 @@ export class Hud {
     write(
       this.raceGate,
       race.phase === 'finished'
-        ? 'FINISH'
+        ? this.options.raceKind === 'face-off'
+          ? race.position === 1
+            ? 'WIN — LIVERY UNLOCKED'
+            : 'LOSS — ENTER TO RETRY'
+          : 'FINISH'
         : race.phase === 'countdown'
-          ? 'CIRCUIT RACE'
+          ? this.options.raceKind === 'face-off'
+            ? 'FACE OFF · VESPER'
+            : 'CIRCUIT RACE'
           : race.nextCheckpoint >= race.checkpointCount + 1
             ? 'GOAL'
             : `GATE ${race.nextCheckpoint}/${race.checkpointCount}`,

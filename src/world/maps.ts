@@ -55,7 +55,7 @@ export interface MapDefinition {
   readonly shuntWalls?: readonly ShuntWallSpec[];
 }
 export type MapName =
-  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race';
+  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -470,11 +470,35 @@ const circuitRace: MapDefinition = {
   ],
 };
 
+/** A two-car standing grid on the same validated one-lap circuit. The named
+ * rival uses the gold palette that the player earns by beating it. */
+const faceOff: MapDefinition = {
+  ...circuitRace,
+  name: 'face-off',
+  label: 'Face Off · beat Vesper',
+  traffic: [
+    ...circuitRace.traffic!.filter((car) => !car.raceEntrant),
+    {
+      station: circuit.path.length - 35,
+      laneSide: -1,
+      laneOffset: -6.25,
+      laneOffsetAt: raceLaneAt(-6.25),
+      direction: 1,
+      speed: 50,
+      rival: true,
+      raceEntrant: true,
+      modelKind: 'hatch',
+      paintIndex: 1,
+    },
+  ],
+};
+
 export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   lab: LAB_MAP,
   'proving-ground': PROVING_GROUND_MAP,
   circuit,
   'circuit-race': circuitRace,
+  'face-off': faceOff,
   takedown: TAKEDOWN_MAP,
   'road-rage': ROAD_RAGE_MAP,
 });

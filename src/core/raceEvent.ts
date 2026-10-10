@@ -38,9 +38,9 @@ export function createRaceEvent(
   path: RoadPath,
   rivalIds: readonly number[],
 ) {
-  if (route.gates.length < 3 || rivalIds.length !== 5)
+  if (route.gates.length < 3 || rivalIds.length < 1)
     throw new RangeError(
-      'Circuit Race needs a start, checkpoints, goal and five rivals.',
+      'A race needs a start, checkpoints, goal and at least one rival.',
     );
   const entries: Entry[] = [0, ...rivalIds].map((id) => ({
     id,
@@ -68,7 +68,7 @@ export function createRaceEvent(
     phase: 'countdown',
     countdown: 3,
     clock: 0,
-    position: 6,
+    position: entries.length,
     fieldSize: entries.length,
     nextCheckpoint: 1,
     checkpointCount: route.gates.length - 2,
@@ -80,7 +80,7 @@ export function createRaceEvent(
     values.phase = 'countdown';
     values.countdown = 3;
     values.clock = 0;
-    values.position = 6;
+    values.position = entries.length;
     values.nextCheckpoint = 1;
     values.finishTime = Infinity;
     finishOrder.length = 0;
