@@ -432,8 +432,9 @@ export function createTraffic(
       Math.cos(out.heading) *
         ((record.authored.laneOffsetAt?.(s) ??
           (record.authored.raceEntrant
-            ? record.authored.laneOffset ?? record.authored.laneSide * 3.5
-            : record.authored.laneSide * 3.5 + (record.authored.laneOffset ?? 0))) +
+            ? (record.authored.laneOffset ?? record.authored.laneSide * 3.5)
+            : record.authored.laneSide * 3.5 +
+              (record.authored.laneOffset ?? 0))) +
           record.attackOffset);
     out.z =
       a.z +
@@ -441,8 +442,9 @@ export function createTraffic(
       Math.sin(out.heading) *
         ((record.authored.laneOffsetAt?.(s) ??
           (record.authored.raceEntrant
-            ? record.authored.laneOffset ?? record.authored.laneSide * 3.5
-            : record.authored.laneSide * 3.5 + (record.authored.laneOffset ?? 0))) +
+            ? (record.authored.laneOffset ?? record.authored.laneSide * 3.5)
+            : record.authored.laneSide * 3.5 +
+              (record.authored.laneOffset ?? 0))) +
           record.attackOffset);
     return out;
   }
@@ -1378,12 +1380,18 @@ export function createTraffic(
       if (!record.wrecked) {
         const direction = state.direction;
         if (
-          !state.rival && !state.raceEntrant &&
+          !state.rival &&
+          !state.raceEntrant &&
           (record.slot || i % farPoseBuckets === farPoseBucket)
         )
-          record.cornerLimit = civilianCornerSpeed(record, record.authored.speed);
-        let desiredSpeed = state.raceEntrant || state.rival
-          ? record.authored.speed : signalSpeed(record, record.cornerLimit);
+          record.cornerLimit = civilianCornerSpeed(
+            record,
+            record.authored.speed,
+          );
+        let desiredSpeed =
+          state.raceEntrant || state.rival
+            ? record.authored.speed
+            : signalSpeed(record, record.cornerLimit);
         if (state.raceEntrant) {
           const ahead =
             (record.station - playerStation + path.length) % path.length;

@@ -48,6 +48,14 @@ export function mountCarChoice(
   license.target = '_blank';
   license.rel = 'noopener noreferrer';
   license.className = 'sl-caption';
-  (options.querySelector('.sl-options__header') ?? options).append(label, license);
-  return { dispose: () => { label.remove(); license.remove(); } };
+  (options.querySelector('.sl-options__header') ?? options).append(
+    label,
+    license,
+  );
+  return {
+    dispose: () => {
+      label.remove();
+      license.remove();
+    },
+  };
 }

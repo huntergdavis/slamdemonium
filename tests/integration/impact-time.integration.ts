@@ -16,10 +16,7 @@ async function runWreck(roll: number, steer: number, wall = false) {
   try {
     const { vehicle, world } = rig;
     if (wall)
-      world.createStaticBox(
-        { x: 130, y: 2, z: -15 },
-        { x: 20, y: 2, z: 0.5 },
-      );
+      world.createStaticBox({ x: 130, y: 2, z: -15 }, { x: 20, y: 2, z: 0.5 });
     world.setTransform(
       vehicle.body,
       { x: 130, y: roll ? 1.3 : 1, z: 0 },

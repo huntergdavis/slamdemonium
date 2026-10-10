@@ -71,7 +71,25 @@ export interface MapDefinition {
   readonly cityBuildings?: readonly CityBuildingSpec[];
 }
 export type MapName =
-  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off' | 'city' | 'city-reverse' | 'coast-shoreline' | 'coast-headland' | 'highway-express' | 'highway-interchange' | 'crash-south' | 'crash-west' | 'highway-eliminator' | 'grand-prix-city' | 'grand-prix-coast' | 'grand-prix-highway';
+  | 'lab'
+  | 'proving-ground'
+  | 'circuit'
+  | 'takedown'
+  | 'road-rage'
+  | 'circuit-race'
+  | 'face-off'
+  | 'city'
+  | 'city-reverse'
+  | 'coast-shoreline'
+  | 'coast-headland'
+  | 'highway-express'
+  | 'highway-interchange'
+  | 'crash-south'
+  | 'crash-west'
+  | 'highway-eliminator'
+  | 'grand-prix-city'
+  | 'grand-prix-coast'
+  | 'grand-prix-highway';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -528,8 +546,14 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   'highway-eliminator': ELIMINATOR_MAP,
 
   'grand-prix-city': createGrandPrixMap(createCityMap(), 'grand-prix-city'),
-  'grand-prix-coast': createGrandPrixMap(COAST_SHORELINE_MAP, 'grand-prix-coast'),
-  'grand-prix-highway': createGrandPrixMap(HIGHWAY_EXPRESS_MAP, 'grand-prix-highway'),
+  'grand-prix-coast': createGrandPrixMap(
+    COAST_SHORELINE_MAP,
+    'grand-prix-coast',
+  ),
+  'grand-prix-highway': createGrandPrixMap(
+    HIGHWAY_EXPRESS_MAP,
+    'grand-prix-highway',
+  ),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 

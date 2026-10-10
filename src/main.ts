@@ -94,7 +94,6 @@ import { createHighwayVisual } from './world/highwayVisual';
 import { createTimedRun } from './core/timedRun';
 import { createRaceEvent, type RaceCar } from './core/raceEvent';
 
-
 import { awardFaceOffWin, createFaceOffReward } from './core/faceOffReward';
 import { mountFaceOffPaintChoice } from './ui/faceOffPaintChoice';
 
@@ -290,9 +289,17 @@ async function boot(): Promise<void> {
     resources.push(createRoadDeckVisual(view.scene, map.roadDecks));
   if (map.cityBuildings?.length)
     resources.push(createCityBuildingsVisual(view.scene, map.cityBuildings));
-  if (mapName === 'coast-shoreline' || mapName === 'coast-headland' || mapName === 'grand-prix-coast')
+  if (
+    mapName === 'coast-shoreline' ||
+    mapName === 'coast-headland' ||
+    mapName === 'grand-prix-coast'
+  )
     resources.push(createCoastVisual(view.scene));
-  if (mapName === 'highway-express' || mapName === 'highway-interchange' || mapName === 'grand-prix-highway')
+  if (
+    mapName === 'highway-express' ||
+    mapName === 'highway-interchange' ||
+    mapName === 'grand-prix-highway'
+  )
     resources.push(createHighwayVisual(view.scene));
   view.renderer.shadowMap.enabled = true;
   const trackBodies = installTrackColliders(
@@ -361,7 +368,6 @@ async function boot(): Promise<void> {
   // The timed run (NS3): the start line is a thing in the world he drives
   // into; the clock runs to the goal; Enter is the retry, onto the line.
 
-
   const isCrashJunction = mapName === 'crash-south' || mapName === 'crash-west';
   const crashMode = isCrashJunction
     ? new CrashMode(
@@ -379,7 +385,15 @@ async function boot(): Promise<void> {
       )
     : undefined;
   const isTakedownRoad = mapName === 'takedown' || !!roadRage;
-  const timedRun = createTimedRun(roadRage || (mapName === 'circuit-race' || mapName === 'face-off' || mapName === 'highway-eliminator' || grandPrix) ? undefined : map.runs?.[0]);
+  const timedRun = createTimedRun(
+    roadRage ||
+      mapName === 'circuit-race' ||
+      mapName === 'face-off' ||
+      mapName === 'highway-eliminator' ||
+      grandPrix
+      ? undefined
+      : map.runs?.[0],
+  );
   const runStartGate = map.runs?.[0]?.gates[0];
   const runStart = roadRage
     ? track.spawn
@@ -462,8 +476,10 @@ async function boot(): Promise<void> {
         })
       : undefined;
   const race =
-
-    (mapName === 'circuit-race' || mapName === 'face-off' || mapName === 'highway-eliminator' || !!grandPrix) &&
+    (mapName === 'circuit-race' ||
+      mapName === 'face-off' ||
+      mapName === 'highway-eliminator' ||
+      !!grandPrix) &&
     map.path &&
     map.runs?.[0] &&
     traffic
@@ -508,7 +524,10 @@ async function boot(): Promise<void> {
     ? createWreckEffects(view.scene, traffic.hasRivals)
     : undefined;
   if (wreckEffects) resources.push(wreckEffects);
-  const rivalGuidance = (isTakedownRoad || !!race || mapName === 'face-off') ? createRivalGuidance(host!, mapName === 'face-off' ? 'VESPER' : 'RIVAL') : undefined;
+  const rivalGuidance =
+    isTakedownRoad || !!race || mapName === 'face-off'
+      ? createRivalGuidance(host!, mapName === 'face-off' ? 'VESPER' : 'RIVAL')
+      : undefined;
   if (rivalGuidance) resources.push(rivalGuidance);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
@@ -752,11 +771,11 @@ async function boot(): Promise<void> {
         vehicle.preStep(
           dt,
           playerDamage?.wrecked ||
-
             (roadRage && roadRage.state.phase !== 'running') ||
             race?.state.phase === 'countdown' ||
-
-            ((race?.state.mode === 'eliminator' || race?.state.mode === 'grand-prix') && race.state.phase === 'finished') ||
+            ((race?.state.mode === 'eliminator' ||
+              race?.state.mode === 'grand-prix') &&
+              race.state.phase === 'finished') ||
             (crashMode && crashMode.state.phase !== 'running')
             ? wreckInput
             : sampled,
@@ -938,7 +957,6 @@ async function boot(): Promise<void> {
           }
           race.update(dt, raceCars);
           if (
-
             mapName === 'face-off' &&
             awardFaceOffWin(race.state, faceOffReward)
           )
@@ -950,7 +968,9 @@ async function boot(): Promise<void> {
             grandPrix.state.phase === 'racing' &&
             Number.isFinite(race.state.finishTimes[0])
           ) {
-            const slotById = new Map(raceCars.map((car, slot) => [car.id, slot]));
+            const slotById = new Map(
+              raceCars.map((car, slot) => [car.id, slot]),
+            );
             const order = race.order.map((id) => slotById.get(id)!);
             if (grandPrix.recordHeat(order, race.state.finishTimes))
               saveGrandPrix();
@@ -964,7 +984,10 @@ async function boot(): Promise<void> {
             traffic.eliminateRaceEntrant(lastCutId);
           }
           for (const state of traffic.raceStates)
-            traffic.setRaceValidatedStation(state.id, race.validatedStation(state.id));
+            traffic.setRaceValidatedStation(
+              state.id,
+              race.validatedStation(state.id),
+            );
           traffic.setRaceRunning(
             race.state.mode === 'eliminator' || race.state.mode === 'grand-prix'
               ? race.state.phase === 'running'
@@ -1197,7 +1220,6 @@ async function boot(): Promise<void> {
     respawnRequested = true;
   }
   function respawn(): void {
-
     if (roadRage || race || crashMode) {
       retry();
       return;
@@ -1516,7 +1538,6 @@ async function boot(): Promise<void> {
     ...(!crashMode ? { readScore: () => crashScore.state } : {}),
     readRun: () => timedRun.state,
     ...(race ? { readRace: () => race.state } : {}),
-
 
     ...(race
       ? {
@@ -2048,7 +2069,6 @@ async function boot(): Promise<void> {
   });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
 
-
   if (race && traffic)
     game.getRace = () => ({
       ...race.state,
@@ -2059,7 +2079,11 @@ async function boot(): Promise<void> {
     });
   game.getGrandPrix = () =>
     grandPrix
-      ? { ...grandPrix.snapshot(), order: [...grandPrix.order], medal: grandPrix.medal() }
+      ? {
+          ...grandPrix.snapshot(),
+          order: [...grandPrix.order],
+          medal: grandPrix.medal(),
+        }
       : null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,

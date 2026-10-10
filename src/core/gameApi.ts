@@ -1,7 +1,6 @@
 import type { PhysicsSpikeResult } from '../physics/spike';
 import type { PhysicsMemory, V3 } from '../physics/adapter';
 
-
 import type { PaceReport, PerformanceBatch } from './performance';
 import type { GrandPrixSnapshot, GrandPrixMedal } from './grandPrix';
 import type { CameraPreset } from '../render/cameraRig';
@@ -49,7 +48,6 @@ export interface GameTestApi {
   getTelemetry(): Readonly<Record<string, unknown>>;
   /** Traffic cars in play, for headless instruments; absent without traffic. */
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
-
 
   /** Sampled centreline for a browser route gate; never mutates the map. */
   getRoadPath?: () => {

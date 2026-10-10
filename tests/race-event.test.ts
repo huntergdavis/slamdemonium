@@ -68,7 +68,6 @@ describe('six-car circuit race', () => {
   });
 });
 
-
 describe('two-car Face Off', () => {
   it('starts P2/2, requires a valid lap, and resets to the same grid', () => {
     const race = createRaceEvent(route, circuit.path, [7]);
