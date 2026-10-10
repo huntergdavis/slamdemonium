@@ -39,7 +39,7 @@ export function createGrandPrixMap(
   const civilians = (venue.traffic ?? [])
     .filter((car) => car.direction === 1 && car.station > 350)
     .filter((_, index) => index % 5 === 0)
-    .map((car) => ({ ...car, laneOffset: 8 }));
+    .map((car) => ({ ...car, laneOffset: path.closed ? 8 : 4.5 }));
   return {
     ...venue,
     name,

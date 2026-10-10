@@ -39,6 +39,11 @@ it('places the open Coast start gate beyond all five grid cars', () => {
         .map((car) => car.station),
     ),
   ).toBeLessThan(70);
+  expect(
+    map
+      .traffic!.filter((car) => !car.raceEntrant)
+      .every((car) => car.laneOffset === 4.5),
+  ).toBe(true);
 });
 
 it('awards each valid heat once, advances in order, and resets the run', () => {
