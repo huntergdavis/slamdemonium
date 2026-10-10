@@ -667,7 +667,7 @@ export function createTraffic(
         record.enabled = true;
         record.leader = null;
       }
-    for (const laneOffset of [-5, 0]) {
+    for (const laneOffset of [-6.25, -0.75]) {
       const column = raceRecords
         .filter((record) => record.authored.laneOffset === laneOffset)
         .sort((a, b) => a.station - b.station);
