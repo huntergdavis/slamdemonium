@@ -35,9 +35,16 @@ describe('Crash Junction', () => {
   it('starts 12 authored cars in four distinct streams, outside the open throat', () => {
     const path = createCityMap().path!;
     const records = crashJunctionTraffic(path, 'south');
-    const positions = records.map((car) =>
-      poseAt(car.path ?? path, car.station),
-    );
+    const positions = records.map((car) => {
+      const pose = poseAt(car.path ?? path, car.station);
+      const offset = car.laneSide * 3.5 + (car.laneOffset ?? 0);
+      return {
+        x: pose.x - Math.cos(pose.heading) * offset,
+        z: pose.z + Math.sin(pose.heading) * offset,
+      };
+    });
+    expect(records[0]!.station).toBe(records[1]!.station);
+    expect(records[1]!.laneOffset).toBe(-6.5);
     expect(records.filter((car) => car.path === CITY_CROSS_PATH)).toHaveLength(
       6,
     );
@@ -51,7 +58,7 @@ describe('Crash Junction', () => {
             positions[a]!.x - positions[b]!.x,
             positions[a]!.z - positions[b]!.z,
           ),
-        ).toBeGreaterThan(7);
+        ).toBeGreaterThan(6);
   });
 
   it('scores direct and transitive wrecks once by encounter, never ambient wrecks', () => {
