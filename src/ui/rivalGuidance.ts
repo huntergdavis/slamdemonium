@@ -3,14 +3,14 @@ import type { TrafficCarState } from '../world/traffic';
 import type { V3 } from '../physics/adapter';
 
 /** Screen-space rival guidance remains visible when the instrument HUD is off. */
-export function createRivalGuidance(host: HTMLElement) {
+export function createRivalGuidance(host: HTMLElement, label = 'RIVAL') {
   const root = host.ownerDocument.createElement('div');
   root.className = 'sl-rival-guidance';
   root.dataset.hudPersistent = '';
   const markers = new Map<number, HTMLElement>();
   const pointer = host.ownerDocument.createElement('div');
   pointer.className = 'sl-rival-pointer';
-  pointer.textContent = 'RIVAL';
+  pointer.textContent = label;
   root.append(pointer);
   const wreckNotice = host.ownerDocument.createElement('div');
   wreckNotice.className = 'sl-rival-wreck-notice';
@@ -22,6 +22,7 @@ export function createRivalGuidance(host: HTMLElement) {
   const projected = new Vector3();
   const toCar = new Vector3();
   const look = new Vector3();
+  const secondLabelRangeSq = 60 * 60;
 
   function update(
     camera: Camera,
@@ -43,6 +44,12 @@ export function createRivalGuidance(host: HTMLElement) {
     let nearestOverallDistance = Infinity;
     let nearestDistance = 120 * 120;
     let secondDistance = 120 * 120;
+    let nearestMarker: HTMLElement | undefined;
+    let secondMarker: HTMLElement | undefined;
+    let nearestX = 0;
+    let nearestY = 0;
+    let secondX = 0;
+    let secondY = 0;
     for (const state of states) {
       if (!state.rival || state.wrecked) continue;
       const dx = state.position.x - player.x;
@@ -69,7 +76,7 @@ export function createRivalGuidance(host: HTMLElement) {
       if (!marker) {
         marker = host.ownerDocument.createElement('div');
         marker.className = 'sl-rival-marker';
-        marker.textContent = '◆ RIVAL';
+        marker.textContent = `◆ ${label}`;
         root.append(marker);
         markers.set(state.id, marker);
       }
@@ -81,11 +88,17 @@ export function createRivalGuidance(host: HTMLElement) {
       const y = (1 - projected.y) * height * 0.5;
       const inFrame =
         inFront && x > 36 && x < width - 36 && y > 28 && y < height - 36;
-      marker.style.display =
-        inFrame && (state.id === nearestId || state.id === secondId)
-          ? ''
-          : 'none';
+      marker.style.display = 'none';
       if (inFrame) marker.style.transform = `translate(${x}px, ${y}px)`;
+      if (inFrame && state.id === nearestId) {
+        nearestMarker = marker;
+        nearestX = x;
+        nearestY = y;
+      } else if (inFrame && state.id === secondId) {
+        secondMarker = marker;
+        secondX = x;
+        secondY = y;
+      }
       const dx = state.position.x - player.x;
       const dz = state.position.z - player.z;
       const distance = dx * dx + dz * dz;
@@ -105,6 +118,15 @@ export function createRivalGuidance(host: HTMLElement) {
       marker.remove();
       markers.delete(id);
     }
+    if (nearestMarker) nearestMarker.style.display = '';
+    if (
+      secondMarker &&
+      (!nearestMarker ||
+        (secondDistance <= secondLabelRangeSq &&
+          (Math.abs(secondX - nearestX) >= 92 ||
+            Math.abs(secondY - nearestY) >= 38)))
+    )
+      secondMarker.style.display = '';
     pointer.style.display = nearest ? '' : 'none';
     if (nearest) {
       const scale = Math.min(
@@ -116,11 +138,11 @@ export function createRivalGuidance(host: HTMLElement) {
       pointer.textContent =
         Math.abs(nearest.x / width) > Math.abs(nearest.y / height)
           ? nearest.x < 0
-            ? '◀ RIVAL'
-            : 'RIVAL ▶'
+            ? `◀ ${label}`
+            : `${label} ▶`
           : nearest.y < 0
-            ? '▲ RIVAL'
-            : '▼ RIVAL';
+            ? `▲ ${label}`
+            : `▼ ${label}`;
       pointer.style.transform = `translate(${x}px, ${y}px)`;
     }
   }

@@ -37,9 +37,9 @@ export function evaluateSpeedCues(
       : 0;
   out.speedRatio = ratio;
   out.lineAlpha =
-    0.3 *
     unit(options.speedLinesStrength) *
-    Math.max(smooth((ratio - 0.8) / 0.2), unit(state.boostEnvelope));
+    (0.34 * Math.max(smooth((ratio - 0.25) / 0.75), unit(state.boostEnvelope)) +
+      0.04 * unit(state.boostEnvelope));
   out.vignetteAlpha = 0.12 * unit(options.vignetteStrength) * smooth(ratio);
 }
 

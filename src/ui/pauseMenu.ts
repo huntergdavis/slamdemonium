@@ -4,6 +4,7 @@ import type { OptionsPanel } from './optionsPanel';
 import { activateFocused, adjustFocused, moveFocus } from './menuNavigation';
 import { node } from './paramControl';
 import { createAudioCredits } from './audioCredits';
+import type { TourEvent } from '../world/tourCatalogue';
 import './ui.css';
 
 export interface PauseMenuOptions {
@@ -16,6 +17,29 @@ export interface PauseMenuOptions {
       readonly label: string;
     }[];
     onSelect(name: string): void;
+  };
+
+  readonly garage?: {
+    readonly current: string;
+    readonly entries: readonly {
+      readonly name: string;
+      readonly label: string;
+      readonly trait: string;
+      readonly unlocked?: () => boolean;
+      readonly requirement?: string | undefined;
+    }[];
+    onSelect(name: string): void;
+  };
+
+  readonly tour?: {
+    readonly current: string | undefined;
+    readonly entries: readonly TourEvent[];
+    status(event: TourEvent): {
+      readonly available: boolean;
+      readonly medal: string;
+      readonly reason?: string;
+    };
+    onSelect(id: string): void;
   };
   host: HTMLElement;
   drivingSurface: HTMLElement;
@@ -66,13 +90,22 @@ export class PauseMenu {
   private readonly menu: HTMLDivElement;
   private readonly controls: HTMLDivElement;
   private readonly maps: HTMLDivElement;
+
+  private readonly garage: HTMLDivElement;
+
+  private readonly tourButtons: {
+    event: TourEvent;
+    button: HTMLButtonElement;
+    status: HTMLSpanElement;
+  }[] = [];
   private readonly resume: HTMLButtonElement;
   private readonly muteAudio: HTMLButtonElement;
   private readonly message: Text;
+  private readonly garageRefreshers: (() => void)[] = [];
   private selected: HTMLElement | null = null;
   private opened = false;
   private externalOptionsNavigation = false;
-  private view: 'menu' | 'controls' | 'options' | 'maps' = 'menu';
+  private view: 'menu' | 'controls' | 'options' | 'maps' | 'garage' = 'menu';
   private optionsParent: Node | null = null;
   private optionsNext: Node | null = null;
   private confirm = 0;
@@ -146,7 +179,40 @@ export class PauseMenu {
         (b) => b.textContent === 'Controls',
       );
       (controlsEntry ?? navigationHint).before(entry);
-      this.maps.append(node(doc, 'h2', 'sl-heading', 'Map'));
+      if (deps.tour) {
+        this.maps.append(node(doc, 'h2', 'sl-heading', 'World Tour'));
+        this.maps.append(
+          node(
+            doc,
+            'p',
+            'sl-caption',
+            'Earn a medal to open the next event. Free drive stays below.',
+          ),
+        );
+        for (const event of deps.tour.entries) {
+          const button = this.button('', () => deps.tour!.onSelect(event.id));
+          button.classList.add('sl-tour__entry');
+          button.dataset.tour = event.id;
+          const title = node(
+            doc,
+            'strong',
+            'sl-tour__title',
+            `${event.title} · ${event.venue}`,
+          );
+          const objective = node(
+            doc,
+            'span',
+            'sl-tour__objective',
+            event.objective,
+          );
+          const status = node(doc, 'span', 'sl-tour__status');
+          button.append(title, objective, status);
+          this.maps.append(button);
+          this.tourButtons.push({ event, button, status });
+        }
+        this.refreshTour();
+      }
+      this.maps.append(node(doc, 'h2', 'sl-heading', 'Free drive'));
       for (const map of deps.maps.entries) {
         const isCurrent = map.name === deps.maps.current;
         const button = this.button(
@@ -158,6 +224,40 @@ export class PauseMenu {
         this.maps.append(button);
       }
       this.maps.append(this.button('Back', () => this.showView('menu')));
+    }
+    this.garage = node(doc, 'div', 'sl-pause__controls sl-pause__maps');
+    this.garage.hidden = true;
+    if (deps.garage) {
+      const current = deps.garage.entries.find(
+        (entry) => entry.name === deps.garage!.current,
+      );
+      const entry = this.button(
+        'Garage · ' + (current?.label ?? deps.garage.current),
+        () => this.showView('garage'),
+      );
+      const controlsEntry = [...this.menu.querySelectorAll('button')].find(
+        (button) => button.textContent === 'Controls',
+      );
+      (controlsEntry ?? navigationHint).before(entry);
+      this.garage.append(node(doc, 'h2', 'sl-heading', 'Garage'));
+      for (const car of deps.garage.entries) {
+        const isCurrent = car.name === deps.garage.current;
+        const button = this.button('', () => deps.garage!.onSelect(car.name));
+        button.dataset.garageClass = car.name;
+        if (isCurrent) button.setAttribute('aria-current', 'true');
+        const refresh = () => {
+          const locked = car.unlocked?.() === false;
+          button.disabled = locked;
+          button.dataset.locked = String(locked);
+          button.textContent = locked
+            ? `${car.label} · LOCKED · ${car.requirement ?? 'Earn a reward'}`
+            : `${car.label} · ${car.trait}${isCurrent ? ' · current' : ''}`;
+        };
+        this.garageRefreshers.push(refresh);
+        refresh();
+        this.garage.append(button);
+      }
+      this.garage.append(this.button('Back', () => this.showView('menu')));
     }
     if (deps.buildLabel) {
       this.menu.append(
@@ -206,7 +306,7 @@ export class PauseMenu {
       ),
       createAudioCredits(doc),
     );
-    this.element.append(this.menu, this.controls, this.maps);
+    this.element.append(this.menu, this.controls, this.maps, this.garage);
     this.element.addEventListener('focusin', this.focusin);
     this.element.addEventListener('keydown', this.keydown);
     this.element.addEventListener('cancel', this.cancel);
@@ -391,7 +491,9 @@ export class PauseMenu {
         ? this.controls
         : this.view === 'maps'
           ? this.maps
-          : this.menu;
+          : this.view === 'garage'
+            ? this.garage
+            : this.menu;
   }
 
   private showOptions(): void {
@@ -415,7 +517,11 @@ export class PauseMenu {
     this.optionsParent = this.optionsNext = null;
   }
 
-  private showView(view: 'menu' | 'controls' | 'options' | 'maps'): void {
+  private showView(
+    view: 'menu' | 'controls' | 'options' | 'maps' | 'garage',
+  ): void {
+    if (view === 'garage')
+      for (const refresh of this.garageRefreshers) refresh();
     if (this.view === 'options' && view !== 'options') {
       this.deps.options.setOpen(false);
       this.restoreOptions();
@@ -425,6 +531,7 @@ export class PauseMenu {
       this.selected = null;
     }
     this.view = view;
+    if (view === 'maps') this.refreshTour();
     this.element.dataset.view = view;
     this.element.setAttribute(
       'aria-label',
@@ -434,11 +541,14 @@ export class PauseMenu {
           ? 'Paused — Options'
           : view === 'maps'
             ? 'Map'
-            : 'Controls',
+            : view === 'garage'
+              ? 'Garage'
+              : 'Controls',
     );
     this.menu.hidden = view !== 'menu';
     this.controls.hidden = view !== 'controls';
     this.maps.hidden = view !== 'maps';
+    this.garage.hidden = view !== 'garage';
     if (view === 'menu') this.resume.focus();
     else if (view === 'controls')
       this.controls.querySelector('button')?.focus({ preventScroll: true });
@@ -447,8 +557,27 @@ export class PauseMenu {
         this.maps.querySelector<HTMLButtonElement>('button[aria-current]') ??
         this.maps.querySelector<HTMLButtonElement>('button')
       )?.focus({ preventScroll: true });
-    if (view === 'controls' || view === 'maps') this.element.scrollTop = 0;
+    else if (view === 'garage')
+      (
+        this.garage.querySelector<HTMLButtonElement>('button[aria-current]') ??
+        this.garage.querySelector<HTMLButtonElement>('button')
+      )?.focus({ preventScroll: true });
+    if (view === 'controls' || view === 'maps' || view === 'garage')
+      this.element.scrollTop = 0;
     this.resetPad();
+  }
+
+  private refreshTour(): void {
+    for (const { event, button, status } of this.tourButtons) {
+      const value = this.deps.tour!.status(event);
+      button.disabled = !value.available;
+      button.setAttribute('aria-disabled', String(!value.available));
+      if (this.deps.tour!.current === event.id)
+        button.setAttribute('aria-current', 'true');
+      status.textContent = value.available
+        ? `${value.medal.toUpperCase()} · ${event.medalTarget}`
+        : `LOCKED · ${value.reason ?? 'Earn the prior event medal'}`;
+    }
   }
 
   private goBack(): void {

@@ -16,6 +16,7 @@ import { makePad } from './input-helpers';
 import { createTrackSurfaceResolver } from '../src/world/trackSurfaces';
 import { createSurfaceRegistry } from '../src/world/surfaceRegistry';
 import { createSurfacedBodies } from '../src/world/surfacedBodies';
+import type { GarageClass } from '../src/vehicle/garageClasses';
 import { createTrackLayout } from '../src/world/trackLayout';
 import { createKerbFootprintQuery } from '../src/world/kerbFootprint';
 import { SURFACE_IDS, type SurfaceResolver } from '../src/content/surfaces';
@@ -40,6 +41,7 @@ export async function scriptVehicleHarness(
   options: {
     flatPlane?: boolean;
     observeStep?: (vehicle: Vehicle, completedSteps: number) => void;
+    garageClass?: GarageClass;
   } = {},
 ) {
   const world = await createPhysicsWorld({ wasmPath });
@@ -73,12 +75,14 @@ export async function scriptVehicleHarness(
       registry,
     });
   }
-  const store = new TuningStore();
+  const store = new TuningStore(options.garageClass?.tuning);
   const vehicle = new Vehicle(
     world,
     store,
     ringSpawn.position,
     surfaceResolver,
+    options.garageClass?.engineProfile,
+    options.garageClass?.geometry,
   );
   // As boot wires it: the chassis touching the static world ends a flight.
   world.onContact((a, b) => {

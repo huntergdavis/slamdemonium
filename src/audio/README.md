@@ -26,6 +26,20 @@ Web Audio needs a genuine browser activation. A gamepad poll or synthetic button
 
 ## Assets and verification
 
+The crash bank is recorded separately in `assets/audio/crash-bank.json`, with
+each CC0 source page, creator, fetched media hash, edit recipe and shipped Ogg
+and MP3 hashes. `python3 assets/audio/prepare-crash.py` rebuilds and verifies
+it from those pinned sources; `--source-dir <directory>` uses already fetched
+source files. Twelve short core clips load only after genuine audio activation;
+two alternate hard-hit tails are requested on the first hard crash. Player
+contacts choose a light, medium or hard sharp attack plus metal body, with
+glass and debris reserved for big hits. Sustained tangential contact feeds two
+bounded scrape loops; offscreen AI crashes use a quiet filtered clip. Credited
+takedowns alone trigger the sting and temporarily duck the engine and boost;
+there is no music bus in the current game to duck. A player wreck gets a short
+settling cue. The backend has a final limiter, a fifteen-voice ceiling, mute and
+pause cleanup, and ±5% playback-rate variation.
+
 Player-accessible Controls → Sound credits includes Tom Haigh and qubodup, source and CC BY 3.0 links, precise tyre edits, Kenney/domasx2 credits and complete Howler MIT/Kenney notice links. Credits were implemented before downloading audio.
 
 `assets/audio/manifest.json` records the exact original download URLs, UTC fetch times, source/archive-member SHA-256 hashes, licences, conversion details and shipped output hashes. Clips are mono 48 kHz Ogg Vorbis quality 3, without trimming or normalization. The 3-second credited tyre loop is preserved in full. `generate-boost.py` records the fixed-seed original boost recipe; generate WAV intermediates in a temporary copy, then apply the manifest's conversion settings. Do not silently replace source files or licence records.

@@ -117,6 +117,9 @@ for (const scenario of [
   test(`controller alone edits and resets ${scenario.encoding} ${scenario.key} in schema units`, async ({
     page,
   }) => {
+    // The advanced World controls take many real pad polls to traverse on a
+    // loaded browser; preserve the full controller journey and its assertions.
+    if (scenario.advanced) test.setTimeout(180_000);
     await tap(page, [8]);
     const options = page.locator('.sl-options');
     const groupSelector = `.sl-options__groups > [data-group="${scenario.group}"]`;

@@ -124,9 +124,11 @@ export class CameraRig {
   private elapsed = 0;
   private meanCompression = 0;
   private impact = 0;
+  private impactCooldown = 0;
   private reverseSeconds = 0;
   private swinging = false;
   private occlusion = 0;
+  private wreckFocus = false;
   private readonly lineOfSight: LineOfSight | null;
 
   constructor(
@@ -141,10 +143,21 @@ export class CameraRig {
     this.initialized = false;
     this.velocity.set(0, 0, 0);
     this.impact = 0;
+    this.impactCooldown = 0;
     this.referenceUp.copy(up);
     this.reverseSeconds = 0;
     this.swinging = false;
     this.occlusion = 0;
+    this.wreckFocus = false;
+  }
+
+  /** Hold the road-facing chase direction while the physical wreck tumbles. */
+  setWreckFocus(active: boolean): void {
+    this.wreckFocus = active;
+    if (active) {
+      this.reverseSeconds = 0;
+      this.swinging = false;
+    }
   }
 
   setPreset(preset: CameraPreset): void {
@@ -161,11 +174,13 @@ export class CameraRig {
     );
   }
 
-  /** Kick from the shared severity: about a centimetre of shake per m/s of
-   * closing speed, capped. Estimated severity counts, so wall hits and
-   * landings kick on Jolt, which reports no solved impulse. */
+  /** One short camera kick from the shared severity. A grinding wall can
+   * report a contact every physics step, so only a distinct solid hit starts
+   * a kick; audio and haptics still receive every contact. */
   addImpact(impact: Readonly<ImpactSeverity>): void {
-    this.impact = Math.min(0.25, this.impact + impact.approachSpeed * 0.01);
+    if (impact.severity < 0.45 || this.impactCooldown > 0) return;
+    this.impact = Math.min(0.24, this.impact + 0.2 * impact.severity);
+    this.impactCooldown = 0.25;
   }
 
   /** The camera's sense of up. Flat ground (or three wheels on a kerb) keeps
@@ -235,6 +250,7 @@ export class CameraRig {
     state: VehicleTelemetry,
     dt: number,
   ): void {
+    if (this.wreckFocus) return;
     const t = this.tuning;
     const blend = this.preset === 'hood' ? 0 : t.get('camVelocityBlend');
     const flatUp = this.referenceUp.y === 1;
@@ -360,7 +376,8 @@ export class CameraRig {
           t.get('camHeight') * (far ? 1.5 : 1),
         );
     }
-    if (this.preset !== 'hood') this.applySpeedPull(state, far ? 1.6 : 1);
+    if (this.preset !== 'hood' && !this.wreckFocus)
+      this.applySpeedPull(state, far ? 1.6 : 1);
     let compression = 0;
     for (const wheel of state.wheels) compression += wheel.compression * 0.25;
     if (!this.initialized) {
@@ -380,6 +397,7 @@ export class CameraRig {
     this.meanCompression +=
       (compression - this.meanCompression) * (1 - Math.exp(-dt * 6));
     this.impact *= Math.exp(-dt * 12);
+    this.impactCooldown = Math.max(0, this.impactCooldown - dt);
     const speedFactor = MathUtils.clamp(state.speed / t.get('topSpeed'), 0, 2);
     const amplitude = t.get('camShake') * (0.025 * speedFactor + this.impact);
     const noiseX =

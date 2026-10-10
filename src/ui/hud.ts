@@ -14,6 +14,18 @@ import {
 } from './hudTelemetry';
 import { HudPlots } from './hudPlots';
 import type { TimedRunState } from '../core/timedRun';
+
+import type { RoadRageState } from '../core/roadRage';
+import type { RoadRageBestResult } from '../core/roadRageBest';
+import type { RaceState } from '../core/raceEvent';
+
+import { CRASH_MEDALS, type CrashMode } from '../core/crashMode';
+
+import {
+  GRAND_PRIX_HEATS,
+  type GrandPrixMedal,
+  type GrandPrixSnapshot,
+} from '../core/grandPrix';
 import { HudChainState, isChainAlive } from './hudChain';
 import type { TrafficEventsState } from '../core/trafficEvents';
 import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
@@ -58,15 +70,32 @@ export interface HudOptions extends RecorderOptions {
   readScore?: () => Readonly<CrashScoreState>;
   /** The timed run (NS3): countdown, clock and finish on the persistent seam. */
   readRun?: () => Readonly<TimedRunState>;
+
+  /** Road Rage's fixed-step event, persistent even when the HUD is off. */
+  readRoadRage?: () => Readonly<RoadRageState>;
+  readRoadRageBest?: () => Readonly<RoadRageBestResult> | null;
+  readRace?: () => Readonly<RaceState>;
+
+  raceKind?: 'circuit' | 'face-off';
+  readCrashMode?: () => Readonly<CrashMode['state']>;
+  readCrashReward?: () => string;
+
+  readGrandPrix?: () => Readonly<GrandPrixSnapshot> & {
+    readonly order: readonly number[];
+    readonly medal: GrandPrixMedal;
+  };
   /** Traffic events: the one short label beside the boost bar. */
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
   readTakedowns?: () => number;
+  readTakedownKind?: () => 'ordinary' | 'aftertouch' | null;
   /** Takedown-map player damage and the short wreck/recovery beat. */
   readPlayerDamage?: () => {
     amount: number;
     wrecked: boolean;
     secondsLeft: number;
+    impactTime?: boolean;
+    willRespawn?: boolean;
   };
   miniMap?: Omit<MiniMapOptions, 'host'>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
@@ -135,6 +164,11 @@ export class Hud {
   private readonly run: HTMLElement;
   private readonly runClock: Text;
   private readonly runLabel: Text;
+  private readonly race: HTMLElement | null;
+  private readonly raceClock: Text | null;
+  private readonly raceRank: Text | null;
+  private readonly raceGate: Text | null;
+  private readonly grandPrixTable: Text | null;
   private readonly plots: HudPlots;
   private readonly miniMap?: MiniMap;
   private readonly unsubscribe: () => void;
@@ -148,6 +182,10 @@ export class Hud {
   private readonly driveBoost: Meter;
   private readonly driveEvent: HTMLElement;
   private readonly takedownCount: HTMLElement | null;
+  private readonly roadRageCard: HTMLElement | null;
+  private readonly roadRageResult: HTMLElement | null;
+  private readonly crashCard: HTMLElement | null;
+  private readonly crashResult: HTMLElement | null;
   private readonly playerDamageNotice: HTMLElement | null;
   private lastTakedownCount = 0;
   private takedownFlashUntilMs = 0;
@@ -224,6 +262,7 @@ export class Hud {
     controls.append(this.modeButton, this.collapseButton);
     this.element.append(controls);
     const score = card('sl-hud__score', 'CRASH SCORE');
+    if (options.readCrashMode) score.hidden = true;
     this.scoreTotal = reading(score, 'scoreTotal', '0').firstChild as Text;
     this.scoreAward = reading(score, 'scoreAward', '', 'sl-hud__score-award');
     this.scoreAward.setAttribute('aria-live', 'polite');
@@ -260,6 +299,40 @@ export class Hud {
       ? node(doc, 'div', 'sl-hud__takedowns', 'TAKEDOWNS 0')
       : null;
     if (this.takedownCount) this.drive.append(this.takedownCount);
+    this.roadRageCard = options.readRoadRage
+      ? node(doc, 'section', 'sl-card sl-hud__road-rage', '')
+      : null;
+    if (this.roadRageCard) {
+      this.roadRageCard.dataset.hudPersistent = '';
+      this.roadRageCard.setAttribute('aria-live', 'polite');
+      this.element.append(this.roadRageCard);
+    }
+    this.roadRageResult = options.readRoadRage
+      ? node(doc, 'section', 'sl-card sl-hud__road-rage-result', '')
+      : null;
+    if (this.roadRageResult) {
+      this.roadRageResult.dataset.hudPersistent = '';
+      this.roadRageResult.setAttribute('aria-live', 'assertive');
+      this.roadRageResult.hidden = true;
+      this.element.append(this.roadRageResult);
+    }
+    this.crashCard = options.readCrashMode
+      ? node(doc, 'section', 'sl-card sl-hud__road-rage', '')
+      : null;
+    if (this.crashCard) {
+      this.crashCard.dataset.hudPersistent = '';
+      this.crashCard.setAttribute('aria-live', 'polite');
+      this.element.append(this.crashCard);
+    }
+    this.crashResult = options.readCrashMode
+      ? node(doc, 'section', 'sl-card sl-hud__road-rage-result', '')
+      : null;
+    if (this.crashResult) {
+      this.crashResult.dataset.hudPersistent = '';
+      this.crashResult.setAttribute('aria-live', 'assertive');
+      this.crashResult.hidden = true;
+      this.element.append(this.crashResult);
+    }
     this.playerDamageNotice = options.readPlayerDamage
       ? node(doc, 'div', 'sl-hud__player-damage', '')
       : null;
@@ -307,6 +380,31 @@ export class Hud {
     this.runLabel = reading(this.run, 'runLabel', '', 'sl-run__label')
       .firstChild as Text;
     this.element.append(this.run);
+    this.race = options.readRace
+      ? node(doc, 'section', 'sl-card sl-hud__race')
+      : null;
+    this.raceClock = this.race
+      ? (reading(this.race, 'raceClock', '3', 'sl-race__clock')
+          .firstChild as Text)
+      : null;
+    this.raceRank = this.race
+      ? (reading(this.race, 'raceRank', 'P6/6', 'sl-race__rank')
+          .firstChild as Text)
+      : null;
+    this.raceGate = this.race
+      ? (reading(this.race, 'raceGate', 'GRID', 'sl-race__gate')
+          .firstChild as Text)
+      : null;
+    this.grandPrixTable =
+      this.race && options.readGrandPrix
+        ? (reading(this.race, 'grandPrixTable', '', 'sl-race__table')
+            .firstChild as Text)
+        : null;
+    if (this.race) {
+      this.race.dataset.hudPersistent = '';
+      this.race.setAttribute('aria-live', 'polite');
+      this.element.append(this.race);
+    }
     if (options.miniMap)
       this.miniMap = new MiniMap({ host: this.element, ...options.miniMap });
     this.plots = new HudPlots(this.root);
@@ -528,6 +626,10 @@ export class Hud {
     this.updateNotice();
     this.updateScore(nowMs, this.options.readScore?.());
     this.updateRun(this.options.readRun?.());
+
+    this.updateRoadRage();
+    this.updateRace(this.options.readRace?.());
+    this.updateCrashMode();
     const collapsed = this.element.dataset.collapsed === 'true';
     // The mini-map is HUD-persistent, so keep its position live while the
     // instrument cards are collapsed or the HUD mode is off. HUDs without a
@@ -723,6 +825,94 @@ export class Hud {
     );
   }
 
+  private updateRace(race: Readonly<RaceState> | undefined): void {
+    if (
+      !race ||
+      !this.race ||
+      !this.raceClock ||
+      !this.raceRank ||
+      !this.raceGate
+    )
+      return;
+    this.race.dataset.phase = race.phase;
+
+    this.race.dataset.mode = race.mode;
+    write(
+      this.raceClock,
+      race.phase === 'countdown'
+        ? String(Math.ceil(race.countdown))
+        : race.phase === 'running' && race.clock < 0.8
+          ? 'GO'
+          : formatRunClock(race.clock),
+    );
+
+    write(
+      this.raceRank,
+      race.mode === 'eliminator' && race.eliminated
+        ? 'ELIMINATED'
+        : `P${race.position}/${race.mode === 'eliminator' ? race.remaining : race.fieldSize}`,
+    );
+    if (race.mode === 'eliminator') {
+      write(
+        this.raceGate,
+        race.phase === 'countdown'
+          ? 'HIGHWAY ELIMINATOR'
+          : race.phase === 'finished'
+            ? race.won
+              ? 'WINNER · GOLD · ENTER RETRY'
+              : `OUT · ${race.medal === 'none' ? 'NO MEDAL' : race.medal.toUpperCase()} · ENTER RETRY`
+            : `LAP ${Math.min(race.lap + 1, race.lapTarget)}/${race.lapTarget} · ${race.atRisk ? 'AT RISK' : 'SAFE'}`,
+      );
+      return;
+    }
+    if (race.mode === 'grand-prix') {
+      const grandPrix = this.options.readGrandPrix?.();
+      if (!grandPrix) return;
+      const venue = GRAND_PRIX_HEATS[grandPrix.heat]!.label.toUpperCase();
+      write(
+        this.raceGate,
+        grandPrix.phase === 'finished'
+          ? `${grandPrix.medal.toUpperCase()} · ENTER RETRY GP`
+          : grandPrix.phase === 'between'
+            ? `HEAT ${grandPrix.heat + 1} COMPLETE · ENTER NEXT`
+            : race.phase === 'finished'
+              ? 'HEAT FAILED · ENTER RETRY'
+              : race.phase === 'countdown'
+                ? `HEAT ${grandPrix.heat + 1}/3 · ${venue}`
+                : `HEAT ${grandPrix.heat + 1}/3 · ${venue} · GATE ${Math.min(race.nextCheckpoint, race.checkpointCount)}/${race.checkpointCount}`,
+      );
+      if (this.grandPrixTable) {
+        const names = ['YOU', 'APEX', 'BOLT', 'NOVA', 'RUSH', 'VEX'];
+        write(
+          this.grandPrixTable,
+          grandPrix.order
+            .map(
+              (slot, rank) =>
+                `${rank + 1} ${names[slot]} ${grandPrix.points[slot]}`,
+            )
+            .join('  ·  '),
+        );
+      }
+      return;
+    }
+    write(
+      this.raceGate,
+      race.phase === 'finished'
+        ? this.options.raceKind === 'face-off'
+          ? race.position === 1
+            ? 'WIN — LIVERY UNLOCKED'
+            : 'LOSS — ENTER TO RETRY'
+          : 'FINISH'
+        : race.phase === 'countdown'
+          ? this.options.raceKind === 'face-off'
+            ? 'FACE OFF · VESPER'
+            : 'CIRCUIT RACE'
+          : race.nextCheckpoint >= race.checkpointCount + 1
+            ? 'GOAL'
+            : `GATE ${race.nextCheckpoint}/${race.checkpointCount}`,
+    );
+  }
+
   private updateChain(nowMs: number, score: Readonly<CrashScoreState>): void {
     const visible = this.chainState.update(nowMs, score);
     if (this.chain.dataset.visible !== String(visible))
@@ -799,10 +989,69 @@ export class Hud {
       this.takedownFlashUntilMs = nowMs + 1500;
     }
     const flashing = nowMs < this.takedownFlashUntilMs;
-    const label = flashing ? 'TAKEDOWN! · ' + count : 'TAKEDOWNS ' + count;
+    const label = flashing
+      ? (this.options.readTakedownKind?.() === 'aftertouch'
+          ? 'AFTERTOUCH TAKEDOWN! · '
+          : 'TAKEDOWN! · ') + count
+      : 'TAKEDOWNS ' + count;
     if (this.takedownCount.textContent !== label)
       this.takedownCount.textContent = label;
     this.takedownCount.dataset.flash = String(flashing);
+  }
+
+  private updateRoadRage(): void {
+    if (!this.roadRageCard || !this.roadRageResult) return;
+    const state = this.options.readRoadRage?.();
+    if (!state) return;
+    const seconds = Math.ceil(state.remaining);
+    const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+    const target =
+      state.nextTarget === null ? 'GOLD SECURED' : `NEXT ${state.nextTarget}`;
+    const takedownWord = state.count === 1 ? 'TAKEDOWN' : 'TAKEDOWNS';
+    const wrecksLeft = 3 - state.wrecks;
+    const wreckBudget = `${wrecksLeft} WRECK${wrecksLeft === 1 ? '' : 'S'} LEFT`;
+    const label =
+      state.phase === 'countdown'
+        ? `ROAD RAGE · ${Math.ceil(state.countdown)}`
+        : state.goCue > 0
+          ? 'ROAD RAGE · GO!'
+          : `ROAD RAGE · ${clock} · ${state.count} ${takedownWord} · ${target}${state.phase === 'running' ? ` · ${state.wrecks === 2 ? 'CRITICAL · ' : ''}${wreckBudget}` : ''}`;
+    if (this.roadRageCard.textContent !== label)
+      this.roadRageCard.textContent = label;
+    this.roadRageCard.dataset.phase = state.phase;
+    this.roadRageCard.dataset.wrecks = String(state.wrecks);
+    this.roadRageResult.hidden = state.phase !== 'finished';
+    if (state.phase === 'finished') {
+      const best = this.options.readRoadRageBest?.();
+      const outcome =
+        state.finishReason === 'wrecks'
+          ? 'FAILED · NO MEDAL'
+          : `TIME UP · ${state.medal.toUpperCase()}`;
+      const result = `${outcome} · ${state.count} ${takedownWord} · BEST ${best?.count ?? '—'} · ENTER TO RETRY`;
+      if (this.roadRageResult.textContent !== result)
+        this.roadRageResult.textContent = result;
+    }
+  }
+
+  private updateCrashMode(): void {
+    if (!this.crashCard || !this.crashResult) return;
+    const state = this.options.readCrashMode?.();
+    if (!state) return;
+    const next = CRASH_MEDALS.find((target) => target > state.damage);
+    const label =
+      state.phase === 'countdown'
+        ? `CRASH JUNCTION · ${Math.ceil(state.countdown)}`
+        : `CRASH JUNCTION · DAMAGE ${state.damage.toLocaleString()} · ${next ? `NEXT ${next.toLocaleString()}` : 'GOLD SECURED'}`;
+    if (this.crashCard.textContent !== label)
+      this.crashCard.textContent = label;
+    this.crashCard.dataset.phase = state.phase;
+    this.crashResult.hidden = state.phase !== 'finished';
+    if (state.phase === 'finished') {
+      const reward = this.options.readCrashReward?.();
+      const result = `${state.medal.toUpperCase()} · DAMAGE ${state.damage.toLocaleString()} · BEST ${state.best.toLocaleString()}${reward ? ` · ${reward}` : ''} · ENTER TO RETRY`;
+      if (this.crashResult.textContent !== result)
+        this.crashResult.textContent = result;
+    }
   }
 
   private updatePlayerDamage(): void {
@@ -810,9 +1059,13 @@ export class Hud {
     const state = this.options.readPlayerDamage?.();
     if (!state) return;
     this.playerDamageNotice.hidden = !state.wrecked && state.amount <= 0;
-    const label = state.wrecked
-      ? 'WRECKED · RESPAWNING'
-      : 'DAMAGE ' + Math.round(state.amount * 100) + '%';
+    const label = state.impactTime
+      ? 'IMPACT TIME · HOLD T OR LB+↓ · STEER'
+      : state.wrecked
+        ? state.willRespawn === false
+          ? 'WRECKED · DAMAGE SETTLING'
+          : 'WRECKED · RESPAWNING'
+        : 'DAMAGE ' + Math.round(state.amount * 100) + '%';
     if (this.playerDamageNotice.textContent !== label)
       this.playerDamageNotice.textContent = label;
     this.playerDamageNotice.dataset.wrecked = String(state.wrecked);

@@ -517,7 +517,7 @@ Flags: **Q** = quick tune, **R** = needs rebuild of mass properties, **A** = adv
 | physicsHz | World | Hz | 120 | 60 | 240 | discrete | A | Physics step rate. Feel should not change; used to test stability. |
 | awakeBudget | World | bodies | 96 | 16 | 512 | 8 | | How many props and fragments may be awake at once. Over it, the farthest ones go back to sleep where they are. Each awake body costs about 30 us a step in a pileup; 96 is about 3 ms. |
 | awakeKeepRadius | World | m | 30 | 0 | 120 | 5 | | Nothing inside this distance of the car is ever put to sleep by the budget, so the crash you are looking at plays out; only bodies beyond it stop. |
-| mass | Chassis | kg | 1300 | 500 | 4000 | 10 | R | Inertia. Scales forces, so acceleration stays as set; mass mostly changes crash behavior and feel of turning. |
+| mass | Chassis | kg | 1300 | 500 | 8000 | 10 | R | Inertia. Scales forces, so acceleration stays as set; mass mostly changes crash behavior and feel of turning. |
 | comHeightOffset | Chassis | m | -0.20 | -0.6 | 0.4 | 0.01 | R | Centre of mass height relative to box centre. Lower is more stable and rolls less. |
 | comLongOffset | Chassis | m | 0.0 | -0.8 | 0.8 | 0.01 | R | Positive moves weight forward (more understeer), negative rearward (more oversteer). |
 | yawInertiaScale | Chassis | x | 1.0 | 0.3 | 3.0 | 0.05 | R | How easily the car rotates. Low is darty, high is heavy and stable. |

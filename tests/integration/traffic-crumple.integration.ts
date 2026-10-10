@@ -194,6 +194,7 @@ for (const kind of ['rear', 'side'] as const) {
           const report = {
             kind,
             requestedClosing,
+            wreckSide: car.wreckSide,
             closing: +closing.toFixed(2),
             firstSeparation: +firstSeparation.toFixed(2),
             maxSeparation12: +maxSeparation.toFixed(2),
@@ -212,6 +213,8 @@ for (const kind of ['rear', 'side'] as const) {
           console.log(`TRAFFIC_CRUMPLE ${JSON.stringify(report)}`);
           expect(struck).toBe(true);
           expect(car.wrecked).toBe(true);
+          if (kind === 'rear') expect(car.wreckSide).toBe('rear');
+          else expect(['left', 'right']).toContain(car.wreckSide);
           expect(closing).toBeGreaterThan(requestedClosing * 0.75);
           expect(firstSeparation).toBeLessThanOrEqual(
             Math.min(2, Math.max(0.5, closing * 0.05)) + 0.1,

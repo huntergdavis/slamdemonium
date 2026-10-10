@@ -5,6 +5,31 @@ import { InputMapper } from '../src/input/mapper';
 import { keyEvent, makePad } from './input-helpers';
 
 describe('standard gamepad mapping', () => {
+  it('publishes held slow motion without leaking it through UI capture', () => {
+    const target = new EventTarget();
+    const keyboard = new KeyboardInput(target, { visibilityTarget: null });
+    let pad = makePad();
+    let captured = false;
+    const mapper = new InputMapper(keyboard, new GamepadInput(() => [pad]));
+    mapper.attachUiCapture(() => captured);
+    mapper.sampleForStep();
+    keyEvent(target, 'keydown', 'KeyT');
+    expect(mapper.sampleForStep().actions.slowMotion).toBe(1);
+    expect(mapper.slowMotionHeld).toBe(true);
+    keyEvent(target, 'keyup', 'KeyT');
+    pad = makePad({ buttons: [4, 13] });
+    expect(mapper.sampleForStep().actions.slowMotion).toBe(1);
+    expect(mapper.slowMotionHeld).toBe(true);
+    captured = true;
+    mapper.sampleForStep();
+    expect(mapper.slowMotionHeld).toBe(false);
+    captured = false;
+    pad = makePad();
+    mapper.sampleForStep();
+    expect(mapper.slowMotionHeld).toBe(false);
+    keyboard.dispose();
+  });
+
   it('preserves analog triggers and raw stick values, with positive-left steering', () => {
     const poll = vi.fn(() => [
       null,

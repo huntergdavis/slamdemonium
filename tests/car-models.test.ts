@@ -208,7 +208,7 @@ describe('car model catalogue', () => {
     expect(cars.drawCalls).toBe(14);
     cars.dispose();
   });
-  it('feeds four-sided per-instance damage to matching colour and shadow shaders', () => {
+  it('feeds per-instance crush and tear to colour and shadow shaders', () => {
     const scene = new Scene();
     const cars = createCarModelInstances(scene, 4);
     const body = scene.getObjectByName(
@@ -228,12 +228,15 @@ describe('car model catalogue', () => {
       left: 0,
       right: 0,
     });
-    cars.push('boxTruck', position, rotation, 2, {
-      front: 0,
-      rear: 1,
-      left: 0,
-      right: 0,
-    });
+    cars.push(
+      'boxTruck',
+      position,
+      rotation,
+      2,
+      { front: 0, rear: 1, left: 0, right: 0 },
+      undefined,
+      'rear',
+    );
     cars.push('boxTruck', position, rotation, 3, {
       front: 1,
       rear: 0,
@@ -256,6 +259,10 @@ describe('car model catalogue', () => {
     expect([0, 1, 2, 3].map((i) => crush.getX(i))).toEqual([0, 0, 0, 1]);
     expect([0, 1, 2, 3].map((i) => crush.getZ(i))).toEqual([0, 0, 0, 1]);
     expect([0, 1, 2, 3].map((i) => crush.getW(i))).toEqual([0, 0, 0, 1]);
+    const tear = body.geometry.getAttribute(
+      'instanceTear',
+    ) as InstancedBufferAttribute;
+    expect([0, 1, 2, 3].map((i) => tear.getY(i))).toEqual([0, 0, 1, 0]);
     const seeds = body.geometry.getAttribute(
       'instanceDentSeed',
     ) as InstancedBufferAttribute;
@@ -273,7 +280,7 @@ describe('car model catalogue', () => {
     body.getMatrixAt(0, intact);
     body.getMatrixAt(1, dented);
     cargo.getMatrixAt(1, cargoDented);
-    // The vertex shader owns the dent: no whole-car lean, lift, or detached part.
+    // The vertex shader owns the dent: no whole-car lean or lift.
     expect(Array.from(dented.elements)).toEqual(Array.from(intact.elements));
     expect(Array.from(cargoDented.elements)).toEqual(
       Array.from(intact.elements),
@@ -281,22 +288,32 @@ describe('car model catalogue', () => {
     const source = (material: MeshStandardMaterial | MeshDepthMaterial) => {
       const shader = {
         vertexShader: '#include <common>\n#include <begin_vertex>',
+        fragmentShader: '#include <common>\n#include <color_fragment>',
       };
       material.onBeforeCompile(shader as never, {} as never);
-      return shader.vertexShader;
+      return shader;
     };
     const visible = source(body.material as MeshStandardMaterial);
     const shadow = source(body.customDepthMaterial as MeshDepthMaterial);
-    expect(visible).toBe(shadow);
-    expect(visible).toContain('attribute vec4 instanceCrush;');
-    expect(visible).toContain('attribute float instanceDentSeed;');
-    expect(visible).toContain(
+    for (const shader of [visible, shadow]) {
+      expect(shader.vertexShader).toContain('attribute vec4 instanceCrush;');
+      expect(shader.vertexShader).toContain(
+        'attribute float instanceDentSeed;',
+      );
+      expect(shader.vertexShader).toContain('attribute vec4 instanceTear;');
+    }
+    expect(visible.vertexShader).toContain(
       'transformed.z += 2.88 * (trafficRear - trafficFront)',
     );
-    expect(visible).toContain(
+    expect(shadow.vertexShader).toContain(
+      'transformed.z += 2.88 * (trafficRear - trafficFront)',
+    );
+    expect(visible.vertexShader).toContain(
       'transformed.x += 1.38 * (trafficLeft - trafficRight)',
     );
-    expect(visible).toContain('transformed.y -= roof');
+    expect(visible.vertexShader).toContain('transformed.y -= roof');
+    expect(visible.fragmentShader).toContain('vPanelScar');
+    expect(shadow.fragmentShader).not.toContain('vPanelScar');
     cars.dispose();
   });
 });

@@ -9,31 +9,35 @@ import { createTestTrack } from '../src/world/track';
 describe('speed cue envelopes', () => {
   const levels = { speedRatio: 0, lineAlpha: 0, vignetteAlpha: 0 };
   const full = { speedLinesStrength: 1, vignetteStrength: 1 };
-  it('starts streaks above 80%, responds to boost, and bounds both effects', () => {
+  it('builds streaks from cruise through top speed and boost', () => {
     evaluateSpeedCues(
-      { speed: 48, topSpeed: 60, boostEnvelope: 0 },
+      { speed: 30, topSpeed: 60, boostEnvelope: 0 },
       full,
       levels,
     );
-    expect(levels.lineAlpha).toBe(0);
+    const cruise = levels.lineAlpha;
+    expect(cruise).toBeCloseTo(0.088148, 5);
     evaluateSpeedCues(
-      { speed: 54, topSpeed: 60, boostEnvelope: 0 },
+      { speed: 60, topSpeed: 60, boostEnvelope: 0 },
       full,
       levels,
     );
-    expect(levels.lineAlpha).toBeCloseTo(0.15);
+    const top = levels.lineAlpha;
+    expect(top).toBeCloseTo(0.34);
+    expect(top).toBeGreaterThan(cruise);
     evaluateSpeedCues(
       { speed: 10, topSpeed: 60, boostEnvelope: 0.5 },
       full,
       levels,
     );
-    expect(levels.lineAlpha).toBe(0.15);
+    expect(levels.lineAlpha).toBeCloseTo(0.19);
     evaluateSpeedCues(
       { speed: 85, topSpeed: 60, boostEnvelope: 1 },
       full,
       levels,
     );
-    expect(levels.lineAlpha).toBe(0.3);
+    expect(levels.lineAlpha).toBeCloseTo(0.38);
+    expect(levels.lineAlpha).toBeGreaterThan(top);
     expect(levels.vignetteAlpha).toBe(0.12);
   });
   it('disables either effect exactly at zero, independently and at full boost', () => {
@@ -50,7 +54,7 @@ describe('speed cue envelopes', () => {
       { speedLinesStrength: 1, vignetteStrength: 0 },
       levels,
     );
-    expect(levels.lineAlpha).toBe(0.3);
+    expect(levels.lineAlpha).toBeCloseTo(0.38);
     expect(levels.vignetteAlpha).toBe(0);
     evaluateSpeedCues(
       { speed: 0, topSpeed: 60, boostEnvelope: 0 },
@@ -86,7 +90,7 @@ describe('speed cue envelopes', () => {
       DEFAULT_VALUES,
       levels,
     );
-    expect(levels.lineAlpha).toBe(0.15);
+    expect(levels.lineAlpha).toBeCloseTo(0.19);
     expect(levels.vignetteAlpha).toBe(0.06);
     store.set('speedLinesStrength', 0);
     store.set('vignetteStrength', 0.85);

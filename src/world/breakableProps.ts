@@ -14,7 +14,7 @@ export interface BreakablePropsOptions {
   readonly placements: readonly BreakablePlacement[];
   readonly vehicleBody: BodyId;
   /** Called once when a deferred contact actually destroys a prop. */
-  readonly onBreak?: (severity: number) => void;
+  readonly onBreak?: (severity: number, placementIndex: number) => void;
   /** Optional phase-one stream seed; omitted means all authored records. */
   readonly initialActiveIndices?: readonly number[];
   /** Maximum authored records that may hold dynamic promotion slots. */
@@ -351,7 +351,7 @@ export function createBreakableProps(
       activePropCount--;
       propDestroyed[prop] = 1;
       pools.breakables.release(id);
-      options.onBreak?.(contactSeverity[slot] ?? 0);
+      options.onBreak?.(contactSeverity[slot] ?? 0, prop);
       spawnFragments(
         contactPointX[slot] ?? 0,
         contactPointY[slot] ?? 0,

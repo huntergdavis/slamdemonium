@@ -1,0 +1,499 @@
+{
+  "version": 1,
+  "note": "Edited mono 48 kHz CC0 clips. Freesound login was not available, so those inputs are the pinned public HQ MP3 previews of CC0 originals; the OpenGameArt inputs are original WAV files. prepare-crash.py verifies source and output SHA-256 hashes.",
+  "sources": [
+    {
+      "name": "impact",
+      "creator": "RyanKingArt",
+      "sourcePage": "https://freesound.org/s/620077/",
+      "mediaUrl": "https://cdn.freesound.org/previews/620/620077_11069322-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "impact.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "7e402e1a3c7394e3039746063b8ccb96a065bbdde229ed39f0278f347ebf2d19",
+      "sourceBytes": 28272,
+      "fetchedAt": "2026-10-10T01:46:49Z"
+    },
+    {
+      "name": "shock",
+      "creator": "ingudios",
+      "sourcePage": "https://freesound.org/s/116751/",
+      "mediaUrl": "https://cdn.freesound.org/previews/116/116751_1819253-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "shock.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "58239671a7dcc16d6ef5794cf9d6f1d645679ad0b9c65db0f93a31c0aa0fbf0f",
+      "sourceBytes": 24576,
+      "fetchedAt": "2026-10-10T01:46:51Z"
+    },
+    {
+      "name": "can",
+      "creator": "Sadiquecat",
+      "sourcePage": "https://freesound.org/s/816677/",
+      "mediaUrl": "https://cdn.freesound.org/previews/816/816677_5287430-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "can.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "92009d35f5e6134aa223c71f07b34980affe4db59d5563bccec0d10fa2195682",
+      "sourceBytes": 12000,
+      "fetchedAt": "2026-10-10T01:46:53Z"
+    },
+    {
+      "name": "crash",
+      "creator": "squareal",
+      "sourcePage": "https://freesound.org/s/237375/",
+      "mediaUrl": "https://cdn.freesound.org/previews/237/237375_1502374-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "crash.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "6587ffc83281ecea17bf41a37e461c93d73424b478759e78dad35d71310823da",
+      "sourceBytes": 96528,
+      "fetchedAt": "2026-10-10T01:46:55Z"
+    },
+    {
+      "name": "glass",
+      "creator": "C_Rogers",
+      "sourcePage": "https://freesound.org/s/203371/",
+      "mediaUrl": "https://cdn.freesound.org/previews/203/203371_3569783-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "glass.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "b445d3fac027d71b74f7a34c8ceff58badd107aa52c0d520811550e0c740fb76",
+      "sourceBytes": 30266,
+      "fetchedAt": "2026-10-10T01:46:58Z"
+    },
+    {
+      "name": "scrape",
+      "creator": "dslrguide",
+      "sourcePage": "https://freesound.org/s/321480/",
+      "mediaUrl": "https://cdn.freesound.org/previews/321/321480_5485024-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "scrape.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "e36dd4f89f5eb4ce45f5c95f584f4c16f3f3df0c27b1969ff6a22c3fb1681c97",
+      "sourceBytes": 29184,
+      "fetchedAt": "2026-10-10T01:47:01Z"
+    },
+    {
+      "name": "rattle",
+      "creator": "heidicolorado",
+      "sourcePage": "https://freesound.org/s/827502/",
+      "mediaUrl": "https://cdn.freesound.org/previews/827/827502_17909141-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "rattle.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "5172956db89a876a1ef67a125d75d2241d9719712df98082f0bc1f9240936f56",
+      "sourceBytes": 81648,
+      "fetchedAt": "2026-10-10T01:47:03Z"
+    },
+    {
+      "name": "bass",
+      "creator": "D4XX",
+      "sourcePage": "https://freesound.org/s/607253/",
+      "mediaUrl": "https://cdn.freesound.org/previews/607/607253_887696-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "bass.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "c4e86272132546585f5f59d5dae9c8d59c1137c441ebe321fb2de8300f9f17e9",
+      "sourceBytes": 63031,
+      "fetchedAt": "2026-10-10T01:47:05Z"
+    },
+    {
+      "name": "creak",
+      "creator": "ingudios",
+      "sourcePage": "https://freesound.org/s/119466/",
+      "mediaUrl": "https://cdn.freesound.org/previews/119/119466_1819253-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "creak.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "5e60e02da84c84c78c9931a0ab919868883b29953b0d1e6316fdf2f9d94b3140",
+      "sourceBytes": 53328,
+      "fetchedAt": "2026-10-10T01:47:07Z"
+    },
+    {
+      "name": "hardalt",
+      "creator": "magnuswaker",
+      "sourcePage": "https://freesound.org/s/592388/",
+      "mediaUrl": "https://cdn.freesound.org/previews/592/592388_11537497-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "hardalt.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "0169d0fe29c4aba3cf1b0dd94c186a5fb917e9eef975c9a1485568d4a325d822",
+      "sourceBytes": 50112,
+      "fetchedAt": "2026-10-10T01:47:09Z"
+    },
+    {
+      "name": "walltail",
+      "creator": "moxobna",
+      "sourcePage": "https://freesound.org/s/40158/",
+      "mediaUrl": "https://cdn.freesound.org/previews/40/40158_43834-hq.mp3",
+      "mediaKind": "Freesound public HQ preview of CC0 original",
+      "file": "walltail.mp3",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "bca4ff755425d5201a69b8562020e059251af19426906a56870a64105da2e254",
+      "sourceBytes": 105820,
+      "fetchedAt": "2026-10-10T01:47:12Z"
+    },
+    {
+      "name": "thud",
+      "creator": "BMacZero",
+      "sourcePage": "https://opengameart.org/content/metal-impact-sounds",
+      "mediaUrl": "https://opengameart.org/sites/default/files/thud2.wav",
+      "mediaKind": "OpenGameArt original WAV",
+      "file": "thud.wav",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "5fb5c1b37a95cb6716d0bb529a0b9fe1ae9f3e2228b8f30c5c3dcbb1b570a3af",
+      "sourceBytes": 51244,
+      "fetchedAt": "2026-10-10T01:47:12Z"
+    },
+    {
+      "name": "clink",
+      "creator": "BMacZero",
+      "sourcePage": "https://opengameart.org/content/metal-impact-sounds",
+      "mediaUrl": "https://opengameart.org/sites/default/files/clink1.wav",
+      "mediaKind": "OpenGameArt original WAV",
+      "file": "clink.wav",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "0d439cd2b1f36f501b94c39661e39f91d160affe25c79f77dff7a2cd0ed7eadd",
+      "sourceBytes": 27692,
+      "fetchedAt": "2026-10-10T01:47:12Z"
+    }
+  ],
+  "clips": [
+    {
+      "name": "light",
+      "source": "thud",
+      "role": "light body",
+      "load": "core",
+      "startSeconds": 0,
+      "durationSeconds": 0.48,
+      "gainDb": 0,
+      "fadeInSeconds": 0.004,
+      "fadeOutSeconds": 0.08,
+      "highpassHz": 70,
+      "lowpassHz": 9000,
+      "outputs": {
+        "ogg": {
+          "sha256": "4a752b4e3a3e8e3bef14aa962519a52a8ce1ca1276ae6808fcb23cc72693e88d",
+          "bytes": 6562
+        },
+        "mp3": {
+          "sha256": "5e2fd481a42e97a74505a9851291fb7ac0694db160e34900184e56ebecbcf0df",
+          "bytes": 4268
+        }
+      }
+    },
+    {
+      "name": "tick",
+      "source": "clink",
+      "role": "bright attack and debris tick",
+      "load": "core",
+      "startSeconds": 0,
+      "durationSeconds": 0.3,
+      "gainDb": -4,
+      "fadeInSeconds": 0.002,
+      "fadeOutSeconds": 0.06,
+      "highpassHz": 180,
+      "lowpassHz": 11000,
+      "outputs": {
+        "ogg": {
+          "sha256": "f8a81cad5899d70bf6fd15096672726b3a2f0b6b5ca2a88ec5319d3f9815e7e7",
+          "bytes": 5428
+        },
+        "mp3": {
+          "sha256": "4470118034b5ef52cfbe564402ec4ca4077d199deae4f8ee895a6ca40f6e8daa",
+          "bytes": 2924
+        }
+      }
+    },
+    {
+      "name": "attack",
+      "source": "impact",
+      "role": "dry metal attack",
+      "load": "core",
+      "startSeconds": 0,
+      "durationSeconds": 0.52,
+      "gainDb": -4,
+      "fadeInSeconds": 0.002,
+      "fadeOutSeconds": 0.12,
+      "highpassHz": 70,
+      "lowpassHz": 11000,
+      "outputs": {
+        "ogg": {
+          "sha256": "6efa22a84f28560dad20e346bbd72b61dd41f91edd686f12d087c0e24c009889",
+          "bytes": 7164
+        },
+        "mp3": {
+          "sha256": "d66e1d9442a131103d94df4df67b1a6e56ede339b5626b5b243a5395dddca409",
+          "bytes": 4652
+        }
+      }
+    },
+    {
+      "name": "bend",
+      "source": "shock",
+      "role": "sheet-metal bend",
+      "load": "core",
+      "startSeconds": 0.02,
+      "durationSeconds": 0.85,
+      "gainDb": -6,
+      "fadeInSeconds": 0.004,
+      "fadeOutSeconds": 0.18,
+      "highpassHz": 90,
+      "lowpassHz": 8000,
+      "outputs": {
+        "ogg": {
+          "sha256": "4a53262128a339099a7656d71e81397cb6b0018e4163ac0c9865b31f4b3d9789",
+          "bytes": 9298
+        },
+        "mp3": {
+          "sha256": "0cae3fba66928fd4939f29503a8ae77db93e2c6e36713a8ddacca65f87fee486",
+          "bytes": 7340
+        }
+      }
+    },
+    {
+      "name": "can",
+      "source": "can",
+      "role": "crisp crush",
+      "load": "core",
+      "startSeconds": 0,
+      "durationSeconds": 0.38,
+      "gainDb": -9,
+      "fadeInSeconds": 0.002,
+      "fadeOutSeconds": 0.07,
+      "highpassHz": 100,
+      "lowpassHz": 10000,
+      "outputs": {
+        "ogg": {
+          "sha256": "b28a50481b8c58f1168e18da754d67ed142f32e0a14929a03a027828d233a90f",
+          "bytes": 6160
+        },
+        "mp3": {
+          "sha256": "51bb03e6404b3aceb4d6ba57af30825407415d48c6b89d542cfa9e92fc27a5ed",
+          "bytes": 3500
+        }
+      }
+    },
+    {
+      "name": "heavy",
+      "source": "crash",
+      "role": "hard body and tail; initial bang trimmed",
+      "load": "core",
+      "startSeconds": 0.28,
+      "durationSeconds": 1.6,
+      "gainDb": -4,
+      "fadeInSeconds": 0.005,
+      "fadeOutSeconds": 0.28,
+      "highpassHz": 65,
+      "lowpassHz": 8500,
+      "outputs": {
+        "ogg": {
+          "sha256": "5fb642333d19f54dcda5c3d18b996d4998e5cc991324d11d810e42c2a4922e32",
+          "bytes": 15734
+        },
+        "mp3": {
+          "sha256": "505c40095cd84776e5e639c78d7393e092a098bc3d99a8b946384d345de5cf22",
+          "bytes": 13292
+        }
+      }
+    },
+    {
+      "name": "glass",
+      "source": "glass",
+      "role": "conditional glass",
+      "load": "core",
+      "startSeconds": 0,
+      "durationSeconds": 1.12,
+      "gainDb": -10,
+      "fadeInSeconds": 0.003,
+      "fadeOutSeconds": 0.18,
+      "highpassHz": 250,
+      "lowpassHz": 10000,
+      "outputs": {
+        "ogg": {
+          "sha256": "f4de9e37d9d06371358e4b74bb7c7cab7fd1a0e9d662d390dadb566779a9dbf8",
+          "bytes": 12179
+        },
+        "mp3": {
+          "sha256": "6b28b609401a53c63d5839c168eaf77741b565f256bd416ad7f78e488268cce0",
+          "bytes": 9452
+        }
+      }
+    },
+    {
+      "name": "scrape",
+      "source": "scrape",
+      "role": "loopable metal grind middle",
+      "load": "core",
+      "startSeconds": 0.18,
+      "durationSeconds": 1.04,
+      "gainDb": 6,
+      "fadeInSeconds": 0.045,
+      "fadeOutSeconds": 0.05,
+      "highpassHz": 170,
+      "lowpassHz": 7000,
+      "outputs": {
+        "ogg": {
+          "sha256": "98a7af8889a06db5e4745661ded8ef241257b6de687328743215ec8efd95ed6d",
+          "bytes": 11240
+        },
+        "mp3": {
+          "sha256": "f04e9894a26f54bd66a06b03ee18aeefb467395985743e557d0ff1a744f9adbb",
+          "bytes": 8876
+        }
+      }
+    },
+    {
+      "name": "rattle",
+      "source": "rattle",
+      "role": "loose debris and trim",
+      "load": "core",
+      "startSeconds": 0.3,
+      "durationSeconds": 1.18,
+      "gainDb": -5,
+      "fadeInSeconds": 0.003,
+      "fadeOutSeconds": 0.22,
+      "highpassHz": 180,
+      "lowpassHz": 9500,
+      "outputs": {
+        "ogg": {
+          "sha256": "62b11c9b7a1e85793ac3e6f7e89af0132be42b98686a1b5c0c0cc74411fe7be1",
+          "bytes": 14097
+        },
+        "mp3": {
+          "sha256": "82f1755b11f26c1153c707b626acbd248a412f9c2764cd3c363aadd524293c65",
+          "bytes": 10028
+        }
+      }
+    },
+    {
+      "name": "bass",
+      "source": "bass",
+      "role": "quiet low-end hit",
+      "load": "core",
+      "startSeconds": 0,
+      "durationSeconds": 0.72,
+      "gainDb": -12,
+      "fadeInSeconds": 0.003,
+      "fadeOutSeconds": 0.2,
+      "highpassHz": 35,
+      "lowpassHz": 500,
+      "outputs": {
+        "ogg": {
+          "sha256": "4a9d952a8b7a819bfa275b101da93332e01f37e6c9816fe678212325e94225e1",
+          "bytes": 6367
+        },
+        "mp3": {
+          "sha256": "7eb8183ca6de063a0b9921b11b4c4333aae61e4c43f94c11017d937619a39287",
+          "bytes": 6188
+        }
+      }
+    },
+    {
+      "name": "creak",
+      "source": "creak",
+      "role": "wreck settling strain",
+      "load": "core",
+      "startSeconds": 0.08,
+      "durationSeconds": 1.65,
+      "gainDb": 6,
+      "fadeInSeconds": 0.008,
+      "fadeOutSeconds": 0.24,
+      "highpassHz": 90,
+      "lowpassHz": 6500,
+      "outputs": {
+        "ogg": {
+          "sha256": "3b4b923cf16403f819a8989b39538ab4d64ed9cc6b3ed2de1aa5832f51f4ae40",
+          "bytes": 17656
+        },
+        "mp3": {
+          "sha256": "af8cbbd144ba3b4532671f6a22ab8878750f10249b9d511d6df9d7c2ec8b7a5f",
+          "bytes": 13676
+        }
+      }
+    },
+    {
+      "name": "hard-alt",
+      "source": "hardalt",
+      "role": "alternate hard-hit body",
+      "load": "lazy",
+      "startSeconds": 0.2,
+      "durationSeconds": 1.7,
+      "gainDb": -7,
+      "fadeInSeconds": 0.003,
+      "fadeOutSeconds": 0.25,
+      "highpassHz": 90,
+      "lowpassHz": 9000,
+      "outputs": {
+        "ogg": {
+          "sha256": "9958eb2733a2325242521c112f6c900a078f09504103ff738d1842b6b3bab1e0",
+          "bytes": 17679
+        },
+        "mp3": {
+          "sha256": "2e474236442d0181be7bf2ab47b2399f8cb323e0b29f8804804d8b1aa5478f10",
+          "bytes": 14060
+        }
+      }
+    },
+    {
+      "name": "wall-tail",
+      "source": "walltail",
+      "role": "alternate wall-shunt tail",
+      "load": "lazy",
+      "startSeconds": 0.4,
+      "durationSeconds": 1.5,
+      "gainDb": -12,
+      "fadeInSeconds": 0.003,
+      "fadeOutSeconds": 0.25,
+      "highpassHz": 80,
+      "lowpassHz": 8500,
+      "outputs": {
+        "ogg": {
+          "sha256": "8497fe5770d4fafecf083cc5a1b15e5c772d19622ed8fd048bfbc5e55d1f3539",
+          "bytes": 15126
+        },
+        "mp3": {
+          "sha256": "e11d07ac3d9cea48c15478db8521eab42e1cf37317430e61c61e9b9f0b6c93a5",
+          "bytes": 12524
+        }
+      }
+    },
+    {
+      "name": "distant",
+      "source": "crash",
+      "role": "spatial distant AI crash, prefiltered",
+      "load": "core",
+      "startSeconds": 0.28,
+      "durationSeconds": 0.92,
+      "gainDb": -10,
+      "fadeInSeconds": 0.005,
+      "fadeOutSeconds": 0.22,
+      "highpassHz": 120,
+      "lowpassHz": 1600,
+      "outputs": {
+        "ogg": {
+          "sha256": "756612e7e0ac1076c01c06b51d8438360bac6c0d8381f91152c962b404769d26",
+          "bytes": 9666
+        },
+        "mp3": {
+          "sha256": "7e32a8211fc13b6d9fad2718e7a5aa6fb0f22f5ad127f3626fdf74670311dc34",
+          "bytes": 7916
+        }
+      }
+    }
+  ]
+}

@@ -193,6 +193,34 @@
         "-q:a",
         "3"
       ]
+    },
+    {
+      "source": "generate-near-miss.py",
+      "generatorSha256": "000060ce6442162c96da168b826e3c7bc6bc7e9c7fa8d7dc2d8ca2b2714ba0c6",
+      "title": "Slamdemonium near-miss air sweep",
+      "creators": ["Slamdemonium contributors"],
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "file": "near-miss.ogg",
+      "sha256": "c6826381e95d84194b4abc9a05c9e0d50d8a437e1ca297be5171e76f47cb6fbe",
+      "bytes": 5896,
+      "durationSeconds": 0.28,
+      "sampleRate": 48000,
+      "channels": 1,
+      "edits": "Deterministic band-pass noise sweep generated in the repo; mono Ogg Vorbis quality 3, metadata removed.",
+      "conversionArguments": [
+        "assets/audio/near-miss.wav",
+        "-map_metadata",
+        "-1",
+        "-ac",
+        "1",
+        "-ar",
+        "48000",
+        "-c:a",
+        "libvorbis",
+        "-q:a",
+        "3"
+      ]
     }
   ],
   "notes": [

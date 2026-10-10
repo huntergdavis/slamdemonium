@@ -62,3 +62,72 @@ it('places a rival badge over the correct horizontal side at DPR 2', () => {
     vi.unstubAllGlobals();
   }
 });
+
+it('hides a second horizon badge but keeps separated nearby rivals labelled', () => {
+  vi.stubGlobal('window', {
+    innerWidth: 1440,
+    innerHeight: 900,
+    devicePixelRatio: 2,
+  });
+  const elements: {
+    className: string;
+    dataset: Record<string, string>;
+    style: { display?: string; transform?: string };
+    textContent: string;
+    append(...children: unknown[]): void;
+    remove(): void;
+  }[] = [];
+  const host = {
+    ownerDocument: {
+      createElement: () => {
+        const element = {
+          className: '',
+          dataset: {},
+          style: {},
+          textContent: '',
+          append() {},
+          remove() {},
+        };
+        elements.push(element);
+        return element;
+      },
+    },
+    append() {},
+  } as unknown as HTMLElement;
+  const camera = new PerspectiveCamera(70, 1440 / 900, 0.1, 2000);
+  camera.position.set(0, 2, 0);
+  camera.lookAt(0, 2, -1);
+  const cars = [
+    {
+      id: 1,
+      rival: true,
+      wrecked: false,
+      position: { x: 0, y: 0, z: -80 },
+    },
+    {
+      id: 2,
+      rival: true,
+      wrecked: false,
+      position: { x: 1, y: 0, z: -80 },
+    },
+  ] as TrafficCarState[];
+  const guidance = createRivalGuidance(host);
+  try {
+    const visible = () =>
+      elements.filter(
+        (element) =>
+          element.className === 'sl-rival-marker' &&
+          element.style.display === '',
+      );
+    guidance.update(camera, cars, { x: 0, y: 0, z: 0 });
+    expect(visible()).toHaveLength(1);
+    cars[0]!.position.z = -20;
+    cars[1]!.position.x = 10;
+    cars[1]!.position.z = -20;
+    guidance.update(camera, cars, { x: 0, y: 0, z: 0 });
+    expect(visible()).toHaveLength(2);
+  } finally {
+    guidance.dispose();
+    vi.unstubAllGlobals();
+  }
+});

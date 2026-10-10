@@ -185,7 +185,7 @@ const definitions = [
     unit: 'kg',
     default: 1300.0,
     min: 500.0,
-    max: 4000.0,
+    max: 8000.0,
     step: 10.0,
     needsRebuild: true,
     help: 'Inertia. Scales forces, so acceleration stays as set; mass mostly changes crash behavior and feel of turning.',
@@ -1065,7 +1065,7 @@ const definitions = [
     min: 0,
     max: 1,
     step: 0.05,
-    help: 'Edge streaks above 80% of top speed and during boost. Zero disables them; the road center stays clear.',
+    help: 'Edge streaks build from cruise speed and strengthen through boost. Zero disables them; the road center stays clear.',
   },
   {
     key: 'vignetteStrength',

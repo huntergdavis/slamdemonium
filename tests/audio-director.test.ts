@@ -50,6 +50,11 @@ function setup() {
     ),
     playImpact: vi.fn(() => true),
     playBoostAttack: vi.fn(() => true),
+    playNearMiss: vi.fn<
+      (_gain: number, _rate: number, _pan: number) => boolean
+    >(() => true),
+    playCrash: vi.fn(() => true),
+    setGrind: vi.fn(),
     pause: vi.fn(),
     setMasterMuted: vi.fn(),
     reset: vi.fn(),
@@ -92,6 +97,26 @@ function setup() {
 const normal = { x: 0, y: 0, z: 1 };
 
 describe('audio stays outside simulation', () => {
+  it('plays one sided near-miss cue after physics and discards it on pause or a simultaneous crash', () => {
+    const r = setup();
+    r.director.onNearMiss(-1, 20);
+    expect(r.output.playNearMiss).not.toHaveBeenCalled();
+    r.director.update(0);
+    expect(r.output.playNearMiss).toHaveBeenCalledOnce();
+    expect(r.output.playNearMiss.mock.calls[0]![2]).toBe(-0.8);
+    r.director.update(16);
+    expect(r.output.playNearMiss).toHaveBeenCalledOnce();
+    r.director.onNearMiss(1, 40);
+    r.director.onCrashContact(1, 2, 12, 0, { x: 0, z: 0 }, 0, false);
+    r.director.update(32);
+    expect(r.output.playNearMiss).toHaveBeenCalledOnce();
+    r.director.onNearMiss(1, 40);
+    r.pause(true);
+    r.director.update(48);
+    r.pause(false);
+    r.director.update(64);
+    expect(r.output.playNearMiss).toHaveBeenCalledOnce();
+  });
   it('copies contact/telemetry scalars into fixed queues without calling any sound API from physics', () => {
     const r = setup();
     const borrowed = { ...normal };

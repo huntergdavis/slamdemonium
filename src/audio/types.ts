@@ -18,9 +18,24 @@ export interface AudioTelemetry {
   readonly upshiftCount: number;
   readonly downshiftCount: number;
   readonly velocity: Readonly<{ x: number; y: number; z: number }>;
+  /** Available on live vehicle telemetry for distant crash placement. */
+  readonly position?: Readonly<{ x: number; z: number }>;
+  readonly rotation?: Readonly<{ x: number; y: number; z: number; w: number }>;
   readonly wheels: readonly AudioWheel[];
 }
 export type AudioProfile = 'asphalt' | 'kerb' | 'concrete';
+export type CrashTier = 'light' | 'medium' | 'hard';
+export type CrashKind = 'contact' | 'wall' | 'distant' | 'takedown' | 'wreck';
+/** Allocated only after physics, when the director drains its fixed event queue. */
+export interface CrashCue {
+  readonly tier: CrashTier;
+  readonly kind: CrashKind;
+  readonly gain: number;
+  readonly rate: number;
+  readonly pan: number;
+  readonly glass: boolean;
+  readonly debris: boolean;
+}
 export interface AudioSurface {
   readonly audioProfile: AudioProfile;
 }
@@ -58,9 +73,13 @@ export interface AudioMix {
   firingUnevenness: number;
   /** Multiplies pulse timing without changing the shared telemetry RPM. */
   firingRateScale: number;
+  /** Speed-derived wind/road texture inside the existing engine worklet. */
+  wind: number;
   readonly tyres: Float64Array;
   boost: number;
   rate: number;
+  /** Temporary engine/continuous-layer dip during credited moments or wrecks. */
+  duck?: number;
   volume: number;
 }
 export interface AudioOutput {
@@ -71,6 +90,11 @@ export interface AudioOutput {
   apply(mix: Readonly<AudioMix>): void;
   playImpact(profile: AudioProfile, gain: number, rate: number): boolean;
   playBoostAttack(gain: number, rate: number): boolean;
+  /** Low-priority, single pass-by cue. Positive pan is right. */
+  playNearMiss(gain: number, rate: number, pan: number): boolean;
+  playCrash(cue: Readonly<CrashCue>): boolean;
+  /** Slots 0 and 1 are the two highest-priority sustained contact pairs. */
+  setGrind(slot: 0 | 1, gain: number, rate: number, pan: number): void;
   /** Schedule the SFX fade in the audio clock, independent of the next RAF. */
   pause(fadeMs: number): void;
   /** Applies to all game audio, preserving the independently tuned SFX volume. */

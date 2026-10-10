@@ -17,6 +17,10 @@ describe('takedown course', () => {
     const map = createTakedownMap();
     expect(isMapName('takedown')).toBe(true);
     expect(MAPS.takedown.name).toBe('takedown');
+    expect(isMapName('road-rage')).toBe(true);
+    expect(MAPS['road-rage'].path).toBe(MAPS.takedown.path);
+    expect(MAPS['road-rage'].traffic).toBe(MAPS.takedown.traffic);
+    expect(MAPS['road-rage'].runs?.[0]?.gates).toHaveLength(1);
     expect(map.path?.closed).toBe(true);
     expect(map.path!.length).toBeGreaterThan(7000);
     expect(map.path!.length).toBeLessThan(7300);

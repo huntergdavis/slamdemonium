@@ -143,6 +143,30 @@ describe('camera', () => {
     rig.cyclePreset(2);
     expect(rig.preset).toBe('chase');
   });
+
+  it('gives a heavy contact one bounded kick and ignores repeated wall-grind contacts', () => {
+    const camera = new PerspectiveCamera();
+    const rig = new CameraRig(camera, new TuningStore());
+    const state = new VehicleTelemetry();
+    const pose = { position: new Vector3(), rotation: new Quaternion() };
+    rig.update(pose, state, 0.01);
+    const hit = estimateImpactSeverity(
+      null,
+      { x: 0, y: 0, z: -20 },
+      { x: 0, y: 0, z: 1 },
+      1300,
+      createImpactSeverity(),
+    );
+    rig.addImpact(hit);
+    rig.update(pose, state, 0);
+    const firstKick = camera.position.distanceTo(rig.position);
+    expect(firstKick).toBeGreaterThan(0);
+    for (let i = 0; i < 20; i++) rig.addImpact(hit);
+    rig.update(pose, state, 0);
+    expect(camera.position.distanceTo(rig.position)).toBeCloseTo(firstKick);
+    rig.update(pose, state, 0.5);
+    expect(camera.position.distanceTo(rig.position)).toBeLessThan(0.01);
+  });
 });
 
 describe('dynamic resolution', () => {

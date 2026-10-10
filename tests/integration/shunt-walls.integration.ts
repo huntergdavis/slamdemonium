@@ -11,6 +11,7 @@ import {
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createTakedownMap } from '../../src/world/takedownCourse';
+import { createCityMap } from '../../src/world/cityCourse';
 
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
@@ -69,6 +70,70 @@ it('covers over 90% of both roadsides with visible solid walls and clear run-off
   } finally {
     visual.dispose();
     material.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 60_000);
+
+it('leaves the city junction open but stops a car shunted into its roadside walls', async () => {
+  const map = createCityMap();
+  const world = await createPhysicsWorld({ wasmPath });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  try {
+    world.setGravity(0);
+    const wallIds = installShuntWalls(bodies, map.shuntWalls!);
+    const hit: RayHit = {
+      distance: 0,
+      point: { x: 0, y: 0, z: 0 },
+      normal: { x: 0, y: 0, z: 0 },
+      bodyId: 0,
+      surfaceId: 0,
+    };
+    for (const z of [-110, -70, 70, 110]) {
+      for (const side of [-1, 1]) {
+        expect(
+          world.rayCast(
+            { x: 275, y: 1.1, z },
+            { x: side, y: 0, z: 0 },
+            20,
+            hit,
+          ),
+        ).toBe(true);
+        expect(wallIds).toContain(hit.bodyId);
+        expect(hit.distance).toBeGreaterThan(12);
+      }
+    }
+    expect(
+      world.rayCast({ x: 275, y: 1.1, z: 0 }, { x: 1, y: 0, z: 0 }, 20, hit),
+    ).toBe(false);
+    const car = world.createDynamicBox({
+      center: { x: 275, y: 1.1, z: 70 },
+      halfExtents: { x: 1.08, y: 0.65, z: 2.4 },
+      mass: 1300,
+      comOffset: { x: 0, y: 0, z: 0 },
+      inertiaScale: { x: 1, y: 1, z: 1 },
+      friction: 0.2,
+      restitution: 0,
+      ccd: true,
+      maxAngularVelocity: 12,
+      angularDamping: 0,
+    });
+    let wallContacts = 0;
+    world.onContact((a, b) => {
+      if (
+        (a === car && wallIds.includes(b)) ||
+        (b === car && wallIds.includes(a))
+      )
+        wallContacts++;
+    });
+    world.setLinearVelocity(car, { x: 35, y: 0, z: 0 });
+    for (let step = 0; step < 120; step++) world.step(1 / 120);
+    const position = { x: 0, y: 0, z: 0 };
+    world.getTransform(car, position, { x: 0, y: 0, z: 0, w: 1 });
+    expect(wallContacts).toBeGreaterThan(0);
+    expect(position.x - 275).toBeGreaterThan(9);
+    expect(position.x - 275).toBeLessThan(15);
+  } finally {
     bodies.dispose();
     world.dispose();
   }

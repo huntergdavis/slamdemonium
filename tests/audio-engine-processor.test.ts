@@ -16,6 +16,7 @@ function render(
   seconds: number,
   character = 0,
   firingRateScale = 1,
+  wind = 0,
 ): Float32Array {
   const engine = new Engine();
   const out = new Float32Array(Math.round(seconds * SAMPLE_RATE));
@@ -25,6 +26,7 @@ function render(
     load: new Float32Array([load]),
     character: new Float32Array([character]),
     firingRateScale: new Float32Array([firingRateScale]),
+    wind: new Float32Array([wind]),
   };
   for (let offset = 0; offset < out.length; offset += 128) {
     expect(engine.process([], [[block]], params)).toBe(true);
@@ -63,6 +65,19 @@ beforeAll(async () => {
 });
 
 describe('procedural engine voice', () => {
+  it('adds increasing road/wind texture at 30, 60 and boosted speed in one voice', () => {
+    const dry = render(3400, 0.5, 0.25, 1, 1, 0);
+    const texture = (wind: number) => {
+      const wet = render(3400, 0.5, 0.25, 1, 1, wind);
+      return rms(wet.map((sample, index) => sample - dry[index]!));
+    };
+    const slow = texture(((30 - 10) / 75) ** 0.8);
+    const cruise = texture(((60 - 10) / 75) ** 0.8);
+    const boost = texture(1);
+    expect(slow).toBeGreaterThan(0);
+    expect(cruise).toBeGreaterThan(slow * 1.5);
+    expect(boost).toBeGreaterThan(cruise * 1.2);
+  });
   it('produces bounded, non-silent output that grows with load', () => {
     const idle = render(900, 0, 1);
     const full = render(5000, 1, 1);

@@ -116,7 +116,7 @@ describe('production import reachability', () => {
   it('ignores Vite non-code asset queries without treating raw TS text as runtime wiring', () => {
     const root = fixture({
       'src/main.ts':
-        "import wasmUrl from 'jolt-physics/jolt-physics.wasm.wasm?url'; import './style.css?inline'; import help from '../docs/help.md?raw'; import source from './feature.ts?raw';",
+        "import wasmUrl from 'jolt-physics/jolt-physics.wasm.wasm?url'; import model from '../assets/car.glb?url'; import './style.css?inline'; import help from '../docs/help.md?raw'; import source from './feature.ts?raw';",
       'src/feature.ts': 'export const start = 1;',
     });
     const result = checkReachability(root);
@@ -165,10 +165,11 @@ describe('authored audio and licence assets', () => {
     const root = fixture({
       'src/main.ts': "import './audio'; void import('./credits');",
       'src/audio.ts':
-        "import sound from '../assets/audio/engine.ogg?url&no-inline';",
+        "import sound from '../assets/audio/engine.ogg?url&no-inline'; import fallback from '../assets/audio/engine.mp3?url&no-inline';",
       'src/credits.ts':
         "export {default as notice} from '/assets/audio/HOWLER-LICENSE.txt?url&no-inline';",
       'assets/audio/engine.ogg': 'sound bytes',
+      'assets/audio/engine.mp3': 'fallback bytes',
       'assets/audio/HOWLER-LICENSE.txt': 'full notice',
     });
     const result = checkReachability(root);
@@ -177,10 +178,11 @@ describe('authored audio and licence assets', () => {
     expect(result.unreachableAssets).toEqual([]);
     expect(result.reachableAssets).toEqual([
       'assets/audio/HOWLER-LICENSE.txt',
+      'assets/audio/engine.mp3',
       'assets/audio/engine.ogg',
     ]);
     expect(formatReachability(result)).toContain(
-      '2/2 authored .ogg/.txt assets reachable',
+      '3/3 authored .ogg/.mp3/.txt assets reachable',
     );
   });
 
