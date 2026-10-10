@@ -150,10 +150,15 @@ describe('map selection', () => {
   it('keeps the six-car race launch clear of oncoming traffic', () => {
     const race = MAPS['circuit-race'];
     const civilians = race.traffic!.filter((car) => !car.raceEntrant);
-    expect(race.traffic!.filter((car) => car.raceEntrant)).toHaveLength(5);
+    const rivals = race.traffic!.filter((car) => car.raceEntrant);
+    expect(rivals).toHaveLength(5);
     expect(civilians.length).toBeGreaterThan(0);
     expect(civilians.every((car) => car.direction === 1)).toBe(true);
     expect(civilians.every((car) => car.station > 350)).toBe(true);
+    expect(civilians.every((car) => car.laneOffset === 6.25)).toBe(true);
+    expect(
+      rivals.every((car) => car.laneOffset === -5 || car.laneOffset === 0),
+    ).toBe(true);
   });
 
   it('keeps the lab exactly as the fixtures know it', () => {

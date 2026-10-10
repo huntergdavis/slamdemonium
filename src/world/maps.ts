@@ -333,7 +333,7 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
 });
 
 const circuit = createCircuitMap();
-const raceGrid = poseAt(circuit.path, circuit.path.length - 50);
+const raceGrid = poseAt(circuit.path, circuit.path.length - 65);
 /** Six-car standing grid: the player is rear-centre, five rivals are beside
  * and ahead. Circuit Race keeps same-direction civilian traffic for shunts,
  * but clears the launch corridor and excludes oncoming cars from the grid's
@@ -344,19 +344,21 @@ const circuitRace: MapDefinition = {
   label: 'Circuit Race · six-car grid',
   spawn: { x: raceGrid.x, z: raceGrid.z, heading: raceGrid.heading },
   traffic: [
-    ...circuit.traffic.filter(
-      (car) =>
-        car.direction === 1 &&
-        car.station > 350 &&
-        car.station < circuit.path.length - 150,
-    ),
+    ...circuit.traffic
+      .filter(
+        (car) =>
+          car.direction === 1 &&
+          car.station > 350 &&
+          car.station < circuit.path.length - 150,
+      )
+      .map((car) => ({ ...car, laneOffset: 6.25 })),
     ...(
       [
         [-35, -5, 'sedan'],
         [-35, 0, 'hatch'],
-        [-35, 5, 'pickup'],
-        [-50, -5, 'sedan'],
-        [-50, 5, 'hatch'],
+        [-50, -5, 'pickup'],
+        [-50, 0, 'sedan'],
+        [-65, -5, 'hatch'],
       ] as const
     ).map(([station, laneOffset, modelKind]) => ({
       station: circuit.path.length + station,
