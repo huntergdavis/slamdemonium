@@ -157,8 +157,19 @@ describe('map selection', () => {
     expect(civilians.every((car) => car.station > 350)).toBe(true);
     expect(civilians.every((car) => car.laneOffset === 6.25)).toBe(true);
     expect(
-      rivals.every((car) => car.laneOffset === -5 || car.laneOffset === 0),
+      rivals.every(
+        (car) => car.laneOffset === -6.25 || car.laneOffset === -0.75,
+      ),
     ).toBe(true);
+    expect(race.runways.length).toBeGreaterThan(MAPS.circuit.runways.length);
+    const civilian = civilians[0]!;
+    const racer = rivals[0]!;
+    expect(civilian.laneOffsetAt?.(2000)).toBeLessThan(-9);
+    expect(civilian.laneOffsetAt?.(3900)).toBeLessThan(-16);
+    expect(civilian.laneOffsetAt?.(8900)).toBeGreaterThan(24);
+    expect(racer.laneOffsetAt?.(2000)).toBeLessThan(-20);
+    expect(racer.laneOffsetAt?.(3900)).toBeLessThan(-25);
+    expect(racer.laneOffsetAt?.(8900)).toBeGreaterThan(12);
   });
 
   it('keeps the lab exactly as the fixtures know it', () => {

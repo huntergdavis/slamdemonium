@@ -46,6 +46,8 @@ export interface TrafficCarRecord {
   readonly raceEntrant?: boolean;
   /** Metres left of the centreline; overrides the ordinary two-lane offset. */
   readonly laneOffset?: number;
+  /** Optional authored road detour, evaluated at the car's route station. */
+  readonly laneOffsetAt?: (station: number) => number;
 }
 
 /** Centre-to-centre spacing in metres. The 12 m authored grid is the hard
@@ -137,6 +139,9 @@ const WRECK_PHYSICS_RADIUS = 220;
 const WRECK_BRAKE = 9;
 const WRECK_PLANNED_BRAKE = 4;
 const WRECK_STOP_MARGIN = 12;
+const RACE_TRAFFIC_LOOKAHEAD = 150;
+const RACE_TRAFFIC_BRAKE = 8;
+const PROMOTION_CLEARANCE = 2;
 const BODY_MASS = 1100;
 /** Every kind weighs the same in v1; per-kind mass waits for crumple. */
 const BODY_MASS_DESC = {
@@ -371,13 +376,17 @@ export function createTraffic(
       a.x +
       (b.x - a.x) * t -
       Math.cos(out.heading) *
-        ((record.authored.laneOffset ?? record.authored.laneSide * 3.5) +
+        ((record.authored.laneOffsetAt?.(s) ??
+          record.authored.laneOffset ??
+          record.authored.laneSide * 3.5) +
           record.attackOffset);
     out.z =
       a.z +
       (b.z - a.z) * t +
       Math.sin(out.heading) *
-        ((record.authored.laneOffset ?? record.authored.laneSide * 3.5) +
+        ((record.authored.laneOffsetAt?.(s) ??
+          record.authored.laneOffset ??
+          record.authored.laneSide * 3.5) +
           record.attackOffset);
     return out;
   }
@@ -467,6 +476,50 @@ export function createTraffic(
         : speed > 8 &&
           record.obstacleClearance <
             (speed * speed) / (2 * WRECK_BRAKE) + WRECK_STOP_MARGIN;
+  }
+
+  /** Race entrants anticipate even visual-only civilians. Their station and
+   * authored lane exist long before a body is promoted near the player. */
+  function raceTrafficSpeedLimit(
+    record: RecordState,
+    desiredSpeed: number,
+  ): number {
+    const carShape = CAR_MODELS[record.state.modelKind].halfExtents;
+    const lane =
+      record.authored.laneOffsetAt?.(record.station) ??
+      record.authored.laneOffset ??
+      record.state.laneSide * 3.5;
+    let limit = desiredSpeed;
+    for (const other of authored) {
+      if (
+        !other.enabled ||
+        other.wrecked ||
+        other.state.rival ||
+        other.state.direction !== record.state.direction
+      )
+        continue;
+      const otherLane =
+        (other.authored.laneOffsetAt?.(record.station) ??
+          other.authored.laneOffset ??
+          other.state.laneSide * 3.5) + other.attackOffset;
+      const otherShape = CAR_MODELS[other.state.modelKind].halfExtents;
+      if (
+        Math.abs(lane + record.attackOffset - otherLane) >
+        carShape.x + otherShape.x + 0.75
+      )
+        continue;
+      const gap = (other.station - record.station + path.length) % path.length;
+      if (gap <= 0 || gap > RACE_TRAFFIC_LOOKAHEAD) continue;
+      const clearance = gap - carShape.z - otherShape.z - 12;
+      const otherSpeed = other.slot
+        ? Math.min(other.driveSpeed, other.state.speed)
+        : other.driveSpeed;
+      limit = Math.min(
+        limit,
+        otherSpeed + Math.sqrt(2 * RACE_TRAFFIC_BRAKE * Math.max(0, clearance)),
+      );
+    }
+    return limit;
   }
 
   function markWreck(record: RecordState): void {
@@ -586,7 +639,54 @@ export function createTraffic(
     }
   }
 
-  function promote(record: RecordState): void {
+  function promotionIsClear(record: RecordState, player: V3): boolean {
+    const car = record.state;
+    const shape = CAR_MODELS[car.modelKind].halfExtents;
+    const forwardX = car.forward.x;
+    const forwardZ = car.forward.z;
+    const rightX = -forwardZ;
+    const rightZ = forwardX;
+    const playerDx = player.x - car.position.x;
+    const playerDz = player.z - car.position.z;
+    if (
+      Math.abs(playerDx * forwardX + playerDz * forwardZ) <
+        shape.z + 2.4 + PROMOTION_CLEARANCE &&
+      Math.abs(playerDx * rightX + playerDz * rightZ) <
+        shape.x + 1.08 + PROMOTION_CLEARANCE
+    )
+      return false;
+    for (const slot of slots) {
+      const other = slot.record?.state;
+      if (!other) continue;
+      const otherShape = CAR_MODELS[other.modelKind].halfExtents;
+      const dx = other.position.x - car.position.x;
+      const dz = other.position.z - car.position.z;
+      const otherRightX = -other.forward.z;
+      const otherRightZ = other.forward.x;
+      const along = Math.abs(dx * forwardX + dz * forwardZ);
+      const across = Math.abs(dx * rightX + dz * rightZ);
+      const otherLong =
+        Math.abs(forwardX * other.forward.x + forwardZ * other.forward.z) *
+          otherShape.z +
+        Math.abs(forwardX * otherRightX + forwardZ * otherRightZ) *
+          otherShape.x;
+      const otherWide =
+        Math.abs(rightX * other.forward.x + rightZ * other.forward.z) *
+          otherShape.z +
+        Math.abs(rightX * otherRightX + rightZ * otherRightZ) * otherShape.x;
+      if (
+        along < shape.z + otherLong + PROMOTION_CLEARANCE &&
+        across < shape.x + otherWide + PROMOTION_CLEARANCE
+      )
+        return false;
+    }
+    return true;
+  }
+
+  function promote(record: RecordState, player: V3): void {
+    // A visual follower may be promoted only after the player approaches it.
+    // Never materialize its collider inside a racer, another car or the player.
+    if (raceRecords.length > 0 && !promotionIsClear(record, player)) return;
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
     const state = record.state;
@@ -824,7 +924,7 @@ export function createTraffic(
       );
       if (distanceSquared > WRECK_PHYSICS_RADIUS ** 2) continue;
       makeRoomFor(player, distanceSquared, true);
-      if (physicalCount < MAX_DRIVING) promote(wreck);
+      if (physicalCount < MAX_DRIVING) promote(wreck, player);
     }
     // A car too close to brake must get a real collision, rather than keep
     // following its visual-only lane pose through the wreck.
@@ -838,7 +938,7 @@ export function createTraffic(
       );
       if (distanceSquared > WRECK_PHYSICS_RADIUS ** 2) continue;
       makeRoomFor(player, distanceSquared, true);
-      if (physicalCount < MAX_DRIVING) promote(record);
+      if (physicalCount < MAX_DRIVING) promote(record, player);
     }
     // The five grid rivals are part of the race, not decorative far traffic.
     // Give them bodies before ordinary civilian promotion at every start.
@@ -851,7 +951,7 @@ export function createTraffic(
       );
       if (distanceSquared > ENTER * ENTER) continue;
       makeRoomFor(player, distanceSquared, true);
-      if (physicalCount < MAX_DRIVING) promote(record);
+      if (physicalCount < MAX_DRIVING) promote(record, player);
     }
     // Refresh one distant slice per step instead of all authored cars on the
     // same 10 Hz tick. Nearby poses still update every step.
@@ -922,6 +1022,8 @@ export function createTraffic(
         let desiredSpeed = record.authored.speed;
         if (state.raceEntrant) {
           desiredSpeed = raceRunning ? record.authored.speed : 0;
+          if (raceRunning)
+            desiredSpeed = raceTrafficSpeedLimit(record, desiredSpeed);
         } else if (state.rival) {
           const ahead =
             (record.station - playerStation + path.length) % path.length;
@@ -1049,7 +1151,7 @@ export function createTraffic(
       }
       if (!record.slot && distanceSquared <= ENTER * ENTER) {
         makeRoomFor(player, distanceSquared);
-        if (physicalCount < MAX_DRIVING) promote(record);
+        if (physicalCount < MAX_DRIVING) promote(record, player);
       }
       const slot = record.slot;
       if (!slot) continue;
