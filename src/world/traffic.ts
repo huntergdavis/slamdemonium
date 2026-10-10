@@ -1479,7 +1479,13 @@ export function createTraffic(
               rules.minGap,
               safeFollowingGap(record, ahead),
             );
-            const followingSpeed = ahead.driveSpeed + (gap - safeGap) * 0.6;
+            const leadSpeed = ahead.slot
+              ? Math.min(ahead.driveSpeed, ahead.state.speed)
+              : ahead.driveSpeed;
+            const clearance = Math.max(0, gap - safeGap);
+            const followingSpeed = Math.sqrt(
+              leadSpeed * leadSpeed + 2 * CIVILIAN_BRAKE * clearance,
+            );
             record.driveSpeed = Math.max(
               0,
               Math.min(desiredSpeed, followingSpeed),
@@ -1502,7 +1508,23 @@ export function createTraffic(
               record.driveSpeed = Math.min(record.driveSpeed, clearance / dt);
           }
         }
-        record.station += direction * record.driveSpeed * dt;
+        // Keep a small target lead to overcome drag, but never let a physical
+        // civilian's station run far ahead of the speed the solver achieved.
+        // On a fast bend that old drift could exceed 80 m and send the body
+        // through oncoming traffic at the interchange.
+        const stationSpeed =
+          record.slot && !state.rival && !state.raceEntrant
+            ? Math.min(
+                record.driveSpeed,
+                Math.max(
+                  0,
+                  state.velocity.x * state.forward.x +
+                    state.velocity.z * state.forward.z +
+                    2,
+                ),
+              )
+            : record.driveSpeed;
+        record.station += direction * stationSpeed * dt;
         if (record.station >= record.path.length)
           record.station -= record.path.length;
         else if (record.station < 0) record.station += record.path.length;

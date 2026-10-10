@@ -8,6 +8,14 @@ test('Road Rage holds the start, shows GO, and retries with fresh rivals', async
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('./?map=road-rage');
   await page.waitForFunction(() => window.__game?.ready);
+  await page.evaluate(() => {
+    // A slow browser can spend the three-second countdown rendering its first
+    // HUD frame. Reset under a paused clock before asserting simulated time.
+    window.__game.perf!.pauseSimulation(true);
+    window.__game.respawn();
+    window.__game.tuning.set('physicsHz', 60);
+    window.__game.stepMany(1); // Populate the fresh rival roster.
+  });
   const card = page.locator('.sl-hud__road-rage');
   await expect(card).toContainText('ROAD RAGE');
   const before = await page.evaluate(() => ({
@@ -16,8 +24,6 @@ test('Road Rage holds the start, shows GO, and retries with fresh rivals', async
   }));
   expect(before.event?.phase).toBe('countdown');
   expect(before.rivals).toHaveLength(4);
-  await page.evaluate(() => window.__game.tuning.set('physicsHz', 60));
-
   const during = await page.evaluate(() => {
     window.__game.setInput({ throttle: 1 });
     window.__game.stepMany(60);
@@ -43,6 +49,7 @@ test('Road Rage holds the start, shows GO, and retries with fresh rivals', async
 
   await page.keyboard.press('Enter');
   await expect(card).toHaveAttribute('data-phase', 'countdown');
+  await page.evaluate(() => window.__game.stepMany(1));
   const retried = await page.evaluate(() => ({
     event: window.__game.getRoadRage?.(),
     rivals: window.__game.getTraffic?.().filter((car) => car.rival),

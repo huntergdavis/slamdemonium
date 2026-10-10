@@ -17,8 +17,8 @@ it('holds a race wreck in view, then rejoins offscreen behind its validated gate
   const bodies = createSurfacedBodies(world, createSurfaceRegistry());
   const map = MAPS['circuit-race'];
   const road = map.path!;
-  const start = poseAt(road, 2600);
-  const near = { x: start.x, y: 1, z: start.z };
+  const playerNear = poseAt(road, 2580);
+  const near = { x: playerNear.x, y: 1, z: playerNear.z };
   const traffic = createTraffic(world, bodies, road, [
     {
       station: 2600,
@@ -54,8 +54,12 @@ it('holds a race wreck in view, then rejoins offscreen behind its validated gate
 
     // Before checkpoint one, the safe rejoin is the start, never the end of
     // the closed route where it would silently gain almost a full lap.
-    const returned = poseAt(road, 2460);
-    traffic.preStep(1 / 120, { x: returned.x, y: 1, z: returned.z });
+    const playerAtReturn = poseAt(road, 2440);
+    traffic.preStep(1 / 120, {
+      x: playerAtReturn.x,
+      y: 1,
+      z: playerAtReturn.z,
+    });
     world.step(1 / 120);
     traffic.postStep();
     expect(car.bodyId).toBeGreaterThan(0);
@@ -63,7 +67,7 @@ it('holds a race wreck in view, then rejoins offscreen behind its validated gate
     traffic.onPlayerContact(car.bodyId, impact);
     expect(car.wrecked).toBe(true);
     for (let second = 0; second < 6; second++)
-      traffic.preStep(1, { x: returned.x, y: 1, z: returned.z });
+      traffic.preStep(1, { x: playerAtReturn.x, y: 1, z: playerAtReturn.z });
     traffic.preStep(1 / 120, { x: far.x, y: 1, z: far.z });
     expect(car.wrecked).toBe(false);
     expect(traffic.debugRivals().cars[0]!.station).toBe(0);
@@ -78,7 +82,7 @@ it('holds a wrecked racer rather than respawning through a civilian at its retur
   const world = await createPhysicsWorld({ wasmPath });
   const bodies = createSurfacedBodies(world, createSurfaceRegistry());
   const road = MAPS['circuit-race'].path!;
-  const start = poseAt(road, 2600);
+  const start = poseAt(road, 2580);
   const traffic = createTraffic(world, bodies, road, [
     {
       station: 2600,
