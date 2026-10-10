@@ -42,6 +42,12 @@ it('changes the roofline without pulling wheel arches or body edges off the coll
     garageSilhouettePoint(id, ...source),
   );
   expect(new Set(shapes.map((point) => point.join(','))).size).toBe(5);
+  expect(garageSilhouettePoint('coupe', ...source)[1]).toBeLessThan(
+    garageSilhouettePoint('sports', ...source)[1] - 0.15,
+  );
+  expect(garageSilhouettePoint('muscle', ...source)[0]).toBeGreaterThan(
+    garageSilhouettePoint('super', ...source)[0] + 0.15,
+  );
   for (const id of RACE_GARAGE_CLASS_IDS) {
     const dimensions = GARAGE_CLASSES[id].geometry;
     const scale = [

@@ -162,16 +162,18 @@ function crossStreetPaint(): RunwaySpec[] {
   ];
 }
 
-/** Painted warning bars on each approach, still part of the one runway draw. */
+/** Broad paired arrows announce the crossing before its side street is visible.
+ * They share the existing paint draw and never interrupt the asphalt collider. */
 function intersectionApproachPaint(): RunwaySpec[] {
   return CITY_INTERSECTIONS.flatMap((junction) =>
     [-1, 1].map((side) => ({
       x: junction.x,
       z: side * 48,
-      heading: 0,
+      heading: side > 0 ? 0 : Math.PI,
       length: 100,
       width: CITY_ROAD_WIDTH,
       markerMeters: 20,
+      chevronsAt: [-37, -7],
     })),
   );
 }

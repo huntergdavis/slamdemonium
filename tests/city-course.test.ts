@@ -70,6 +70,17 @@ describe('city graybox', () => {
               ),
             ).toBe(true);
           }
+          for (const distance of [55, 85]) {
+            expect(
+              paint.filter(
+                (mark) =>
+                  Math.abs(mark.center.x - junction.x) < 5 &&
+                  Math.abs(mark.center.z - side * distance) < 0.1 &&
+                  mark.size.x === 0.9 &&
+                  mark.size.z === 6,
+              ),
+            ).toHaveLength(2);
+          }
         }
       }
     }
