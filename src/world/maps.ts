@@ -3,6 +3,7 @@ import type { BoostPadSpec } from './boostPads';
 import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { createCircuitMap } from './circuit';
+import { createCityMap } from './cityCourse';
 import { createTakedownMap } from './takedownCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
@@ -13,11 +14,13 @@ import {
 } from './loopDeLoop';
 import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import type { RunwaySpec } from './runways';
+import type { RoadDeckSpec } from './roadDeck';
 import type { TrackConfig } from './trackConfig';
 import type { JumpRampSpec } from './jumpRamp';
 import type { RoadPath } from './roadGenerator';
 import type { TrafficCarRecord } from './traffic';
 import type { ShuntWallSpec } from './shuntWalls';
+import type { CityBuildingSpec } from './cityBuildings';
 
 /** A named world: track geometry overrides, where the car starts, and the
  * structures built on it. Every placement is data in absolute metres, so a
@@ -39,6 +42,8 @@ export interface MapDefinition {
   readonly halfPipes: readonly HalfPipeSpec[];
   readonly jumpRamps: readonly JumpRampSpec[];
   readonly runways: readonly RunwaySpec[];
+  /** A dark instanced road surface over the single ground collider. */
+  readonly roadDecks?: readonly RoadDeckSpec[];
   /** Accelerator triangles: a speed kick and boost when driven over. */
   readonly boostPads: readonly BoostPadSpec[];
   /** Timed-run routes (NS3); the first is the one on offer. */
@@ -53,8 +58,11 @@ export interface MapDefinition {
   readonly traffic?: readonly TrafficCarRecord[];
   /** Short walls beside a road, shared by collision and visuals. */
   readonly shuntWalls?: readonly ShuntWallSpec[];
+  /** Distant city blocks and junction corners, one visual instanced draw. */
+  readonly cityBuildings?: readonly CityBuildingSpec[];
 }
-export type MapName = 'lab' | 'proving-ground' | 'circuit' | 'takedown';
+export type MapName =
+  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'city' | 'city-reverse';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -336,6 +344,8 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   'proving-ground': PROVING_GROUND_MAP,
   circuit: createCircuitMap(),
   takedown: createTakedownMap(),
+  city: createCityMap(),
+  'city-reverse': createCityMap(true),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 
