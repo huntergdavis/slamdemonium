@@ -46,7 +46,9 @@ describe('World Tour progress', () => {
     const reloaded = new TourProgress(storage);
     expect(reloaded.bestMedal('city-lap')).toBe('bronze');
     expect(reloaded.hasReward('event:road-rage')).toBe(true);
-    expect(reloaded.snapshot().rewards).toEqual(['event:road-rage']);
+    expect(Object.keys(reloaded.snapshot().rewardSources)).toEqual([
+      'event:road-rage',
+    ]);
     expect(reloaded.record(result({ medal: 'silver', score: 120 }))).toBe(true);
     expect(new TourProgress(storage).bestMedal('city-lap')).toBe('silver');
   });
@@ -77,7 +79,7 @@ describe('World Tour progress', () => {
       JSON.stringify({
         version: 2,
         results: {},
-        rewards: ['event:grand-prix'],
+        rewardSources: { 'event:grand-prix': 'forged' },
       }),
     );
     expect(new TourProgress(storage).hasReward('event:grand-prix')).toBe(false);
@@ -86,7 +88,16 @@ describe('World Tour progress', () => {
       JSON.stringify({
         version: 1,
         results: { forged: result() },
-        rewards: ['event:grand-prix'],
+        rewardSources: { 'event:grand-prix': 'forged' },
+      }),
+    );
+    expect(new TourProgress(storage).hasReward('event:grand-prix')).toBe(false);
+    storage.setItem(
+      TOUR_PROGRESS_KEY,
+      JSON.stringify({
+        version: 1,
+        results: {},
+        rewardSources: { 'event:grand-prix': 'forged' },
       }),
     );
     expect(new TourProgress(storage).hasReward('event:grand-prix')).toBe(false);

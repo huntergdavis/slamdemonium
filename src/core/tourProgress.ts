@@ -20,8 +20,8 @@ export interface TourResult extends TourResultIdentity {
 export interface TourProgressSnapshot {
   readonly version: 1;
   readonly results: Readonly<Record<string, TourResult>>;
-  /** Stable IDs survive a mode's tuning or scoring version change. */
-  readonly rewards: readonly string[];
+  /** Stable reward ID -> validated result identity that first earned it. */
+  readonly rewardSources: Readonly<Record<string, string>>;
 }
 
 export interface TourProgressStorage {
@@ -72,31 +72,44 @@ export function tourResultKey(identity: TourResultIdentity): string {
   ]);
 }
 
+/** Stable across object insertion order; used only when a result is saved. */
+export function tourTuningFingerprint(
+  values: Readonly<Record<string, number>>,
+): string {
+  return JSON.stringify(
+    Object.entries(values).sort(([left], [right]) => left.localeCompare(right)),
+  );
+}
+
 function parseSnapshot(value: unknown): TourProgressSnapshot | undefined {
   if (!isRecord(value) || value.version !== TOUR_PROGRESS_VERSION) return;
-  if (!isRecord(value.results) || !Array.isArray(value.rewards)) return;
+  if (!isRecord(value.results) || !isRecord(value.rewardSources)) return;
   const results: Record<string, TourResult> = {};
   for (const [key, result] of Object.entries(value.results)) {
     if (!isResult(result) || tourResultKey(result) !== key) return;
     results[key] = result;
   }
-  if (
-    !value.rewards.every(
-      (reward): reward is string =>
-        typeof reward === 'string' && reward.length > 0,
+  const rewardSources: Record<string, string> = {};
+  for (const [reward, source] of Object.entries(value.rewardSources)) {
+    if (
+      !reward ||
+      typeof source !== 'string' ||
+      !results[source] ||
+      results[source].medal === 'none'
     )
-  )
-    return;
+      return;
+    rewardSources[reward] = source;
+  }
   return {
     version: TOUR_PROGRESS_VERSION,
     results,
-    rewards: [...new Set(value.rewards as string[])],
+    rewardSources,
   };
 }
 
 export class TourProgress {
   private readonly results = new Map<string, TourResult>();
-  private readonly rewards = new Set<string>();
+  private readonly rewardSources = new Map<string, string>();
 
   constructor(
     private readonly storage: TourProgressStorage | null,
@@ -114,19 +127,20 @@ export class TourProgress {
     if (!parsed) return;
     for (const [key, result] of Object.entries(parsed.results))
       this.results.set(key, result);
-    for (const reward of parsed.rewards) this.rewards.add(reward);
+    for (const [reward, source] of Object.entries(parsed.rewardSources))
+      this.rewardSources.set(reward, source);
   }
 
   snapshot(): TourProgressSnapshot {
     return {
       version: TOUR_PROGRESS_VERSION,
       results: Object.fromEntries(this.results),
-      rewards: [...this.rewards],
+      rewardSources: Object.fromEntries(this.rewardSources),
     };
   }
 
   hasReward(id: string): boolean {
-    return this.rewards.has(id);
+    return this.rewardSources.has(id);
   }
 
   /** The best medal for an event, across valid cars and scoring versions. */
@@ -158,8 +172,8 @@ export class TourProgress {
     let unlocked = false;
     if (result.medal !== 'none') {
       for (const id of rewardIds) {
-        if (!id || this.rewards.has(id)) continue;
-        this.rewards.add(id);
+        if (!id || this.rewardSources.has(id)) continue;
+        this.rewardSources.set(id, key);
         unlocked = true;
       }
     }

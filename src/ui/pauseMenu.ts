@@ -4,6 +4,7 @@ import type { OptionsPanel } from './optionsPanel';
 import { activateFocused, adjustFocused, moveFocus } from './menuNavigation';
 import { node } from './paramControl';
 import { createAudioCredits } from './audioCredits';
+import type { TourEvent } from '../world/tourCatalogue';
 import './ui.css';
 
 export interface PauseMenuOptions {
@@ -16,6 +17,16 @@ export interface PauseMenuOptions {
       readonly label: string;
     }[];
     onSelect(name: string): void;
+  };
+  readonly tour?: {
+    readonly current: string | undefined;
+    readonly entries: readonly TourEvent[];
+    status(event: TourEvent): {
+      readonly available: boolean;
+      readonly medal: string;
+      readonly reason?: string;
+    };
+    onSelect(id: string): void;
   };
   host: HTMLElement;
   drivingSurface: HTMLElement;
@@ -66,6 +77,11 @@ export class PauseMenu {
   private readonly menu: HTMLDivElement;
   private readonly controls: HTMLDivElement;
   private readonly maps: HTMLDivElement;
+  private readonly tourButtons: {
+    event: TourEvent;
+    button: HTMLButtonElement;
+    status: HTMLSpanElement;
+  }[] = [];
   private readonly resume: HTMLButtonElement;
   private readonly muteAudio: HTMLButtonElement;
   private readonly message: Text;
@@ -146,7 +162,40 @@ export class PauseMenu {
         (b) => b.textContent === 'Controls',
       );
       (controlsEntry ?? navigationHint).before(entry);
-      this.maps.append(node(doc, 'h2', 'sl-heading', 'Map'));
+      if (deps.tour) {
+        this.maps.append(node(doc, 'h2', 'sl-heading', 'World Tour'));
+        this.maps.append(
+          node(
+            doc,
+            'p',
+            'sl-caption',
+            'Earn a medal to open the next event. Free drive stays below.',
+          ),
+        );
+        for (const event of deps.tour.entries) {
+          const button = this.button('', () => deps.tour!.onSelect(event.id));
+          button.classList.add('sl-tour__entry');
+          button.dataset.tour = event.id;
+          const title = node(
+            doc,
+            'strong',
+            'sl-tour__title',
+            `${event.title} · ${event.venue}`,
+          );
+          const objective = node(
+            doc,
+            'span',
+            'sl-tour__objective',
+            event.objective,
+          );
+          const status = node(doc, 'span', 'sl-tour__status');
+          button.append(title, objective, status);
+          this.maps.append(button);
+          this.tourButtons.push({ event, button, status });
+        }
+        this.refreshTour();
+      }
+      this.maps.append(node(doc, 'h2', 'sl-heading', 'Free drive'));
       for (const map of deps.maps.entries) {
         const isCurrent = map.name === deps.maps.current;
         const button = this.button(
@@ -425,6 +474,7 @@ export class PauseMenu {
       this.selected = null;
     }
     this.view = view;
+    if (view === 'maps') this.refreshTour();
     this.element.dataset.view = view;
     this.element.setAttribute(
       'aria-label',
@@ -449,6 +499,19 @@ export class PauseMenu {
       )?.focus({ preventScroll: true });
     if (view === 'controls' || view === 'maps') this.element.scrollTop = 0;
     this.resetPad();
+  }
+
+  private refreshTour(): void {
+    for (const { event, button, status } of this.tourButtons) {
+      const value = this.deps.tour!.status(event);
+      button.disabled = !value.available;
+      button.setAttribute('aria-disabled', String(!value.available));
+      if (this.deps.tour!.current === event.id)
+        button.setAttribute('aria-current', 'true');
+      status.textContent = value.available
+        ? `${value.medal.toUpperCase()} · ${event.medalTarget}`
+        : `LOCKED · ${value.reason ?? 'Earn the prior event medal'}`;
+    }
   }
 
   private goBack(): void {

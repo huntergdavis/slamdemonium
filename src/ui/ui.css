@@ -1313,6 +1313,51 @@
   display: block;
   margin: 6px auto;
 }
+.sl-pause .sl-pause__maps > .sl-tour__entry {
+  width: min(640px, 100%);
+  min-height: 0;
+  padding: 12px 18px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.sl-tour__entry > :is(strong, span) {
+  display: block;
+}
+.sl-tour__title {
+  font-size: 18px;
+}
+.sl-tour__objective,
+.sl-tour__status {
+  margin-top: 3px;
+  font-weight: 500;
+}
+.sl-tour__status {
+  color: var(--sl-accent);
+}
+.sl-tour__entry:disabled {
+  opacity: 0.55;
+}
+.sl-tour-status {
+  position: fixed;
+  z-index: 9;
+  top: calc(var(--sl-safe) + 6px);
+  left: 50%;
+  width: min(460px, 50vw);
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border: 1px solid var(--sl-border);
+  background: var(--sl-hud-surface);
+  color: var(--sl-text);
+  font: 12px/1.35 var(--sl-mono);
+  text-align: center;
+  pointer-events: none;
+}
+.sl-tour-status > :is(strong, span) {
+  display: block;
+}
+.sl-tour-status[data-phase='result'] {
+  border-color: var(--sl-accent);
+}
 .sl-pause
   :is(
     .sl-pause__entry,
