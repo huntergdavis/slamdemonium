@@ -20,6 +20,7 @@ import type { JumpRampSpec } from './jumpRamp';
 import { poseAt, type RoadPath } from './roadGenerator';
 import type { TrafficCarRecord } from './traffic';
 import type { ShuntWallSpec } from './shuntWalls';
+import type { CityBuildingSpec } from './cityBuildings';
 
 /** A named world: track geometry overrides, where the car starts, and the
  * structures built on it. Every placement is data in absolute metres, so a
@@ -57,6 +58,8 @@ export interface MapDefinition {
   readonly traffic?: readonly TrafficCarRecord[];
   /** Short walls beside a road, shared by collision and visuals. */
   readonly shuntWalls?: readonly ShuntWallSpec[];
+  /** Distant city blocks and junction corners, one visual instanced draw. */
+  readonly cityBuildings?: readonly CityBuildingSpec[];
 }
 export type MapName =
   'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off' | 'city' | 'city-reverse';

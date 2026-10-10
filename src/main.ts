@@ -69,6 +69,7 @@ import {
 } from './world/mapChoice';
 import { createRunwayVisual } from './world/runways';
 import { createRoadDeckVisual } from './world/roadDeck';
+import { createCityBuildingsVisual } from './world/cityBuildings';
 import { createTimedRun } from './core/timedRun';
 import { createRaceEvent, type RaceCar } from './core/raceEvent';
 import { awardFaceOffWin, createFaceOffReward } from './core/faceOffReward';
@@ -258,6 +259,8 @@ async function boot(): Promise<void> {
   // City road decks are one visual draw over the continuous ground collider.
   if (map.roadDecks?.length)
     resources.push(createRoadDeckVisual(view.scene, map.roadDecks));
+  if (map.cityBuildings?.length)
+    resources.push(createCityBuildingsVisual(view.scene, map.cityBuildings));
   // Runways are paint on the infield collider: one instanced draw, no bodies.
   resources.push(
     createRunwayVisual(
