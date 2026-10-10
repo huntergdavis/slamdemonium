@@ -36,8 +36,8 @@ function gate(
     x: pose.x,
     z: pose.z,
     heading: pose.heading,
-    width: 26,
-    length: 12,
+    width: kind === 'start' ? ROAD_WIDTH + 4 : 26,
+    length: kind === 'start' ? 20 : 12,
   };
 }
 
@@ -67,19 +67,31 @@ function traffic(path: RoadPath, interchange: boolean): TrafficCarRecord[] {
       station,
       laneSide: 1,
       direction: 1,
-      speed: heavy ? 30 + (index % 6) : 46 + (index % 9),
+      // Keep heavy vehicles visibly slower without making the 38 m stream
+      // close faster than the pooled body's 5 m/s² controller can brake.
+      speed: heavy ? 42 + (index % 4) : 46 + (index % 9),
       ...(heavy ? { modelKind: heavy } : {}),
     });
-    // A short, readable contraflow near the interchange merge creates risk;
-    // the rest of the divided highway runs in the finish direction.
-    const against = interchange && station >= 1700 && station < 2250;
-    records.push({
-      station: station + 19,
-      laneSide: -1,
-      direction: against ? -1 : 1,
-      speed: against ? 34 : 43 + (index % 12),
-      ...(index % 11 === 0 ? { modelKind: 'van' as const } : {}),
-    });
+    if (!interchange)
+      records.push({
+        station: station + 19,
+        laneSide: -1,
+        direction: 1,
+        speed: 43 + (index % 12),
+        ...(index % 11 === 0 ? { modelKind: 'van' as const } : {}),
+      });
+  }
+  if (interchange) {
+    // These cars start beyond the merge, then travel back into it as a
+    // 35 m/s player arrives around 50 s later. The opposing lane contains no
+    // same-way cars for them to collide with before that encounter.
+    for (let station = 3550; station <= 4150; station += 76)
+      records.push({
+        station,
+        laneSide: -1,
+        direction: -1,
+        speed: 34,
+      });
   }
   return records;
 }

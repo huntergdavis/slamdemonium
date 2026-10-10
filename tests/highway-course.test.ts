@@ -50,6 +50,23 @@ describe('highway bypass and interchange', () => {
     );
   });
 
+  it('starts the timer from the actual highway spawn across the full road', () => {
+    for (const map of [HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP])
+      for (const offset of [-12, 12]) {
+        const run = createTimedRun(map.runs![0]);
+        for (
+          let station = map.path!.length - 48;
+          station <= map.path!.length + 8;
+          station += 2
+        ) {
+          const pose = poseAt(map.path!, station);
+          run.update(2 / 35, pose.x + offset, pose.z, 35);
+        }
+        expect(run.state.phase).toBe('running');
+        expect(run.state.gatesTaken).toBe(1);
+      }
+  });
+
   it('authors slower heavy vehicles and limits contraflow to the merge', () => {
     for (const map of [HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP]) {
       expect(map.traffic!.some((car) => car.modelKind === 'boxTruck')).toBe(
@@ -64,7 +81,19 @@ describe('highway bypass and interchange', () => {
     expect(
       HIGHWAY_INTERCHANGE_MAP.traffic!.filter(
         (car) => car.direction === -1,
-      ).every((car) => car.station >= 1700 && car.station < 2300),
+      ).every((car) => car.station >= 3550 && car.station <= 4150),
+    ).toBe(true);
+    const meetingCars = HIGHWAY_INTERCHANGE_MAP.traffic!.filter(
+      (car) =>
+        car.direction === -1 &&
+        car.station - car.speed * 50 >= 1700 &&
+        car.station - car.speed * 50 <= 2300,
+    );
+    expect(meetingCars.length).toBeGreaterThanOrEqual(6);
+    expect(
+      HIGHWAY_INTERCHANGE_MAP.traffic!.filter(
+        (car) => car.laneSide === -1,
+      ).every((car) => car.direction === -1),
     ).toBe(true);
   });
 });
