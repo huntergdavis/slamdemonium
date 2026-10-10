@@ -56,13 +56,15 @@ try {
   // Cross the 7 px near→far and 10 px far→near thresholds in small steps.
   // The adjacent captures differ little in camera scale, so a silhouette
   // jump is the LOD switch rather than the camera move.
-  for (const distance of [15, 340, 349, 355, 260, 249, 245, 240]) {
+  for (const distance of [15, 300, 310, 315, 320, 230, 225, 220, 215]) {
     await page.evaluate(
       ({ target, side, distance }) =>
         window.__game.setInspectionCamera({
           position: {
             x: target.x + side * distance,
-            y: target.y + 45,
+            // Keep the viewing angle fixed as distance changes. A constant
+            // 45 m height grazes the raised track edge in the far frames.
+            y: target.y + distance * 0.5,
             z: target.z,
           },
           target,
