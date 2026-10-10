@@ -28,9 +28,7 @@
       "level": 6,
       "mtime": 0,
       "aggregation": "sum of independently compressed files",
-      "excludedInstrumentation": [
-        ".vite/manifest.json"
-      ]
+      "excludedInstrumentation": [".vite/manifest.json"]
     },
     "toolchain": {
       "node": "v22.22.1",
