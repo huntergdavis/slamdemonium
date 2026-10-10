@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createTimedRun } from '../src/core/timedRun';
 import {
   CITY_BUILDINGS,
+  CITY_CROSS_PATH,
   CITY_CROSS_STREET_WIDTH,
   CITY_INTERSECTIONS,
   CITY_ROAD_WIDTH,
@@ -15,6 +16,18 @@ import { runwayInstances, runwayLaneClearance } from '../src/world/runways';
 describe('city graybox', () => {
   const forward = createCityMap();
   const reverse = createCityMap(true);
+
+  it('opts both traffic streams into the shared junction signals', () => {
+    for (const map of [forward, reverse]) {
+      expect(map.traffic!.length).toBeGreaterThan(100);
+      for (const record of map.traffic!) {
+        expect(record.signalStream).toBe(
+          record.path === CITY_CROSS_PATH ? 'cross' : 'arterial',
+        );
+        expect(record.signalJunctions).toBe(CITY_INTERSECTIONS);
+      }
+    }
+  });
 
   it('offers the same closed 3.16 km road in opposite directions', () => {
     const a = forward.path!;

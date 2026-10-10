@@ -95,6 +95,8 @@ function cityTraffic(road: RoadPath): TrafficCarRecord[] {
           laneOffset: outer ? laneSide * 4.5 : 0,
           direction,
           speed: 25 + ((car * 7 + (outer ? 3 : 0) + direction + 4) % 10),
+          signalStream: 'arterial',
+          signalJunctions: CITY_INTERSECTIONS,
         });
         station += 32 + ((car * 11 + (outer ? 5 : 0)) % 24);
         car++;
@@ -114,6 +116,8 @@ function cityTraffic(road: RoadPath): TrafficCarRecord[] {
         laneSide,
         direction,
         speed: 20 + ((car * 5 + (direction < 0 ? 3 : 0)) % 8),
+        signalStream: 'cross',
+        signalJunctions: CITY_INTERSECTIONS,
       });
   }
   return records;
