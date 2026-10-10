@@ -836,18 +836,19 @@ export class Hud {
     const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
     const target =
       state.nextTarget === null ? 'GOLD SECURED' : `NEXT ${state.nextTarget}`;
+    const takedownWord = state.count === 1 ? 'TAKEDOWN' : 'TAKEDOWNS';
     const label =
       state.phase === 'countdown'
         ? `ROAD RAGE · ${Math.ceil(state.countdown)}`
         : state.goCue > 0
           ? 'ROAD RAGE · GO!'
-          : `ROAD RAGE · ${clock} · ${state.count} TAKEDOWNS · ${target}`;
+          : `ROAD RAGE · ${clock} · ${state.count} ${takedownWord} · ${target}`;
     if (this.roadRageCard.textContent !== label)
       this.roadRageCard.textContent = label;
     this.roadRageCard.dataset.phase = state.phase;
     this.roadRageResult.hidden = state.phase !== 'finished';
     if (state.phase === 'finished') {
-      const result = `${state.medal.toUpperCase()} · ${state.count} TAKEDOWNS · ENTER TO RETRY`;
+      const result = `${state.medal.toUpperCase()} · ${state.count} ${takedownWord} · ENTER TO RETRY`;
       if (this.roadRageResult.textContent !== result)
         this.roadRageResult.textContent = result;
     }
