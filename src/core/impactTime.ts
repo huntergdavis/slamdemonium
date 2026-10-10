@@ -57,7 +57,7 @@ export class ImpactTime {
   consumeRecovery(): boolean {
     const due = this.recoveryDue;
     this.recoveryDue = false;
-    this.addedLateralSpeed = 0;
+    if (due) this.addedLateralSpeed = 0;
     return due;
   }
 
@@ -66,6 +66,7 @@ export class ImpactTime {
     this.wallSeconds = 0;
     this.simulationSeconds = 0;
     this.recoveryDue = false;
+    this.addedLateralSpeed = 0;
   }
 
   private finish(): void {
