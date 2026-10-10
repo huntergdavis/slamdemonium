@@ -9,7 +9,7 @@ import {
 import { createGroundDescriptor } from '../src/world/trackPhysics';
 import { resolveTrackConfig } from '../src/world/trackConfig';
 import { poseAt } from '../src/world/roadGenerator';
-import { runwayLaneClearance } from '../src/world/runways';
+import { runwayInstances, runwayLaneClearance } from '../src/world/runways';
 
 describe('city graybox', () => {
   const forward = createCityMap();
@@ -53,13 +53,23 @@ describe('city graybox', () => {
             ),
           ),
         ).toBe(0);
-        expect(
-          map.runways.some(
-            (paint) =>
-              Math.abs(paint.x - junction.x) < 20 &&
-              Math.abs(paint.z - junction.z) < 22,
-          ),
-        ).toBe(false);
+        const paint = runwayInstances(
+          map.runways,
+          resolveTrackConfig(map.track),
+        );
+        for (const side of [-1, 1]) {
+          for (const distance of [18, 38, 58, 78]) {
+            expect(
+              paint.some(
+                (mark) =>
+                  Math.abs(mark.center.x - junction.x) < 0.1 &&
+                  Math.abs(mark.center.z - side * distance) < 0.1 &&
+                  mark.size.x > CITY_ROAD_WIDTH - 1 &&
+                  mark.size.z < 0.5,
+              ),
+            ).toBe(true);
+          }
+        }
       }
     }
   });

@@ -62,20 +62,34 @@ function gate(path: RoadPath, station: number, kind: RunGateKind): RunGateSpec {
   };
 }
 
-/** Both crossroads have a continuous through lane and an adjacent passing
- * lane. The unmarked square at each junction makes the crossing legible;
- * there is no curb or collider dividing either route. */
+/** Paint the cross street through both junctions so its perpendicular lanes
+ * read as a road, not a dark patch. No curb divides either route. */
 function crossStreetPaint(): RunwaySpec[] {
   return [
-    { x: -328.5, z: 0, heading: Math.PI / 2, length: 63 },
-    { x: 0, z: 0, heading: Math.PI / 2, length: 506 },
-    { x: 328.5, z: 0, heading: Math.PI / 2, length: 63 },
-  ].map((segment) => ({
-    ...segment,
-    width: CITY_CROSS_STREET_WIDTH,
-    laneStripes: [-4, 4],
-    markerMeters: 0,
-  }));
+    {
+      x: 0,
+      z: 0,
+      heading: Math.PI / 2,
+      length: 720,
+      width: CITY_CROSS_STREET_WIDTH,
+      laneStripes: [-4, 4],
+      markerMeters: 0,
+    },
+  ];
+}
+
+/** Painted warning bars on each approach, still part of the one runway draw. */
+function intersectionApproachPaint(): RunwaySpec[] {
+  return CITY_INTERSECTIONS.flatMap((junction) =>
+    [-1, 1].map((side) => ({
+      x: junction.x,
+      z: side * 48,
+      heading: 0,
+      length: 100,
+      width: CITY_ROAD_WIDTH,
+      markerMeters: 20,
+    })),
+  );
 }
 
 export function createCityMap(reverse = false): MapDefinition {
@@ -138,7 +152,11 @@ export function createCityMap(reverse = false): MapDefinition {
     loops: [],
     halfPipes: [],
     jumpRamps: [],
-    runways: [...arterialPaint, ...crossStreetPaint()],
+    runways: [
+      ...arterialPaint,
+      ...crossStreetPaint(),
+      ...intersectionApproachPaint(),
+    ],
     // One dark instanced road deck over the existing single asphalt ground
     // collider. The crossing is 1.5 mm higher so its overlapping quads do
     // not flicker; neither height affects the physical surface.
