@@ -41,18 +41,22 @@ const SCUFF_TINT_STRENGTH = 0;
  * by all six kinds; damage strengths are per encounter, not per geometry. */
 function installCrushShader(
   material: MeshStandardMaterial | MeshDepthMaterial,
+  panelScar = false,
 ): void {
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader.replace(
       '#include <common>',
       `#include <common>
 attribute vec4 instanceCrush;
+attribute vec4 instanceTear;
 attribute float instanceDentSeed;
-attribute vec3 crushMetrics;`,
+attribute vec3 crushMetrics;
+${panelScar ? 'varying float vPanelScar;' : ''}`,
     );
     shader.vertexShader = shader.vertexShader.replace(
       '#include <begin_vertex>',
       `#include <begin_vertex>
+${panelScar ? 'vPanelScar = 0.0;' : ''}
 if (dot(instanceCrush, vec4(1.0)) > 0.0) {
   float halfWidth = crushMetrics.x;
   float halfLength = crushMetrics.y;
@@ -84,10 +88,34 @@ if (dot(instanceCrush, vec4(1.0)) > 0.0) {
     + (trafficLeft + trafficRight) * (0.35 + 0.9 * sideNotch));
   transformed.y += ${0.18 * TRAFFIC_MODEL_SCALE} * roof * ((trafficRear + trafficFront) * sin(position.x * 3.2 + position.z * 1.7 + dentPhase)
     + (trafficLeft + trafficRight) * sin(position.z * 3.2 + position.x * 1.7 + dentPhase * 1.7));
+${
+  panelScar
+    ? `
+  float panelAcross = 1.0 - smoothstep(0.2, 0.45, abs(abs(position.x / halfWidth) - 0.48));
+  float panelAlong = 1.0 - smoothstep(0.18, 0.42, abs(abs(position.z / halfLength) - 0.24));
+  float panelHeight = 1.0 - smoothstep(0.15, 0.45, abs(position.y / rideHeight - 0.2));
+  float endScar = max(instanceTear.x * smoothstep(0.62, 0.82, position.z / halfLength),
+                      instanceTear.y * smoothstep(0.62, 0.82, -position.z / halfLength));
+  float doorScar = max(instanceTear.z * smoothstep(0.62, 0.82, -position.x / halfWidth),
+                       instanceTear.w * smoothstep(0.62, 0.82, position.x / halfWidth));
+  vPanelScar = clamp(max(endScar * panelAcross * panelHeight, doorScar * panelAlong), 0.0, 0.85);`
+    : ''
+}
 }`,
     );
+    if (panelScar) {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        '#include <common>\nvarying float vPanelScar;',
+      );
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        '#include <color_fragment>\ndiffuseColor.rgb *= 1.0 - 0.86 * vPanelScar;',
+      );
+    }
   };
-  material.customProgramCacheKey = () => 'traffic-vertex-crush-v3';
+  material.customProgramCacheKey = () =>
+    panelScar ? 'traffic-vertex-crush-panel-v1' : 'traffic-vertex-crush-v3';
 }
 
 /** A box part of a model, in car space: +z is the nose, y up from the
@@ -109,6 +137,36 @@ export interface CarCrushState {
   rear: number;
   left: number;
   right: number;
+}
+
+export type CarDamageSide = keyof CarCrushState;
+
+/** Two light trim pieces per struck face, in the catalogue's +Z-nose space.
+ * Their dimensions are derived from each kind's body, not from a sedan-sized
+ * fixture; the dark crushed face underneath remains part of the car mesh. */
+export function detachedPanelAnchors(
+  kind: CarModelKind,
+  side: CarDamageSide,
+): readonly {
+  readonly offset: readonly [number, number, number];
+  readonly size: readonly [number, number, number];
+  readonly normal: readonly [number, number, number];
+}[] {
+  const { halfExtents: half } = CAR_MODELS[kind];
+  if (side === 'front' || side === 'rear') {
+    const sign = side === 'front' ? 1 : -1;
+    return [-1, 1].map((across) => ({
+      offset: [across * half.x * 0.48, half.y * 0.22, sign * half.z * 0.82],
+      size: [half.x * 0.83, 0.09, Math.min(half.z * 0.28, 0.85)],
+      normal: [0, 0, sign],
+    }));
+  }
+  const sign = side === 'right' ? 1 : -1;
+  return [-1, 1].map((along) => ({
+    offset: [sign * half.x * 0.94, -half.y * 0.05, along * half.z * 0.24],
+    size: [0.09, half.y * 0.72, Math.min(half.z * 0.42, 1.1)],
+    normal: [sign, 0, 0],
+  }));
 }
 
 export interface CarModelSpec {
@@ -332,6 +390,7 @@ export interface CarModelInstances {
     encounterId: number,
     crush?: Readonly<CarCrushState>,
     paintIndex?: number,
+    tornSide?: CarDamageSide,
   ): boolean;
   /** Finish the frame: upload counts and matrices. */
   end(): void;
@@ -366,7 +425,8 @@ export function createCarModelInstances(
       flatShading: true,
     }),
   };
-  for (const material of Object.values(materials)) installCrushShader(material);
+  for (const [tone, material] of Object.entries(materials))
+    installCrushShader(material, tone !== 'cabin');
   const depthMaterial = new MeshDepthMaterial();
   installCrushShader(depthMaterial);
   const palette = CAR_PALETTE.map((hex) => new Color(hex));
@@ -430,6 +490,12 @@ export function createCarModelInstances(
       );
       crushAttribute.setUsage(DynamicDrawUsage);
       geometry.setAttribute('instanceCrush', crushAttribute);
+      const tearAttribute = new InstancedBufferAttribute(
+        new Float32Array(capacityPerKind * 4),
+        4,
+      );
+      tearAttribute.setUsage(DynamicDrawUsage);
+      geometry.setAttribute('instanceTear', tearAttribute);
       const seedAttribute = new InstancedBufferAttribute(
         new Float32Array(capacityPerKind),
         1,
@@ -461,7 +527,7 @@ export function createCarModelInstances(
     begin() {
       for (const kind of CAR_MODEL_KINDS) counts[kind] = 0;
     },
-    push(kind, position, rotation, encounterId, crush, paintIndex) {
+    push(kind, position, rotation, encounterId, crush, paintIndex, tornSide) {
       const index = counts[kind];
       if (index >= capacityPerKind) return false;
       helper.position.set(position.x, position.y, position.z);
@@ -482,6 +548,16 @@ export function createCarModelInstances(
           'instanceCrush',
         ) as InstancedBufferAttribute;
         crushAttribute.setXYZW(index, front, rear, left, right);
+        const tearAttribute = mesh.geometry.getAttribute(
+          'instanceTear',
+        ) as InstancedBufferAttribute;
+        tearAttribute.setXYZW(
+          index,
+          tornSide === 'front' ? 1 : 0,
+          tornSide === 'rear' ? 1 : 0,
+          tornSide === 'left' ? 1 : 0,
+          tornSide === 'right' ? 1 : 0,
+        );
         const seedAttribute = mesh.geometry.getAttribute(
           'instanceDentSeed',
         ) as InstancedBufferAttribute;
@@ -519,6 +595,12 @@ export function createCarModelInstances(
             crushAttribute.clearUpdateRanges();
             crushAttribute.addUpdateRange(0, mesh.count * 4);
             crushAttribute.needsUpdate = true;
+            const tearAttribute = mesh.geometry.getAttribute(
+              'instanceTear',
+            ) as InstancedBufferAttribute;
+            tearAttribute.clearUpdateRanges();
+            tearAttribute.addUpdateRange(0, mesh.count * 4);
+            tearAttribute.needsUpdate = true;
             const seedAttribute = mesh.geometry.getAttribute(
               'instanceDentSeed',
             ) as InstancedBufferAttribute;

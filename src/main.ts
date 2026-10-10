@@ -23,6 +23,7 @@ import { createRenderer } from './render/renderer';
 import { CameraRig } from './render/cameraRig';
 import { TakedownMoment, canFocusTakedown } from './render/takedownMoment';
 import { createCarVisual } from './render/carVisual';
+import { createWreckEffects } from './render/wreckEffects';
 import { createSkidMarks } from './render/skidMarks';
 import { createSpeedCues } from './render/speedCues';
 import { createBreakablePropsVisual } from './render/breakablePropsVisual';
@@ -288,6 +289,10 @@ async function boot(): Promise<void> {
     ? createTrafficVisual(view.scene, traffic)
     : undefined;
   if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
+  const wreckEffects = traffic
+    ? createWreckEffects(view.scene, traffic.hasRivals)
+    : undefined;
+  if (wreckEffects) resources.push(wreckEffects);
   const rivalGuidance =
     mapName === 'takedown' ? createRivalGuidance(host!) : undefined;
   if (rivalGuidance) resources.push(rivalGuidance);
@@ -533,6 +538,14 @@ async function boot(): Promise<void> {
       postStep(dt) {
         traffic?.postStep(vehicle.body, vehicle.currentMass);
         vehicle.postStep(dt);
+        if (traffic && wreckEffects) {
+          wreckEffects.consume(
+            traffic.newlyWrecked,
+            traffic.states,
+            vehicle.telemetry.position,
+          );
+          wreckEffects.advance(dt);
+        }
         const playerRotation = vehicle.telemetry.rotation;
         playerView.forward.x =
           -2 *
@@ -670,6 +683,7 @@ async function boot(): Promise<void> {
         if (playerDamage) carVisual.setCrush(playerDamage.crush);
         breakablePropsVisual.update();
         trafficVisual?.update();
+        wreckEffects?.render();
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
         if (takedownMoment && traffic)
@@ -726,6 +740,7 @@ async function boot(): Promise<void> {
     },
   );
   function resetPresentation(): void {
+    wreckEffects?.reset();
     boostPads.reset();
     trafficEvents.reset();
     takedownMoment?.reset();
@@ -1267,6 +1282,8 @@ async function boot(): Promise<void> {
         vz: car.velocity.z,
         speed: car.speed,
         wrecked: car.wrecked,
+        wreckSide: car.wreckSide ?? null,
+        tornSide: car.tornSide ?? null,
         rival: car.rival,
         modelKind: (car as { modelKind?: string }).modelKind ?? null,
         crush: { ...car.crush },
@@ -1274,6 +1291,9 @@ async function boot(): Promise<void> {
         screenPixels,
       };
     });
+  game.getWreckEffects = () => ({
+    activePanels: wreckEffects?.activeCount ?? 0,
+  });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
