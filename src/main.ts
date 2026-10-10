@@ -691,7 +691,11 @@ async function boot(): Promise<void> {
           }
         }
         breakableProps.update(dt);
-        crashMode?.step(dt, impactTime?.active ?? false);
+        crashMode?.step(
+          dt,
+          impactTime?.active ?? false,
+          vehicle.telemetry.speed,
+        );
         if (crashMode?.state.phase === 'finished')
           garageRewards.awardCrashMedal(crashMode.state.medal);
         {

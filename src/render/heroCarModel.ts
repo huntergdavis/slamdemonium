@@ -270,6 +270,49 @@ export async function mountHeroCarModel(
       centerZ - length * 0.505,
       dark,
     );
+    piece(
+      width * 0.76,
+      height * (classId === 'bus' ? 0.32 : 0.3),
+      0.025,
+      0,
+      centerY + height * 0.13,
+      centerZ + length * 0.505,
+      dark,
+    );
+    if (classId === 'suv') {
+      for (const side of [-1, 1])
+        piece(
+          0.045,
+          0.055,
+          length * 0.78,
+          side * width * 0.36,
+          centerY + height * 0.53,
+          centerZ,
+          dark,
+        );
+    } else {
+      const vent = [0.55, 0.63, 0.68] as const;
+      for (const station of [-0.22, 0.22])
+        piece(
+          width * 0.54,
+          0.1,
+          length * 0.2,
+          0,
+          centerY + height * 0.55,
+          centerZ + length * station,
+          vent,
+        );
+    }
+    for (const side of [-1, 1])
+      piece(
+        0.045,
+        height * 0.18,
+        length * 0.16,
+        side * width * 0.51,
+        centerY - height * 0.36,
+        centerZ + length * 0.34,
+        dark,
+      );
     const cab = mergeGeometries(pieces, false);
     for (const shape of pieces) shape.dispose();
     if (!cab) throw new Error('Heavy cab geometry unavailable');
