@@ -292,3 +292,20 @@ export function createCityMap(reverse = false): MapDefinition {
     shuntWalls: crashWalls,
   };
 }
+
+/** The timed Tour opener leaves a clear passing line through the first bend.
+ * Free-drive City and Grand Prix retain the full four-lane traffic stream. */
+export function createCitySprintMap(map: MapDefinition): MapDefinition {
+  const streamCounts = new Map<string, number>();
+  return {
+    ...map,
+    traffic: map.traffic!.filter((record) => {
+      const crossing = record.path === CITY_CROSS_PATH;
+      if (!crossing && !record.laneOffset) return false;
+      const stream = `${crossing ? 'cross' : 'arterial'}:${record.direction}`;
+      const index = streamCounts.get(stream) ?? 0;
+      streamCounts.set(stream, index + 1);
+      return index % 3 === 0;
+    }),
+  };
+}
