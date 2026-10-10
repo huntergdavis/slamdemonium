@@ -11,6 +11,7 @@ import {
   type Texture,
 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import sedanUrl from '../../assets/cars/kenney-car-kit-3.1/sedan-sports-embedded.glb?url';
 import { VEHICLE_GEOMETRY as G } from '../vehicle/constants';
 import type { HeroPaint } from '../vehicle/vehicleDefinition';
@@ -174,6 +175,40 @@ export async function mountHeroCarModel(
     });
   }
 
+  // The pickup keeps the same class-scaled chassis, but the open bed needs
+  // three low edges that remain visible and bend with player-car damage.
+  const bedMaterial =
+    classId === 'pickup'
+      ? new MeshStandardMaterial({ color: 0xff6b24, roughness: 0.72 })
+      : undefined;
+  if (bedMaterial) {
+    ownedMaterials.add(bedMaterial);
+    const rails: BoxGeometry[] = [];
+    for (const [name, width, length, x, z] of [
+      ['left', 0.13, 1.65, -G.width * 0.43, 1.45],
+      ['right', 0.13, 1.65, G.width * 0.43, 1.45],
+      ['tailgate', G.width * 0.91, 0.14, 0, G.length * 0.45],
+    ] as const) {
+      const shape = new BoxGeometry(width, 0.22, length);
+      shape.translate(x, G.height * 0.09, z);
+      shape.name = `pickup.${name}`;
+      rails.push(shape);
+    }
+    const bed = mergeGeometries(rails, false);
+    for (const rail of rails) rail.dispose();
+    if (!bed) throw new Error('Pickup bed geometry unavailable');
+    ownedGeometries.add(bed);
+    const mesh = new Mesh(bed, bedMaterial);
+    mesh.name = 'car.hero.pickup.bed';
+    mesh.castShadow = true;
+    root.add(mesh);
+    mounted.push(mesh);
+    deformMeshes.push({
+      geometry: bed,
+      pristine: new Float32Array(bed.getAttribute('position').array),
+    });
+  }
+
   for (let i = 0; i < WHEEL_NODES.length; i++) {
     const part = namedMesh(source, WHEEL_NODES[i]!);
     const shape = part.geometry.clone();
@@ -260,6 +295,9 @@ export async function mountHeroCarModel(
     },
     setPaint(paint) {
       shellMaterial.map = maps[paint];
+      bedMaterial?.color.setHex(
+        paint === 'blue' ? 0x4194eb : paint === 'green' ? 0x57c07e : 0xff6b24,
+      );
       farPaint.color.setHex(
         paint === 'blue' ? 0x4194eb : paint === 'green' ? 0x57c07e : 0xff6b24,
       );

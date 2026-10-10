@@ -18,10 +18,10 @@ import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
 import { CrashMode } from './core/crashMode';
 import { ImpactTime } from './core/impactTime';
-import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import {
   GARAGE_CLASSES,
   GARAGE_CLASS_IDS,
+  garageClassAllowedOnMap,
   isGarageClassId,
   readGarageClass,
   storeGarageClass,
@@ -132,14 +132,6 @@ async function boot(): Promise<void> {
       return null;
     }
   })();
-  const garageClassId = readGarageClass(mapStorage, location.search);
-  const garageClass = GARAGE_CLASSES[garageClassId];
-  if (
-    new URLSearchParams(location.search).get('car') === garageClassId &&
-    readGarageClass(mapStorage) !== garageClassId
-  )
-    storeGarageClass(mapStorage, garageClassId, WORKING_SET_KEY);
-  tuning.replace({ ...garageClass.tuning }, 'restore');
   const storedMapName = readStoredMapName(mapStorage);
   const mapName = chooseMapName(
     location.search,
@@ -154,6 +146,24 @@ async function boot(): Promise<void> {
   // An explicit URL switch is a choice too: the plain URL keeps it next time.
   if (new URLSearchParams(location.search).get('map') === mapName)
     storeMapName(mapStorage, mapName);
+  const requestedGarageClassId = readGarageClass(mapStorage, location.search);
+  const garageClassId = garageClassAllowedOnMap(requestedGarageClassId, mapName)
+    ? requestedGarageClassId
+    : 'sports';
+  const garageClass = GARAGE_CLASSES[garageClassId];
+  if (garageClassId !== requestedGarageClassId) {
+    try {
+      mapStorage?.removeItem(WORKING_SET_KEY);
+    } catch {
+      // Blocked storage still leaves the safe Sports profile in this session.
+    }
+  }
+  if (
+    new URLSearchParams(location.search).get('car') === garageClassId &&
+    readGarageClass(mapStorage) !== garageClassId
+  )
+    storeGarageClass(mapStorage, garageClassId, WORKING_SET_KEY);
+  tuning.replace({ ...garageClass.tuning }, 'restore');
   const map = MAPS[mapName];
   const track = createTestTrack(view.scene, {
     maxAnisotropy: view.renderer.capabilities.getMaxAnisotropy(),
@@ -1031,13 +1041,19 @@ async function boot(): Promise<void> {
     },
     garage: {
       current: garageClassId,
-      entries: GARAGE_CLASS_IDS.map((id) => ({
+      entries: GARAGE_CLASS_IDS.filter((id) =>
+        garageClassAllowedOnMap(id, mapName),
+      ).map((id) => ({
         name: id,
         label: GARAGE_CLASSES[id].label,
         trait: GARAGE_CLASSES[id].trait,
       })),
       onSelect(name) {
-        if (!isGarageClassId(name) || name === garageClassId) {
+        if (
+          !isGarageClassId(name) ||
+          !garageClassAllowedOnMap(name, mapName) ||
+          name === garageClassId
+        ) {
           pauseMenu.setOpen(false);
           return;
         }
