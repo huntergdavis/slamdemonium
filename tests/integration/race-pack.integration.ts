@@ -57,3 +57,40 @@ it('holds a race wreck in view, then rejoins offscreen behind its validated gate
     world.dispose();
   }
 }, 60_000);
+
+it('holds a wrecked racer rather than respawning through a civilian at its return point', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const road = MAPS['circuit-race'].path!;
+  const start = poseAt(road, 2600);
+  const traffic = createTraffic(world, bodies, road, [
+    {
+      station: 2600,
+      laneSide: 1,
+      laneOffset: 5,
+      speed: 50,
+      rival: true,
+      raceEntrant: true,
+    },
+    { station: 2460, laneSide: 1, laneOffset: 5, speed: 0 },
+  ]);
+  try {
+    traffic.setRaceValidatedStation(1, 2500);
+    traffic.preStep(1 / 120, { x: start.x, y: 1, z: start.z });
+    world.step(1 / 120);
+    traffic.postStep();
+    const racer = traffic.raceStates[0]!;
+    const impact = createImpactSeverity();
+    impact.severity = 1;
+    traffic.onPlayerContact(racer.bodyId, impact);
+    const far = poseAt(road, 5000);
+    for (let second = 0; second < 7; second++)
+      traffic.preStep(1, { x: far.x, y: 1, z: far.z });
+    expect(racer.wrecked).toBe(true);
+    expect(racer.id).toBe(1);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 60_000);

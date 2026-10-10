@@ -667,6 +667,14 @@ export function createTraffic(
         record.enabled = true;
         record.leader = null;
       }
+    for (const laneOffset of [-5, 0]) {
+      const column = raceRecords
+        .filter((record) => record.authored.laneOffset === laneOffset)
+        .sort((a, b) => a.station - b.station);
+      if (column.length < 2) continue;
+      for (let index = 0; index < column.length; index++)
+        column[index]!.leader = column[(index + 1) % column.length]!;
+    }
     for (const record of authored) {
       if (!record.enabled && record.slot) demote(record);
       if (record.enabled && !record.wrecked) updateVisualPose(record);
@@ -947,6 +955,27 @@ export function createTraffic(
         )
       )
         continue;
+      const candidateShape = CAR_MODELS[record.state.modelKind].halfExtents;
+      const forwardX = -Math.sin(pose.heading);
+      const forwardZ = -Math.cos(pose.heading);
+      const sideX = -Math.cos(pose.heading);
+      const sideZ = Math.sin(pose.heading);
+      if (
+        authored.some((other) => {
+          if (other === record || !other.enabled || other.state.raceEntrant)
+            return false;
+          const dx = other.state.position.x - pose.x;
+          const dz = other.state.position.z - pose.z;
+          const shape = CAR_MODELS[other.state.modelKind].halfExtents;
+          return (
+            Math.abs(dx * sideX + dz * sideZ) <
+              candidateShape.x + shape.x + 1 &&
+            Math.abs(dx * forwardX + dz * forwardZ) <
+              candidateShape.z + shape.z + 3
+          );
+        })
+      )
+        continue;
       demote(record);
       const wreckIndex = wreckRecords.indexOf(record);
       if (wreckIndex >= 0) wreckRecords.splice(wreckIndex, 1);
@@ -1179,8 +1208,9 @@ export function createTraffic(
         }
         if (rules && record.enabled && record.leader) {
           let ahead: RecordState | null = record.leader;
-          while (ahead?.wrecked) ahead = ahead.leader;
-          if (ahead === record) ahead = null;
+          for (let scan = 0; ahead?.wrecked && scan < authored.length; scan++)
+            ahead = ahead.leader;
+          if (ahead === record || ahead?.wrecked) ahead = null;
           if (ahead) {
             const gap =
               (((direction * (ahead.station - record.station)) % path.length) +
