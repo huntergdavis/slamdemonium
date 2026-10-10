@@ -54,7 +54,8 @@ export interface MapDefinition {
   /** Short walls beside a road, shared by collision and visuals. */
   readonly shuntWalls?: readonly ShuntWallSpec[];
 }
-export type MapName = 'lab' | 'proving-ground' | 'circuit' | 'takedown';
+export type MapName =
+  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -331,11 +332,36 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
   ]),
 });
 
+const TAKEDOWN_MAP = createTakedownMap();
+const ROAD_RAGE_MAP: MapDefinition = {
+  ...TAKEDOWN_MAP,
+  name: 'road-rage',
+  label: 'Road Rage · 3 min',
+  // This route is paint only. Road Rage owns its countdown and time-out; the
+  // normal start/goal timer remains exclusive to the other maps.
+  runs: [
+    {
+      name: 'Road Rage start',
+      gates: [
+        {
+          kind: 'start',
+          x: TAKEDOWN_MAP.spawn!.x - Math.sin(TAKEDOWN_MAP.spawn!.heading) * 14,
+          z: TAKEDOWN_MAP.spawn!.z - Math.cos(TAKEDOWN_MAP.spawn!.heading) * 14,
+          heading: TAKEDOWN_MAP.spawn!.heading,
+          width: 28,
+          length: 1.5,
+        },
+      ],
+    },
+  ],
+};
+
 export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   lab: LAB_MAP,
   'proving-ground': PROVING_GROUND_MAP,
   circuit: createCircuitMap(),
-  takedown: createTakedownMap(),
+  takedown: TAKEDOWN_MAP,
+  'road-rage': ROAD_RAGE_MAP,
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 
