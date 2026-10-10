@@ -59,6 +59,9 @@ export function createCarVisual(scene: Scene) {
       metalness: 0,
     }),
   );
+  function setPaint(paint: 'orange' | 'vesper-gold'): void {
+    bodyMaterial.color.setHex(paint === 'vesper-gold' ? 0xe8c741 : 0xff6b24);
+  }
   const rubberMaterial = material(
     new MeshStandardMaterial({
       color: 0x171b20,
@@ -426,5 +429,13 @@ export function createCarVisual(scene: Scene) {
     for (const value of materials) value.dispose();
     lastState = undefined;
   }
-  return { root, update, setCrush, setDebugVisible, toggleDebug, dispose };
+  return {
+    root,
+    update,
+    setCrush,
+    setPaint,
+    setDebugVisible,
+    toggleDebug,
+    dispose,
+  };
 }
