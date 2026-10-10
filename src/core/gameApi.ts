@@ -41,6 +41,8 @@ export interface GameTestApi {
     step: number;
     closed: boolean;
   } | null;
+  /** Visual-only trim pieces in the bounded wreck presentation pool. */
+  getWreckEffects?: () => { activePanels: number };
   /** Read-only rival controller decisions for hosted diagnosis. */
   getRivalControl?: () => Readonly<Record<string, unknown>> | null;
   /** Read-only takedown state for hosted driving checks. */
