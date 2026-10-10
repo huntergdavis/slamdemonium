@@ -140,6 +140,8 @@ describe('map selection', () => {
     expect(resolveMapName('')).toBe('proving-ground');
     expect(Object.keys(MAPS).sort()).toEqual([
       'circuit',
+      'city',
+      'city-reverse',
       'lab',
       'proving-ground',
       'takedown',
