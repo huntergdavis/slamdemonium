@@ -16,9 +16,9 @@ export interface ReachabilityResult {
 const ALLOWLIST = 'scripts/reachability-allowlist.json';
 const codeFile = /\.(?:[cm]?[jt]sx?)$/;
 const assetFile =
-  /\.(?:css|json|md|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|wasm|ogg|txt)$/;
+  /\.(?:css|json|md|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|wasm|ogg|mp3|txt)$/;
 /** F1 shipped sounds/notices must have a runtime import, never an exception. */
-const trackedAssetFile = /\.(?:ogg|txt)$/;
+const trackedAssetFile = /\.(?:ogg|mp3|txt)$/;
 
 function display(root: string, path: string): string {
   return relative(root, path).split(sep).join('/');
@@ -316,7 +316,7 @@ export function formatReachability(result: ReachabilityResult): string {
       result.reachableAssets.length +
         '/' +
         result.assets.length +
-        ' authored .ogg/.txt assets reachable (src/ and assets/).',
+        ' authored .ogg/.mp3/.txt assets reachable (src/ and assets/).',
     );
   if (result.unreachable.length) {
     lines.push(

@@ -23,6 +23,7 @@ import { createRenderer } from './render/renderer';
 import { CameraRig } from './render/cameraRig';
 import { TakedownMoment, canFocusTakedown } from './render/takedownMoment';
 import { createCarVisual } from './render/carVisual';
+import { createWreckEffects } from './render/wreckEffects';
 import { createSkidMarks } from './render/skidMarks';
 import { createSpeedCues } from './render/speedCues';
 import { createBreakablePropsVisual } from './render/breakablePropsVisual';
@@ -52,6 +53,7 @@ import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { createJumpRampVisual, installJumpRamps } from './world/jumpRamp';
 import { MAPS } from './world/maps';
+import { CAR_MODELS } from './world/carModels';
 import {
   chooseMapName,
   mapUrl,
@@ -288,6 +290,10 @@ async function boot(): Promise<void> {
     ? createTrafficVisual(view.scene, traffic)
     : undefined;
   if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
+  const wreckEffects = traffic
+    ? createWreckEffects(view.scene, traffic.hasRivals)
+    : undefined;
+  if (wreckEffects) resources.push(wreckEffects);
   const rivalGuidance =
     mapName === 'takedown' ? createRivalGuidance(host!) : undefined;
   if (rivalGuidance) resources.push(rivalGuidance);
@@ -533,6 +539,14 @@ async function boot(): Promise<void> {
       postStep(dt) {
         traffic?.postStep(vehicle.body, vehicle.currentMass);
         vehicle.postStep(dt);
+        if (traffic && wreckEffects) {
+          wreckEffects.consume(
+            traffic.newlyWrecked,
+            traffic.states,
+            vehicle.telemetry.position,
+          );
+          wreckEffects.advance(dt);
+        }
         const playerRotation = vehicle.telemetry.rotation;
         playerView.forward.x =
           -2 *
@@ -545,6 +559,7 @@ async function boot(): Promise<void> {
         playerView.speed = vehicle.telemetry.speed;
         if (playerWreckPending) {
           vehicle.loseBoostSection();
+          audio.onPlayerWreck();
           playerWreckPending = false;
         }
         const playerWreckRecoveryDue = playerDamage?.step(dt) ?? false;
@@ -553,14 +568,15 @@ async function boot(): Promise<void> {
           const victim = takedowns.update(dt, traffic?.newlyWrecked ?? []);
           for (let count = countBefore; count < takedowns.count; count++)
             vehicle.awardTakedown();
-          if (
-            victim &&
+          const focusVictim =
+            !!victim &&
             canFocusTakedown(
               victim,
               vehicle.telemetry.position,
               playerView.forward,
-            )
-          )
+            );
+          if (focusVictim) audio.onTakedown();
+          if (victim && focusVictim)
             takedownMoment?.start(victim.id, performance.now());
           else if (!victim && takedowns.lastObservedVictim) {
             const other = takedowns.lastObservedVictim;
@@ -670,6 +686,7 @@ async function boot(): Promise<void> {
         if (playerDamage) carVisual.setCrush(playerDamage.crush);
         breakablePropsVisual.update();
         trafficVisual?.update();
+        wreckEffects?.render();
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
         if (takedownMoment && traffic)
@@ -726,6 +743,7 @@ async function boot(): Promise<void> {
     },
   );
   function resetPresentation(): void {
+    wreckEffects?.reset();
     boostPads.reset();
     trafficEvents.reset();
     takedownMoment?.reset();
@@ -995,6 +1013,7 @@ async function boot(): Promise<void> {
     engine: DEFAULT_ENGINE,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
+    readPresentationTimeScale: () => takedownMoment?.timeScale ?? 1,
     resolveGroundedSurface,
   });
   menuAudio = audio;
@@ -1004,6 +1023,8 @@ async function boot(): Promise<void> {
   resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
   const relativeImpactVelocity: V3 = { x: 0, y: 0, z: 0 };
+  const otherContactVelocityA: V3 = { x: 0, y: 0, z: 0 };
+  const otherContactVelocityB: V3 = { x: 0, y: 0, z: 0 };
   const impact = createImpactSeverity();
   let landingsSeen = vehicle.telemetry.landingCount;
   const impactFeedback = new ImpactFeedback({
@@ -1018,10 +1039,42 @@ async function boot(): Promise<void> {
   // speed against a static obstacle; the record says it is estimated.
   physics.onContact((a, b, impulse, point, normal, readVelocities) => {
     if (a !== vehicle.body && b !== vehicle.body) {
-      takedowns?.noteCarContact(
-        traffic?.stateForBody(a),
-        traffic?.stateForBody(b),
-      );
+      const carA = traffic?.stateForBody(a);
+      const carB = traffic?.stateForBody(b);
+      if (carA || carB) {
+        readVelocities(otherContactVelocityA, otherContactVelocityB);
+        const dx = otherContactVelocityA.x - otherContactVelocityB.x;
+        const dy = otherContactVelocityA.y - otherContactVelocityB.y;
+        const dz = otherContactVelocityA.z - otherContactVelocityB.z;
+        const normalSpeed = dx * normal.x + dy * normal.y + dz * normal.z;
+        const closing = Math.max(0, normalSpeed);
+        const tangent = Math.sqrt(
+          Math.max(0, dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed),
+        );
+        const glassEligible =
+          Math.abs(normal.y) < 0.55 &&
+          ((carA !== undefined &&
+            point.y - (carA.position.y - CAR_MODELS[carA.modelKind].ride) >=
+              CAR_MODELS[carA.modelKind].halfExtents.y * 1.1) ||
+            (carB !== undefined &&
+              point.y - (carB.position.y - CAR_MODELS[carB.modelKind].ride) >=
+                CAR_MODELS[carB.modelKind].halfExtents.y * 1.1));
+        audio.onCrashContact(a, b, closing, tangent, point, 2, glassEligible);
+        const struck = carA ?? carB!;
+        wreckEffects?.noteContact(
+          a,
+          b,
+          point,
+          struck.position.y - CAR_MODELS[struck.modelKind].ride,
+          normal,
+          struck.velocity,
+          closing,
+          tangent,
+          glassEligible,
+          vehicle.telemetry.position,
+        );
+      }
+      takedowns?.noteCarContact(carA, carB);
       traffic?.onWorldContact(a, b, normal, readVelocities);
       return;
     }
@@ -1077,11 +1130,82 @@ async function boot(): Promise<void> {
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
       vehicle.noteChassisContact(impactNormal);
+    const profile =
+      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null;
+    const crashKind: 0 | 1 | null = trafficVelocity
+      ? 0
+      : profile === 'concrete' ||
+          (!surfaceRegistry.has(otherBody) && impact.approachSpeed >= 4)
+        ? 1
+        : null;
+    if (crashKind !== null) {
+      const normalSpeed =
+        severityVelocity.x * impactNormal.x +
+        severityVelocity.y * impactNormal.y +
+        severityVelocity.z * impactNormal.z;
+      const speedSquared =
+        severityVelocity.x ** 2 +
+        severityVelocity.y ** 2 +
+        severityVelocity.z ** 2;
+      const tangent = Math.sqrt(
+        Math.max(0, speedSquared - normalSpeed * normalSpeed),
+      );
+      const struck = traffic?.stateForBody(otherBody);
+      const struckModel = struck && CAR_MODELS[struck.modelKind];
+      const glassEligible =
+        !!struck &&
+        !!struckModel &&
+        Math.abs(impactNormal.y) < 0.55 &&
+        point.y - (struck.position.y - struckModel.ride) >=
+          struckModel.halfExtents.y * 1.1;
+      audio.onCrashContact(
+        vehicle.body,
+        otherBody,
+        impact.approachSpeed,
+        tangent,
+        point,
+        crashKind,
+        glassEligible,
+      );
+      if (struck)
+        wreckEffects?.noteContact(
+          vehicle.body,
+          otherBody,
+          point,
+          struck.position.y - CAR_MODELS[struck.modelKind].ride,
+          impactNormal,
+          struck.velocity,
+          impact.approachSpeed,
+          tangent,
+          glassEligible,
+          vehicle.telemetry.position,
+        );
+      else if (crashKind === 1 && Math.abs(impactNormal.y) < 0.55) {
+        let groundY = point.y - 0.5;
+        for (const wheel of vehicle.telemetry.wheels)
+          if (wheel.grounded) {
+            groundY = wheel.hit.point.y;
+            break;
+          }
+        wreckEffects?.noteContact(
+          vehicle.body,
+          otherBody,
+          point,
+          groundY,
+          impactNormal,
+          vehicle.telemetry.velocity,
+          impact.approachSpeed,
+          tangent,
+          false,
+          vehicle.telemetry.position,
+        );
+      }
+    }
     // This callback runs inside physics.step: consumers only queue fixed
     // scalars here. Audio output runs after simulation in update().
     impactFeedback.onContact(
       otherBody,
-      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null,
+      crashKind === null ? profile : null,
       impact,
     );
   });
@@ -1267,6 +1391,8 @@ async function boot(): Promise<void> {
         vz: car.velocity.z,
         speed: car.speed,
         wrecked: car.wrecked,
+        wreckSide: car.wreckSide ?? null,
+        tornSide: car.tornSide ?? null,
         rival: car.rival,
         modelKind: (car as { modelKind?: string }).modelKind ?? null,
         crush: { ...car.crush },
@@ -1274,6 +1400,17 @@ async function boot(): Promise<void> {
         screenPixels,
       };
     });
+  game.getWreckEffects = () => ({
+    activePanels: wreckEffects?.activeCount ?? 0,
+    ...(wreckEffects?.particleState ?? {
+      sparks: 0,
+      metal: 0,
+      glass: 0,
+      bursts: 0,
+      grinds: 0,
+      dropped: 0,
+    }),
+  });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,

@@ -7,12 +7,14 @@ import impactKerb from '../../assets/audio/impact-kerb.ogg?url&no-inline';
 import impactConcrete from '../../assets/audio/impact-concrete.ogg?url&no-inline';
 import type { EngineProfile } from '../vehicle/engineProfile';
 import { EngineSynth } from './engineSynth';
-import { CONTINUOUS_VOICES, TRANSIENT_VOICES } from './types';
+import { CRASH_URLS, type CrashClip } from './crashUrls';
+import { CONTINUOUS_VOICES, MAX_AUDIO_VOICES, TRANSIENT_VOICES } from './types';
 import type {
   AudioMix,
   AudioOutput,
   AudioOutputState,
   AudioProfile,
+  CrashCue,
 } from './types';
 
 const clamp = (value: number): number => Math.max(0, Math.min(1, value));
@@ -21,8 +23,30 @@ const pitch = (value: number): number => Math.max(0.5, Math.min(4, value));
  * the layer ceiling (sfxVolume), about 3.6 dB above a full four-wheel screech
  * whose own level is unchanged. */
 const ENGINE_GAIN = 3;
+/** The inserted master-limiter path measured about +3 dB on the no-contact
+ * engine bed. This compensation restores the main build's matched-speed level
+ * while leaving headroom for layered crashes. */
+const LIMITER_OUTPUT_GAIN = 0.71;
 /** Howler loops plus the engine worklet module. */
-const LOADABLE = 9;
+const CORE_CRASH_CLIPS = [
+  'light',
+  'tick',
+  'attack',
+  'bend',
+  'can',
+  'heavy',
+  'glass',
+  'scrape',
+  'rattle',
+  'bass',
+  'creak',
+  'distant',
+] as const satisfies readonly CrashClip[];
+const LAZY_CRASH_CLIPS = [
+  'hard-alt',
+  'wall-tail',
+] as const satisfies readonly CrashClip[];
+const LOADABLE = 9 + CORE_CRASH_CLIPS.length;
 const LOOP_VOICES = CONTINUOUS_VOICES - 1;
 
 /** Browser-only output. Construction/decoding and short-effect play() happen
@@ -40,6 +64,14 @@ export class HowlerOutput implements AudioOutput {
   private readonly loops: Howl[] = [];
   private synth: EngineSynth | null = null;
   private readonly effects: Howl[] = [];
+  private readonly crashSounds: Partial<Record<CrashClip, Howl>> = {};
+  private readonly lazyReady: Partial<Record<CrashClip, boolean>> = {};
+  private readonly grindIds = new Float64Array(2).fill(-1);
+  private readonly grindGains = new Float64Array(2);
+  private lazyRequested = false;
+  private crashSequence = 0;
+  private limiter: DynamicsCompressorNode | null = null;
+  private limiterOutput: GainNode | null = null;
   private readonly loopIds = new Float64Array(LOOP_VOICES).fill(-1);
   private readonly slotIds = new Float64Array(TRANSIENT_VOICES).fill(-1);
   private readonly slotSounds: (Howl | null)[] = Array.from(
@@ -61,12 +93,46 @@ export class HowlerOutput implements AudioOutput {
       this.loops.push(this.sound(url, true));
     for (const url of [impactAsphalt, impactKerb, impactConcrete, boostAttack])
       this.effects.push(this.sound(url, false));
+    for (const name of CORE_CRASH_CLIPS)
+      this.crashSounds[name] = this.sound(
+        [...CRASH_URLS[name]],
+        name === 'scrape',
+      );
+    for (const name of LAZY_CRASH_CLIPS)
+      this.crashSounds[name] = this.sound(
+        [...CRASH_URLS[name]],
+        false,
+        false,
+        name,
+      );
     if (!Howler.usingWebAudio || !Howler.ctx) {
       this.state.status = 'unavailable';
       this.state.error = 'Web Audio is unavailable in this browser.';
       return;
     }
     Howler.ctx.addEventListener('statechange', this.refresh);
+    // One gentle final limiter gives overlapping attack/body/glass layers
+    // headroom without altering per-voice priorities or master mute.
+    if (Howler.ctx.createDynamicsCompressor && Howler.masterGain) {
+      try {
+        const limiter = Howler.ctx.createDynamicsCompressor();
+        limiter.threshold.value = -8;
+        limiter.knee.value = 6;
+        limiter.ratio.value = 10;
+        limiter.attack.value = 0.003;
+        limiter.release.value = 0.13;
+        const output = Howler.ctx.createGain();
+        output.gain.value = LIMITER_OUTPUT_GAIN;
+        Howler.masterGain.disconnect();
+        Howler.masterGain.connect(limiter);
+        limiter.connect(output);
+        output.connect(Howler.ctx.destination);
+        this.limiter = limiter;
+        this.limiterOutput = output;
+      } catch {
+        // Unsupported routing leaves the conservative per-sample gain cap.
+      }
+    }
     // Routed through Howler's master gain so master mute covers the engine.
     this.synth = new EngineSynth(Howler.ctx, Howler.masterGain, engine, () => {
       this.loaded++;
@@ -107,6 +173,7 @@ export class HowlerOutput implements AudioOutput {
         (mix.engineIdle + mix.engineLoad) *
           mix.volume *
           ENGINE_GAIN *
+          (mix.duck ?? 1) *
           Math.max(0, mix.engineLevel),
       ),
       mix.engineRpm * mix.rate,
@@ -127,7 +194,9 @@ export class HowlerOutput implements AudioOutput {
         this.rates[index] = -1;
       }
       const level = index === 3 ? mix.boost : mix.tyres[index]!;
-      const volume = clamp(level * mix.volume);
+      const volume = clamp(
+        level * mix.volume * (index === 3 ? (mix.duck ?? 1) : 1),
+      );
       // Kerb and concrete use their explicitly selected profile variants of the
       // credited tyre source. No unresolved wheel is redirected to asphalt.
       const rate = pitch(
@@ -156,6 +225,87 @@ export class HowlerOutput implements AudioOutput {
     return this.playTransient(this.effects[3]!, gain, rate);
   }
 
+  playCrash(cue: Readonly<CrashCue>): boolean {
+    if (cue.tier === 'hard' && !this.lazyRequested) {
+      this.lazyRequested = true;
+      for (const name of LAZY_CRASH_CLIPS) this.crashSounds[name]?.load();
+    }
+    const step = this.crashSequence++;
+    // Rotation and a bounded +/-5% rate keep repeated slams distinct without
+    // allowing a light clip to become a heavier tier by pitch alone.
+    const rate = pitch(cue.rate * (1 + (((step * 7) % 11) - 5) * 0.01));
+    const play = (name: CrashClip, gain: number) =>
+      this.playTransient(this.crashSounds[name]!, gain, rate, cue.pan);
+    if (cue.kind === 'distant') return play('distant', cue.gain * 0.62);
+    if (cue.kind === 'takedown') {
+      const tick = play('tick', cue.gain * 0.82);
+      play('rattle', cue.gain * 0.55);
+      play('bass', cue.gain * 0.28);
+      return tick;
+    }
+    if (cue.kind === 'wreck') {
+      const creak = play('creak', cue.gain * 0.9);
+      play('rattle', cue.gain * 0.5);
+      return creak;
+    }
+    if (cue.tier === 'light') {
+      const attack = play(step % 2 ? 'tick' : 'light', cue.gain * 0.9);
+      play(step % 2 ? 'light' : 'tick', cue.gain * 0.38);
+      return attack;
+    }
+    if (cue.tier === 'medium') {
+      const attack = play(step % 3 === 0 ? 'tick' : 'attack', cue.gain * 0.85);
+      const body = (['bend', 'can', 'light'] as const)[step % 3]!;
+      play(body, cue.gain * 0.65);
+      return attack;
+    }
+    const attack = play('attack', cue.gain * 0.9);
+    const hardBodies: readonly CrashClip[] = [
+      'heavy',
+      'bend',
+      this.lazyReady['hard-alt'] ? 'hard-alt' : 'heavy',
+    ];
+    const body =
+      cue.kind === 'wall' && this.lazyReady['wall-tail']
+        ? 'wall-tail'
+        : hardBodies[step % hardBodies.length]!;
+    play(body, cue.gain * 0.78);
+    if (cue.glass) play('glass', cue.gain * 0.38);
+    else if (cue.debris) play('rattle', cue.gain * 0.32);
+    return attack;
+  }
+
+  setGrind(slot: 0 | 1, gain: number, rate: number, pan: number): void {
+    const sound = this.crashSounds.scrape;
+    if (
+      !sound ||
+      this.disposed ||
+      this.paused ||
+      this.muted ||
+      this.state.status !== 'ready'
+    )
+      return;
+    let id = this.grindIds[slot]!;
+    if (gain < 0.002) {
+      if (id >= 0) sound.stop(id);
+      this.grindIds[slot] = -1;
+      this.grindGains[slot] = 0;
+      this.countVoices();
+      return;
+    }
+    if (id < 0) {
+      this.countVoices();
+      if (this.state.activeVoices >= MAX_AUDIO_VOICES) return;
+      id = sound.play();
+      this.grindIds[slot] = id;
+    }
+    this.grindGains[slot] = clamp(gain);
+    sound.volume(clamp(gain), id);
+    sound.rate(pitch(rate), id);
+    sound.stereo?.(Math.max(-1, Math.min(1, pan)), id);
+    this.countVoices();
+  }
+
   pause(fadeMs: number): void {
     if (this.disposed || this.paused) return;
     this.paused = true;
@@ -175,6 +325,11 @@ export class HowlerOutput implements AudioOutput {
       const sound = this.slotSounds[index];
       const id = this.slotIds[index]!;
       if (sound) sound.fade(this.slotGains[index]!, 0, duration, id);
+    }
+    for (let index = 0; index < 2; index++) {
+      const id = this.grindIds[index]!;
+      if (id >= 0)
+        this.crashSounds.scrape?.fade(this.grindGains[index]!, 0, duration, id);
     }
     this.clearFadeTimer();
     this.fadeTimer = setTimeout(() => {
@@ -205,24 +360,44 @@ export class HowlerOutput implements AudioOutput {
     this.synth = null;
     for (const sound of this.loops) sound.unload();
     for (const sound of this.effects) sound.unload();
+    for (const sound of Object.values(this.crashSounds)) sound?.unload();
+    if (this.limiter) {
+      try {
+        Howler.masterGain.disconnect(this.limiter);
+        this.limiter.disconnect();
+        this.limiterOutput?.disconnect();
+        Howler.masterGain.connect(Howler.ctx.destination);
+      } catch {
+        /* The context may already have closed. */
+      }
+      this.limiter = null;
+      this.limiterOutput = null;
+    }
     this.loopIds.fill(-1);
     this.state.activeVoices = 0;
   }
 
-  private sound(url: string, loop: boolean): Howl {
+  private sound(
+    url: string | string[],
+    loop: boolean,
+    preload = true,
+    lazyName?: CrashClip,
+  ): Howl {
     const sound = new Howl({
-      src: [url],
+      src: Array.isArray(url) ? url : [url],
       html5: false,
       loop,
       volume: 0,
-      preload: true,
+      preload,
       pool: TRANSIENT_VOICES,
       onload: () => {
-        this.loaded++;
+        if (lazyName) this.lazyReady[lazyName] = true;
+        else this.loaded++;
         this.refresh();
       },
       onloaderror: (_id, error) => {
         if (this.disposed) return;
+        if (lazyName) return; // A core body remains available for hard hits.
         this.state.status = 'error';
         this.state.error = 'Sound could not load: ' + String(error);
         this.reset();
@@ -251,7 +426,12 @@ export class HowlerOutput implements AudioOutput {
           ? 'ready'
           : 'locked';
   };
-  private playTransient(sound: Howl, gain: number, rate: number): boolean {
+  private playTransient(
+    sound: Howl,
+    gain: number,
+    rate: number,
+    pan = 0,
+  ): boolean {
     if (
       this.disposed ||
       this.paused ||
@@ -260,6 +440,11 @@ export class HowlerOutput implements AudioOutput {
       this.state.status !== 'ready'
     )
       return false;
+    this.countVoices();
+    if (this.state.activeVoices >= MAX_AUDIO_VOICES) {
+      this.state.droppedVoices++;
+      return false;
+    }
     let slot = -1;
     for (let index = 0; index < TRANSIENT_VOICES; index++)
       if (this.slotSounds[index] === null) {
@@ -276,6 +461,7 @@ export class HowlerOutput implements AudioOutput {
     this.slotGains[slot] = clamp(gain);
     sound.volume(clamp(gain), id);
     sound.rate(pitch(rate), id);
+    sound.stereo?.(Math.max(-1, Math.min(1, pan)), id);
     this.countVoices();
     return true;
   }
@@ -294,6 +480,12 @@ export class HowlerOutput implements AudioOutput {
       this.slotSounds[index] = null;
       this.slotIds[index] = -1;
     }
+    for (let index = 0; index < 2; index++) {
+      if (this.grindIds[index]! >= 0)
+        this.crashSounds.scrape?.stop(this.grindIds[index]!);
+      this.grindIds[index] = -1;
+      this.grindGains[index] = 0;
+    }
     this.countVoices();
   }
   private countVoices(): void {
@@ -302,6 +494,8 @@ export class HowlerOutput implements AudioOutput {
       if (this.loopIds[index]! >= 0) count++;
     for (let index = 0; index < TRANSIENT_VOICES; index++)
       if (this.slotSounds[index] !== null) count++;
+    for (let index = 0; index < 2; index++)
+      if (this.grindIds[index]! >= 0) count++;
     this.state.activeVoices = count;
     this.state.peakVoices = Math.max(this.state.peakVoices, count);
   }

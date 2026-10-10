@@ -24,6 +24,7 @@ import {
   createCarModelInstances,
   pickCarModelKind,
   type CarCrushState,
+  type CarDamageSide,
   type CarModelKind,
 } from './carModels';
 
@@ -77,6 +78,10 @@ export interface TrafficCarState {
   modelKind: CarModelKind;
   /** Visual crush persists with this encounter across body LOD handoffs. */
   crush: CarCrushState;
+  /** Side of the contact that first wrecked this encounter. */
+  wreckSide?: CarDamageSide;
+  /** Visual face that actually shed trim; stays with the encounter. */
+  tornSide?: CarDamageSide;
 }
 
 interface RecordState {
@@ -103,6 +108,7 @@ interface RecordState {
   crashClosingSpeed: number;
   crashBleedRemaining: number;
   shapeDirty: boolean;
+  lastCrushSide: CarDamageSide | null;
   /** Contact episode state: one slam chunk, or one scrape increment per side
    * per physics step even when Jolt reports several contact points. */
   contactGap: number;
@@ -294,6 +300,7 @@ export function createTraffic(
     crashClosingSpeed: 0,
     crashBleedRemaining: 0,
     shapeDirty: false,
+    lastCrushSide: null,
     contactGap: Infinity,
     slamSides: 0,
     scrapeSides: 0,
@@ -561,6 +568,7 @@ export function createTraffic(
     if (record.wrecked) return;
     record.wrecked = true;
     record.state.wrecked = true;
+    if (record.lastCrushSide) record.state.wreckSide = record.lastCrushSide;
     newlyWrecked.push(record.state);
     wreckRecords.push(record);
     // Keep the existing ordered lane links. Followers skip wrecked entries
@@ -894,6 +902,9 @@ export function createTraffic(
         if (index >= 0) wreckRecords.splice(index, 1);
         record.wrecked = false;
         record.state.wrecked = false;
+        record.lastCrushSide = null;
+        delete record.state.wreckSide;
+        delete record.state.tornSide;
         record.state.id = nextEncounterId++;
         record.state.crush.front =
           record.state.crush.rear =
@@ -1373,6 +1384,7 @@ export function createTraffic(
         return;
       for (let sideIndex = 0; sideIndex < CRUSH_SIDES.length; sideIndex++)
         addSlam(record, sideIndex, closingSpeed, slamMultiplier);
+      record.lastCrushSide = 'front';
       record.contactGap = 0;
       return;
     }
@@ -1383,6 +1395,7 @@ export function createTraffic(
       addSlam(record, sideIndex, closingSpeed, slamMultiplier);
     else if (allowScrape) record.scrapeSides |= 1 << sideIndex;
     else return;
+    record.lastCrushSide = side;
     record.contactGap = 0;
   }
 
@@ -1614,6 +1627,7 @@ export function createTrafficVisual(
         state.id,
         state.crush,
         state.rival ? 0 : traffic.hasRivals ? (state.id % 7) + 1 : undefined,
+        state.tornSide,
       );
     cars.end();
   }
