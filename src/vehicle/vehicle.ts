@@ -216,6 +216,7 @@ export class Vehicle {
     dt: number,
     input: Readonly<GameInput>,
     source: 'keyboard' | 'gamepad' = 'keyboard',
+    wreckControl = false,
   ): void {
     this.controls.update(input, source, this.tuning, dt);
     this.readState();
@@ -231,8 +232,29 @@ export class Vehicle {
     this.previousGroundedWheels = this.telemetry.groundedWheels;
     this.steering();
     this.tires(dt);
-    this.assists(dt);
+    this.assists(dt, wreckControl);
     this.updateMeter(dt);
+  }
+  /** Horizontal player steering of a wreck. No new body, upward force or
+   * teleport; the episode owner limits total added lateral velocity. */
+  applyAftertouch(steer: number, deltaVelocity: number, dt: number): void {
+    if (dt <= 0 || !Number.isFinite(steer)) return;
+    const length = Math.hypot(this.forward.x, this.forward.z);
+    if (length < 0.2) return;
+    this.force.set(
+      (this.forward.z / length) * this.mass.mass * (deltaVelocity / dt),
+      0,
+      (-this.forward.x / length) * this.mass.mass * (deltaVelocity / dt),
+    );
+    this.world.applyForceAtPoint(this.body, this.force, this.centerOfMass);
+    const targetYaw = clamp(steer, -1, 1) * (45 * DEG);
+    const yawAcceleration = clamp(
+      (targetYaw - this.telemetry.angularVelocity.y) / dt,
+      -3,
+      3,
+    );
+    this.torque.set(0, this.inertia.y * yawAcceleration, 0);
+    this.world.applyTorque(this.body, this.torque);
   }
   private suspension(dt: number): void {
     const t = this.tuning,
@@ -548,7 +570,7 @@ export class Vehicle {
       this.world.applyForceAtPoint(this.body, this.force, wheel.applyPoint);
     }
   }
-  private assists(dt: number): void {
+  private assists(dt: number, wreckControl = false): void {
     const t = this.tuning,
       s = this.telemetry;
     const grip = gripYawTorque(
@@ -628,7 +650,7 @@ export class Vehicle {
     this.wheelsOffSeconds = airborne ? wheelsOff + dt : 0;
     const flatOnRoof =
       this.chassisContact && Math.abs(roll) > Math.PI - 15 * DEG;
-    if (airborne && wheelsOff > 0 && !flatOnRoof) {
+    if (!wreckControl && airborne && wheelsOff > 0 && !flatOnRoof) {
       this.airInputs.throttle = this.controls.throttle;
       this.airInputs.brake = this.controls.brake;
       this.airInputs.steer = this.controls.steer;
@@ -652,6 +674,7 @@ export class Vehicle {
     } else this.airTorques.weight = 0;
     s.airControlWeight = this.airTorques.weight;
     if (
+      !wreckControl &&
       Math.abs(roll) > 35 * DEG &&
       (s.speed < 3 || s.groundedWheels > 0 || this.chassisContact)
     ) {

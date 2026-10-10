@@ -128,6 +128,7 @@ export class CameraRig {
   private reverseSeconds = 0;
   private swinging = false;
   private occlusion = 0;
+  private wreckFocus = false;
   private readonly lineOfSight: LineOfSight | null;
 
   constructor(
@@ -147,6 +148,16 @@ export class CameraRig {
     this.reverseSeconds = 0;
     this.swinging = false;
     this.occlusion = 0;
+    this.wreckFocus = false;
+  }
+
+  /** Hold the road-facing chase direction while the physical wreck tumbles. */
+  setWreckFocus(active: boolean): void {
+    this.wreckFocus = active;
+    if (active) {
+      this.reverseSeconds = 0;
+      this.swinging = false;
+    }
   }
 
   setPreset(preset: CameraPreset): void {
@@ -239,6 +250,7 @@ export class CameraRig {
     state: VehicleTelemetry,
     dt: number,
   ): void {
+    if (this.wreckFocus) return;
     const t = this.tuning;
     const blend = this.preset === 'hood' ? 0 : t.get('camVelocityBlend');
     const flatUp = this.referenceUp.y === 1;
@@ -364,7 +376,8 @@ export class CameraRig {
           t.get('camHeight') * (far ? 1.5 : 1),
         );
     }
-    if (this.preset !== 'hood') this.applySpeedPull(state, far ? 1.6 : 1);
+    if (this.preset !== 'hood' && !this.wreckFocus)
+      this.applySpeedPull(state, far ? 1.6 : 1);
     let compression = 0;
     for (const wheel of state.wheels) compression += wheel.compression * 0.25;
     if (!this.initialized) {

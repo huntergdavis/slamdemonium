@@ -21,6 +21,8 @@ import { RoadRage } from './core/roadRage';
 import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
 import { HERO_SEDAN } from './vehicle/vehicleDefinition';
+import { ImpactTime } from './core/impactTime';
+import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
@@ -344,6 +346,7 @@ async function boot(): Promise<void> {
   const takedowns = isTakedownRoad ? new Takedowns() : undefined;
   const takedownMoment = takedowns ? new TakedownMoment() : undefined;
   const playerDamage = takedowns ? new PlayerDamage() : undefined;
+  const impactTime = playerDamage ? new ImpactTime() : undefined;
   const trafficVisual = traffic
     ? createTrafficVisual(view.scene, traffic)
     : undefined;
@@ -559,6 +562,7 @@ async function boot(): Promise<void> {
         return tuning.get('physicsHz');
       },
       get timeScale() {
+        if (impactTime?.active) return impactTime.timeScale;
         return tuning.get('timeScale') * (takedownMoment?.timeScale ?? 1);
       },
       maxStepsPerFrame: 32,
@@ -590,7 +594,14 @@ async function boot(): Promise<void> {
             ? wreckInput
             : sampled,
           source,
+          impactTime?.active ?? false,
         );
+        if (impactTime?.active)
+          vehicle.applyAftertouch(
+            sampled.steer,
+            impactTime.steerDeltaVelocity(sampled.steer, dt),
+            dt,
+          );
         traffic?.preStep(
           dt,
           vehicle.telemetry.position,
@@ -623,13 +634,20 @@ async function boot(): Promise<void> {
           2 * (playerRotation.x ** 2 + playerRotation.y ** 2)
         );
         playerView.speed = vehicle.telemetry.speed;
+        const wasWrecked = playerDamage?.wrecked ?? false;
+        if (!wasWrecked) playerDamage?.step(dt);
+        if (!wasWrecked && playerDamage?.wrecked) playerWreckPending = true;
         if (playerWreckPending) {
           roadRage?.notePlayerWreck();
           vehicle.loseBoostSection();
           audio.onPlayerWreck();
+          impactTime?.start();
+          takedownMoment?.reset();
+          cameraRig.setWreckFocus(true);
           playerWreckPending = false;
         }
-        const playerWreckRecoveryDue = playerDamage?.step(dt) ?? false;
+        impactTime?.advanceSimulation(dt);
+        const playerWreckRecoveryDue = impactTime?.consumeRecovery() ?? false;
         if (takedowns) {
           const countBefore = takedowns.count;
           const victim = takedowns.update(dt, traffic?.newlyWrecked ?? []);
@@ -638,6 +656,7 @@ async function boot(): Promise<void> {
           for (let count = 0; count < earned; count++) vehicle.awardTakedown();
           const focusVictim =
             eventRunning &&
+            !impactTime?.active &&
             !!victim &&
             canFocusTakedown(
               victim,
@@ -812,7 +831,7 @@ async function boot(): Promise<void> {
         wreckEffects?.render();
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
-        if (takedownMoment && traffic)
+        if (takedownMoment && traffic && !impactTime?.active)
           takedownMoment.apply(
             view.camera,
             traffic.states,
@@ -871,6 +890,7 @@ async function boot(): Promise<void> {
     boostPads.reset();
     trafficEvents.reset();
     takedownMoment?.reset();
+    impactTime?.reset();
     history.reset();
     visualHistory.reset();
     cameraRig.reset();
@@ -1124,6 +1144,7 @@ async function boot(): Promise<void> {
             amount: playerDamage.damage,
             wrecked: playerDamage.wrecked,
             secondsLeft: playerDamage.wreckSecondsLeft,
+            impactTime: impactTime?.active ?? false,
           }),
         }
       : {}),
@@ -1405,7 +1426,7 @@ async function boot(): Promise<void> {
     // evaluates production preview builds, which carry no test API.
     if (actions.fillBoost > 0)
       vehicle.setDriftMeter(vehicle.telemetry.boostSections);
-    if (actions.slowMotion % 2)
+    if (actions.slowMotion % 2 && !playerDamage?.wrecked)
       tuning.set('timeScale', tuning.get('timeScale') === 0.25 ? 1 : 0.25);
     if (actions.pause % 2) {
       userPaused = !userPaused;
@@ -1759,7 +1780,9 @@ async function boot(): Promise<void> {
       return memory;
     },
   };
+  let previousWallFrameMs: number | undefined;
   visibilityChanged = () => {
+    previousWallFrameMs = undefined;
     syncPause();
     view.resolution.resetClock();
     // Hidden tabs may stop RAF before it can schedule the audio-clock fade.
@@ -1769,6 +1792,11 @@ async function boot(): Promise<void> {
   visibilityChanged();
   function frame(nowMs: number): void {
     frameTime = nowMs;
+    const wallDt =
+      previousWallFrameMs === undefined
+        ? 0
+        : Math.max(0, (nowMs - previousWallFrameMs) / 1000);
+    previousWallFrameMs = nowMs;
     try {
       // No physics/input-script sample while paused. Both readers consume the
       // mapper's same edge counters, so unpausing cannot replay an action.
@@ -1779,6 +1807,8 @@ async function boot(): Promise<void> {
         else if (respawnRequested) respawn();
       }
       loop.frame(nowMs);
+      if (!isPaused() && tuning.get('timeScale') !== 0)
+        impactTime?.advanceWall(wallDt, input.slowMotionHeld);
       pauseMenu.update(nowMs);
       controllerSupport.update(nowMs);
       hud.setInputDevice(controllerSupport.device);
