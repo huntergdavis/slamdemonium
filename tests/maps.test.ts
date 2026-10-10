@@ -142,6 +142,8 @@ describe('map selection', () => {
       'circuit',
       'coast-headland',
       'coast-shoreline',
+      'highway-express',
+      'highway-interchange',
       'lab',
       'proving-ground',
       'takedown',
