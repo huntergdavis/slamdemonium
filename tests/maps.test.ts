@@ -145,9 +145,14 @@ describe('map selection', () => {
       'city-reverse',
       'coast-headland',
       'coast-shoreline',
+
       'crash-south',
       'crash-west',
       'face-off',
+
+      'grand-prix-city',
+      'grand-prix-coast',
+      'grand-prix-highway',
       'highway-eliminator',
       'highway-express',
       'highway-interchange',

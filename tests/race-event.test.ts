@@ -68,6 +68,7 @@ describe('six-car circuit race', () => {
   });
 });
 
+
 describe('two-car Face Off', () => {
   it('starts P2/2, requires a valid lap, and resets to the same grid', () => {
     const race = createRaceEvent(route, circuit.path, [7]);
@@ -105,4 +106,35 @@ describe('two-car Face Off', () => {
       expect(race.order).toEqual([7, 0]);
     }
   });
+});
+
+it('records stable Grand Prix finish slots only after valid gates', () => {
+  const race = createRaceEvent(route, circuit.path, [1, 2, 3, 4, 5], {
+    mode: 'grand-prix',
+  });
+  const cars = [0, 1, 2, 3, 4, 5].map((id) =>
+    forward(circuit.path.length - 50, id, 0),
+  );
+  race.update(3, cars);
+  const step = (id: number, station: number) => {
+    cars[id] = forward(station, id);
+    race.update(1 / 120, cars);
+  };
+  step(0, 0);
+  step(0, 5000); // Cannot jump over the first checkpoint.
+  step(0, circuit.path.length - 20);
+  expect(race.state.finishTimes[0]).toBe(Infinity);
+  for (const id of [2, 3, 4, 5, 1, 0]) {
+    step(id, 0);
+    step(id, 2500);
+    step(id, 5000);
+    step(id, 7500);
+    step(id, circuit.path.length - 20);
+  }
+  expect(race.state.phase).toBe('finished');
+  expect(race.state.finishOrder).toEqual([2, 3, 4, 5, 1, 0]);
+  expect(race.state.finishTimes.every(Number.isFinite)).toBe(true);
+  const clock = race.state.clock;
+  race.update(1, cars);
+  expect(race.state.clock).toBe(clock);
 });

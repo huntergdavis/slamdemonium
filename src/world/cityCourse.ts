@@ -100,6 +100,7 @@ function cityTraffic(road: RoadPath): TrafficCarRecord[] {
         car++;
       }
     }
+
   for (const direction of [1, -1] as const) {
     const laneSide = (direction === 1 ? -1 : 1) as -1 | 1;
     for (

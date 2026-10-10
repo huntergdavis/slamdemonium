@@ -1,7 +1,9 @@
 import type { PhysicsSpikeResult } from '../physics/spike';
 import type { PhysicsMemory, V3 } from '../physics/adapter';
 
+
 import type { PaceReport, PerformanceBatch } from './performance';
+import type { GrandPrixSnapshot, GrandPrixMedal } from './grandPrix';
 import type { CameraPreset } from '../render/cameraRig';
 import type { ScriptController } from '../input/script';
 import type { HudMode } from '../ui/hud';
@@ -48,6 +50,7 @@ export interface GameTestApi {
   /** Traffic cars in play, for headless instruments; absent without traffic. */
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
 
+
   /** Sampled centreline for a browser route gate; never mutates the map. */
   getRoadPath?: () => {
     points: readonly (readonly [number, number])[];
@@ -64,6 +67,9 @@ export interface GameTestApi {
     grinds: number;
     dropped: number;
   };
+  getGrandPrix?: () =>
+    | (GrandPrixSnapshot & { order: readonly number[]; medal: GrandPrixMedal })
+    | null;
   /** Read-only rival controller decisions for hosted diagnosis. */
   getRivalControl?: () => Readonly<Record<string, unknown>> | null;
   /** Read-only circuit-race standings and controller targets for hosted gates. */
