@@ -4,7 +4,9 @@ import { createPhysicsWorld } from '../../src/physics/joltWorld';
 import type { RayHit } from '../../src/physics/adapter';
 import {
   COAST_HEAD_PATH,
+  COAST_HEAD_REVERSE_PATH,
   COAST_SHORE_PATH,
+  COAST_SHORE_REVERSE_PATH,
   COAST_HEADLAND_MAP,
 } from '../../src/world/coastCourse';
 import { poseAt } from '../../src/world/roadGenerator';
@@ -30,7 +32,12 @@ it('keeps both coast roads grounded through the fork and rejoin', async () => {
     surfaceId: 0,
   };
   try {
-    for (const path of [COAST_SHORE_PATH, COAST_HEAD_PATH])
+    for (const path of [
+      COAST_SHORE_PATH,
+      COAST_HEAD_PATH,
+      COAST_SHORE_REVERSE_PATH,
+      COAST_HEAD_REVERSE_PATH,
+    ])
       for (const station of [
         0,
         450,

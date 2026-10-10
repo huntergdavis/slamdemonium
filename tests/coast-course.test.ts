@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { createTimedRun } from '../src/core/timedRun';
 import {
   COAST_HEADLAND_MAP,
+  COAST_HEADLAND_REVERSE_MAP,
+  COAST_HEAD_REVERSE_PATH,
+  COAST_SHORELINE_REVERSE_MAP,
+  COAST_SHORE_REVERSE_PATH,
   COAST_HEAD_PATH,
   COAST_SHORELINE_MAP,
   COAST_SHORE_PATH,
@@ -44,8 +48,42 @@ describe('coast fork and run gates', () => {
     );
   });
 
+  it('runs both branches from the old finish toward the old start with ordered reverse gates', () => {
+    for (const [forward, reverse, map] of [
+      [COAST_SHORE_PATH, COAST_SHORE_REVERSE_PATH, COAST_SHORELINE_REVERSE_MAP],
+      [COAST_HEAD_PATH, COAST_HEAD_REVERSE_PATH, COAST_HEADLAND_REVERSE_MAP],
+    ] as const) {
+      const start = poseAt(reverse, 0);
+      const oldFinish = poseAt(forward, forward.length);
+      expect(
+        Math.hypot(start.x - oldFinish.x, start.z - oldFinish.z),
+      ).toBeLessThan(0.5);
+      expect(Math.cos(start.heading - oldFinish.heading)).toBeCloseTo(-1, 4);
+      expect(map.spawn).toMatchObject(start);
+      expect(drive(map, reverse).phase).toBe('finished');
+      expect(drive(map, forward).phase).not.toBe('finished');
+      expect(map.runs![0]!.gates.map((gate) => gate.kind)).toEqual([
+        'start',
+        'checkpoint',
+        'checkpoint',
+        'goal',
+      ]);
+    }
+    expect(
+      drive(COAST_SHORELINE_REVERSE_MAP, COAST_HEAD_REVERSE_PATH).phase,
+    ).not.toBe('finished');
+    expect(
+      drive(COAST_HEADLAND_REVERSE_MAP, COAST_SHORE_REVERSE_PATH).phase,
+    ).not.toBe('finished');
+  });
+
   it('keeps moving traffic out of the first bends at a 25 m/s approach', () => {
-    for (const map of [COAST_SHORELINE_MAP, COAST_HEADLAND_MAP]) {
+    for (const map of [
+      COAST_SHORELINE_MAP,
+      COAST_HEADLAND_MAP,
+      COAST_SHORELINE_REVERSE_MAP,
+      COAST_HEADLAND_REVERSE_MAP,
+    ]) {
       for (const car of map.traffic!) {
         if (car.direction === 1) expect(car.station).toBeGreaterThan(1050);
         else

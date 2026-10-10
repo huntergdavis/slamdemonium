@@ -54,6 +54,24 @@ export const COAST_HEAD_PATH = sampleRoad(
   4,
 );
 
+/** Traverse the same paved branch from the shared finish toward the old start. */
+function reversed(path: RoadPath): RoadPath {
+  return {
+    ...path,
+    samples: Array.from(path.samples)
+      .reverse()
+      .map((sample) => ({
+        x: sample.x,
+        z: sample.z,
+        heading: sample.heading + Math.PI,
+        s: path.length - sample.s,
+      })),
+  };
+}
+
+export const COAST_SHORE_REVERSE_PATH = reversed(COAST_SHORE_PATH);
+export const COAST_HEAD_REVERSE_PATH = reversed(COAST_HEAD_PATH);
+
 function gate(
   path: RoadPath,
   station: number,
@@ -134,7 +152,11 @@ export const COAST_ROAD_DECKS = [
 ];
 
 function makeMap(
-  name: 'coast-shoreline' | 'coast-headland',
+  name:
+    | 'coast-shoreline'
+    | 'coast-headland'
+    | 'coast-shoreline-reverse'
+    | 'coast-headland-reverse',
   label: string,
   path: RoadPath,
 ): MapDefinition {
@@ -164,7 +186,7 @@ function makeMap(
     runs: [
       route(
         path,
-        name === 'coast-shoreline' ? 'Shoreline run' : 'Headland run',
+        `${name.startsWith('coast-shoreline') ? 'Shoreline' : 'Headland'} run${name.endsWith('-reverse') ? ' · reverse' : ''}`,
       ),
     ],
     route: path.samples
@@ -173,7 +195,7 @@ function makeMap(
     path,
     traffic: traffic(path),
     placements: [],
-    shuntWalls: name === 'coast-shoreline' ? shoreWalls : headWalls,
+    shuntWalls: name.startsWith('coast-shoreline') ? shoreWalls : headWalls,
   };
 }
 
@@ -186,4 +208,15 @@ export const COAST_HEADLAND_MAP = makeMap(
   'coast-headland',
   'Coast · headland',
   COAST_HEAD_PATH,
+);
+
+export const COAST_SHORELINE_REVERSE_MAP = makeMap(
+  'coast-shoreline-reverse',
+  'Coast · shoreline reverse',
+  COAST_SHORE_REVERSE_PATH,
+);
+export const COAST_HEADLAND_REVERSE_MAP = makeMap(
+  'coast-headland-reverse',
+  'Coast · headland reverse',
+  COAST_HEAD_REVERSE_PATH,
 );

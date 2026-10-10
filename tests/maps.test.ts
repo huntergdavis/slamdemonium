@@ -144,7 +144,9 @@ describe('map selection', () => {
       'city',
       'city-reverse',
       'coast-headland',
+      'coast-headland-reverse',
       'coast-shoreline',
+      'coast-shoreline-reverse',
 
       'crash-south',
       'crash-west',

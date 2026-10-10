@@ -296,6 +296,8 @@ async function boot(): Promise<void> {
   if (
     mapName === 'coast-shoreline' ||
     mapName === 'coast-headland' ||
+    mapName === 'coast-shoreline-reverse' ||
+    mapName === 'coast-headland-reverse' ||
     mapName === 'grand-prix-coast'
   )
     resources.push(createCoastVisual(view.scene));

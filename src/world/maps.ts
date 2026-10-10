@@ -8,7 +8,12 @@ import { createCityMap } from './cityCourse';
 import { createCrashJunctionMap } from './crashJunction';
 import { createGrandPrixMap } from './grandPrixCourse';
 import { createTakedownMap } from './takedownCourse';
-import { COAST_HEADLAND_MAP, COAST_SHORELINE_MAP } from './coastCourse';
+import {
+  COAST_HEADLAND_MAP,
+  COAST_HEADLAND_REVERSE_MAP,
+  COAST_SHORELINE_MAP,
+  COAST_SHORELINE_REVERSE_MAP,
+} from './coastCourse';
 import { HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP } from './highwayCourse';
 import { ELIMINATOR_MAP } from './eliminatorCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
@@ -82,6 +87,8 @@ export type MapName =
   | 'city-reverse'
   | 'coast-shoreline'
   | 'coast-headland'
+  | 'coast-shoreline-reverse'
+  | 'coast-headland-reverse'
   | 'highway-express'
   | 'highway-interchange'
   | 'crash-south'
@@ -539,6 +546,8 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   'city-reverse': createCityMap(true),
   'coast-shoreline': COAST_SHORELINE_MAP,
   'coast-headland': COAST_HEADLAND_MAP,
+  'coast-shoreline-reverse': COAST_SHORELINE_REVERSE_MAP,
+  'coast-headland-reverse': COAST_HEADLAND_REVERSE_MAP,
   'highway-express': HIGHWAY_EXPRESS_MAP,
   'highway-interchange': HIGHWAY_INTERCHANGE_MAP,
   'crash-south': createCrashJunctionMap('south'),
