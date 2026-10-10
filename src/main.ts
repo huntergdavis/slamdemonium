@@ -2314,6 +2314,54 @@ async function boot(): Promise<void> {
   }
   // Build-time gate: default production emits no fixture module or panel.
   if (import.meta.env.VITE_TEST_API === '1') {
+    game.finishTourForTest = () => {
+      if (!tourEvent) throw new Error('A World Tour card must be active.');
+      switch (tourEvent.format) {
+        case 'burning-lap':
+          Object.assign(timedRun.state, {
+            phase: 'finished',
+            clock: 42,
+            gatesTaken: timedRun.state.gateCount,
+          });
+          break;
+        case 'road-rage':
+          if (!roadRage) throw new Error('Road Rage controller missing.');
+          Object.assign(roadRage.state, {
+            phase: 'finished',
+            finishReason: 'time',
+            medal: 'none',
+          });
+          break;
+        case 'crash':
+          if (!crashMode) throw new Error('Crash controller missing.');
+          Object.assign(crashMode.state, { phase: 'finished', medal: 'none' });
+          break;
+        case 'race':
+        case 'face-off':
+        case 'eliminator':
+          if (!race) throw new Error('Race controller missing.');
+          race.freeze();
+          break;
+        case 'grand-prix': {
+          if (!grandPrix || !race)
+            throw new Error('Grand Prix controller missing.');
+          race.freeze();
+          for (let heat = 0; heat < 3; heat++) {
+            if (
+              !grandPrix.recordHeat(
+                [1, 2, 3, 4, 5, 0],
+                [10, 11, 12, 13, 14, Infinity],
+              )
+            )
+              throw new Error('Grand Prix fixture could not score a heat.');
+            if (heat < 2 && !grandPrix.nextHeat())
+              throw new Error('Grand Prix fixture could not advance a heat.');
+          }
+          saveGrandPrix();
+          break;
+        }
+      }
+    };
     const { installInputTestFixture } = await import('./input/testFixture');
     if (disposed) return;
     resources.push(installInputTestFixture());

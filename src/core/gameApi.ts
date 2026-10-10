@@ -93,6 +93,8 @@ export interface GameTestApi {
   stageRivalTakedown?: () => number;
   /** Test-only pooled-body impact for matched browser performance gates. */
   stageTrafficPileup?: (count?: number) => readonly number[];
+  /** E2E-only terminal fixture; production builds never install it. */
+  finishTourForTest?: () => void;
   respawn(): void;
   runPhysicsSpike?: () => Promise<PhysicsSpikeResult>;
   /** Optional diagnostics; scenario input continues through the standard API. */
