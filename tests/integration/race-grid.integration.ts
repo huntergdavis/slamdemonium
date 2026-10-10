@@ -71,8 +71,10 @@ it('holds a physical six-car grid, runs a clean first lap through live traffic a
         playerPose.z = along.z;
       } else {
         const leader = traffic.raceStates[0]!;
-        playerPose.x = leader.position.x - leader.forward.x * 80;
-        playerPose.z = leader.position.z - leader.forward.z * 80;
+        // Keep the ghost player at the measured racer so pool churn cannot
+        // demote and re-anchor it while this guard measures a physical lap.
+        playerPose.x = leader.position.x;
+        playerPose.z = leader.position.z;
         playerSpeed = 50;
       }
       traffic.preStep(1 / 120, playerPose, playerSpeed);
