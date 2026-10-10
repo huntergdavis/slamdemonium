@@ -77,10 +77,11 @@ function route(path: RoadPath, name: string): RunRouteSpec {
 
 function traffic(path: RoadPath): TrafficCarRecord[] {
   const records: TrafficCarRecord[] = [];
-  const clear = (station: number) => station < 440 || station > 1050;
   for (let station = 200; station < path.length - 200; station += 76) {
-    // A clear run into the first narrow bend gives the player room to overtake.
-    if (clear(station)) {
+    // Keep the first fork and narrow bends clear while a 25 m/s player
+    // traverses them. Initial spawn gaps alone do not work: moving cars
+    // otherwise reach the bend before the player.
+    if (station > 1050) {
       records.push({
         station,
         laneSide: 1,
@@ -88,7 +89,9 @@ function traffic(path: RoadPath): TrafficCarRecord[] {
         speed: 21 + (Math.floor(station / 76) % 8),
       });
     }
-    if (clear(station + 38)) {
+    // A 30 m/s oncoming car must start beyond ~2.3 km to meet a 25 m/s
+    // player only after station 1.05 km: 25*S/(25+30) >= 1050.
+    if (station + 38 > 2310) {
       records.push({
         station: station + 38,
         laneSide: -1,

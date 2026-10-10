@@ -44,11 +44,14 @@ describe('coast fork and run gates', () => {
     );
   });
 
-  it('keeps the bend approach clear of authored cars and guards the sea edge', () => {
+  it('keeps moving traffic out of the first bends at a 25 m/s approach', () => {
     for (const map of [COAST_SHORELINE_MAP, COAST_HEADLAND_MAP]) {
-      expect(
-        map.traffic!.every((car) => car.station < 440 || car.station > 1050),
-      ).toBe(true);
+      for (const car of map.traffic!) {
+        if (car.direction === 1) expect(car.station).toBeGreaterThan(1050);
+        else
+          expect((25 * car.station) / (25 + car.speed)).toBeGreaterThan(1050);
+      }
+      expect(map.traffic!.length).toBeGreaterThan(20);
       expect(map.shuntWalls!.length).toBeGreaterThan(20);
     }
   });
