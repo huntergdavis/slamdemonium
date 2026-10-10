@@ -41,6 +41,8 @@ export interface TrafficCarRecord {
   readonly direction?: -1 | 1;
   /** The catalogue kind; picked by id when not authored. */
   readonly modelKind?: CarModelKind;
+  /** Optional catalogue paint, stable across visual/physics handoffs. */
+  readonly paintIndex?: number;
   /** Rivals contest the player's line and remain identifiable through LOD. */
   readonly rival?: boolean;
   /** Circuit Race uses a standing grid and independent pace, never takedown rubber-banding. */
@@ -76,6 +78,7 @@ export interface TrafficCarState {
   raceEntrant: boolean;
   /** The catalogue kind: collision box, visual parts and ride height. */
   modelKind: CarModelKind;
+  paintIndex?: number | undefined;
   /** Visual crush persists with this encounter across body LOD handoffs. */
   crush: CarCrushState;
 }
@@ -268,6 +271,7 @@ export function createTraffic(
       rival: record.rival === true,
       raceEntrant: record.raceEntrant === true,
       modelKind: record.modelKind ?? pickCarModelKind(index + 1),
+      paintIndex: record.paintIndex,
       crush: { front: 0, rear: 0, left: 0, right: 0 },
     },
     wrecked: false,
@@ -1867,7 +1871,7 @@ export function createTrafficVisual(
         state.id,
         state.crush,
         state.raceEntrant
-          ? state.id % 7
+          ? (state.paintIndex ?? state.id % 7)
           : state.rival
             ? 0
             : traffic.hasRivals

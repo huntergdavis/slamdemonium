@@ -62,6 +62,8 @@ import {
 import { createRunwayVisual } from './world/runways';
 import { createTimedRun } from './core/timedRun';
 import { createRaceEvent, type RaceCar } from './core/raceEvent';
+import { awardFaceOffWin, createFaceOffReward } from './core/faceOffReward';
+import { mountFaceOffPaintChoice } from './ui/faceOffPaintChoice';
 import { createAwakeBudget } from './world/awakeBudget';
 import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
@@ -118,6 +120,7 @@ async function boot(): Promise<void> {
       return null;
     }
   })();
+  const faceOffReward = createFaceOffReward(mapStorage);
   const storedMapName = readStoredMapName(mapStorage);
   const mapName = chooseMapName(
     location.search,
@@ -210,7 +213,9 @@ async function boot(): Promise<void> {
   // The timed run (NS3): the start line is a thing in the world he drives
   // into; the clock runs to the goal; Enter is the retry, onto the line.
   const timedRun = createTimedRun(
-    mapName === 'circuit-race' ? undefined : map.runs?.[0],
+    mapName === 'circuit-race' || mapName === 'face-off'
+      ? undefined
+      : map.runs?.[0],
   );
   const runStartGate = map.runs?.[0]?.gates[0];
   const runStart = runStartGate
@@ -285,7 +290,10 @@ async function boot(): Promise<void> {
         })
       : undefined;
   const race =
-    mapName === 'circuit-race' && map.path && map.runs?.[0] && traffic
+    (mapName === 'circuit-race' || mapName === 'face-off') &&
+    map.path &&
+    map.runs?.[0] &&
+    traffic
       ? createRaceEvent(
           map.runs[0],
           map.path,
@@ -312,8 +320,10 @@ async function boot(): Promise<void> {
     : undefined;
   if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
   const rivalGuidance =
-    mapName === 'takedown' || mapName === 'circuit-race'
-      ? createRivalGuidance(host!)
+    mapName === 'takedown' ||
+    mapName === 'circuit-race' ||
+    mapName === 'face-off'
+      ? createRivalGuidance(host!, mapName === 'face-off' ? 'VESPER' : 'RIVAL')
       : undefined;
   if (rivalGuidance) resources.push(rivalGuidance);
   const crashScore = new CrashScore();
@@ -399,6 +409,7 @@ async function boot(): Promise<void> {
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
   const carVisual = createCarVisual(view.scene);
+  carVisual.setPaint(faceOffReward.selected);
   // Line of sight for the camera: static geometry between car and camera
   // pulls the camera in, so the loop, a bridge or a prop bank never hides
   // the car. The car's own body is ignored; the ray record is reused.
@@ -658,6 +669,11 @@ async function boot(): Promise<void> {
             car.vz = state.velocity.z;
           }
           race.update(dt, raceCars);
+          if (
+            mapName === 'face-off' &&
+            awardFaceOffWin(race.state, faceOffReward)
+          )
+            faceOffPaintChoice?.refresh();
           for (const state of traffic.raceStates)
             traffic.setRaceValidatedStation(
               state.id,
@@ -916,6 +932,11 @@ async function boot(): Promise<void> {
       syncPause();
     },
   });
+  const faceOffPaintChoice = mountFaceOffPaintChoice(
+    options.element,
+    faceOffReward,
+    () => carVisual.setPaint(faceOffReward.selected),
+  );
   const miniMapLandmarks: MiniMapLandmark[] = [];
   for (const ramp of map.ramps)
     miniMapLandmarks.push({
@@ -989,6 +1010,14 @@ async function boot(): Promise<void> {
     readScore: () => crashScore.state,
     readRun: () => timedRun.state,
     ...(race ? { readRace: () => race.state } : {}),
+    ...(race
+      ? {
+          raceKind:
+            mapName === 'face-off'
+              ? ('face-off' as const)
+              : ('circuit' as const),
+        }
+      : {}),
     readTrafficEvents: () => trafficEvents.state,
     ...(takedowns ? { readTakedowns: () => takedowns.count } : {}),
     ...(playerDamage
@@ -1005,12 +1034,22 @@ async function boot(): Promise<void> {
       landmarks: miniMapLandmarks,
       route: map.route,
       halfSize:
-        mapName === 'takedown' || mapName === 'circuit-race'
+        mapName === 'takedown' ||
+        mapName === 'circuit-race' ||
+        mapName === 'face-off'
           ? 200
           : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
-      followPlayer: mapName === 'takedown' || mapName === 'circuit-race',
-      headingUp: mapName === 'takedown' || mapName === 'circuit-race',
-      ...(mapName === 'takedown' || mapName === 'circuit-race'
+      followPlayer:
+        mapName === 'takedown' ||
+        mapName === 'circuit-race' ||
+        mapName === 'face-off',
+      headingUp:
+        mapName === 'takedown' ||
+        mapName === 'circuit-race' ||
+        mapName === 'face-off',
+      ...(mapName === 'takedown' ||
+      mapName === 'circuit-race' ||
+      mapName === 'face-off'
         ? { readRivals: () => traffic?.states ?? [] }
         : {}),
     },

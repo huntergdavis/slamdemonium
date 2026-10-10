@@ -3,14 +3,14 @@ import type { TrafficCarState } from '../world/traffic';
 import type { V3 } from '../physics/adapter';
 
 /** Screen-space rival guidance remains visible when the instrument HUD is off. */
-export function createRivalGuidance(host: HTMLElement) {
+export function createRivalGuidance(host: HTMLElement, label = 'RIVAL') {
   const root = host.ownerDocument.createElement('div');
   root.className = 'sl-rival-guidance';
   root.dataset.hudPersistent = '';
   const markers = new Map<number, HTMLElement>();
   const pointer = host.ownerDocument.createElement('div');
   pointer.className = 'sl-rival-pointer';
-  pointer.textContent = 'RIVAL';
+  pointer.textContent = label;
   root.append(pointer);
   const wreckNotice = host.ownerDocument.createElement('div');
   wreckNotice.className = 'sl-rival-wreck-notice';
@@ -69,7 +69,7 @@ export function createRivalGuidance(host: HTMLElement) {
       if (!marker) {
         marker = host.ownerDocument.createElement('div');
         marker.className = 'sl-rival-marker';
-        marker.textContent = '◆ RIVAL';
+        marker.textContent = `◆ ${label}`;
         root.append(marker);
         markers.set(state.id, marker);
       }
@@ -116,11 +116,11 @@ export function createRivalGuidance(host: HTMLElement) {
       pointer.textContent =
         Math.abs(nearest.x / width) > Math.abs(nearest.y / height)
           ? nearest.x < 0
-            ? '◀ RIVAL'
-            : 'RIVAL ▶'
+            ? `◀ ${label}`
+            : `${label} ▶`
           : nearest.y < 0
-            ? '▲ RIVAL'
-            : '▼ RIVAL';
+            ? `▲ ${label}`
+            : `▼ ${label}`;
       pointer.style.transform = `translate(${x}px, ${y}px)`;
     }
   }
