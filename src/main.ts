@@ -59,6 +59,7 @@ import { createLoopVisual, installLoops } from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { createJumpRampVisual, installJumpRamps } from './world/jumpRamp';
 import { MAPS } from './world/maps';
+import { CAR_MODELS } from './world/carModels';
 import {
   chooseMapName,
   mapUrl,
@@ -1098,19 +1099,31 @@ async function boot(): Promise<void> {
         const dy = otherContactVelocityA.y - otherContactVelocityB.y;
         const dz = otherContactVelocityA.z - otherContactVelocityB.z;
         const normalSpeed = dx * normal.x + dy * normal.y + dz * normal.z;
-        audio.onCrashContact(
+        const closing = Math.max(0, normalSpeed);
+        const tangent = Math.sqrt(
+          Math.max(0, dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed),
+        );
+        const glassEligible =
+          Math.abs(normal.y) < 0.55 &&
+          ((carA !== undefined &&
+            point.y - (carA.position.y - CAR_MODELS[carA.modelKind].ride) >=
+              CAR_MODELS[carA.modelKind].halfExtents.y * 1.1) ||
+            (carB !== undefined &&
+              point.y - (carB.position.y - CAR_MODELS[carB.modelKind].ride) >=
+                CAR_MODELS[carB.modelKind].halfExtents.y * 1.1));
+        audio.onCrashContact(a, b, closing, tangent, point, 2, glassEligible);
+        const struck = carA ?? carB!;
+        wreckEffects?.noteContact(
           a,
           b,
-          Math.max(0, normalSpeed),
-          Math.sqrt(
-            Math.max(
-              0,
-              dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed,
-            ),
-          ),
           point,
-          2,
-          false,
+          struck.position.y - CAR_MODELS[struck.modelKind].ride,
+          normal,
+          struck.velocity,
+          closing,
+          tangent,
+          glassEligible,
+          vehicle.telemetry.position,
         );
       }
       takedowns?.noteCarContact(carA, carB);
@@ -1186,15 +1199,59 @@ async function boot(): Promise<void> {
         severityVelocity.x ** 2 +
         severityVelocity.y ** 2 +
         severityVelocity.z ** 2;
+      const tangent = Math.sqrt(
+        Math.max(0, speedSquared - normalSpeed * normalSpeed),
+      );
+      const struck = traffic?.stateForBody(otherBody);
+      const struckModel = struck && CAR_MODELS[struck.modelKind];
+      const glassEligible =
+        !!struck &&
+        !!struckModel &&
+        Math.abs(impactNormal.y) < 0.55 &&
+        point.y - (struck.position.y - struckModel.ride) >=
+          struckModel.halfExtents.y * 1.1;
       audio.onCrashContact(
         vehicle.body,
         otherBody,
         impact.approachSpeed,
-        Math.sqrt(Math.max(0, speedSquared - normalSpeed * normalSpeed)),
+        tangent,
         point,
         crashKind,
-        !!trafficVelocity && Math.abs(impactNormal.y) < 0.55,
+        glassEligible,
       );
+      if (struck)
+        wreckEffects?.noteContact(
+          vehicle.body,
+          otherBody,
+          point,
+          struck.position.y - CAR_MODELS[struck.modelKind].ride,
+          impactNormal,
+          struck.velocity,
+          impact.approachSpeed,
+          tangent,
+          glassEligible,
+          vehicle.telemetry.position,
+        );
+      else if (crashKind === 1 && Math.abs(impactNormal.y) < 0.55) {
+        let groundY = point.y - 0.5;
+        for (const wheel of vehicle.telemetry.wheels)
+          if (wheel.grounded) {
+            groundY = wheel.hit.point.y;
+            break;
+          }
+        wreckEffects?.noteContact(
+          vehicle.body,
+          otherBody,
+          point,
+          groundY,
+          impactNormal,
+          vehicle.telemetry.velocity,
+          impact.approachSpeed,
+          tangent,
+          false,
+          vehicle.telemetry.position,
+        );
+      }
     }
     // This callback runs inside physics.step: consumers only queue fixed
     // scalars here. Audio output runs after simulation in update().
@@ -1397,6 +1454,14 @@ async function boot(): Promise<void> {
     });
   game.getWreckEffects = () => ({
     activePanels: wreckEffects?.activeCount ?? 0,
+    ...(wreckEffects?.particleState ?? {
+      sparks: 0,
+      metal: 0,
+      glass: 0,
+      bursts: 0,
+      grinds: 0,
+      dropped: 0,
+    }),
   });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
   game.getTakedowns = () => ({

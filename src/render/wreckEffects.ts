@@ -18,6 +18,7 @@ import {
   type CarCrushState,
 } from '../world/carModels';
 import type { TrafficCarState } from '../world/traffic';
+import { createWreckParticles } from './wreckParticles';
 
 const MAX_PANELS = 4;
 const NEAR_DISTANCE_SQUARED = 400 * 400;
@@ -42,6 +43,7 @@ type Panel = {
 /** The first pool consumes only post-step wreck transitions. No fragments are
  * physical, so even a multi-car pileup cannot make a new debris mound. */
 export function createWreckEffects(scene: Scene, hasRivals: boolean) {
+  const particles = createWreckParticles(scene);
   const geometry = new BoxGeometry(1, 1, 1);
   const material = new MeshStandardMaterial({
     color: 0xffffff,
@@ -159,6 +161,7 @@ export function createWreckEffects(scene: Scene, hasRivals: boolean) {
 
   function advance(dt: number): void {
     elapsedSeconds += dt;
+    particles.advance(dt);
     for (let index = panels.length - 1; index >= 0; index--) {
       const panel = panels[index]!;
       panel.age += dt;
@@ -187,6 +190,7 @@ export function createWreckEffects(scene: Scene, hasRivals: boolean) {
   }
 
   function render(): void {
+    particles.render();
     mesh.count = panels.length;
     for (let index = 0; index < panels.length; index++) {
       const panel = panels[index]!;
@@ -205,18 +209,31 @@ export function createWreckEffects(scene: Scene, hasRivals: boolean) {
 
   return {
     consume,
+    noteContact: particles.noteContact,
     advance,
     render,
     get activeCount() {
       return panels.length;
     },
+    get particleState() {
+      return {
+        sparks: particles.activeSparks,
+        metal: particles.activeMetal,
+        glass: particles.activeGlass,
+        bursts: particles.burstCount,
+        grinds: particles.grindCount,
+        dropped: particles.dropped,
+      };
+    },
     reset() {
+      particles.reset();
       panels.length = 0;
       tornEncounters.clear();
       elapsedSeconds = 0;
       mesh.count = 0;
     },
     dispose() {
+      particles.dispose();
       scene.remove(mesh);
       geometry.dispose();
       material.dispose();
