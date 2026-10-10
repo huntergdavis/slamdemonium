@@ -67,6 +67,7 @@ export class HowlerOutput implements AudioOutput {
   private lazyRequested = false;
   private crashSequence = 0;
   private limiter: DynamicsCompressorNode | null = null;
+  private limiterOutput: GainNode | null = null;
   private readonly loopIds = new Float64Array(LOOP_VOICES).fill(-1);
   private readonly slotIds = new Float64Array(TRANSIENT_VOICES).fill(-1);
   private readonly slotSounds: (Howl | null)[] = Array.from(
@@ -116,10 +117,13 @@ export class HowlerOutput implements AudioOutput {
         limiter.ratio.value = 10;
         limiter.attack.value = 0.003;
         limiter.release.value = 0.13;
+        const output = Howler.ctx.createGain();
         Howler.masterGain.disconnect();
         Howler.masterGain.connect(limiter);
-        limiter.connect(Howler.ctx.destination);
+        limiter.connect(output);
+        output.connect(Howler.ctx.destination);
         this.limiter = limiter;
+        this.limiterOutput = output;
       } catch {
         // Unsupported routing leaves the conservative per-sample gain cap.
       }
@@ -356,11 +360,13 @@ export class HowlerOutput implements AudioOutput {
       try {
         Howler.masterGain.disconnect(this.limiter);
         this.limiter.disconnect();
+        this.limiterOutput?.disconnect();
         Howler.masterGain.connect(Howler.ctx.destination);
       } catch {
         /* The context may already have closed. */
       }
       this.limiter = null;
+      this.limiterOutput = null;
     }
     this.loopIds.fill(-1);
     this.state.activeVoices = 0;
