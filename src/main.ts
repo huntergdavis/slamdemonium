@@ -14,6 +14,7 @@ import { ImpactFeedback } from './core/impactFeedback';
 import { CrashScore } from './core/crashScore';
 import { Takedowns } from './core/takedowns';
 import { RoadRage } from './core/roadRage';
+import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
 import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
@@ -210,6 +211,12 @@ async function boot(): Promise<void> {
   // The timed run (NS3): the start line is a thing in the world he drives
   // into; the clock runs to the goal; Enter is the retry, onto the line.
   const roadRage = mapName === 'road-rage' ? new RoadRage() : undefined;
+  const roadRageBest = roadRage
+    ? new RoadRageBest(
+        roadRageBestKey(mapName, 'player-4.8x2.16', tuning.snapshot()),
+        mapStorage,
+      )
+    : undefined;
   const isTakedownRoad = mapName === 'takedown' || !!roadRage;
   const timedRun = createTimedRun(roadRage ? undefined : map.runs?.[0]);
   const runStartGate = map.runs?.[0]?.gates[0];
@@ -551,6 +558,7 @@ async function boot(): Promise<void> {
         );
         playerView.speed = vehicle.telemetry.speed;
         if (playerWreckPending) {
+          roadRage?.notePlayerWreck();
           vehicle.loseBoostSection();
           playerWreckPending = false;
         }
@@ -587,6 +595,11 @@ async function boot(): Promise<void> {
           if (roadRage) {
             const wasCountdown = roadRage.state.phase === 'countdown';
             roadRage.step(dt, earned);
+            if (
+              roadRage.state.changed &&
+              roadRage.state.finishReason === 'time'
+            )
+              roadRageBest?.record(roadRage.state.count, roadRage.state.wrecks);
             // Wrecks during the countdown have been observed but can never
             // carry player attribution or score over the GO boundary.
             if (wasCountdown && roadRage.state.phase === 'running')
@@ -633,7 +646,7 @@ async function boot(): Promise<void> {
           tuning.get('awakeKeepRadius'),
         );
         history.afterStep();
-        if (!playerDamage?.wrecked)
+        if (!playerDamage?.wrecked && roadRage?.state.phase !== 'finished')
           track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
         if (
@@ -673,8 +686,10 @@ async function boot(): Promise<void> {
         audio.afterStep(dt);
         scripts.afterStep();
         if (retryRequested) retry();
-        else if (respawnRequested) respawn();
-        else if (playerWreckRecoveryDue) respawnAfterWreck();
+        else if (respawnRequested && roadRage?.state.phase !== 'finished')
+          respawn();
+        else if (playerWreckRecoveryDue && roadRage?.state.phase !== 'finished')
+          respawnAfterWreck();
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -953,7 +968,12 @@ async function boot(): Promise<void> {
     ...(takedowns
       ? { readTakedowns: () => roadRage?.state.count ?? takedowns.count }
       : {}),
-    ...(roadRage ? { readRoadRage: () => roadRage.state } : {}),
+    ...(roadRage
+      ? {
+          readRoadRage: () => roadRage.state,
+          readRoadRageBest: () => roadRageBest?.value ?? null,
+        }
+      : {}),
     ...(playerDamage
       ? {
           readPlayerDamage: () => ({

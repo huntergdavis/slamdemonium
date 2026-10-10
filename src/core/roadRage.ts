@@ -6,6 +6,7 @@ export const ROAD_RAGE_MEDALS = [3, 6, 9] as const;
 
 export type RoadRagePhase = 'countdown' | 'running' | 'finished';
 export type RoadRageMedal = 'none' | 'bronze' | 'silver' | 'gold';
+export type RoadRageFinishReason = 'time' | 'wrecks' | null;
 
 export interface RoadRageState {
   readonly phase: RoadRagePhase;
@@ -15,6 +16,8 @@ export interface RoadRageState {
   readonly count: number;
   readonly nextTarget: number | null;
   readonly medal: RoadRageMedal;
+  readonly wrecks: number;
+  readonly finishReason: RoadRageFinishReason;
   /** True on the physics step when GO or the result first appears. */
   readonly changed: boolean;
 }
@@ -35,6 +38,8 @@ export class RoadRage {
     count: number;
     nextTarget: number | null;
     medal: RoadRageMedal;
+    wrecks: number;
+    finishReason: RoadRageFinishReason;
     changed: boolean;
   } = {
     phase: 'countdown',
@@ -44,6 +49,8 @@ export class RoadRage {
     count: 0,
     nextTarget: ROAD_RAGE_MEDALS[0],
     medal: 'none',
+    wrecks: 0,
+    finishReason: null,
     changed: true,
   };
 
@@ -71,7 +78,21 @@ export class RoadRage {
     if (state.remaining < 1e-9) state.remaining = 0;
     if (state.remaining === 0) {
       state.phase = 'finished';
+      state.finishReason = 'time';
       state.changed = true;
+    }
+  }
+
+  /** Count the transition into a wreck, not repeated contact callbacks. */
+  notePlayerWreck(): void {
+    const state = this.state;
+    if (state.phase !== 'running') return;
+    state.wrecks++;
+    state.changed = true;
+    if (state.wrecks >= 3) {
+      state.phase = 'finished';
+      state.finishReason = 'wrecks';
+      state.medal = 'none';
     }
   }
 
@@ -84,6 +105,8 @@ export class RoadRage {
     state.count = 0;
     state.nextTarget = ROAD_RAGE_MEDALS[0];
     state.medal = 'none';
+    state.wrecks = 0;
+    state.finishReason = null;
     state.changed = true;
   }
 }

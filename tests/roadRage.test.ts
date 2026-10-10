@@ -51,6 +51,27 @@ describe('Road Rage clock and score', () => {
     expect(event.state.phase).toBe('countdown');
     expect(event.state.count).toBe(0);
     expect(event.state.remaining).toBe(ROAD_RAGE_DURATION_SECONDS);
+    expect(event.state.wrecks).toBe(0);
+    expect(event.state.finishReason).toBeNull();
     expect(roadRageMedal(0)).toBe('none');
+  });
+
+  it('allows two wreck recoveries, then fails without a medal or further credit', () => {
+    const event = new RoadRage();
+    event.step(3);
+    event.step(1, 6);
+    event.notePlayerWreck();
+    event.notePlayerWreck();
+    expect(event.state.wrecks).toBe(2);
+    expect(event.state.phase).toBe('running');
+    event.notePlayerWreck();
+    expect(event.state.phase).toBe('finished');
+    expect(event.state.finishReason).toBe('wrecks');
+    expect(event.state.medal).toBe('none');
+    const count = event.state.count;
+    event.notePlayerWreck();
+    event.step(5, 2);
+    expect(event.state.wrecks).toBe(3);
+    expect(event.state.count).toBe(count);
   });
 });
