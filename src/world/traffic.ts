@@ -53,6 +53,8 @@ export interface TrafficCarRecord {
   readonly raceEntrant?: boolean;
   /** Metres left of the centreline; overrides the ordinary two-lane offset. */
   readonly laneOffset?: number;
+  /** Optional authored road detour, evaluated at the car's route station. */
+  readonly laneOffsetAt?: (station: number) => number;
 }
 
 /** Centre-to-centre spacing in metres. The 12 m authored grid is the hard
@@ -159,6 +161,8 @@ const PLAYER_FOOTPRINT_RADIUS = Math.hypot(
   VEHICLE_GEOMETRY.length / 2,
   VEHICLE_GEOMETRY.width / 2,
 );
+const RACE_TRAFFIC_LOOKAHEAD = 150;
+const RACE_TRAFFIC_BRAKE = 8;
 const BODY_MASS = 1100;
 /** Every kind weighs the same in v1; per-kind mass waits for crumple. */
 const BODY_MASS_DESC = {
@@ -396,13 +400,17 @@ export function createTraffic(
       a.x +
       (b.x - a.x) * t -
       Math.cos(out.heading) *
-        ((record.authored.laneOffset ?? record.authored.laneSide * 3.5) +
+        ((record.authored.laneOffsetAt?.(s) ??
+          record.authored.laneOffset ??
+          record.authored.laneSide * 3.5) +
           record.attackOffset);
     out.z =
       a.z +
       (b.z - a.z) * t +
       Math.sin(out.heading) *
-        ((record.authored.laneOffset ?? record.authored.laneSide * 3.5) +
+        ((record.authored.laneOffsetAt?.(s) ??
+          record.authored.laneOffset ??
+          record.authored.laneSide * 3.5) +
           record.attackOffset);
     return out;
   }
@@ -569,6 +577,50 @@ export function createTraffic(
         : speed > 8 &&
           record.obstacleClearance <
             (speed * speed) / (2 * WRECK_BRAKE) + WRECK_STOP_MARGIN;
+  }
+
+  /** Race entrants anticipate even visual-only civilians. Their station and
+   * authored lane exist long before a body is promoted near the player. */
+  function raceTrafficSpeedLimit(
+    record: RecordState,
+    desiredSpeed: number,
+  ): number {
+    const carShape = CAR_MODELS[record.state.modelKind].halfExtents;
+    const lane =
+      record.authored.laneOffsetAt?.(record.station) ??
+      record.authored.laneOffset ??
+      record.state.laneSide * 3.5;
+    let limit = desiredSpeed;
+    for (const other of authored) {
+      if (
+        !other.enabled ||
+        other.wrecked ||
+        other.state.rival ||
+        other.state.direction !== record.state.direction
+      )
+        continue;
+      const otherLane =
+        (other.authored.laneOffsetAt?.(record.station) ??
+          other.authored.laneOffset ??
+          other.state.laneSide * 3.5) + other.attackOffset;
+      const otherShape = CAR_MODELS[other.state.modelKind].halfExtents;
+      if (
+        Math.abs(lane + record.attackOffset - otherLane) >
+        carShape.x + otherShape.x + 0.75
+      )
+        continue;
+      const gap = (other.station - record.station + path.length) % path.length;
+      if (gap <= 0 || gap > RACE_TRAFFIC_LOOKAHEAD) continue;
+      const clearance = gap - carShape.z - otherShape.z - 12;
+      const otherSpeed = other.slot
+        ? Math.min(other.driveSpeed, other.state.speed)
+        : other.driveSpeed;
+      limit = Math.min(
+        limit,
+        otherSpeed + Math.sqrt(2 * RACE_TRAFFIC_BRAKE * Math.max(0, clearance)),
+      );
+    }
+    return limit;
   }
 
   function markWreck(record: RecordState): void {
@@ -1002,7 +1054,7 @@ export function createTraffic(
       );
       if (distanceSquared > ENTER * ENTER) continue;
       makeRoomFor(player, distanceSquared, true);
-      if (physicalCount < MAX_DRIVING) promote(record);
+      if (physicalCount < MAX_DRIVING) promote(record, player);
     }
     // Refresh one distant slice per step instead of all authored cars on the
     // same 10 Hz tick. Nearby poses still update every step.
@@ -1084,6 +1136,8 @@ export function createTraffic(
         if (!state.rival) desiredSpeed = signalSpeed(record, desiredSpeed);
         if (state.raceEntrant) {
           desiredSpeed = raceRunning ? record.authored.speed : 0;
+          if (raceRunning)
+            desiredSpeed = raceTrafficSpeedLimit(record, desiredSpeed);
         } else if (state.rival) {
           const ahead =
             (record.station - playerStation + path.length) % path.length;
