@@ -61,6 +61,7 @@ import {
 } from './world/mapChoice';
 import { createRunwayVisual } from './world/runways';
 import { createTimedRun } from './core/timedRun';
+import { createRaceEvent, type RaceCar } from './core/raceEvent';
 import { createAwakeBudget } from './world/awakeBudget';
 import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
@@ -208,7 +209,9 @@ async function boot(): Promise<void> {
   // per visit; with drift charge slowed, this is how boost is earned.
   // The timed run (NS3): the start line is a thing in the world he drives
   // into; the clock runs to the goal; Enter is the retry, onto the line.
-  const timedRun = createTimedRun(map.runs?.[0]);
+  const timedRun = createTimedRun(
+    mapName === 'circuit-race' ? undefined : map.runs?.[0],
+  );
   const runStartGate = map.runs?.[0]?.gates[0];
   const runStart = runStartGate
     ? {
@@ -281,6 +284,26 @@ async function boot(): Promise<void> {
           maxGap: tuning.get('trafficMaxGap'),
         })
       : undefined;
+  const race =
+    mapName === 'circuit-race' && map.path && map.runs?.[0] && traffic
+      ? createRaceEvent(
+          map.runs[0],
+          map.path,
+          traffic.raceStates.map((car) => car.id),
+        )
+      : undefined;
+  const raceCars: RaceCar[] = race
+    ? [
+        { id: 0, x: 0, z: 0, vx: 0, vz: 0 },
+        ...traffic!.raceStates.map((car) => ({
+          id: car.id,
+          x: 0,
+          z: 0,
+          vx: 0,
+          vz: 0,
+        })),
+      ]
+    : [];
   const takedowns = mapName === 'takedown' ? new Takedowns() : undefined;
   const takedownMoment = takedowns ? new TakedownMoment() : undefined;
   const playerDamage = takedowns ? new PlayerDamage() : undefined;
@@ -289,7 +312,9 @@ async function boot(): Promise<void> {
     : undefined;
   if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
   const rivalGuidance =
-    mapName === 'takedown' ? createRivalGuidance(host!) : undefined;
+    mapName === 'takedown' || mapName === 'circuit-race'
+      ? createRivalGuidance(host!)
+      : undefined;
   if (rivalGuidance) resources.push(rivalGuidance);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
@@ -516,7 +541,9 @@ async function boot(): Promise<void> {
         stepStart = performance.now();
         vehicle.preStep(
           dt,
-          playerDamage?.wrecked ? wreckInput : sampled,
+          playerDamage?.wrecked || race?.state.phase === 'countdown'
+            ? wreckInput
+            : sampled,
           source,
         );
         traffic?.preStep(
@@ -610,6 +637,34 @@ async function boot(): Promise<void> {
           vehicle.telemetry.position.z,
           vehicle.telemetry.speed,
         );
+        if (race && traffic) {
+          const player = raceCars[0]! as {
+            id: number;
+            x: number;
+            z: number;
+            vx: number;
+            vz: number;
+          };
+          player.x = vehicle.telemetry.position.x;
+          player.z = vehicle.telemetry.position.z;
+          player.vx = vehicle.telemetry.velocity.x;
+          player.vz = vehicle.telemetry.velocity.z;
+          for (let index = 0; index < traffic.raceStates.length; index++) {
+            const state = traffic.raceStates[index]!;
+            const car = raceCars[index + 1]! as typeof player;
+            car.x = state.position.x;
+            car.z = state.position.z;
+            car.vx = state.velocity.x;
+            car.vz = state.velocity.z;
+          }
+          race.update(dt, raceCars);
+          for (const state of traffic.raceStates)
+            traffic.setRaceValidatedStation(
+              state.id,
+              race.validatedStation(state.id),
+            );
+          traffic.setRaceRunning(race.state.phase !== 'countdown');
+        }
         propStreamer.update();
         awakeBudget.update(
           tuning.get('awakeBudget'),
@@ -743,6 +798,10 @@ async function boot(): Promise<void> {
     respawnRequested = true;
   }
   function respawn(): void {
+    if (race) {
+      retry();
+      return;
+    }
     respawnRequested = false;
     playerWreckPending = false;
     scripts.cancel();
@@ -768,13 +827,18 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     // Onto the start line itself: the next step is an arrival and the
     // countdown begins at once.
-    vehicle.respawn(runStart.position, runStart.rotation);
+    const restart = race ? track.spawn : runStart;
+    vehicle.respawn(restart.position, restart.rotation);
     playerDamage?.reset();
     resetPresentation();
     takedowns?.reset();
     crashScore.reset();
     timedRun.reset();
-    scripts.noteRespawn(runStart, 0);
+    if (race) {
+      race.reset();
+      traffic?.resetRaceGrid();
+    }
+    scripts.noteRespawn(restart, 0);
     syncPause();
   }
   /** A takedown-map wreck preserves the race and earned sections after losing
@@ -924,6 +988,7 @@ async function boot(): Promise<void> {
     readTelemetry: () => vehicle.telemetry,
     readScore: () => crashScore.state,
     readRun: () => timedRun.state,
+    ...(race ? { readRace: () => race.state } : {}),
     readTrafficEvents: () => trafficEvents.state,
     ...(takedowns ? { readTakedowns: () => takedowns.count } : {}),
     ...(playerDamage
@@ -940,12 +1005,12 @@ async function boot(): Promise<void> {
       landmarks: miniMapLandmarks,
       route: map.route,
       halfSize:
-        mapName === 'takedown'
+        mapName === 'takedown' || mapName === 'circuit-race'
           ? 200
           : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
-      followPlayer: mapName === 'takedown',
-      headingUp: mapName === 'takedown',
-      ...(mapName === 'takedown'
+      followPlayer: mapName === 'takedown' || mapName === 'circuit-race',
+      headingUp: mapName === 'takedown' || mapName === 'circuit-race',
+      ...(mapName === 'takedown' || mapName === 'circuit-race'
         ? { readRivals: () => traffic?.states ?? [] }
         : {}),
     },
@@ -1275,6 +1340,12 @@ async function boot(): Promise<void> {
       };
     });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
+  if (race && traffic)
+    game.getRace = () => ({
+      state: race.state,
+      order: [...race.order],
+      cars: traffic.debugRivals().cars.filter((car) => car.raceEntrant),
+    });
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
     boostSections: vehicle.telemetry.boostSections,
