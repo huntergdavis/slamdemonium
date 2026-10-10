@@ -11,6 +11,7 @@ export interface GamepadState extends GameInput {
   /** Monotonic command counts, consumed by the mapper's shared step/UI history. */
   presses: ActionCounts;
   modifier: boolean;
+  slowMotionHeld: boolean;
   coarse: boolean;
   resetPresses: number;
   searchPresses: number;
@@ -83,6 +84,7 @@ export class GamepadInput {
     boost: false,
     presses: createActionCounts(),
     modifier: false,
+    slowMotionHeld: false,
     coarse: false,
     resetPresses: 0,
     searchPresses: 0,
@@ -142,6 +144,7 @@ export class GamepadInput {
       state.lastActivityTime = -Infinity;
       state.throttle = state.brake = state.steer = 0;
       state.handbrake = state.boost = state.modifier = state.coarse = false;
+      state.slowMotionHeld = false;
       state.menuX = state.menuY = 0;
       this.previousButtons = this.blockedButtons = 0;
       this.previousAxisX = this.previousAxisY = 0;
@@ -175,6 +178,7 @@ export class GamepadInput {
     state.index = pad.index;
     state.actuator = pad.vibrationActuator ?? null;
     state.modifier = modifier;
+    state.slowMotionHeld = !uiCaptured && modifier && (held & (1 << 13)) !== 0;
     state.coarse = !modifier && (held & (1 << 5)) !== 0;
     state.throttle = trigger(pad.buttons[7]);
     state.brake = trigger(pad.buttons[6]);
