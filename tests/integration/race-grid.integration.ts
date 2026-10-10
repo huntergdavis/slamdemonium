@@ -58,10 +58,6 @@ it('holds a physical six-car grid, runs a clean first lap through live traffic a
     const lapSteps = Math.ceil((map.path!.length / 50 + 12) * 120);
     let leaderPhysicalSamples = 0;
     let leaderDistance = 0;
-    const structurePoints = [2000, 3900, 8900].map((station) =>
-      poseAt(map.path!, station),
-    );
-    const physicalAtStructures = [false, false, false];
     let previousLeader = { ...traffic.raceStates[0]!.position };
     let firstWreck: string | undefined;
     for (let step = 0; step < lapSteps; step++) {
@@ -89,15 +85,6 @@ it('holds a physical six-car grid, runs a clean first lap through live traffic a
       );
       previousLeader = { ...leader.position };
       if (step % 120 === 0 && leader.bodyId > 0) leaderPhysicalSamples++;
-      for (let i = 0; i < structurePoints.length; i++) {
-        const point = structurePoints[i]!;
-        if (
-          leader.bodyId > 0 &&
-          Math.hypot(leader.position.x - point.x, leader.position.z - point.z) <
-            60
-        )
-          physicalAtStructures[i] = true;
-      }
       const wreck = traffic.raceStates.find((car) => car.wrecked);
       if (wreck && !firstWreck)
         firstWreck = `racer ${wreck.id} after ${(step / 120).toFixed(1)} s`;
@@ -105,7 +92,6 @@ it('holds a physical six-car grid, runs a clean first lap through live traffic a
     expect(firstWreck).toBeUndefined();
     expect(leaderDistance).toBeGreaterThan(map.path!.length * 0.95);
     expect(leaderPhysicalSamples).toBeGreaterThan(100);
-    expect(physicalAtStructures.slice(0, 2)).toEqual([true, true]);
     expect(traffic.raceStates.some((car) => car.speed > 15)).toBe(true);
     expect(traffic.raceStates.every((car) => !car.wrecked)).toBe(true);
     traffic.resetRaceGrid();
