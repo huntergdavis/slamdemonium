@@ -114,7 +114,14 @@ function makeMap(
   label: string,
   path: RoadPath,
 ): MapDefinition {
-  const spawn = poseAt(path, path.length - 48);
+  const start = poseAt(path, path.length - 48);
+  // Keep a parked driver clear of the live 46 m/s lanes at the lap seam.
+  // The 10 m offset is on the paved shoulder, inside the 32 m start gate.
+  const spawn = {
+    x: start.x - Math.cos(start.heading) * 10,
+    z: start.z + Math.sin(start.heading) * 10,
+    heading: start.heading,
+  };
   return {
     name,
     label,

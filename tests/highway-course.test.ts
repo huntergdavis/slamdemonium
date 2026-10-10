@@ -51,7 +51,12 @@ describe('highway bypass and interchange', () => {
   });
 
   it('starts the timer from the actual highway spawn across the full road', () => {
-    for (const map of [HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP])
+    for (const map of [HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP]) {
+      const center = poseAt(map.path!, map.path!.length - 48);
+      expect(
+        Math.hypot(map.spawn!.x - center.x, map.spawn!.z - center.z),
+      ).toBeCloseTo(10, 5);
+      expect(Math.abs(map.spawn!.x - center.x)).toBeGreaterThan(9);
       for (const offset of [-12, 12]) {
         const run = createTimedRun(map.runs![0]);
         for (
@@ -65,6 +70,7 @@ describe('highway bypass and interchange', () => {
         expect(run.state.phase).toBe('running');
         expect(run.state.gatesTaken).toBe(1);
       }
+    }
   });
 
   it('authors slower heavy vehicles and limits contraflow to the merge', () => {

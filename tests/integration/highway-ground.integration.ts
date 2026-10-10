@@ -57,6 +57,65 @@ it.each([HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP])(
   60_000,
 );
 
+it.each([HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP])(
+  'keeps a physical player parked safely at the %s start',
+  async (map) => {
+    const world = await createPhysicsWorld({ wasmPath });
+    world.setGravity(20);
+    world.createStaticBox(
+      { x: 0, y: -0.5, z: 0 },
+      { x: 3200, y: 0.5, z: 3200 },
+    );
+    const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+    const traffic = createTraffic(world, bodies, map.path!, map.traffic!, {
+      density: 0.85,
+      minGap: 12,
+      maxGap: 36,
+    });
+    const start = map.spawn!;
+    const player = world.createDynamicBox({
+      center: { x: start.x, y: 0.7, z: start.z },
+      halfExtents: { x: 1.08, y: 0.65, z: 2.4 },
+      mass: 1300,
+      comOffset: { x: 0, y: 0, z: 0 },
+      inertiaScale: { x: 1, y: 1, z: 1 },
+      friction: 0.7,
+      restitution: 0,
+      ccd: true,
+      maxAngularVelocity: 12,
+      angularDamping: 0,
+    });
+    world.onContact((a, b, _impulse, _point, normal, velocities) => {
+      traffic.onWorldContact(a, b, normal, velocities);
+    });
+    const position = { x: 0, y: 0, z: 0 };
+    const rotation = { x: 0, y: 0, z: 0, w: 1 };
+    try {
+      const wrecked = new Set<number>();
+      let furthest = 0;
+      for (let step = 0; step < 10 * 120; step++) {
+        world.getTransform(player, position, rotation);
+        traffic.preStep(1 / 120, position);
+        world.step(1 / 120);
+        traffic.postStep();
+        world.getTransform(player, position, rotation);
+        furthest = Math.max(
+          furthest,
+          Math.hypot(position.x - start.x, position.z - start.z),
+        );
+        for (const car of traffic.states) if (car.wrecked) wrecked.add(car.id);
+      }
+      expect(furthest, 'parked player displacement').toBeLessThan(1);
+      expect([...wrecked], 'ambient wrecks at parked start').toEqual([]);
+    } finally {
+      traffic.dispose();
+      bodies.dispose();
+      world.dispose();
+    }
+  },
+  60_000,
+);
+
 it('brings intact physical contraflow to the interchange during a natural approach', async () => {
   const map = HIGHWAY_INTERCHANGE_MAP;
   const world = await createPhysicsWorld({ wasmPath });
