@@ -4,6 +4,7 @@ import type { PerformanceBatch } from './performance';
 import type { CameraPreset } from '../render/cameraRig';
 import type { ScriptController } from '../input/script';
 import type { HudMode } from '../ui/hud';
+import type { RoadRageState } from './roadRage';
 
 export interface GameInput {
   throttle: number;
@@ -48,6 +49,10 @@ export interface GameTestApi {
   getRivalControl?: () => Readonly<Record<string, unknown>> | null;
   /** Read-only takedown state for hosted driving checks. */
   getTakedowns?: () => { count: number; boostSections: number };
+  /** Read-only timed takedown event state for built-browser guards. */
+  getRoadRage?: () => Readonly<RoadRageState>;
+  /** Read-only Crash Junction score and unique-award ledger. */
+  getCrashMode?: () => Readonly<Record<string, unknown>>;
   /** Read-only player wreck budget for hosted takedown-road inspection. */
   getPlayerDamage?: () => {
     amount: number;
