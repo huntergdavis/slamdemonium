@@ -38,8 +38,8 @@ const PLAN: readonly RoadSegment[] = [
   { kind: 'arc', radius: CORNER, angle: ARC },
 ];
 
-/** Low corner blocks define the two cross-road openings at driving speed;
- * taller blocks further away give each straight a different skyline. */
+/** Set-back corner blocks expose the cross-road opening before the player
+ * reaches its approach marks; taller blocks give each straight a skyline. */
 export const CITY_BUILDINGS: readonly CityBuildingSpec[] = [
   ...[-430, -345, -170, -90, 0, 90, 170, 345, 430].flatMap((x, column) =>
     [-340, -250, -160, -80, 80, 160, 250, 340].map((z, row) => {
@@ -63,11 +63,11 @@ export const CITY_BUILDINGS: readonly CityBuildingSpec[] = [
         const height = index === 1 ? 34 : 22;
         return {
           center: {
-            x: junction.x + xSide * 26,
+            x: junction.x + xSide * 40,
             y: height / 2,
             z: zSide * 38,
           },
-          size: { x: 18, y: height, z: 24 },
+          size: { x: 12, y: height, z: 24 },
           color: index === 1 ? 0x81908d : 0x59666c,
         };
       }),
