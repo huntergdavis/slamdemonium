@@ -70,6 +70,7 @@ import {
 import { createRunwayVisual } from './world/runways';
 import { createRoadDeckVisual } from './world/roadDeck';
 import { createCityBuildingsVisual } from './world/cityBuildings';
+import { createCoastVisual } from './world/coastVisual';
 import { createTimedRun } from './core/timedRun';
 import { createRaceEvent, type RaceCar } from './core/raceEvent';
 import { awardFaceOffWin, createFaceOffReward } from './core/faceOffReward';
@@ -156,6 +157,8 @@ async function boot(): Promise<void> {
     ...(map.spawn ? { spawn: map.spawn } : {}),
   });
   resources.push(track);
+  if (mapName === 'coast-shoreline' || mapName === 'coast-headland')
+    resources.push(createCoastVisual(view.scene));
   view.renderer.shadowMap.enabled = true;
   const trackBodies = installTrackColliders(
     physics,

@@ -12,6 +12,7 @@ import {
 } from '../scriptVehicleHarness';
 
 const DT = 1 / 120;
+const heldThrottle = { ...neutralScriptInput, throttle: 1 };
 
 for (const kind of ['rear', 'side'] as const) {
   for (const requestedClosing of [20, 40, 60]) {
@@ -109,7 +110,11 @@ for (const kind of ['rear', 'side'] as const) {
           hitZ = car.position.z;
         });
         for (let step = 0; step < 4 * 120; step++) {
-          vehicle.preStep(DT, neutralScriptInput, 'gamepad');
+          vehicle.preStep(
+            DT,
+            kind === 'rear' && struck ? heldThrottle : neutralScriptInput,
+            'gamepad',
+          );
           if (struck && !swapMeasured)
             world.getLinearVelocity(car.bodyId, beforeSwapVelocity);
           traffic.preStep(DT, vehicle.telemetry.position);
@@ -190,6 +195,9 @@ for (const kind of ['rear', 'side'] as const) {
         // A hop is part of the crash; a sustained flight or rollover is not.
         expect(trafficAirborneSteps * DT).toBeLessThan(1.0);
         if (kind === 'rear') {
+          // A square rear hit must not carry the wreck on the player's nose
+          // through a long straight while throttle stays held.
+          expect(lateralGapAtOne).toBeGreaterThan(3.2);
           const travelLimit = { 20: 26, 40: 36, 60: 46 }[requestedClosing]!;
           expect(trafficTravelAtOne).toBeLessThan(travelLimit);
           expect(playerSpeedAtOne).toBeGreaterThan(preImpactPlayerSpeed * 0.4);

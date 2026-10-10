@@ -144,6 +144,8 @@ describe('map selection', () => {
       'face-off',
       'city',
       'city-reverse',
+      'coast-headland',
+      'coast-shoreline',
       'lab',
       'proving-ground',
       'road-rage',
