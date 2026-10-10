@@ -20,6 +20,7 @@ export class EngineSynth {
   private pipeFeedback = -1;
   private unevenness = -1;
   private firingRateScale = -1;
+  private wind = -1;
   private disposed = false;
 
   constructor(
@@ -78,6 +79,7 @@ export class EngineSynth {
     pipeFeedback: number,
     unevenness: number,
     firingRateScale: number,
+    wind: number,
   ): void {
     if (!this.node || !this.gain) return;
     const now = this.ctx.currentTime;
@@ -126,6 +128,10 @@ export class EngineSynth {
       );
       this.firingRateScale = firingRateScale;
     }
+    if (wind !== this.wind) {
+      this.param('wind').setTargetAtTime(wind, now, 0.08);
+      this.wind = wind;
+    }
   }
 
   /** Native audio-clock fade to silence, independent of the next RAF. */
@@ -143,6 +149,12 @@ export class EngineSynth {
     this.gain.gain.cancelScheduledValues(this.ctx.currentTime);
     this.gain.gain.value = 0;
     this.level = 0;
+    if (this.node) {
+      const wind = this.param('wind');
+      wind.cancelScheduledValues(this.ctx.currentTime);
+      wind.setValueAtTime(0, this.ctx.currentTime);
+      this.wind = 0;
+    }
   }
   dispose(): void {
     this.disposed = true;
@@ -159,7 +171,8 @@ export class EngineSynth {
       | 'pipeSeconds'
       | 'pipeFeedback'
       | 'unevenness'
-      | 'firingRateScale',
+      | 'firingRateScale'
+      | 'wind',
   ): AudioParam {
     const param = this.node!.parameters.get(name);
     if (!param) throw new Error('Engine parameter missing: ' + name);

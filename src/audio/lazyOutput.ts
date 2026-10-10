@@ -69,6 +69,9 @@ export class LazyAudioOutput implements AudioOutput {
   playBoostAttack(gain: number, rate: number): boolean {
     return this.output?.playBoostAttack(gain, rate) ?? false;
   }
+  playNearMiss(gain: number, rate: number, pan: number): boolean {
+    return this.output?.playNearMiss(gain, rate, pan) ?? false;
+  }
   playCrash(cue: Readonly<CrashCue>): boolean {
     return this.output?.playCrash(cue) ?? false;
   }

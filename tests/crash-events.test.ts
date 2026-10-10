@@ -15,6 +15,7 @@ function rig() {
     apply: vi.fn(),
     playImpact: vi.fn(() => true),
     playBoostAttack: vi.fn(() => true),
+    playNearMiss: vi.fn(() => true),
     playCrash: vi.fn<(cue: Readonly<CrashCue>) => boolean>(() => true),
     setGrind:
       vi.fn<(slot: 0 | 1, gain: number, rate: number, pan: number) => void>(),

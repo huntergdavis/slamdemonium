@@ -693,12 +693,18 @@ async function boot(): Promise<void> {
           trafficTuning.wrongSideReach = tuning.get('wrongSideReach');
           trafficTuning.wrongSideRate = tuning.get('wrongSideRate');
           trafficTuning.slamBoost = tuning.get('slamBoost');
+          const nearMissesBefore = trafficEvents.state.nearMisses;
           const grant = trafficEvents.update(
             dt,
             playerView,
             traffic?.states ?? trafficStates,
             trafficTuning,
           );
+          if (trafficEvents.state.nearMisses !== nearMissesBefore)
+            audio.onNearMiss(
+              trafficEvents.state.nearMissSide,
+              trafficEvents.state.nearMissClosingSpeed,
+            );
           if (grant > 0) vehicle.applyPad(0, grant);
         }
         crashScore.update(dt);

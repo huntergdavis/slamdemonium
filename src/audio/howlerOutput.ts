@@ -5,6 +5,7 @@ import boostAttack from '../../assets/audio/boost-attack.ogg?url&no-inline';
 import impactAsphalt from '../../assets/audio/impact-asphalt.ogg?url&no-inline';
 import impactKerb from '../../assets/audio/impact-kerb.ogg?url&no-inline';
 import impactConcrete from '../../assets/audio/impact-concrete.ogg?url&no-inline';
+import nearMiss from '../../assets/audio/near-miss.ogg?url&no-inline';
 import type { EngineProfile } from '../vehicle/engineProfile';
 import { EngineSynth } from './engineSynth';
 import { CRASH_URLS, type CrashClip } from './crashUrls';
@@ -46,7 +47,7 @@ const LAZY_CRASH_CLIPS = [
   'hard-alt',
   'wall-tail',
 ] as const satisfies readonly CrashClip[];
-const LOADABLE = 9 + CORE_CRASH_CLIPS.length;
+const LOADABLE = 10 + CORE_CRASH_CLIPS.length;
 const LOOP_VOICES = CONTINUOUS_VOICES - 1;
 
 /** Browser-only output. Construction/decoding and short-effect play() happen
@@ -64,6 +65,7 @@ export class HowlerOutput implements AudioOutput {
   private readonly loops: Howl[] = [];
   private synth: EngineSynth | null = null;
   private readonly effects: Howl[] = [];
+  private readonly nearMissSound: Howl;
   private readonly crashSounds: Partial<Record<CrashClip, Howl>> = {};
   private readonly lazyReady: Partial<Record<CrashClip, boolean>> = {};
   private readonly grindIds = new Float64Array(2).fill(-1);
@@ -93,6 +95,7 @@ export class HowlerOutput implements AudioOutput {
       this.loops.push(this.sound(url, true));
     for (const url of [impactAsphalt, impactKerb, impactConcrete, boostAttack])
       this.effects.push(this.sound(url, false));
+    this.nearMissSound = this.sound(nearMiss, false);
     for (const name of CORE_CRASH_CLIPS)
       this.crashSounds[name] = this.sound(
         [...CRASH_URLS[name]],
@@ -183,6 +186,7 @@ export class HowlerOutput implements AudioOutput {
       clamp(mix.exhaustFeedback),
       clamp(mix.firingUnevenness),
       Math.max(0.5, Math.min(2, mix.firingRateScale)),
+      clamp(mix.wind),
     );
     for (let index = 0; index < LOOP_VOICES; index++) {
       const howl = this.loops[index]!;
@@ -223,6 +227,17 @@ export class HowlerOutput implements AudioOutput {
   }
   playBoostAttack(gain: number, rate: number): boolean {
     return this.playTransient(this.effects[3]!, gain, rate);
+  }
+
+  playNearMiss(gain: number, rate: number, pan: number): boolean {
+    this.countVoices();
+    // Leave two slots for a simultaneous metal attack and body. The pass-by
+    // is decoration; a real hit must always win the voice budget.
+    let freeSlots = 0;
+    for (const sound of this.slotSounds) if (sound === null) freeSlots++;
+    if (freeSlots <= 2 || this.state.activeVoices >= MAX_AUDIO_VOICES - 2)
+      return false;
+    return this.playTransient(this.nearMissSound, gain, rate, pan);
   }
 
   playCrash(cue: Readonly<CrashCue>): boolean {
@@ -360,6 +375,7 @@ export class HowlerOutput implements AudioOutput {
     this.synth = null;
     for (const sound of this.loops) sound.unload();
     for (const sound of this.effects) sound.unload();
+    this.nearMissSound.unload();
     for (const sound of Object.values(this.crashSounds)) sound?.unload();
     if (this.limiter) {
       try {
