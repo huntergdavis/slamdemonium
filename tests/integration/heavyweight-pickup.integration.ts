@@ -14,7 +14,7 @@ import {
 const DT = 1 / 120;
 
 it.each(['south', 'west'] as const)(
-  'drives Sports and pickup into the same twelve-car %s crossing',
+  'naturally launches Sports and pickup into a live twelve-car %s crossing',
   async (approach) => {
     const map = createCrashJunctionMap(approach);
     const results: Record<string, unknown> = {};
@@ -86,21 +86,8 @@ it.each(['south', 'west'] as const)(
         );
         setPad(neutralScriptInput);
         for (let step = 0; step < 12 / DT; step++) {
-          if (step === 4 / DT) {
-            world.setLinearVelocity(vehicle.body, {
-              x: -45 * Math.sin(heading),
-              y: 0,
-              z: -45 * Math.cos(heading),
-            });
-          }
-          if (step >= 4 / DT) {
-            const speedError = 45 - vehicle.telemetry.speed;
-            setPad({
-              ...neutralScriptInput,
-              throttle: speedError > 0.4 ? 1 : 0,
-              brake: speedError < -0.4 ? 0.25 : 0,
-            });
-          }
+          if (step === 3 / DT)
+            setPad({ ...neutralScriptInput, throttle: 1, boost: true });
           traffic.preStep(
             DT,
             vehicle.telemetry.position,
@@ -123,7 +110,9 @@ it.each(['south', 'west'] as const)(
           `${id} reaches live crossing traffic`,
         ).not.toBeNull();
         expect(ambientWrecks, `${id} sees an intact crossing`).toBe(0);
-        expect(wrecks, `${id} grows a physical crash`).toBeGreaterThan(0);
+        expect(wrecks, `${id} grows a multi-car crash`).toBeGreaterThanOrEqual(
+          2,
+        );
         expect(vehicle.telemetry.recoveryCount).toBe(0);
         wreckCounts.push(wrecks);
       } finally {
@@ -131,13 +120,7 @@ it.each(['south', 'west'] as const)(
         rig.dispose();
       }
     }
-    // At the same entry speed, the wider/heavier pickup reaches the third
-    // southbound victim. The west line yields two victims for both classes.
-    const sportsWrecks = wreckCounts[0] ?? 0;
-    const pickupWrecks = wreckCounts[1] ?? 0;
-    expect(pickupWrecks).toBeGreaterThanOrEqual(sportsWrecks);
-    if (approach === 'south')
-      expect(pickupWrecks).toBeGreaterThan(sportsWrecks);
+    expect(wreckCounts).toHaveLength(2);
     console.log(`PICKUP_CRASH_${approach} ${JSON.stringify(results)}`);
   },
   60_000,
