@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FixedStepLoop } from '../src/core/loop';
-import { PerformanceRecorder } from '../src/core/performance';
+import { measurePace, PerformanceRecorder } from '../src/core/performance';
 import { parseConfig } from '../scripts/perf/config';
 import { assess, growthPercent, summarize } from '../scripts/perf/metrics';
 import type { MemorySample } from '../scripts/perf/metrics';
@@ -8,6 +8,32 @@ import type { MemorySample } from '../scripts/perf/metrics';
 afterEach(() => vi.restoreAllMocks());
 
 describe('performance capture', () => {
+  it('reports simulation advance against elapsed foreground wall time', () => {
+    const start = {
+      wallMs: 1_000,
+      totalSteps: 240,
+      droppedSeconds: 0.1,
+      physicsHz: 120,
+      timeScale: 1,
+    };
+    expect(
+      measurePace(start, {
+        ...start,
+        wallMs: 61_000,
+        totalSteps: 240 + 120 * 59.5,
+        droppedSeconds: 0.6,
+      }),
+    ).toEqual({
+      wallSeconds: 60,
+      simulationSeconds: 59.5,
+      droppedSeconds: 0.5,
+      paceRatio: 59.5 / 60,
+      timeScale: 1,
+    });
+    expect(() =>
+      measurePace(start, { ...start, wallMs: 61_000, timeScale: 0.4 }),
+    ).toThrow(RangeError);
+  });
   it('stops exactly at EOF inside a catch-up frame or oversized stepMany request', () => {
     for (const mode of ['frame', 'manual']) {
       let completed = 0;

@@ -1,6 +1,6 @@
 import type { PhysicsSpikeResult } from '../physics/spike';
 import type { PhysicsMemory, V3 } from '../physics/adapter';
-import type { PerformanceBatch } from './performance';
+import type { PaceReport, PerformanceBatch } from './performance';
 import type { CameraPreset } from '../render/cameraRig';
 import type { ScriptController } from '../input/script';
 import type { HudMode } from '../ui/hud';
@@ -34,6 +34,12 @@ export interface GameTestApi {
   getTelemetry(): Readonly<Record<string, unknown>>;
   /** Traffic cars in play, for headless instruments; absent without traffic. */
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
+  /** Sampled centreline for a browser route gate; never mutates the map. */
+  getRoadPath?: () => {
+    points: readonly (readonly [number, number])[];
+    step: number;
+    closed: boolean;
+  } | null;
   /** Read-only rival controller decisions for hosted diagnosis. */
   getRivalControl?: () => Readonly<Record<string, unknown>> | null;
   /** Read-only takedown state for hosted driving checks. */
@@ -59,6 +65,7 @@ export interface GameTestApi {
     setStepDriver(driver: ((step: number) => void) | undefined): void;
     progress(): { completedSteps: number; totalSteps: number; done: boolean };
     drain(): PerformanceBatch;
+    pace(): PaceReport | null;
     getMemory(): PhysicsMemory;
   };
   /** WP11 contract; JSON validation and playback belong to src/input. */

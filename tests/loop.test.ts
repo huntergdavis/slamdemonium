@@ -85,17 +85,32 @@ describe('fixed physics timestep', () => {
     ]);
   });
 
-  it('clamps huge gaps, runs at most eight steps, and discards excess debt', () => {
+  it('clamps huge gaps, runs at most eight steps, and reports all lost wall time', () => {
     const h = harness({ physicsHz: 120, timeScale: 2 });
     h.loop.frame(0);
     h.loop.frame(60_000);
     expect(h.steps).toHaveLength(8);
-    expect(h.loop.droppedSeconds).toBeCloseTo(16 / 120, 10);
+    expect(h.loop.droppedSeconds).toBeCloseTo(120 - 8 / 120, 10);
     expect(h.loop.alpha).toBeGreaterThanOrEqual(0);
     expect(h.loop.alpha).toBeLessThan(1);
     h.loop.frame(60_000 + 1000 / 60);
     expect(h.loop.stepsThisFrame).toBe(4);
     expect(h.steps).toHaveLength(12);
+  });
+
+  it('holds real-time simulation at eight foreground frames per second', () => {
+    const h = harness({
+      physicsHz: 120,
+      timeScale: 1,
+      maxStepsPerFrame: 32,
+      maxFrameDeltaSeconds: 0.25,
+    });
+    for (let frame = 0; frame <= 8 * 60; frame++)
+      h.loop.frame((frame * 1000) / 8);
+    expect(h.loop.totalSteps).toBe(120 * 60);
+    expect(h.loop.simulationSeconds).toBeCloseTo(60, 8);
+    expect(h.loop.droppedSeconds).toBe(0);
+    expect(h.loop.stepsThisFrame).toBe(15);
   });
 
   it('pauses a hidden tab and resumes without catching up', () => {
@@ -153,6 +168,9 @@ describe('fixed physics timestep', () => {
     );
     expect(() =>
       harness({ physicsHz: 120, timeScale: 1, maxStepsPerFrame: 0 }),
+    ).toThrow(RangeError);
+    expect(() =>
+      harness({ physicsHz: 120, timeScale: 1, maxFrameDeltaSeconds: 0 }),
     ).toThrow(RangeError);
   });
 });
