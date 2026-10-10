@@ -270,6 +270,16 @@ export async function mountHeroCarModel(
       centerZ - length * 0.505,
       dark,
     );
+    if (classId === 'suv')
+      piece(
+        width * 0.76,
+        height * 0.3,
+        0.025,
+        0,
+        centerY + height * 0.13,
+        centerZ + length * 0.505,
+        dark,
+      );
     const cab = mergeGeometries(pieces, false);
     for (const shape of pieces) shape.dispose();
     if (!cab) throw new Error('Heavy cab geometry unavailable');

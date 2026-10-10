@@ -6,6 +6,7 @@ export const CRASH_PICKUP_BEST_KEY = `${CRASH_BEST_KEY}.pickup`;
 export const CRASH_MEDALS = [2000, 4000, 8000] as const;
 export const CRASH_CHAIN_SECONDS = 3;
 export const CRASH_SETTLE_SECONDS = 2;
+export const CRASH_ACTIVE_QUIET_SECONDS = 5;
 export const CRASH_WALL_CAP_SECONDS = 15;
 export const CRASH_COUNTDOWN_SECONDS = 3;
 export type CrashPhase = 'countdown' | 'running' | 'settling' | 'finished';
@@ -99,6 +100,10 @@ export class CrashMode {
     if (this.state.phase === 'settling' && !impactActive) {
       this.quietSeconds += elapsed;
       if (this.quietSeconds >= CRASH_SETTLE_SECONDS) this.finish();
+    }
+    if (this.state.phase === 'running' && this.state.wrecks > 0) {
+      this.quietSeconds += elapsed;
+      if (this.quietSeconds >= CRASH_ACTIVE_QUIET_SECONDS) this.finish();
     }
     for (const [id, until] of this.influencedUntil)
       if (until < this.seconds) this.influencedUntil.delete(id);

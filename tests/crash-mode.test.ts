@@ -112,6 +112,26 @@ describe('Crash Junction', () => {
     expect(game.state.best).toBe(1000);
   });
 
+  it('finishes a surviving heavy-car run after its credited chain goes quiet', () => {
+    const game = new CrashMode();
+    game.step(3);
+    game.noteWreck({ id: 99, modelKind: 'sedan' });
+    game.step(10);
+    expect(game.state.phase).toBe('running');
+    game.notePlayerContact(1);
+    game.noteCarContact(1, 2);
+    game.noteWreck({ id: 1, modelKind: 'sedan' });
+    game.step(2);
+    expect(game.state.phase).toBe('running');
+    game.noteWreck({ id: 2, modelKind: 'van' });
+    game.step(4.99);
+    expect(game.state.phase).toBe('running');
+    game.step(0.02);
+    expect(game.state.phase).toBe('finished');
+    expect(game.state.damage).toBe(1250);
+    expect(game.state.medal).toBe('none');
+  });
+
   it('scores pickup vehicle damage separately without multiplying prop awards', () => {
     const values = new Map<string, string>();
     const storage = {
