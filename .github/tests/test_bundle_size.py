@@ -38,6 +38,8 @@ class BundleTests(unittest.TestCase):
         self.measurement = self.measure()
         self.baseline = {'schemaVersion': 1, 'reason': 'Reviewed fixture',
                          'allowance': copy.deepcopy(POLICY), 'measurement': copy.deepcopy(self.measurement)}
+        self.baseline['allowance'].pop('reviewedAssetGrowth', None)
+        self.baseline['allowance'].pop('reviewedTotalGrowth', None)
 
     def write(self, file, data):
         path = self.dist / file
@@ -133,6 +135,26 @@ class BundleTests(unittest.TestCase):
         asset_failures = [f for f in failures if f['file'] == 'car.glb']
         self.assertEqual(len(asset_failures), 2)
         self.assertTrue(all(f['excess'] == 1 for f in asset_failures))
+
+    def test_reviewed_growth_is_scoped_to_named_assets_and_total(self):
+        self.baseline['allowance']['reviewedAssetGrowth'] = {
+            'file:car.glb': {'rawBytes': 90000, 'gzipBytes': 40000},
+        }
+        self.baseline['allowance']['reviewedTotalGrowth'] = {
+            'rawBytes': 90000, 'gzipBytes': 40000,
+        }
+        measured = copy.deepcopy(self.measurement)
+        measured['assets']['file:car.glb'] = {
+            'file': 'car.glb', 'sha256': '1' * 64,
+            'rawBytes': 90000, 'gzipBytes': 40000,
+        }
+        self.assertEqual(bundle.evaluate(self.totals(measured), self.baseline), [])
+        measured['assets']['file:other.glb'] = {
+            'file': 'other.glb', 'sha256': '2' * 64,
+            'rawBytes': 90000, 'gzipBytes': 40000,
+        }
+        failures = bundle.evaluate(self.totals(measured), self.baseline)
+        self.assertTrue(any(f['file'] == 'other.glb' for f in failures))
 
     def test_minimum_headroom_applies_to_tiny_files(self):
         for metric in bundle.METRICS:
