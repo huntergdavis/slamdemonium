@@ -68,6 +68,7 @@ export interface HudOptions extends RecorderOptions {
   readRace?: () => Readonly<RaceState>;
   raceKind?: 'circuit' | 'face-off';
   readCrashMode?: () => Readonly<CrashMode['state']>;
+  readCrashReward?: () => string;
   /** Traffic events: the one short label beside the boost bar. */
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
@@ -973,7 +974,8 @@ export class Hud {
     this.crashCard.dataset.phase = state.phase;
     this.crashResult.hidden = state.phase !== 'finished';
     if (state.phase === 'finished') {
-      const result = `${state.medal.toUpperCase()} · DAMAGE ${state.damage.toLocaleString()} · BEST ${state.best.toLocaleString()} · ENTER TO RETRY`;
+      const reward = this.options.readCrashReward?.();
+      const result = `${state.medal.toUpperCase()} · DAMAGE ${state.damage.toLocaleString()} · BEST ${state.best.toLocaleString()}${reward ? ` · ${reward}` : ''} · ENTER TO RETRY`;
       if (this.crashResult.textContent !== result)
         this.crashResult.textContent = result;
     }

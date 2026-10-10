@@ -23,6 +23,8 @@ export interface PauseMenuOptions {
       readonly name: string;
       readonly label: string;
       readonly trait: string;
+      readonly unlocked?: () => boolean;
+      readonly requirement?: string | undefined;
     }[];
     onSelect(name: string): void;
   };
@@ -79,6 +81,7 @@ export class PauseMenu {
   private readonly resume: HTMLButtonElement;
   private readonly muteAudio: HTMLButtonElement;
   private readonly message: Text;
+  private readonly garageRefreshers: (() => void)[] = [];
   private selected: HTMLElement | null = null;
   private opened = false;
   private externalOptionsNavigation = false;
@@ -186,12 +189,19 @@ export class PauseMenu {
       this.garage.append(node(doc, 'h2', 'sl-heading', 'Garage'));
       for (const car of deps.garage.entries) {
         const isCurrent = car.name === deps.garage.current;
-        const button = this.button(
-          `${car.label} · ${car.trait}${isCurrent ? ' · current' : ''}`,
-          () => deps.garage!.onSelect(car.name),
-        );
+        const button = this.button('', () => deps.garage!.onSelect(car.name));
         button.dataset.garageClass = car.name;
         if (isCurrent) button.setAttribute('aria-current', 'true');
+        const refresh = () => {
+          const locked = car.unlocked?.() === false;
+          button.disabled = locked;
+          button.dataset.locked = String(locked);
+          button.textContent = locked
+            ? `${car.label} · LOCKED · ${car.requirement ?? 'Earn a reward'}`
+            : `${car.label} · ${car.trait}${isCurrent ? ' · current' : ''}`;
+        };
+        this.garageRefreshers.push(refresh);
+        refresh();
         this.garage.append(button);
       }
       this.garage.append(this.button('Back', () => this.showView('menu')));
@@ -457,6 +467,8 @@ export class PauseMenu {
   private showView(
     view: 'menu' | 'controls' | 'options' | 'maps' | 'garage',
   ): void {
+    if (view === 'garage')
+      for (const refresh of this.garageRefreshers) refresh();
     if (this.view === 'options' && view !== 'options') {
       this.deps.options.setOpen(false);
       this.restoreOptions();

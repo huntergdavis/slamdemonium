@@ -21,6 +21,7 @@ import { RoadRage } from './core/roadRage';
 import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
 import { CRASH_PICKUP_BEST_KEY, CrashMode } from './core/crashMode';
+import { GarageRewards, garageRewardRequirement } from './core/garageRewards';
 import { ImpactTime } from './core/impactTime';
 import {
   GARAGE_CLASSES,
@@ -158,8 +159,9 @@ async function boot(): Promise<void> {
   // An explicit URL switch is a choice too: the plain URL keeps it next time.
   if (new URLSearchParams(location.search).get('map') === mapName)
     storeMapName(mapStorage, mapName);
+  const garageRewards = new GarageRewards(mapStorage);
   const requestedGarageClassId = readGarageClass(mapStorage, location.search);
-  const garageClassId = garageClassAllowedOnMap(requestedGarageClassId, mapName)
+  const garageClassId = garageRewards.canSelect(requestedGarageClassId, mapName)
     ? requestedGarageClassId
     : 'sports';
   const garageClass = GARAGE_CLASSES[garageClassId];
@@ -752,6 +754,8 @@ async function boot(): Promise<void> {
           impactTime?.active ?? false,
           vehicle.telemetry.speed,
         );
+        if (crashMode?.state.phase === 'finished')
+          garageRewards.awardCrashMedal(crashMode.state.medal);
         {
           const entered = boostPads.update(
             vehicle.telemetry.position.x,
@@ -1006,6 +1010,7 @@ async function boot(): Promise<void> {
       traffic?.resetForEvent();
       roadRage?.reset();
       crashMode?.reset();
+      if (crashMode) garageRewards.beginCrashRun();
     }
     crashScore.reset();
     timedRun.reset();
@@ -1179,11 +1184,13 @@ async function boot(): Promise<void> {
         name: id,
         label: GARAGE_CLASSES[id].label,
         trait: GARAGE_CLASSES[id].trait,
+        unlocked: () => garageRewards.isUnlocked(id),
+        requirement: garageRewardRequirement(id),
       })),
       onSelect(name) {
         if (
           !isGarageClassId(name) ||
-          !garageClassAllowedOnMap(name, mapName) ||
+          !garageRewards.canSelect(name, mapName) ||
           name === garageClassId
         ) {
           pauseMenu.setOpen(false);
@@ -1229,7 +1236,13 @@ async function boot(): Promise<void> {
           readRoadRageBest: () => roadRageBest?.value ?? null,
         }
       : {}),
-    ...(crashMode ? { readCrashMode: () => crashMode.state } : {}),
+    ...(crashMode
+      ? {
+          readCrashMode: () => crashMode.state,
+          readCrashReward: () =>
+            garageRewards.resultText(crashMode.state.medal),
+        }
+      : {}),
     ...(playerDamage
       ? {
           readPlayerDamage: () => ({
