@@ -17,5 +17,5 @@ export const HERO_SEDAN = {
   engineProfile: SPORTS_SEDAN_ENGINE,
 } as const;
 
-export type HeroPaint = 'orange' | 'blue' | 'green';
+export type HeroPaint = 'orange' | 'blue' | 'green' | 'vesper-gold';
 export const HERO_PAINTS: readonly HeroPaint[] = ['orange', 'blue', 'green'];

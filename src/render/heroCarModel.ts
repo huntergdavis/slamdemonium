@@ -63,7 +63,12 @@ function paintTexture(
   if (!context) throw new Error('Hero paint canvas unavailable');
   context.drawImage(image, 0, 0);
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-  const target = paint === 'blue' ? [65, 148, 235] : [87, 192, 126];
+  const target =
+    paint === 'blue'
+      ? [65, 148, 235]
+      : paint === 'green'
+        ? [87, 192, 126]
+        : [232, 199, 65];
   for (let i = 0; i < pixels.data.length; i += 4) {
     const red = pixels.data[i]!;
     const green = pixels.data[i + 1]!;
@@ -126,9 +131,11 @@ export async function mountHeroCarModel(
     orange: sourceTexture,
     blue: paintTexture(sourceTexture, 'blue'),
     green: paintTexture(sourceTexture, 'green'),
+    'vesper-gold': paintTexture(sourceTexture, 'vesper-gold'),
   };
   ownedTextures.add(maps.blue);
   ownedTextures.add(maps.green);
+  ownedTextures.add(maps['vesper-gold']);
   const shellMaterial = sourceMaterial.clone();
   shellMaterial.map = sourceTexture;
   ownedMaterials.add(shellMaterial);
@@ -243,7 +250,13 @@ export async function mountHeroCarModel(
     setPaint(paint) {
       shellMaterial.map = maps[paint];
       farPaint.color.setHex(
-        paint === 'blue' ? 0x4194eb : paint === 'green' ? 0x57c07e : 0xff6b24,
+        paint === 'blue'
+          ? 0x4194eb
+          : paint === 'green'
+            ? 0x57c07e
+            : paint === 'vesper-gold'
+              ? 0xe8c741
+              : 0xff6b24,
       );
     },
     dispose() {

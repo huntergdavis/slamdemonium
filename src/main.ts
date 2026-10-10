@@ -1006,7 +1006,21 @@ async function boot(): Promise<void> {
     faceOffReward,
     () => carVisual.setPaint(faceOffReward.selected),
   );
-  resources.push(mountCarChoice(options.element, carVisual.setPaint));
+  let applyingStoredCarPaint = true;
+  resources.push(
+    mountCarChoice(options.element, (paint) => {
+      if (applyingStoredCarPaint && faceOffReward.selected === 'vesper-gold') {
+        applyingStoredCarPaint = false;
+        return;
+      }
+      applyingStoredCarPaint = false;
+      if (faceOffReward.selected === 'vesper-gold') {
+        faceOffReward.select('orange');
+        faceOffPaintChoice.refresh();
+      }
+      carVisual.setPaint(paint);
+    }),
+  );
   const miniMapLandmarks: MiniMapLandmark[] = [];
   for (const ramp of map.ramps)
     miniMapLandmarks.push({
