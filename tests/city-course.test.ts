@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createTimedRun } from '../src/core/timedRun';
 import {
+  CITY_BUILDINGS,
   CITY_CROSS_STREET_WIDTH,
   CITY_INTERSECTIONS,
   CITY_ROAD_WIDTH,
@@ -70,6 +71,34 @@ describe('city graybox', () => {
             ).toBe(true);
           }
         }
+      }
+    }
+  });
+
+  it('keeps city massing and crash walls beyond both road edges and the open junction', () => {
+    expect(CITY_BUILDINGS).toHaveLength(80);
+    for (const map of [forward, reverse]) {
+      expect(map.cityBuildings).toBe(CITY_BUILDINGS);
+      expect(map.shuntWalls).toHaveLength(8);
+      for (const block of map.cityBuildings!) {
+        expect(Math.abs(block.center.z) - block.size.z / 2).toBeGreaterThan(
+          CITY_CROSS_STREET_WIDTH / 2 + 2,
+        );
+        for (const junction of CITY_INTERSECTIONS)
+          expect(
+            Math.abs(block.center.x - junction.x) - block.size.x / 2,
+          ).toBeGreaterThan(CITY_ROAD_WIDTH / 2 + 2);
+      }
+      const crash = CITY_INTERSECTIONS.find(
+        (junction) => junction.reservedForCrash,
+      )!;
+      for (const wall of map.shuntWalls!) {
+        expect(
+          Math.abs(wall.center.x - crash.x) - wall.halfExtents.x,
+        ).toBeGreaterThan(CITY_ROAD_WIDTH / 2);
+        expect(Math.abs(wall.center.z) - wall.halfExtents.z).toBeGreaterThan(
+          CITY_CROSS_STREET_WIDTH / 2 + 20,
+        );
       }
     }
   });

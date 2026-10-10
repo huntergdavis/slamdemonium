@@ -9,6 +9,8 @@ import {
 } from './roadGenerator';
 import type { RunwaySpec } from './runways';
 import type { TrafficCarRecord } from './traffic';
+import type { CityBuildingSpec } from './cityBuildings';
+import { shuntWallAt } from './shuntWalls';
 
 const LONG = 1150;
 const SHORT = 550;
@@ -34,6 +36,43 @@ const PLAN: readonly RoadSegment[] = [
   { kind: 'arc', radius: CORNER, angle: ARC },
   { kind: 'straight', length: SHORT_STRAIGHT },
   { kind: 'arc', radius: CORNER, angle: ARC },
+];
+
+/** Low corner blocks define the two cross-road openings at driving speed;
+ * taller blocks further away give each straight a different skyline. */
+export const CITY_BUILDINGS: readonly CityBuildingSpec[] = [
+  ...[-430, -345, -170, -90, 0, 90, 170, 345, 430].flatMap((x, column) =>
+    [-340, -250, -160, -80, 80, 160, 250, 340].map((z, row) => {
+      const height = 12 + ((column * 13 + row * 7) % 8) * 5;
+      return {
+        center: { x, y: height / 2, z },
+        size: {
+          x: 26 + ((column + row) % 3) * 6,
+          y: height,
+          z: 30 + ((column * 2 + row) % 3) * 7,
+        },
+        color: [0x58646a, 0x6d777a, 0x45545d, 0x77817e][
+          (column * 3 + row) % 4
+        ]!,
+      };
+    }),
+  ),
+  ...CITY_INTERSECTIONS.flatMap((junction, index) =>
+    ([-1, 1] as const).flatMap((xSide) =>
+      ([-1, 1] as const).map((zSide) => {
+        const height = index === 1 ? 34 : 22;
+        return {
+          center: {
+            x: junction.x + xSide * 26,
+            y: height / 2,
+            z: zSide * 38,
+          },
+          size: { x: 18, y: height, z: 24 },
+          color: index === 1 ? 0x81908d : 0x59666c,
+        };
+      }),
+    ),
+  ),
 ];
 
 /** Crossing cars leave the visible city before wrapping to the other end. */
@@ -145,6 +184,12 @@ export function createCityMap(reverse = false): MapDefinition {
   if (!forward.closed)
     throw new RangeError(`City road does not close: ${forward.closureError}`);
   const path = reverse ? reversed(forward) : forward;
+  const crashStation = LONG_STRAIGHT * 1.5 + 2 * ARC_LENGTH + SHORT_STRAIGHT;
+  const crashWalls = ([-110, -70, 70, 110] as const).flatMap((delta) =>
+    ([-1, 1] as const).map((side) =>
+      shuntWallAt(forward, crashStation + delta, side, 28, CITY_ROAD_WIDTH),
+    ),
+  );
   const arterialDeck = lanesAlong(forward, CITY_ROAD_WIDTH, 20);
   const arterialPaint = arterialDeck
     .filter(
@@ -229,5 +274,7 @@ export function createCityMap(reverse = false): MapDefinition {
       .map((sample) => ({ x: sample.x, z: sample.z })),
     runs,
     traffic: cityTraffic(path),
+    cityBuildings: CITY_BUILDINGS,
+    shuntWalls: crashWalls,
   };
 }
