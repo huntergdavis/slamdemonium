@@ -15,6 +15,7 @@ import {
   createCarVisual,
   type VehicleVisualState,
 } from '../src/render/carVisual';
+import { VEHICLE_GEOMETRY } from '../src/vehicle/constants';
 
 function fixture() {
   return {
@@ -178,7 +179,7 @@ describe('car visual contract', () => {
     car.dispose();
   });
 
-  it('keeps authored lamps on the shortened ends after a hard crush', () => {
+  it('keeps authored lamps attached to the wheel-side fenders after a hard crush', () => {
     const car = createCarVisual(new Scene());
     const lights = car.root.getObjectByName('car.hero.lights')!;
     expect(lights.children).toHaveLength(2); // One headlamp and one brake-lamp draw.
@@ -195,9 +196,12 @@ describe('car visual contract', () => {
     const rearZ = new Vector3().setFromMatrixPosition(matrix).z;
     car.setCrush({ front: 1, rear: 1, left: 0, right: 0 });
     front.getMatrixAt(0, matrix);
-    expect(
-      new Vector3().setFromMatrixPosition(matrix).z - frontZ,
-    ).toBeGreaterThan(0.9);
+    const crushedFrontZ = new Vector3().setFromMatrixPosition(matrix).z;
+    // Pulling the lamp all the way behind the axle left it detached from the
+    // fixed suspension wheel even though the centre hood was visibly folded.
+    expect(crushedFrontZ - frontZ).toBeGreaterThan(0.15);
+    expect(crushedFrontZ - frontZ).toBeLessThan(0.4);
+    expect(crushedFrontZ).toBeLessThan(-VEHICLE_GEOMETRY.wheelbase / 2);
     rear.getMatrixAt(1, matrix);
     expect(
       rearZ - new Vector3().setFromMatrixPosition(matrix).z,
