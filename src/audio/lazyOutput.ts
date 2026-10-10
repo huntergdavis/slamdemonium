@@ -4,6 +4,7 @@ import type {
   AudioOutput,
   AudioOutputState,
   AudioProfile,
+  CrashCue,
 } from './types';
 
 /** Neither the backend nor its bank is requested before genuine activation
@@ -67,6 +68,12 @@ export class LazyAudioOutput implements AudioOutput {
   }
   playBoostAttack(gain: number, rate: number): boolean {
     return this.output?.playBoostAttack(gain, rate) ?? false;
+  }
+  playCrash(cue: Readonly<CrashCue>): boolean {
+    return this.output?.playCrash(cue) ?? false;
+  }
+  setGrind(slot: 0 | 1, gain: number, rate: number, pan: number): void {
+    this.output?.setGrind(slot, gain, rate, pan);
   }
   pause(fadeMs: number): void {
     this.output?.pause(fadeMs);
