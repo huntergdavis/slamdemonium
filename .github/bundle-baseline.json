@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reason": "F1 normal feature-only content addition, PM-approved after an independent clean production build of 76ac6de2e781088138cb38899d4a0da51bfcda92 matched all 19 canonical asset records by raw bytes, gzip bytes and SHA-256. The ten newly recorded audio entries add 117,086 raw / 82,749 gzip bytes: seven OGG sounds (engine, tyre, boost attack/loop and asphalt/concrete/kerb impacts) total 74,921 raw / 70,761 gzip; the Howler backend is 40,469 raw / 10,984 gzip; the Howler and Kenney notices total 1,696 raw / 1,004 gzip. Player benefit: telemetry-driven engine, tyre, boost and surface-impact feedback makes grip, acceleration and collisions audible, with independent master mute and shipped licence notices. The backend and bank are gated behind genuine browser activation plus two animation frames, giving the driving view a paint opportunity before their requests. An independent Chromium probe used raw CDP Runtime.evaluate with userGesture:false for all pre-unlock observation and explicitly verified navigator.userActivation.hasBeenActive=false: the game was ready with 288 physics steps and zero backend/bank requests; synthetic click/key/pointer events also requested nothing. A genuine keypress was followed by two observed frame boundaries before the backend request, then all seven OGG files returned 200 and audio became ready with no page errors. This verifies the gate against actual browser activation state, avoiding Playwright evaluation silently granting activation. The accepted bank/backend cost is shipped bytes and post-activation loading, with no audio network competition during unactivated startup; it does not prove the still-unverified five-second broadband time-to-drive criterion or zero CPU cost for boot-side audio wiring. Only these ten new entries and their exact aggregate contribution are added. Every prior asset measurement, every allowance and allowance rationale, and the original O6 revision/method/toolchain remain unchanged; the source revision above identifies this scoped addition. Other accumulated growth remains charged: 45,314 raw / 13,649 gzip bytes against the resulting 3,807,260 raw / 1,153,806 gzip baseline. The 5 percent cumulative total cap remains an unreviewed-growth guard, with per-asset and new-asset gates intact. This records a planned measured inventory and its player benefit through the normal review path; it does not raise policy limits or refresh unrelated growth. Scoped update for PR #92: pooled instanced placeholder visuals for the 32 breakable props and bounded debris pool add the visible crash-slice route. The player benefit is that collisions and debris are visible and match their physics colliders. Reachability confirmed only the intended visual modules; the measured main-chunk contribution is +18,871 gzip bytes. Scoped update for the stylesheet only, PM-approved, from a clean production build of main at 5d0b8b4b (#147 merged): generated:assets/index.css is re-recorded at 26,741 raw / 6,200 gzip bytes, up 4,072 raw / 777 gzip from the 22,669 / 5,423 recorded at 7ba37bc (#65). The growth is seven merged, player-approved interface features, each measured by building the stylesheet at its merge commit: #69 telemetry-driven audio with the master mute control +1,105; #75 RPM tachometer +1,465; #77 tachometer identity +51; #120 free-drive crash scoring with the chain readout +639; #134 persistent mini-map +199; #140 HUD off at boot with the press-H reminder +431; #147 accelerator pads, the persistent mph and boost card and the short-viewport pin +182. None of these was recorded when it merged, so by #147 the stylesheet stood 24 bytes under its 4 KiB small-asset floor and the next interface change of any size would have failed the gate on accumulated, already-reviewed growth rather than on its own bytes. The new number is the honest base for that gate: the next feature is measured against what the UI weighs today, and the 4 KiB floor again means one interface increment, as the allowance rationale intends. Only this asset's record and its exact contribution to the recorded total change; every other asset measurement, every allowance and the allowance rationale, and the original revision, method and toolchain remain unchanged. Other accumulated growth (the JavaScript chunks) remains charged against the cumulative cap. Scoped update for the main JavaScript chunk only (source:index.html), PM-approved, from a clean production build of main at 1a25bee (#155 merged): re-recorded at 826,091 raw / 222,871 gzip bytes, up 59,304 raw / 16,967 gzip from the 766,787 / 205,904 recorded with the #92 scoped addition. The growth is the player-approved feature work merged since, each measured by building the chunk at its merge commit (gzip, level 6): #96 ramps as data +489; #99 landing playbook and its tuning +1,673; #100 prop destruction reads as a smash +1,203; #110 loop-de-loop helix +459; #111 chase camera rides the track +1,292; #109 proving ground +1,224; #112 east loop forgiveness +798; #113 phase-one prop streaming +970; #115 half-pipe spine +781; #120 crash scoring and chaining +700; #122 spawn landmarks +2,257; #132 phase-two content +539; #134 mini-map replacing the landmark signs -1,314; #140 HUD off at boot +441; #144 prop glow and far impostor +995; #146 chase camera closes in +542; #147 accelerator pads, boost economy and instruments +1,351; #155 props asleep until touched and the awake budget +725; the remainder is small merges under 400 bytes each. None was recorded when it merged, so the chunk stood 3,448 gzip bytes under its 10 percent limit and the next feature of any size (the timed run and the 10 km circuit, 4,592 gzip bytes together) failed the gate on accumulated, already-reviewed growth. The new number is the honest base: the next feature is measured against what the game weighs today and the 10 percent allowance again means one feature's worth of code. Only this asset's record and its exact contribution to the recorded total change; every other asset measurement, every allowance and the allowance rationale, and the original revision, method and toolchain remain unchanged. Scoped A1 hero-car addition (#210): the same-day c96c93b main build is 4,003,659 raw / 1,208,300 gzip bytes; the first sports-sedan build is 4,277,917 raw / 1,272,177 gzip. The 274,258 raw / 63,877 gzip delta contains a 190,056/40,003 GLB, a 47,780/14,422 lazily loaded renderer, a 35,726/9,039 main-entry increase, and a 696/399 Kenney CC0 notice (plus 14 gzip bytes of generated metadata). Only these stable asset identities get reviewed per-asset growth; the standard new-asset and cumulative caps continue to apply to all other content. The planned A1 transfer addition remains below its 300 KB target. The pre-existing measured asset inventory and ordinary growth percentages are not re-recorded. Scoped #211 addition: the far hero proxy is constructed in the lazy car-model chunk, while the 7/10-pixel LOD selector and sports-sedan engine voice wiring add a measured 370 gzip bytes beyond the prior main-script cap on clean CI (254,567 versus 254,197). Only source:index.html reviewed gzip growth rises by 370; raw, total and all other asset allowances remain unchanged.",
+  "reason": "F1 normal feature-only content addition, PM-approved after an independent clean production build of 76ac6de2e781088138cb38899d4a0da51bfcda92 matched all 19 canonical asset records by raw bytes, gzip bytes and SHA-256. The ten newly recorded audio entries add 117,086 raw / 82,749 gzip bytes: seven OGG sounds (engine, tyre, boost attack/loop and asphalt/concrete/kerb impacts) total 74,921 raw / 70,761 gzip; the Howler backend is 40,469 raw / 10,984 gzip; the Howler and Kenney notices total 1,696 raw / 1,004 gzip. Player benefit: telemetry-driven engine, tyre, boost and surface-impact feedback makes grip, acceleration and collisions audible, with independent master mute and shipped licence notices. The backend and bank are gated behind genuine browser activation plus two animation frames, giving the driving view a paint opportunity before their requests. An independent Chromium probe used raw CDP Runtime.evaluate with userGesture:false for all pre-unlock observation and explicitly verified navigator.userActivation.hasBeenActive=false: the game was ready with 288 physics steps and zero backend/bank requests; synthetic click/key/pointer events also requested nothing. A genuine keypress was followed by two observed frame boundaries before the backend request, then all seven OGG files returned 200 and audio became ready with no page errors. This verifies the gate against actual browser activation state, avoiding Playwright evaluation silently granting activation. The accepted bank/backend cost is shipped bytes and post-activation loading, with no audio network competition during unactivated startup; it does not prove the still-unverified five-second broadband time-to-drive criterion or zero CPU cost for boot-side audio wiring. Only these ten new entries and their exact aggregate contribution are added. Every prior asset measurement, every allowance and allowance rationale, and the original O6 revision/method/toolchain remain unchanged; the source revision above identifies this scoped addition. Other accumulated growth remains charged: 45,314 raw / 13,649 gzip bytes against the resulting 3,807,260 raw / 1,153,806 gzip baseline. The 5 percent cumulative total cap remains an unreviewed-growth guard, with per-asset and new-asset gates intact. This records a planned measured inventory and its player benefit through the normal review path; it does not raise policy limits or refresh unrelated growth. Scoped update for PR #92: pooled instanced placeholder visuals for the 32 breakable props and bounded debris pool add the visible crash-slice route. The player benefit is that collisions and debris are visible and match their physics colliders. Reachability confirmed only the intended visual modules; the measured main-chunk contribution is +18,871 gzip bytes. Scoped update for the stylesheet only, PM-approved, from a clean production build of main at 5d0b8b4b (#147 merged): generated:assets/index.css is re-recorded at 26,741 raw / 6,200 gzip bytes, up 4,072 raw / 777 gzip from the 22,669 / 5,423 recorded at 7ba37bc (#65). The growth is seven merged, player-approved interface features, each measured by building the stylesheet at its merge commit: #69 telemetry-driven audio with the master mute control +1,105; #75 RPM tachometer +1,465; #77 tachometer identity +51; #120 free-drive crash scoring with the chain readout +639; #134 persistent mini-map +199; #140 HUD off at boot with the press-H reminder +431; #147 accelerator pads, the persistent mph and boost card and the short-viewport pin +182. None of these was recorded when it merged, so by #147 the stylesheet stood 24 bytes under its 4 KiB small-asset floor and the next interface change of any size would have failed the gate on accumulated, already-reviewed growth rather than on its own bytes. The new number is the honest base for that gate: the next feature is measured against what the UI weighs today, and the 4 KiB floor again means one interface increment, as the allowance rationale intends. Only this asset's record and its exact contribution to the recorded total change; every other asset measurement, every allowance and the allowance rationale, and the original revision, method and toolchain remain unchanged. Other accumulated growth (the JavaScript chunks) remains charged against the cumulative cap. Scoped update for the main JavaScript chunk only (source:index.html), PM-approved, from a clean production build of main at 1a25bee (#155 merged): re-recorded at 826,091 raw / 222,871 gzip bytes, up 59,304 raw / 16,967 gzip from the 766,787 / 205,904 recorded with the #92 scoped addition. The growth is the player-approved feature work merged since, each measured by building the chunk at its merge commit (gzip, level 6): #96 ramps as data +489; #99 landing playbook and its tuning +1,673; #100 prop destruction reads as a smash +1,203; #110 loop-de-loop helix +459; #111 chase camera rides the track +1,292; #109 proving ground +1,224; #112 east loop forgiveness +798; #113 phase-one prop streaming +970; #115 half-pipe spine +781; #120 crash scoring and chaining +700; #122 spawn landmarks +2,257; #132 phase-two content +539; #134 mini-map replacing the landmark signs -1,314; #140 HUD off at boot +441; #144 prop glow and far impostor +995; #146 chase camera closes in +542; #147 accelerator pads, boost economy and instruments +1,351; #155 props asleep until touched and the awake budget +725; the remainder is small merges under 400 bytes each. None was recorded when it merged, so the chunk stood 3,448 gzip bytes under its 10 percent limit and the next feature of any size (the timed run and the 10 km circuit, 4,592 gzip bytes together) failed the gate on accumulated, already-reviewed growth. The new number is the honest base: the next feature is measured against what the game weighs today and the 10 percent allowance again means one feature's worth of code. Only this asset's record and its exact contribution to the recorded total change; every other asset measurement, every allowance and the allowance rationale, and the original revision, method and toolchain remain unchanged. Scoped A1 hero-car addition (#210): the same-day c96c93b main build is 4,003,659 raw / 1,208,300 gzip bytes; the first sports-sedan build is 4,277,917 raw / 1,272,177 gzip. The 274,258 raw / 63,877 gzip delta contains a 190,056/40,003 GLB, a 47,780/14,422 lazily loaded renderer, a 35,726/9,039 main-entry increase, and a 696/399 Kenney CC0 notice (plus 14 gzip bytes of generated metadata). Only these stable asset identities get reviewed per-asset growth; the standard new-asset and cumulative caps continue to apply to all other content. The planned A1 transfer addition remains below its 300 KB target. The pre-existing measured asset inventory and ordinary growth percentages are not re-recorded. Scoped #211 addition: the far hero proxy is constructed in the lazy car-model chunk, while the 7/10-pixel LOD selector and sports-sedan engine voice wiring add a measured 370 gzip bytes beyond the prior main-script cap on clean CI (254,567 versus 254,197). Only source:index.html reviewed gzip growth rises by 370; raw, total and all other asset allowances remain unchanged. Scoped pending #200 crash-audio bank: 28 measured CC0 Ogg/MP3 assets are added to the inventory (273052 raw / 259256 gzip bytes); only the measured main-script +4,803/+1,588 and Howler backend +4,493/+1,330 code increments enter reviewed growth. The initial 121,551 B Ogg bank and lazy 32,805 B hard-hit bank remain within the approved download budget. This preserves the A1 reviewed additions and all standard policy percentages.",
   "allowance": {
     "totalPercent": 5,
     "assetPercent": 10,
@@ -22,13 +22,17 @@
         "gzipBytes": 14422
       },
       "source:index.html": {
-        "rawBytes": 35726,
-        "gzipBytes": 9409
+        "rawBytes": 40529,
+        "gzipBytes": 10997
+      },
+      "source:src/audio/howlerOutput.ts": {
+        "rawBytes": 4493,
+        "gzipBytes": 1330
       }
     },
     "reviewedTotalGrowth": {
-      "rawBytes": 274258,
-      "gzipBytes": 63877
+      "rawBytes": 283554,
+      "gzipBytes": 66795
     }
   },
   "allowanceReason": "Post-v0.1 small-asset calibration: the approved WP18 and WP19 interface changes added 4,015 and 3,957 raw CSS bytes respectively. A cumulative 4 KiB raw floor accommodates one measured interface increment without exempting stylesheets from their own gate. The 1 KiB gzip floor, 10 percent per-asset growth, 5 percent total growth and new-asset limits remain unchanged. This policy change records no new asset measurements and never resets accumulated growth. The generic floor also applies to small existing HTML and JavaScript files; their gzip and total limits still apply.",
@@ -146,11 +150,179 @@
         "rawBytes": 29943,
         "gzipBytes": 29463,
         "sha256": "23a9805441a9653c90cb38c8fb3c6df46dac3ad56c386cdf25d5c589432044a8"
+      },
+      "source:assets/audio/crash-attack.ogg": {
+        "file": "assets/crash-attack-B-E7f-46.ogg",
+        "rawBytes": 7164,
+        "gzipBytes": 6682,
+        "sha256": "6efa22a84f28560dad20e346bbd72b61dd41f91edd686f12d087c0e24c009889"
+      },
+      "source:assets/audio/crash-attack.mp3": {
+        "file": "assets/crash-attack-ChrS-T75.mp3",
+        "rawBytes": 4652,
+        "gzipBytes": 4314,
+        "sha256": "d66e1d9442a131103d94df4df67b1a6e56ede339b5626b5b243a5395dddca409"
+      },
+      "source:assets/audio/crash-bass.ogg": {
+        "file": "assets/crash-bass-1BE3nBmc.ogg",
+        "rawBytes": 6367,
+        "gzipBytes": 5805,
+        "sha256": "4a9d952a8b7a819bfa275b101da93332e01f37e6c9816fe678212325e94225e1"
+      },
+      "source:assets/audio/crash-bass.mp3": {
+        "file": "assets/crash-bass-BsWMo7iW.mp3",
+        "rawBytes": 6188,
+        "gzipBytes": 5819,
+        "sha256": "7eb8183ca6de063a0b9921b11b4c4333aae61e4c43f94c11017d937619a39287"
+      },
+      "source:assets/audio/crash-bend.mp3": {
+        "file": "assets/crash-bend-2Ik1rygL.mp3",
+        "rawBytes": 7340,
+        "gzipBytes": 6772,
+        "sha256": "0cae3fba66928fd4939f29503a8ae77db93e2c6e36713a8ddacca65f87fee486"
+      },
+      "source:assets/audio/crash-bend.ogg": {
+        "file": "assets/crash-bend-C2jKpJZe.ogg",
+        "rawBytes": 9298,
+        "gzipBytes": 8831,
+        "sha256": "4a53262128a339099a7656d71e81397cb6b0018e4163ac0c9865b31f4b3d9789"
+      },
+      "source:assets/audio/crash-can.mp3": {
+        "file": "assets/crash-can-BmjHJMwK.mp3",
+        "rawBytes": 3500,
+        "gzipBytes": 3154,
+        "sha256": "51bb03e6404b3aceb4d6ba57af30825407415d48c6b89d542cfa9e92fc27a5ed"
+      },
+      "source:assets/audio/crash-can.ogg": {
+        "file": "assets/crash-can-BtT8jxOK.ogg",
+        "rawBytes": 6160,
+        "gzipBytes": 5670,
+        "sha256": "b28a50481b8c58f1168e18da754d67ed142f32e0a14929a03a027828d233a90f"
+      },
+      "source:assets/audio/crash-creak.mp3": {
+        "file": "assets/crash-creak-D7J8FRFQ.mp3",
+        "rawBytes": 13676,
+        "gzipBytes": 13140,
+        "sha256": "af8cbbd144ba3b4532671f6a22ab8878750f10249b9d511d6df9d7c2ec8b7a5f"
+      },
+      "source:assets/audio/crash-creak.ogg": {
+        "file": "assets/crash-creak-V9eEGwcb.ogg",
+        "rawBytes": 17656,
+        "gzipBytes": 17206,
+        "sha256": "3b4b923cf16403f819a8989b39538ab4d64ed9cc6b3ed2de1aa5832f51f4ae40"
+      },
+      "source:assets/audio/crash-distant.ogg": {
+        "file": "assets/crash-distant-9aJziFal.ogg",
+        "rawBytes": 9666,
+        "gzipBytes": 9203,
+        "sha256": "756612e7e0ac1076c01c06b51d8438360bac6c0d8381f91152c962b404769d26"
+      },
+      "source:assets/audio/crash-distant.mp3": {
+        "file": "assets/crash-distant-D5SClMPi.mp3",
+        "rawBytes": 7916,
+        "gzipBytes": 7318,
+        "sha256": "7e32a8211fc13b6d9fad2718e7a5aa6fb0f22f5ad127f3626fdf74670311dc34"
+      },
+      "source:assets/audio/crash-glass.mp3": {
+        "file": "assets/crash-glass-BFji6AlS.mp3",
+        "rawBytes": 9452,
+        "gzipBytes": 9043,
+        "sha256": "6b28b609401a53c63d5839c168eaf77741b565f256bd416ad7f78e488268cce0"
+      },
+      "source:assets/audio/crash-glass.ogg": {
+        "file": "assets/crash-glass-CCUF4BMV.ogg",
+        "rawBytes": 12179,
+        "gzipBytes": 11727,
+        "sha256": "f4de9e37d9d06371358e4b74bb7c7cab7fd1a0e9d662d390dadb566779a9dbf8"
+      },
+      "source:assets/audio/crash-hard-alt.ogg": {
+        "file": "assets/crash-hard-alt-B6gm3kxe.ogg",
+        "rawBytes": 17679,
+        "gzipBytes": 17236,
+        "sha256": "9958eb2733a2325242521c112f6c900a078f09504103ff738d1842b6b3bab1e0"
+      },
+      "source:assets/audio/crash-hard-alt.mp3": {
+        "file": "assets/crash-hard-alt-iq-T-Aof.mp3",
+        "rawBytes": 14060,
+        "gzipBytes": 13525,
+        "sha256": "2e474236442d0181be7bf2ab47b2399f8cb323e0b29f8804804d8b1aa5478f10"
+      },
+      "source:assets/audio/crash-heavy.mp3": {
+        "file": "assets/crash-heavy-YyL5WdFM.mp3",
+        "rawBytes": 13292,
+        "gzipBytes": 12718,
+        "sha256": "505c40095cd84776e5e639c78d7393e092a098bc3d99a8b946384d345de5cf22"
+      },
+      "source:assets/audio/crash-heavy.ogg": {
+        "file": "assets/crash-heavy-lljJva0H.ogg",
+        "rawBytes": 15734,
+        "gzipBytes": 15256,
+        "sha256": "5fb642333d19f54dcda5c3d18b996d4998e5cc991324d11d810e42c2a4922e32"
+      },
+      "source:assets/audio/crash-light.mp3": {
+        "file": "assets/crash-light-1wqEbV3a.mp3",
+        "rawBytes": 4268,
+        "gzipBytes": 3750,
+        "sha256": "5e2fd481a42e97a74505a9851291fb7ac0694db160e34900184e56ebecbcf0df"
+      },
+      "source:assets/audio/crash-light.ogg": {
+        "file": "assets/crash-light-a9SkKvsi.ogg",
+        "rawBytes": 6562,
+        "gzipBytes": 6057,
+        "sha256": "4a752b4e3a3e8e3bef14aa962519a52a8ce1ca1276ae6808fcb23cc72693e88d"
+      },
+      "source:assets/audio/crash-rattle.mp3": {
+        "file": "assets/crash-rattle-Ce-c8FLm.mp3",
+        "rawBytes": 10028,
+        "gzipBytes": 9381,
+        "sha256": "82f1755b11f26c1153c707b626acbd248a412f9c2764cd3c363aadd524293c65"
+      },
+      "source:assets/audio/crash-rattle.ogg": {
+        "file": "assets/crash-rattle-Dfkcx7mi.ogg",
+        "rawBytes": 14097,
+        "gzipBytes": 13635,
+        "sha256": "62b11c9b7a1e85793ac3e6f7e89af0132be42b98686a1b5c0c0cc74411fe7be1"
+      },
+      "source:assets/audio/crash-scrape.ogg": {
+        "file": "assets/crash-scrape-D8Z5fiPQ.ogg",
+        "rawBytes": 11240,
+        "gzipBytes": 10784,
+        "sha256": "98a7af8889a06db5e4745661ded8ef241257b6de687328743215ec8efd95ed6d"
+      },
+      "source:assets/audio/crash-scrape.mp3": {
+        "file": "assets/crash-scrape-DaqZX7Za.mp3",
+        "rawBytes": 8876,
+        "gzipBytes": 8309,
+        "sha256": "f04e9894a26f54bd66a06b03ee18aeefb467395985743e557d0ff1a744f9adbb"
+      },
+      "source:assets/audio/crash-tick.ogg": {
+        "file": "assets/crash-tick-DnHMSma0.ogg",
+        "rawBytes": 5428,
+        "gzipBytes": 4916,
+        "sha256": "f8a81cad5899d70bf6fd15096672726b3a2f0b6b5ca2a88ec5319d3f9815e7e7"
+      },
+      "source:assets/audio/crash-tick.mp3": {
+        "file": "assets/crash-tick-LGjsmet4.mp3",
+        "rawBytes": 2924,
+        "gzipBytes": 2475,
+        "sha256": "4470118034b5ef52cfbe564402ec4ca4077d199deae4f8ee895a6ca40f6e8daa"
+      },
+      "source:assets/audio/crash-wall-tail.mp3": {
+        "file": "assets/crash-wall-tail-BMY6cdu_.mp3",
+        "rawBytes": 12524,
+        "gzipBytes": 11845,
+        "sha256": "e11d07ac3d9cea48c15478db8521eab42e1cf37317430e61c61e9b9f0b6c93a5"
+      },
+      "source:assets/audio/crash-wall-tail.ogg": {
+        "file": "assets/crash-wall-tail-BjBQaTGR.ogg",
+        "rawBytes": 15126,
+        "gzipBytes": 14685,
+        "sha256": "8497fe5770d4fafecf083cc5a1b15e5c772d19622ed8fd048bfbc5e55d1f3539"
       }
     },
     "total": {
-      "rawBytes": 3930545,
-      "gzipBytes": 1190421
+      "rawBytes": 4203597,
+      "gzipBytes": 1449677
     }
   }
 }
