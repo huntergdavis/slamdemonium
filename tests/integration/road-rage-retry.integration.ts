@@ -4,6 +4,7 @@ import { createPhysicsWorld } from '../../src/physics/joltWorld';
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createTakedownMap } from '../../src/world/takedownCourse';
+import { poseAt } from '../../src/world/roadGenerator';
 import { createTraffic } from '../../src/world/traffic';
 
 const wasmPath = createRequire(import.meta.url).resolve(
@@ -55,6 +56,47 @@ it('retry restores intact reachable rivals without allocating new Jolt bodies', 
       if (run === 1) warmFreeBytes = stats.freeBytes;
       if (run === 2) expect(stats.freeBytes).toBe(warmFreeBytes);
     }
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 120_000);
+
+it('keeps at least three rivals reachable for a full 180-second run', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const map = createTakedownMap();
+  const path = map.path!;
+  const traffic = createTraffic(world, bodies, path, map.traffic!, {
+    density: 0.85,
+    minGap: 12,
+    maxGap: 36,
+  });
+  const player = { x: 0, y: 1, z: 0 };
+  const dt = 1 / 60;
+  let minReachable = 4;
+  try {
+    for (let step = 0; step < 180 * 60; step++) {
+      const station =
+        (((step * dt * 35) % path.length) + path.length) % path.length;
+      const pose = poseAt(path, station);
+      player.x = pose.x;
+      player.z = pose.z;
+      traffic.preStep(dt, player, 35);
+      world.step(dt);
+      traffic.postStep();
+      if (step > 0 && step % 600 === 0) {
+        const reachable = traffic.states.filter(
+          (car) =>
+            car.rival &&
+            !car.wrecked &&
+            Math.hypot(car.x - player.x, car.z - player.z) < 180,
+        ).length;
+        minReachable = Math.min(minReachable, reachable);
+      }
+    }
+    expect(minReachable).toBeGreaterThanOrEqual(3);
   } finally {
     traffic.dispose();
     bodies.dispose();
