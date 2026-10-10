@@ -149,6 +149,12 @@ export class EngineSynth {
     this.gain.gain.cancelScheduledValues(this.ctx.currentTime);
     this.gain.gain.value = 0;
     this.level = 0;
+    if (this.node) {
+      const wind = this.param('wind');
+      wind.cancelScheduledValues(this.ctx.currentTime);
+      wind.setValueAtTime(0, this.ctx.currentTime);
+      this.wind = 0;
+    }
   }
   dispose(): void {
     this.disposed = true;
