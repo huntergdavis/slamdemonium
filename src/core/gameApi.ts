@@ -5,6 +5,7 @@ import type { CameraPreset } from '../render/cameraRig';
 import type { ScriptController } from '../input/script';
 import type { HudMode } from '../ui/hud';
 import type { RoadRageState } from './roadRage';
+import type { RaceState } from './raceEvent';
 
 export interface GameInput {
   throttle: number;
@@ -53,6 +54,12 @@ export interface GameTestApi {
   };
   /** Read-only rival controller decisions for hosted diagnosis. */
   getRivalControl?: () => Readonly<Record<string, unknown>> | null;
+  /** Read-only circuit-race standings and controller targets for hosted gates. */
+  getRace?: () => {
+    state: Readonly<RaceState>;
+    order: readonly number[];
+    cars: readonly Readonly<Record<string, unknown>>[];
+  };
   /** Read-only takedown state for hosted driving checks. */
   getTakedowns?: () => { count: number; boostSections: number };
   /** Read-only timed takedown event state for built-browser guards. */

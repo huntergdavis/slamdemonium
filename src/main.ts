@@ -331,7 +331,7 @@ async function boot(): Promise<void> {
     ? createWreckEffects(view.scene, traffic.hasRivals)
     : undefined;
   if (wreckEffects) resources.push(wreckEffects);
-  const rivalGuidance = isTakedownRoad ? createRivalGuidance(host!) : undefined;
+  const rivalGuidance = (isTakedownRoad || !!race) ? createRivalGuidance(host!) : undefined;
   if (rivalGuidance) resources.push(rivalGuidance);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
@@ -706,6 +706,11 @@ async function boot(): Promise<void> {
             car.vz = state.velocity.z;
           }
           race.update(dt, raceCars);
+          for (const state of traffic.raceStates)
+            traffic.setRaceValidatedStation(
+              state.id,
+              race.validatedStation(state.id),
+            );
           traffic.setRaceRunning(race.state.phase !== 'countdown');
         }
         propStreamer.update();
@@ -1063,12 +1068,15 @@ async function boot(): Promise<void> {
     miniMap: {
       landmarks: miniMapLandmarks,
       route: map.route,
-      halfSize: isTakedownRoad
-        ? 200
-        : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
-      followPlayer: isTakedownRoad,
-      headingUp: isTakedownRoad,
-      ...(isTakedownRoad ? { readRivals: () => traffic?.states ?? [] } : {}),
+      halfSize:
+        isTakedownRoad || !!race
+          ? 200
+          : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
+      followPlayer: isTakedownRoad || !!race,
+      headingUp: isTakedownRoad || !!race,
+      ...(isTakedownRoad || !!race
+        ? { readRivals: () => traffic?.states ?? [] }
+        : {}),
     },
   });
   const scripts = new ScriptController({
@@ -1515,6 +1523,12 @@ async function boot(): Promise<void> {
     }),
   });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
+  if (race && traffic)
+    game.getRace = () => ({
+      state: race.state,
+      order: [...race.order],
+      cars: traffic.debugRivals().cars.filter((car) => car.raceEntrant),
+    });
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
     boostSections: vehicle.telemetry.boostSections,
