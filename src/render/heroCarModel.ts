@@ -14,6 +14,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import sedanUrl from '../../assets/cars/kenney-car-kit-3.1/sedan-sports-embedded.glb?url';
 import { VEHICLE_GEOMETRY as G } from '../vehicle/constants';
 import type { HeroPaint } from '../vehicle/vehicleDefinition';
+import type { GarageClassId } from '../vehicle/garageClasses';
+import { farCabinProfile, garageSilhouettePoint } from './garageSilhouette';
 
 type DeformMesh = {
   geometry: BufferGeometry;
@@ -90,6 +92,7 @@ function paintTexture(
 export async function mountHeroCarModel(
   root: Group,
   wheelSpins: readonly Group[],
+  classId: GarageClassId = 'sports',
 ): Promise<HeroCarModel> {
   const gltf = await new GLTFLoader().loadAsync(sedanUrl);
   const source = gltf.scene;
@@ -142,6 +145,20 @@ export async function mountHeroCarModel(
     // Kenney's front is +Z. Two negative axes rotate it into the game's -Z
     // forward convention without reversing triangle winding.
     shape.scale(-sx, sy, -sz);
+    if (classId !== 'sports') {
+      const vertices = shape.getAttribute('position');
+      for (let index = 0; index < vertices.count; index++) {
+        const [x, y, z] = garageSilhouettePoint(
+          classId,
+          vertices.getX(index),
+          vertices.getY(index),
+          vertices.getZ(index),
+        );
+        vertices.setXYZ(index, x, y, z);
+      }
+      vertices.needsUpdate = true;
+      shape.computeVertexNormals();
+    }
     shape.computeBoundingSphere();
     ownedGeometries.add(shape);
     const mesh = new Mesh(shape, shellMaterial);
@@ -199,10 +216,11 @@ export async function mountHeroCarModel(
     G.height * 0.52,
     G.length * 0.98,
   );
+  const cabin = farCabinProfile(classId);
   const farCabinShape = new BoxGeometry(
     G.width * 0.7,
-    G.height * 0.42,
-    G.length * 0.46,
+    cabin.height,
+    cabin.length,
   );
   const farWheelShape = new BoxGeometry(
     G.wheelRadius * 0.52,
@@ -218,7 +236,7 @@ export async function mountHeroCarModel(
   far.add(farBody);
   const farCabin = new Mesh(farCabinShape, farPaint);
   farCabin.name = 'car.hero.far.cabin';
-  farCabin.position.set(0, G.height * 0.24, G.length * 0.035);
+  farCabin.position.set(0, G.height * 0.24, cabin.z);
   far.add(farCabin);
   const farWheels = new InstancedMesh(farWheelShape, farRubber, 4);
   farWheels.name = 'car.hero.far.wheels';

@@ -1,9 +1,12 @@
 import { VEHICLE_GEOMETRY, type VehicleGeometry } from './constants';
-import { HERO_SEDAN } from './vehicleDefinition';
-import type { EngineProfile } from './engineProfile';
+import {
+  DEFAULT_ENGINE,
+  SPORTS_SEDAN_ENGINE,
+  type EngineProfile,
+} from './engineProfile';
 import type { ParamPatch } from '../tuning/schema';
 
-export type GarageClassId = 'compact' | 'muscle' | 'sports';
+export type GarageClassId = 'compact' | 'muscle' | 'coupe' | 'sports' | 'super';
 export const GARAGE_STORAGE_KEY = 'slamdemonium.garageClass.v1';
 
 export interface GarageClass {
@@ -14,6 +17,52 @@ export interface GarageClass {
   readonly tuning: Readonly<ParamPatch>;
   readonly engineProfile: EngineProfile;
 }
+
+const COMPACT_ENGINE: EngineProfile = {
+  ...SPORTS_SEDAN_ENGINE,
+  idleRpm: 1150,
+  redlineRpm: 7900,
+  boostRpm: 9250,
+  firingStrength: [1, 0.8, 0.91, 0.76],
+  firingGap: [1.08, 0.92, 1.04, 0.96],
+  pipeSeconds: 0.0058,
+  pipeFeedback: 0.38,
+  pipeLossHz: 2900,
+  mufflerSeconds: 0.0019,
+  mufflerFeedback: 0.22,
+  mufflerLossHz: 1800,
+};
+
+const COUPE_ENGINE: EngineProfile = {
+  ...SPORTS_SEDAN_ENGINE,
+  idleRpm: 1020,
+  redlineRpm: 7450,
+  boostRpm: 8850,
+  firingStrength: [1, 0.72, 0.88, 0.79],
+  firingGap: [1.12, 0.88, 1.06, 0.94],
+  pipeSeconds: 0.0074,
+  pipeFeedback: 0.52,
+  pipeLossHz: 1900,
+  mufflerSeconds: 0.0027,
+  mufflerFeedback: 0.32,
+  mufflerLossHz: 1250,
+};
+
+const SUPER_ENGINE: EngineProfile = {
+  ...SPORTS_SEDAN_ENGINE,
+  idleRpm: 1200,
+  redlineRpm: 8600,
+  boostRpm: 9900,
+  firingsPerRevolution: 3,
+  firingStrength: [1, 0.93, 0.98, 0.91, 0.96, 0.94],
+  firingGap: [1, 1, 1, 1, 1, 1],
+  pipeSeconds: 0.0045,
+  pipeFeedback: 0.3,
+  pipeLossHz: 3400,
+  mufflerSeconds: 0.0016,
+  mufflerFeedback: 0.16,
+  mufflerLossHz: 2200,
+};
 
 function scaledGeometry(
   width: number,
@@ -53,7 +102,7 @@ export const GARAGE_CLASSES: Readonly<Record<GarageClassId, GarageClass>> = {
       steerMaxLowSpeed: 48,
       steerMaxTopSpeed: 8,
     },
-    engineProfile: HERO_SEDAN.engineProfile,
+    engineProfile: COMPACT_ENGINE,
   },
   muscle: {
     id: 'muscle',
@@ -68,7 +117,22 @@ export const GARAGE_CLASSES: Readonly<Record<GarageClassId, GarageClass>> = {
       steerMaxLowSpeed: 32,
       steerMaxTopSpeed: 3.5,
     },
-    engineProfile: HERO_SEDAN.engineProfile,
+    engineProfile: DEFAULT_ENGINE,
+  },
+  coupe: {
+    id: 'coupe',
+    label: 'Coupe',
+    trait: 'Balanced drift · tidy recovery · flowing speed',
+    geometry: scaledGeometry(2.12, 1.14, 4.65),
+    tuning: {
+      mass: 1200,
+      accel0: 15,
+      topSpeed: 58,
+      boostTopSpeedAdd: 20,
+      steerMaxLowSpeed: 44,
+      steerMaxTopSpeed: 6.5,
+    },
+    engineProfile: COUPE_ENGINE,
   },
   sports: {
     id: 'sports',
@@ -76,14 +140,31 @@ export const GARAGE_CLASSES: Readonly<Record<GarageClassId, GarageClass>> = {
     trait: 'Balanced launch · strong corner exit',
     geometry: VEHICLE_GEOMETRY,
     tuning: {},
-    engineProfile: HERO_SEDAN.engineProfile,
+    engineProfile: SPORTS_SEDAN_ENGINE,
+  },
+  super: {
+    id: 'super',
+    label: 'Super',
+    trait: 'High top end · deliberate turn · sharp boost',
+    geometry: scaledGeometry(2.25, 1.1, 4.95),
+    tuning: {
+      mass: 1400,
+      accel0: 14.5,
+      topSpeed: 65,
+      boostTopSpeedAdd: 22,
+      steerMaxLowSpeed: 36,
+      steerMaxTopSpeed: 4.5,
+    },
+    engineProfile: SUPER_ENGINE,
   },
 };
 
 export const GARAGE_CLASS_IDS: readonly GarageClassId[] = [
   'compact',
   'muscle',
+  'coupe',
   'sports',
+  'super',
 ];
 
 export function isGarageClassId(value: unknown): value is GarageClassId {

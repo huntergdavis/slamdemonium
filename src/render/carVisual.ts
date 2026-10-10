@@ -27,6 +27,7 @@ import {
 } from '../vehicle/constants';
 import type { CarCrushState } from '../world/carModels';
 import type { HeroPaint } from '../vehicle/vehicleDefinition';
+import type { GarageClassId } from '../vehicle/garageClasses';
 import type { HeroCarModel } from './heroCarModel';
 
 export type { VehicleVisualState, WheelVisualState } from './carVisualState';
@@ -52,6 +53,7 @@ export function nextHeroLod(
 export function createCarVisual(
   scene: Scene,
   vehicleGeometry: VehicleGeometry = G,
+  classId: GarageClassId = 'sports',
 ) {
   const root = new Group();
   root.name = 'car';
@@ -471,6 +473,7 @@ export function createCarVisual(
       const loaded = await mountHeroCarModel(
         root,
         wheels.map((wheel) => wheel.spin),
+        classId,
       );
       if (disposed) {
         loaded.dispose();

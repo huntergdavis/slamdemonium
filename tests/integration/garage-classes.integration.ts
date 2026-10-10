@@ -3,6 +3,7 @@ import {
   GARAGE_CLASSES,
   GARAGE_CLASS_IDS,
 } from '../../src/vehicle/garageClasses';
+import { installRamps, type RampSpec } from '../../src/world/ramps';
 import { scriptVehicleHarness } from '../scriptVehicleHarness';
 
 const HZ = 120;
@@ -15,7 +16,7 @@ const neutral = {
   boost: false,
 };
 
-it('gives the three garage cars distinct real-Jolt launch and turn behavior', async () => {
+it('gives the five garage cars distinct real-Jolt launch and turn behavior', async () => {
   const measurements: Record<
     string,
     { to30: number; turn14: number; turn28: number }
@@ -83,16 +84,35 @@ it.each(GARAGE_CLASS_IDS)(
     });
     try {
       const { loop, setPad, vehicle, world } = rig;
-      world.createStaticBox({ x: 136, y: 1, z: 0 }, { x: 0.5, y: 1, z: 8 });
+      const wall = world.createStaticBox(
+        { x: 136, y: 1, z: 0 },
+        { x: 0.5, y: 1, z: 8 },
+      );
+      let wallContacts = 0;
+      world.onContact((a, b) => {
+        if (
+          (a === vehicle.body && b === wall) ||
+          (b === vehicle.body && a === wall)
+        )
+          wallContacts++;
+      });
       setPad(neutral);
-      vehicle.respawn({ x: 130, y: 1, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+      vehicle.respawn({ x: 133, y: 1, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
       world.setLinearVelocity(vehicle.body, { x: 16, y: 0, z: 0 });
       let maxX = -Infinity;
+      let lowestLateralSpeed = Infinity;
+      const wallVelocity = { x: 0, y: 0, z: 0 };
       for (let step = 0; step < 2 * HZ; step++) {
         loop.stepMany(1);
         maxX = Math.max(maxX, vehicle.telemetry.position.x);
+        world.getLinearVelocity(vehicle.body, wallVelocity);
+        lowestLateralSpeed = Math.min(lowestLateralSpeed, wallVelocity.x);
       }
       expect(maxX, `${id} side-wall penetration`).toBeLessThan(135);
+      expect(wallContacts, `${id} chassis-wall contacts`).toBeGreaterThan(0);
+      expect(lowestLateralSpeed, `${id} lateral speed after wall`).toBeLessThan(
+        4,
+      );
       world.onContact((a, b, _impulse, _point, normal) => {
         if (a !== vehicle.body && b !== vehicle.body) return;
         const sign = a === vehicle.body ? -1 : 1;
@@ -113,7 +133,9 @@ it.each(GARAGE_CLASS_IDS)(
           break;
         }
       }
-      console.log(`GARAGE_RECOVERY ${JSON.stringify({ id, maxX, rightedAt })}`);
+      console.log(
+        `GARAGE_RECOVERY ${JSON.stringify({ id, maxX, wallContacts, lowestLateralSpeed, rightedAt })}`,
+      );
       expect(rightedAt, `${id} roof recovery`).toBeGreaterThan(0);
       expect(rightedAt).toBeLessThan(4);
     } finally {
@@ -122,3 +144,80 @@ it.each(GARAGE_CLASS_IDS)(
   },
   30_000,
 );
+
+it.each(GARAGE_CLASS_IDS)(
+  '%s clears the same real-Jolt ramp and lands upright',
+  async (id) => {
+    const rig = await scriptVehicleHarness({
+      flatPlane: true,
+      garageClass: GARAGE_CLASSES[id],
+    });
+    try {
+      const { loop, setPad, surfacedBodies, vehicle } = rig;
+      const ramp: RampSpec = {
+        x: 130,
+        z: -60,
+        heading: 0,
+        length: 12,
+        width: 8,
+        rise: 1.6,
+      };
+      installRamps(surfacedBodies, [ramp]);
+      setPad({ ...neutral, throttle: 1 });
+      let peakAirTime = 0;
+      for (let step = 0; step < 6 * HZ; step++) {
+        loop.stepMany(1);
+        peakAirTime = Math.max(peakAirTime, vehicle.telemetry.airTime);
+        if (vehicle.telemetry.landingCount > 0) break;
+      }
+      console.log(
+        `GARAGE_RAMP ${JSON.stringify({ id, peakAirTime, landingCount: vehicle.telemetry.landingCount, recoveryCount: vehicle.telemetry.recoveryCount })}`,
+      );
+      expect(peakAirTime, `${id} leaves the ramp`).toBeGreaterThan(0.2);
+      expect(vehicle.telemetry.landingCount, `${id} lands`).toBe(1);
+      expect(vehicle.telemetry.recoveryCount, `${id} stays drivable`).toBe(0);
+    } finally {
+      rig.dispose();
+    }
+  },
+  30_000,
+);
+
+it('holds distinct normal and boosted ceilings on a real flat road', async () => {
+  const targets: Record<string, readonly [number, number]> = {
+    compact: [50, 68],
+    muscle: [54, 74],
+    coupe: [58, 78],
+    sports: [60, 85],
+    super: [65, 87],
+  };
+  const speeds: Record<string, { normal: number; boosted: number }> = {};
+  for (const id of GARAGE_CLASS_IDS) {
+    const rig = await scriptVehicleHarness({
+      flatPlane: true,
+      garageClass: GARAGE_CLASSES[id],
+    });
+    try {
+      const { loop, setPad, vehicle } = rig;
+      setPad(neutral);
+      loop.stepMany(HZ / 2);
+      setPad({ ...neutral, throttle: 1 });
+      loop.stepMany(30 * HZ);
+      const normal = vehicle.telemetry.speed;
+      setPad({ ...neutral, throttle: 1, boost: true });
+      for (let step = 0; step < 12 * HZ; step++) {
+        vehicle.setDriftMeter(1);
+        loop.stepMany(1);
+      }
+      const boosted = vehicle.telemetry.speed;
+      speeds[id] = { normal, boosted };
+      expect(Number.isFinite(normal)).toBe(true);
+      expect(Number.isFinite(boosted)).toBe(true);
+      expect(Math.abs(normal - targets[id]![0])).toBeLessThan(0.25);
+      expect(Math.abs(boosted - targets[id]![1])).toBeLessThan(0.5);
+    } finally {
+      rig.dispose();
+    }
+  }
+  console.log(`GARAGE_CEILINGS ${JSON.stringify(speeds)}`);
+}, 60_000);

@@ -391,7 +391,11 @@ async function boot(): Promise<void> {
   );
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
-  const carVisual = createCarVisual(view.scene, garageClass.geometry);
+  const carVisual = createCarVisual(
+    view.scene,
+    garageClass.geometry,
+    garageClassId,
+  );
   await carVisual.loadHeroModel();
   // Line of sight for the camera: static geometry between car and camera
   // pulls the camera in, so the loop, a bridge or a prop bank never hides
