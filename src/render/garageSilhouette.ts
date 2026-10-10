@@ -34,6 +34,9 @@ export function garageSilhouettePoint(
         y - roof * (0.19 + 0.08 * nose),
         z - roof * 0.1,
       ];
+    case 'pickup':
+      // The roof ends behind the cab; the separate bed rails mark the tail.
+      return [x, y - smooth((y - 0.28) / 0.2) * rear * 0.48, z];
   }
 }
 
@@ -57,5 +60,7 @@ export function farCabinProfile(kind: GarageClassId): {
       };
     case 'super':
       return { height: G.height * 0.23, length: G.length * 0.48, z: -0.16 };
+    case 'pickup':
+      return { height: G.height * 0.43, length: G.length * 0.32, z: -0.58 };
   }
 }

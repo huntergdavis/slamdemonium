@@ -3,15 +3,22 @@ import {
   GARAGE_CLASSES,
   GARAGE_CLASS_IDS,
   GARAGE_STORAGE_KEY,
+  RACE_GARAGE_CLASS_IDS,
+  garageClassAllowedOnMap,
   readGarageClass,
   storeGarageClass,
 } from '../src/vehicle/garageClasses';
 import { VEHICLE_GEOMETRY } from '../src/vehicle/constants';
 import { garageSilhouettePoint } from '../src/render/garageSilhouette';
 
-it('keeps Sports as the unchanged default across five physical classes', () => {
+it('keeps Sports as the unchanged default and the pickup Crash-only', () => {
   expect(readGarageClass(null)).toBe('sports');
-  expect(GARAGE_CLASS_IDS).toHaveLength(5);
+  expect(RACE_GARAGE_CLASS_IDS).toHaveLength(5);
+  expect(GARAGE_CLASS_IDS).toHaveLength(6);
+  expect(garageClassAllowedOnMap('pickup', 'crash-south')).toBe(true);
+  expect(garageClassAllowedOnMap('pickup', 'crash-west')).toBe(true);
+  expect(garageClassAllowedOnMap('pickup', 'circuit-race')).toBe(false);
+  expect(garageClassAllowedOnMap('sports', 'circuit-race')).toBe(true);
   expect(GARAGE_CLASSES.sports.geometry).toBe(VEHICLE_GEOMETRY);
   expect(GARAGE_CLASSES.compact.geometry.length).toBeLessThan(
     GARAGE_CLASSES.sports.geometry.length,
@@ -25,11 +32,11 @@ it('keeps Sports as the unchanged default across five physical classes', () => {
 
 it('changes the roofline without pulling wheel arches or body edges off the collider', () => {
   const source: [number, number, number] = [0.75, 0.55, 1];
-  const shapes = GARAGE_CLASS_IDS.map((id) =>
+  const shapes = RACE_GARAGE_CLASS_IDS.map((id) =>
     garageSilhouettePoint(id, ...source),
   );
   expect(new Set(shapes.map((point) => point.join(','))).size).toBe(5);
-  for (const id of GARAGE_CLASS_IDS) {
+  for (const id of RACE_GARAGE_CLASS_IDS) {
     const dimensions = GARAGE_CLASSES[id].geometry;
     const scale = [
       dimensions.width / VEHICLE_GEOMETRY.width,
@@ -52,6 +59,21 @@ it('changes the roofline without pulling wheel arches or body edges off the coll
   }
 });
 
+it('gives the pickup a bed behind its cab without moving the wheel arches', () => {
+  const pickup = GARAGE_CLASSES.pickup;
+  expect(pickup.geometry.length).toBeGreaterThan(
+    GARAGE_CLASSES.muscle.geometry.length,
+  );
+  expect(pickup.geometry.width).toBeGreaterThan(
+    GARAGE_CLASSES.muscle.geometry.width,
+  );
+  expect(garageSilhouettePoint('pickup', 0, 0.55, 1)[1]).toBeLessThan(0.2);
+  expect(garageSilhouettePoint('pickup', 0.9, -0.2, 1)).toEqual([0.9, -0.2, 1]);
+  expect(garageSilhouettePoint('pickup', 0.9, 0.2, 1.2)).toEqual([
+    0.9, 0.2, 1.2,
+  ]);
+});
+
 it('gives Compact, Muscle, Sports and Super distinct engine identities', () => {
   const signatures = GARAGE_CLASS_IDS.map((id) => {
     const profile = GARAGE_CLASSES[id].engineProfile;
@@ -62,7 +84,7 @@ it('gives Compact, Muscle, Sports and Super distinct engine identities', () => {
       profile.firingStrength.join(','),
     ].join('/');
   });
-  expect(new Set(signatures).size).toBe(5);
+  expect(new Set(signatures).size).toBe(GARAGE_CLASS_IDS.length);
 });
 
 it('persists the selected class and discards tuning from the previous car', () => {

@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import {
   GARAGE_CLASSES,
   GARAGE_CLASS_IDS,
+  RACE_GARAGE_CLASS_IDS,
 } from '../../src/vehicle/garageClasses';
 import { installRamps, type RampSpec } from '../../src/world/ramps';
 import { scriptVehicleHarness } from '../scriptVehicleHarness';
@@ -16,7 +17,7 @@ const neutral = {
   boost: false,
 };
 
-it('gives the five garage cars distinct real-Jolt launch and turn behavior', async () => {
+it('measures each garage car launch and full-lock turn on real Jolt', async () => {
   const measurements: Record<
     string,
     { to30: number; turn14: number; turn28: number }
@@ -72,6 +73,10 @@ it('gives the five garage cars distinct real-Jolt launch and turn behavior', asy
   expect(measurements.sports!.turn14).toBeLessThan(measurements.muscle!.turn14);
   expect(measurements.compact!.turn28).toBeLessThan(
     measurements.muscle!.turn28,
+  );
+  expect(measurements.pickup!.to30).toBeGreaterThan(measurements.sports!.to30);
+  expect(measurements.pickup!.turn14).toBeGreaterThan(
+    measurements.sports!.turn14,
   );
 });
 
@@ -145,7 +150,7 @@ it.each(GARAGE_CLASS_IDS)(
   30_000,
 );
 
-it.each(GARAGE_CLASS_IDS)(
+it.each(RACE_GARAGE_CLASS_IDS)(
   '%s clears the same real-Jolt ramp and lands upright',
   async (id) => {
     const rig = await scriptVehicleHarness({
@@ -190,6 +195,7 @@ it('holds distinct normal and boosted ceilings on a real flat road', async () =>
     coupe: [58, 78],
     sports: [60, 85],
     super: [65, 87],
+    pickup: [45, 60],
   };
   const speeds: Record<string, { normal: number; boosted: number }> = {};
   for (const id of GARAGE_CLASS_IDS) {
