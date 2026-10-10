@@ -83,6 +83,7 @@ interface RecordState {
   slot: Slot | null;
   enabled: boolean;
   driveSpeed: number;
+  cornerLimit: number;
   wreckAge: number;
   attackOffset: number;
   leader: RecordState | null;
@@ -133,6 +134,10 @@ const WRECK_PHYSICS_RADIUS = 220;
 const WRECK_BRAKE = 9;
 const WRECK_PLANNED_BRAKE = 4;
 const WRECK_STOP_MARGIN = 12;
+const CORNER_LOOKAHEAD = 100;
+const CORNER_SAMPLE = 20;
+const CIVILIAN_LATERAL_ACCEL = 3.5;
+const CIVILIAN_BRAKE = 4;
 const PROMOTION_CLEARANCE = 2;
 const PLAYER_FOOTPRINT_RADIUS = Math.hypot(
   VEHICLE_GEOMETRY.length / 2,
@@ -264,6 +269,7 @@ export function createTraffic(
     slot: null,
     enabled: true,
     driveSpeed: record.speed,
+    cornerLimit: record.speed,
     wreckAge: 0,
     attackOffset: 0,
     leader: null,
@@ -372,6 +378,41 @@ export function createTraffic(
       Math.sin(out.heading) *
         (record.authored.laneSide * 3.5 + record.attackOffset);
     return out;
+  }
+
+  /** Ease civilians below the lateral force available at an upcoming bend.
+   * Braking distance makes the limit take effect before entering the curve. */
+  function civilianCornerSpeed(
+    record: RecordState,
+    authoredSpeed: number,
+  ): number {
+    let limit = authoredSpeed;
+    for (
+      let distance = 0;
+      distance < CORNER_LOOKAHEAD;
+      distance += CORNER_SAMPLE
+    ) {
+      const a = routePose(
+        record,
+        record.station + record.state.direction * distance,
+        routeScratch,
+      );
+      const b = routePose(
+        record,
+        record.station + record.state.direction * (distance + CORNER_SAMPLE),
+        nextScratch,
+      );
+      const curvature =
+        Math.abs(wrapAngle(b.heading - a.heading)) / CORNER_SAMPLE;
+      if (curvature < 0.0001) continue;
+      limit = Math.min(
+        limit,
+        Math.sqrt(
+          CIVILIAN_LATERAL_ACCEL / curvature + 2 * CIVILIAN_BRAKE * distance,
+        ),
+      );
+    }
+    return limit;
   }
 
   function nearestRoadStation(position: V3): number {
@@ -943,7 +984,17 @@ export function createTraffic(
       }
       if (!record.wrecked) {
         const direction = state.direction;
-        let desiredSpeed = record.authored.speed;
+        if (
+          !state.rival &&
+          (record.slot || i % farPoseBuckets === farPoseBucket)
+        )
+          record.cornerLimit = civilianCornerSpeed(
+            record,
+            record.authored.speed,
+          );
+        let desiredSpeed = state.rival
+          ? record.authored.speed
+          : record.cornerLimit;
         if (state.rival) {
           const ahead =
             (record.station - playerStation + path.length) % path.length;
