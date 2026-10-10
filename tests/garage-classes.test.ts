@@ -9,15 +9,21 @@ import {
   storeGarageClass,
 } from '../src/vehicle/garageClasses';
 import { VEHICLE_GEOMETRY } from '../src/vehicle/constants';
-import { garageSilhouettePoint } from '../src/render/garageSilhouette';
+import { PARAM_BY_KEY } from '../src/tuning/schema';
+import {
+  garageSilhouettePoint,
+  heavyCabinProfile,
+} from '../src/render/garageSilhouette';
 
-it('keeps Sports as the unchanged default and the pickup Crash-only', () => {
+it('keeps Sports as the default and every heavyweight Crash-only', () => {
   expect(readGarageClass(null)).toBe('sports');
   expect(RACE_GARAGE_CLASS_IDS).toHaveLength(5);
-  expect(GARAGE_CLASS_IDS).toHaveLength(6);
-  expect(garageClassAllowedOnMap('pickup', 'crash-south')).toBe(true);
-  expect(garageClassAllowedOnMap('pickup', 'crash-west')).toBe(true);
-  expect(garageClassAllowedOnMap('pickup', 'circuit-race')).toBe(false);
+  expect(GARAGE_CLASS_IDS).toHaveLength(8);
+  for (const id of ['pickup', 'suv', 'bus'] as const) {
+    expect(garageClassAllowedOnMap(id, 'crash-south')).toBe(true);
+    expect(garageClassAllowedOnMap(id, 'crash-west')).toBe(true);
+    expect(garageClassAllowedOnMap(id, 'circuit-race')).toBe(false);
+  }
   expect(garageClassAllowedOnMap('sports', 'circuit-race')).toBe(true);
   expect(GARAGE_CLASSES.sports.geometry).toBe(VEHICLE_GEOMETRY);
   expect(GARAGE_CLASSES.compact.geometry.length).toBeLessThan(
@@ -74,6 +80,39 @@ it('gives the pickup a bed behind its cab without moving the wheel arches', () =
   ]);
 });
 
+it('keeps the SUV and bus silhouettes inside their collider envelopes', () => {
+  expect(GARAGE_CLASSES.bus.geometry.length).toBeGreaterThanOrEqual(
+    GARAGE_CLASSES.suv.geometry.length + 2,
+  );
+  expect(GARAGE_CLASSES.bus.geometry.width).toBeGreaterThan(
+    GARAGE_CLASSES.suv.geometry.width,
+  );
+  for (const id of ['suv', 'bus'] as const) {
+    const geometry = GARAGE_CLASSES[id].geometry;
+    const heightScale = geometry.height / VEHICLE_GEOMETRY.height;
+    const cab = heavyCabinProfile(id)!;
+    const scales = [
+      geometry.width / VEHICLE_GEOMETRY.width,
+      heightScale,
+      geometry.length / VEHICLE_GEOMETRY.length,
+    ];
+    const extents = [
+      cab.width / 2,
+      cab.centerY + cab.height / 2,
+      Math.abs(cab.centerZ) + cab.length / 2,
+    ];
+    for (let axis = 0; axis < 3; axis++)
+      expect(extents[axis]! * scales[axis]!).toBeLessThan(
+        [geometry.width, geometry.height, geometry.length][axis]! / 2 + 0.3,
+      );
+    for (const y of [-0.2, 0.2, 0.55]) {
+      const shaped = garageSilhouettePoint(id, 0.8, y, 1);
+      expect(Math.abs((shaped[1] - y) * heightScale)).toBeLessThan(0.3);
+    }
+    expect(garageSilhouettePoint(id, 0.9, -0.2, 1)).toEqual([0.9, -0.2, 1]);
+  }
+});
+
 it('gives Compact, Muscle, Sports and Super distinct engine identities', () => {
   const signatures = GARAGE_CLASS_IDS.map((id) => {
     const profile = GARAGE_CLASSES[id].engineProfile;
@@ -85,6 +124,14 @@ it('gives Compact, Muscle, Sports and Super distinct engine identities', () => {
     ].join('/');
   });
   expect(new Set(signatures).size).toBe(GARAGE_CLASS_IDS.length);
+});
+
+it('keeps every authored class mass inside the real tuning range', () => {
+  for (const id of GARAGE_CLASS_IDS) {
+    const mass = GARAGE_CLASSES[id].tuning.mass ?? PARAM_BY_KEY.mass.default;
+    expect(mass).toBeGreaterThanOrEqual(PARAM_BY_KEY.mass.min);
+    expect(mass).toBeLessThanOrEqual(PARAM_BY_KEY.mass.max);
+  }
 });
 
 it('persists the selected class and discards tuning from the previous car', () => {

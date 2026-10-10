@@ -37,6 +37,10 @@ export function garageSilhouettePoint(
     case 'pickup':
       // The roof ends behind the cab; the separate bed rails mark the tail.
       return [x, y - smooth((y - 0.28) / 0.2) * rear * 0.48, z];
+    case 'suv':
+      return [x, y + roof * 0.1, z];
+    case 'bus':
+      return [x, y + roof * 0.08, z];
   }
 }
 
@@ -62,5 +66,29 @@ export function farCabinProfile(kind: GarageClassId): {
       return { height: G.height * 0.23, length: G.length * 0.48, z: -0.16 };
     case 'pickup':
       return { height: G.height * 0.43, length: G.length * 0.32, z: -0.58 };
+    case 'suv':
+      return { height: G.height * 0.52, length: G.length * 0.58, z: 0.12 };
+    case 'bus':
+      return { height: G.height * 0.72, length: G.length * 0.8, z: 0 };
   }
+}
+
+export function heavyCabinProfile(kind: GarageClassId):
+  | {
+      readonly width: number;
+      readonly height: number;
+      readonly length: number;
+      readonly centerY: number;
+      readonly centerZ: number;
+    }
+  | undefined {
+  if (kind !== 'suv' && kind !== 'bus') return;
+  const bus = kind === 'bus';
+  return {
+    width: G.width * (bus ? 0.88 : 0.8),
+    height: G.height * (bus ? 0.72 : 0.65),
+    length: G.length * (bus ? 0.8 : 0.57),
+    centerY: G.height * 0.19,
+    centerZ: bus ? 0 : 0.12,
+  };
 }
