@@ -1,3 +1,18 @@
+export interface VehicleGeometry {
+  readonly width: number;
+  readonly height: number;
+  readonly length: number;
+  readonly wheelbase: number;
+  readonly track: number;
+  readonly wheelRadius: number;
+  readonly maxDroop: number;
+  readonly mounts: readonly {
+    readonly x: number;
+    readonly y: number;
+    readonly z: number;
+  }[];
+}
+
 export const VEHICLE_GEOMETRY = {
   width: 2.16,
   height: 1.2,

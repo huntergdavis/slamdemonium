@@ -3,6 +3,8 @@ import type { BoostPadSpec } from './boostPads';
 import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { createCircuitMap } from './circuit';
+import { createCityMap } from './cityCourse';
+import { createCrashJunctionMap } from './crashJunction';
 import { createTakedownMap } from './takedownCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
@@ -13,11 +15,13 @@ import {
 } from './loopDeLoop';
 import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import type { RunwaySpec } from './runways';
+import type { RoadDeckSpec } from './roadDeck';
 import type { TrackConfig } from './trackConfig';
 import type { JumpRampSpec } from './jumpRamp';
 import type { RoadPath } from './roadGenerator';
 import type { TrafficCarRecord } from './traffic';
 import type { ShuntWallSpec } from './shuntWalls';
+import type { CityBuildingSpec } from './cityBuildings';
 
 /** A named world: track geometry overrides, where the car starts, and the
  * structures built on it. Every placement is data in absolute metres, so a
@@ -39,6 +43,8 @@ export interface MapDefinition {
   readonly halfPipes: readonly HalfPipeSpec[];
   readonly jumpRamps: readonly JumpRampSpec[];
   readonly runways: readonly RunwaySpec[];
+  /** A dark instanced road surface over the single ground collider. */
+  readonly roadDecks?: readonly RoadDeckSpec[];
   /** Accelerator triangles: a speed kick and boost when driven over. */
   readonly boostPads: readonly BoostPadSpec[];
   /** Timed-run routes (NS3); the first is the one on offer. */
@@ -53,8 +59,19 @@ export interface MapDefinition {
   readonly traffic?: readonly TrafficCarRecord[];
   /** Short walls beside a road, shared by collision and visuals. */
   readonly shuntWalls?: readonly ShuntWallSpec[];
+  /** Distant city blocks and junction corners, one visual instanced draw. */
+  readonly cityBuildings?: readonly CityBuildingSpec[];
 }
-export type MapName = 'lab' | 'proving-ground' | 'circuit' | 'takedown';
+export type MapName =
+  | 'lab'
+  | 'proving-ground'
+  | 'circuit'
+  | 'takedown'
+  | 'city'
+  | 'city-reverse'
+  | 'crash-south'
+  | 'crash-west'
+  | 'road-rage';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -331,11 +348,40 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
   ]),
 });
 
+const TAKEDOWN_MAP = createTakedownMap();
+const ROAD_RAGE_MAP: MapDefinition = {
+  ...TAKEDOWN_MAP,
+  name: 'road-rage',
+  label: 'Road Rage · 3 min',
+  // This route is paint only. Road Rage owns its countdown and time-out; the
+  // normal start/goal timer remains exclusive to the other maps.
+  runs: [
+    {
+      name: 'Road Rage start',
+      gates: [
+        {
+          kind: 'start',
+          x: TAKEDOWN_MAP.spawn!.x - Math.sin(TAKEDOWN_MAP.spawn!.heading) * 14,
+          z: TAKEDOWN_MAP.spawn!.z - Math.cos(TAKEDOWN_MAP.spawn!.heading) * 14,
+          heading: TAKEDOWN_MAP.spawn!.heading,
+          width: 28,
+          length: 1.5,
+        },
+      ],
+    },
+  ],
+};
+
 export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   lab: LAB_MAP,
   'proving-ground': PROVING_GROUND_MAP,
   circuit: createCircuitMap(),
-  takedown: createTakedownMap(),
+  takedown: TAKEDOWN_MAP,
+  city: createCityMap(),
+  'city-reverse': createCityMap(true),
+  'crash-south': createCrashJunctionMap('south'),
+  'crash-west': createCrashJunctionMap('west'),
+  'road-rage': ROAD_RAGE_MAP,
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 
