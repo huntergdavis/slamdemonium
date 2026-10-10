@@ -617,8 +617,8 @@ async function boot(): Promise<void> {
           dt,
           playerDamage?.wrecked ||
             (roadRage && roadRage.state.phase !== 'running') ||
-            race?.state.phase === 'countdown'
-            (crashMode && crashMode.state.phase !== 'running') ||
+            race?.state.phase === 'countdown' ||
+            (crashMode && crashMode.state.phase !== 'running')
             ? wreckInput
             : sampled,
           source,
