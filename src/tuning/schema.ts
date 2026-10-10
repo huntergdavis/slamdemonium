@@ -1065,7 +1065,7 @@ const definitions = [
     min: 0,
     max: 1,
     step: 0.05,
-    help: 'Edge streaks above 80% of top speed and during boost. Zero disables them; the road center stays clear.',
+    help: 'Edge streaks build from cruise speed and strengthen through boost. Zero disables them; the road center stays clear.',
   },
   {
     key: 'vignetteStrength',

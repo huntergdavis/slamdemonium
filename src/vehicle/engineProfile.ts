@@ -110,3 +110,20 @@ export const DEFAULT_ENGINE: EngineProfile = {
   mufflerFeedback: 0.42,
   mufflerLossHz: 900,
 };
+
+/** The Kenney sports sedan's presentation identity. Gear thresholds stay at
+ * the proven handling values; even firing and a shorter, brighter exhaust
+ * distinguish its one procedural worklet voice from the old muscle rhythm. */
+export const SPORTS_SEDAN_ENGINE: EngineProfile = {
+  ...DEFAULT_ENGINE,
+  idleRpm: 950,
+  shiftRpm: 6950,
+  redlineRpm: 7250,
+  boostRpm: 8700,
+  firingStrength: [1, 0.94, 0.98, 0.92],
+  firingGap: [1, 1, 1, 1],
+  pipeLossHz: 2100,
+  mufflerSeconds: 0.0025,
+  mufflerFeedback: 0.32,
+  mufflerLossHz: 1200,
+};

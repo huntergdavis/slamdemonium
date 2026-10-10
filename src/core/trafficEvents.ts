@@ -62,6 +62,11 @@ export interface TrafficEventsState {
   labelSeconds: number;
   /** Bar granted this step by every detector together. */
   grant: number;
+  /** Side and closing speed of the latest counted pass, for post-step audio.
+   * Positive side is to the player's right. The nearMisses counter is its
+   * monotonic event sequence, so no event object is allocated per step. */
+  nearMissSide: -1 | 1;
+  nearMissClosingSpeed: number;
 }
 
 /** Half the player's width: with the traffic car's half width from the
@@ -94,6 +99,7 @@ interface CarTrack {
   closest: number;
   /** Relative speed at the closest point so far. */
   closingAtClosest: number;
+  sideAtClosest: -1 | 1;
   /** The near miss fired for this pass, or the pass was voided by contact. */
   passSpent: boolean;
   /** Sim time of the last contact with this car; -Infinity when none. */
@@ -131,6 +137,8 @@ export function createTrafficEvents(): TrafficEvents {
     lastEvent: null,
     labelSeconds: 0,
     grant: 0,
+    nearMissSide: 1,
+    nearMissClosingSpeed: 0,
   };
   const tracks = new Map<number, CarTrack>();
   const bodyToId = new Map<number, number>();
@@ -144,6 +152,7 @@ export function createTrafficEvents(): TrafficEvents {
         distance: Infinity,
         closest: Infinity,
         closingAtClosest: 0,
+        sideAtClosest: 1,
         passSpent: false,
         lastContactAt: -Infinity,
         seenAt: time,
@@ -191,9 +200,18 @@ export function createTrafficEvents(): TrafficEvents {
             player.velocity.x - car.velocity.x,
             player.velocity.z - car.velocity.z,
           );
+          track.sideAtClosest =
+            -dx * player.forward.z + dz * player.forward.x >= 0 ? 1 : -1;
         }
+        let touchedThisStep = false;
+        for (const slam of pendingSlams)
+          if (slam.bodyId === car.bodyId) {
+            touchedThisStep = true;
+            break;
+          }
         if (
           !track.passSpent &&
+          !touchedThisStep &&
           distance > track.closest + 1 &&
           track.closest - PLAYER_HALF_WIDTH - carHalfWidth(car.modelKind) <=
             tuning.nearMissGap &&
@@ -203,6 +221,8 @@ export function createTrafficEvents(): TrafficEvents {
         ) {
           track.passSpent = true;
           state.nearMisses++;
+          state.nearMissSide = track.sideAtClosest;
+          state.nearMissClosingSpeed = track.closingAtClosest;
           fire('near-miss', tuning.nearMissBoost);
         }
         if (distance > NEAR_MISS_RESET_DISTANCE) {
@@ -278,6 +298,8 @@ export function createTrafficEvents(): TrafficEvents {
       state.lastEvent = null;
       state.labelSeconds = 0;
       state.grant = 0;
+      state.nearMissSide = 1;
+      state.nearMissClosingSpeed = 0;
       tracks.clear();
       bodyToId.clear();
       pendingSlams.length = 0;

@@ -14,7 +14,7 @@ import { ImpactFeedback } from './core/impactFeedback';
 import { CrashScore } from './core/crashScore';
 import { Takedowns } from './core/takedowns';
 import { PlayerDamage } from './core/playerDamage';
-import { DEFAULT_ENGINE } from './vehicle/engineProfile';
+import { HERO_SEDAN } from './vehicle/vehicleDefinition';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
@@ -37,6 +37,7 @@ import { InputMapper } from './input/mapper';
 import { ScriptController } from './input/script';
 import type { ActionCounts } from './input/types';
 import { mountOptionsPanel } from './ui/optionsPanel';
+import { mountCarChoice } from './ui/carChoice';
 import { mountHud } from './ui/hud';
 import { createRivalGuidance } from './ui/rivalGuidance';
 import { mountPauseMenu } from './ui/pauseMenu';
@@ -249,6 +250,7 @@ async function boot(): Promise<void> {
     tuning,
     track.spawn.position,
     surfaceResolver,
+    HERO_SEDAN.engineProfile,
   );
   // Traffic events (NS4): near misses, wrong-side driving and slams feed the
   // boost bar. The detector reads the traffic cars' states after physics;
@@ -374,6 +376,7 @@ async function boot(): Promise<void> {
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
   const carVisual = createCarVisual(view.scene);
+  await carVisual.loadHeroModel();
   // Line of sight for the camera: static geometry between car and camera
   // pulls the camera in, so the loop, a bridge or a prop bank never hides
   // the car. The car's own body is ignored; the ray record is reused.
@@ -545,6 +548,7 @@ async function boot(): Promise<void> {
         playerView.speed = vehicle.telemetry.speed;
         if (playerWreckPending) {
           vehicle.loseBoostSection();
+          audio.onPlayerWreck();
           playerWreckPending = false;
         }
         const playerWreckRecoveryDue = playerDamage?.step(dt) ?? false;
@@ -553,14 +557,15 @@ async function boot(): Promise<void> {
           const victim = takedowns.update(dt, traffic?.newlyWrecked ?? []);
           for (let count = countBefore; count < takedowns.count; count++)
             vehicle.awardTakedown();
-          if (
-            victim &&
+          const focusVictim =
+            !!victim &&
             canFocusTakedown(
               victim,
               vehicle.telemetry.position,
               playerView.forward,
-            )
-          )
+            );
+          if (focusVictim) audio.onTakedown();
+          if (victim && focusVictim)
             takedownMoment?.start(victim.id, performance.now());
           else if (!victim && takedowns.lastObservedVictim) {
             const other = takedowns.lastObservedVictim;
@@ -595,12 +600,18 @@ async function boot(): Promise<void> {
           trafficTuning.wrongSideReach = tuning.get('wrongSideReach');
           trafficTuning.wrongSideRate = tuning.get('wrongSideRate');
           trafficTuning.slamBoost = tuning.get('slamBoost');
+          const nearMissesBefore = trafficEvents.state.nearMisses;
           const grant = trafficEvents.update(
             dt,
             playerView,
             traffic?.states ?? trafficStates,
             trafficTuning,
           );
+          if (trafficEvents.state.nearMisses !== nearMissesBefore)
+            audio.onNearMiss(
+              trafficEvents.state.nearMissSide,
+              trafficEvents.state.nearMissClosingSpeed,
+            );
           if (grant > 0) vehicle.applyPad(0, grant);
         }
         crashScore.update(dt);
@@ -699,6 +710,7 @@ async function boot(): Promise<void> {
             traffic.states,
             vehicle.telemetry.position,
           );
+        carVisual.updateLod(view.camera, view.size.height);
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
         view.render(frameTime);
@@ -852,6 +864,7 @@ async function boot(): Promise<void> {
       syncPause();
     },
   });
+  resources.push(mountCarChoice(options.element, carVisual.setPaint));
   const miniMapLandmarks: MiniMapLandmark[] = [];
   for (const ramp of map.ramps)
     miniMapLandmarks.push({
@@ -992,9 +1005,10 @@ async function boot(): Promise<void> {
   const audio = mountAudioDirector({
     host: host!,
     tuning,
-    engine: DEFAULT_ENGINE,
+    engine: HERO_SEDAN.engineProfile,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
+    readPresentationTimeScale: () => takedownMoment?.timeScale ?? 1,
     resolveGroundedSurface,
   });
   menuAudio = audio;
@@ -1004,6 +1018,8 @@ async function boot(): Promise<void> {
   resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
   const relativeImpactVelocity: V3 = { x: 0, y: 0, z: 0 };
+  const otherContactVelocityA: V3 = { x: 0, y: 0, z: 0 };
+  const otherContactVelocityB: V3 = { x: 0, y: 0, z: 0 };
   const impact = createImpactSeverity();
   let landingsSeen = vehicle.telemetry.landingCount;
   const impactFeedback = new ImpactFeedback({
@@ -1018,10 +1034,30 @@ async function boot(): Promise<void> {
   // speed against a static obstacle; the record says it is estimated.
   physics.onContact((a, b, impulse, point, normal, readVelocities) => {
     if (a !== vehicle.body && b !== vehicle.body) {
-      takedowns?.noteCarContact(
-        traffic?.stateForBody(a),
-        traffic?.stateForBody(b),
-      );
+      const carA = traffic?.stateForBody(a);
+      const carB = traffic?.stateForBody(b);
+      if (carA || carB) {
+        readVelocities(otherContactVelocityA, otherContactVelocityB);
+        const dx = otherContactVelocityA.x - otherContactVelocityB.x;
+        const dy = otherContactVelocityA.y - otherContactVelocityB.y;
+        const dz = otherContactVelocityA.z - otherContactVelocityB.z;
+        const normalSpeed = dx * normal.x + dy * normal.y + dz * normal.z;
+        audio.onCrashContact(
+          a,
+          b,
+          Math.max(0, normalSpeed),
+          Math.sqrt(
+            Math.max(
+              0,
+              dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed,
+            ),
+          ),
+          point,
+          2,
+          false,
+        );
+      }
+      takedowns?.noteCarContact(carA, carB);
       traffic?.onWorldContact(a, b, normal, readVelocities);
       return;
     }
@@ -1077,11 +1113,38 @@ async function boot(): Promise<void> {
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
       vehicle.noteChassisContact(impactNormal);
+    const profile =
+      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null;
+    const crashKind: 0 | 1 | null = trafficVelocity
+      ? 0
+      : profile === 'concrete' ||
+          (!surfaceRegistry.has(otherBody) && impact.approachSpeed >= 4)
+        ? 1
+        : null;
+    if (crashKind !== null) {
+      const normalSpeed =
+        severityVelocity.x * impactNormal.x +
+        severityVelocity.y * impactNormal.y +
+        severityVelocity.z * impactNormal.z;
+      const speedSquared =
+        severityVelocity.x ** 2 +
+        severityVelocity.y ** 2 +
+        severityVelocity.z ** 2;
+      audio.onCrashContact(
+        vehicle.body,
+        otherBody,
+        impact.approachSpeed,
+        Math.sqrt(Math.max(0, speedSquared - normalSpeed * normalSpeed)),
+        point,
+        crashKind,
+        !!trafficVelocity && Math.abs(impactNormal.y) < 0.55,
+      );
+    }
     // This callback runs inside physics.step: consumers only queue fixed
     // scalars here. Audio output runs after simulation in update().
     impactFeedback.onContact(
       otherBody,
-      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null,
+      crashKind === null ? profile : null,
       impact,
     );
   });
@@ -1192,6 +1255,7 @@ async function boot(): Promise<void> {
       };
     } else inspectionCamera = null;
   };
+  game.getHeroLod = () => carVisual.lodInfo();
   game.setHudMode = (mode) => hud.setMode(mode);
   game.setOptionsOpen = (open) => options.setOpen(open);
   game.stepMany = (count) => {

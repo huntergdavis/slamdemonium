@@ -198,6 +198,13 @@ def validate_baseline(baseline):
     for key in ('assetMinimumBytes', 'newAssetBytes'):
         for metric in METRICS:
             integer(policy[key][metric])
+    for metric in METRICS:
+        integer(policy.get('reviewedTotalGrowth', {}).get(metric, 0))
+    for identity, allowance in policy.get('reviewedAssetGrowth', {}).items():
+        if not isinstance(identity, str) or not identity:
+            raise ValueError('Reviewed growth requires a stable asset identity')
+        for metric in METRICS:
+            integer(allowance[metric])
 
 
 def growth(value, percent):
@@ -207,9 +214,10 @@ def growth(value, percent):
 def asset_limit(identity, metric, baseline):
     old = baseline['measurement']['assets'].get(identity)
     policy = baseline['allowance']
+    reviewed = policy.get('reviewedAssetGrowth', {}).get(identity, {}).get(metric, 0)
     if old is None:
-        return policy['newAssetBytes'][metric]
-    return old[metric] + max(growth(old[metric], policy['assetPercent']), policy['assetMinimumBytes'][metric])
+        return max(policy['newAssetBytes'][metric], reviewed)
+    return old[metric] + max(growth(old[metric], policy['assetPercent']), policy['assetMinimumBytes'][metric]) + reviewed
 
 
 def evaluate(measurement, baseline):
@@ -226,7 +234,7 @@ def evaluate(measurement, baseline):
                                  'delta': asset[metric] - old.get(metric, 0), 'excess': asset[metric] - limit})
     for metric in METRICS:
         old = baseline['measurement']['total'][metric]
-        limit = old + growth(old, baseline['allowance']['totalPercent'])
+        limit = old + growth(old, baseline['allowance']['totalPercent']) + baseline['allowance'].get('reviewedTotalGrowth', {}).get(metric, 0)
         actual = measurement['total'][metric]
         if actual > limit:
             failures.append({'file': 'TOTAL', 'identity': 'TOTAL', 'metric': metric,
@@ -454,7 +462,7 @@ def render(report, prior, warnings):
              '| Total | Current | Baseline | Change | Limit |', '|---|---:|---:|---:|---:|']
     for metric in METRICS:
         value, previous = measurement['total'][metric], old['total'][metric]
-        limit = previous + growth(previous, baseline['allowance']['totalPercent'])
+        limit = previous + growth(previous, baseline['allowance']['totalPercent']) + baseline['allowance'].get('reviewedTotalGrowth', {}).get(metric, 0)
         lines.append(f'| {metric} | {value:,} B | {previous:,} B | {delta(value, previous)} | {limit:,} B |')
     lines += ['', f"Baseline reason: {safe(baseline['reason'])}", '',
               'Budgets do not move automatically. Intentional larger models/audio/maps need a reviewed '
