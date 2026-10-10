@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <!-- Positional controls, not controller-brand identification. Use visible
+       labels such as Bottom (standard A), Left bumper, and Left trigger. -->
+  <symbol id="button-bottom" viewBox="0 0 40 40">
+    <g fill="none" stroke="currentColor"><g opacity=".4" stroke-width="1.5"><circle cx="20" cy="9" r="3"/><circle cx="9" cy="20" r="3"/><circle cx="31" cy="20" r="3"/></g><circle cx="20" cy="31" r="7" stroke-width="2.5"/></g>
+    <text x="20" y="34.5" fill="currentColor" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700">A</text>
+  </symbol>
+  <symbol id="button-right" viewBox="0 0 40 40">
+    <g fill="none" stroke="currentColor"><g opacity=".4" stroke-width="1.5"><circle cx="20" cy="9" r="3"/><circle cx="9" cy="20" r="3"/><circle cx="20" cy="31" r="3"/></g><circle cx="31" cy="20" r="7" stroke-width="2.5"/></g>
+    <text x="31" y="23.5" fill="currentColor" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700">B</text>
+  </symbol>
+  <symbol id="button-left" viewBox="0 0 40 40">
+    <g fill="none" stroke="currentColor"><g opacity=".4" stroke-width="1.5"><circle cx="20" cy="9" r="3"/><circle cx="31" cy="20" r="3"/><circle cx="20" cy="31" r="3"/></g><circle cx="9" cy="20" r="7" stroke-width="2.5"/></g>
+    <text x="9" y="23.5" fill="currentColor" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700">X</text>
+  </symbol>
+  <symbol id="button-top" viewBox="0 0 40 40">
+    <g fill="none" stroke="currentColor"><g opacity=".4" stroke-width="1.5"><circle cx="9" cy="20" r="3"/><circle cx="31" cy="20" r="3"/><circle cx="20" cy="31" r="3"/></g><circle cx="20" cy="9" r="7" stroke-width="2.5"/></g>
+    <text x="20" y="12.5" fill="currentColor" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" font-weight="700">Y</text>
+  </symbol>
+  <symbol id="lb" viewBox="0 0 40 40">
+    <g fill="none" stroke="currentColor"><rect x="2" y="9" width="17" height="22" rx="5" stroke-width="2.5"/><rect x="23" y="12" width="14" height="16" rx="4" opacity=".4"/></g>
+    <text x="10.5" y="23.5" fill="currentColor" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="700">LB</text>
+  </symbol>
+  <symbol id="rb" viewBox="0 0 40 40">
+    <g fill="none" stroke="currentColor"><rect x="3" y="12" width="14" height="16" rx="4" opacity=".4"/><rect x="21" y="9" width="17" height="22" rx="5" stroke-width="2.5"/></g>
+    <text x="29.5" y="23.5" fill="currentColor" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="700">RB</text>
+  </symbol>
+  <symbol id="lt" viewBox="0 0 40 40">
+    <g fill="none" stroke="currentColor" stroke-linejoin="round"><path d="M3 4h15l-2 31H9L3 19Z" stroke-width="2.5"/><path d="M22 4h15v15l-6 16h-7Z" opacity=".4"/></g>
+    <text x="10.5" y="20" fill="currentColor" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="700">LT</text>
+  </symbol>
+  <symbol id="rt" viewBox="0 0 40 40">
+    <g fill="none" stroke="currentColor" stroke-linejoin="round"><path d="M3 4h15l-2 31H9L3 19Z" opacity=".4"/><path d="M22 4h15v15l-6 16h-7Z" stroke-width="2.5"/></g>
+    <text x="29.5" y="20" fill="currentColor" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="700">RT</text>
+  </symbol>
+  <symbol id="dpad" viewBox="0 0 40 40">
+    <path d="M14 3h12v11h11v12H26v11H14V26H3V14h11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="20" cy="20" r="2" fill="currentColor"/>
+  </symbol>
+  <symbol id="dpad-up-down" viewBox="0 0 40 40">
+    <path d="M14 3h12v11h11v12H26v11H14V26H3V14h11Z" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"/>
+    <path d="m20 6 5 7H15Zm0 28-5-7h10Z" fill="currentColor"/>
+  </symbol>
+  <symbol id="dpad-left-right" viewBox="0 0 40 40">
+    <path d="M14 3h12v11h11v12H26v11H14V26H3V14h11Z" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"/>
+    <path d="m6 20 7-5v10Zm28 0-7 5V15Z" fill="currentColor"/>
+  </symbol>
+</svg>
