@@ -1,106 +1,51 @@
 # Slamdemonium Racing
+
 [![CI](https://github.com/huntergdavis/slamdemonium/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/huntergdavis/slamdemonium/actions/workflows/ci.yml)
 [Play Slamdemonium Racing](https://hunterdavis.com/slamdemonium/)
 
-A fast, loud, crash-happy arcade racer that runs in a browser tab.
+A crash-happy arcade racer you can play in a desktop browser. Drive through traffic, chase rivals, earn boost with takedowns, and keep going after the metal folds.
 
-![The car at speed on the painted ring, seen from the chase camera, with posts and fog along the barrier](docs/screenshots/lab-overview-clean.png)
+## Start driving
 
-## What this is right now
+Open the [game](https://hunterdavis.com/slamdemonium/) in Chrome, Firefox, or Safari. Click the page to focus it and press **W** (or the right trigger on a controller). The first drive starts on the proving ground. Press **Escape** or controller **Start / Menu**, then choose **Map** for World Tour events and free-drive roads. The same pause menu has **Garage**, **Controls**, **Options**, and audio mute.
 
-Slamdemonium Racing is not a game yet. The first milestone is a **driving-feel laboratory**:
+**World Tour** is the seven-event progression. Select a card in **Pause → Map → World Tour**. Each card states its objective and medal target; earning a medal opens the next card. Results and unlocks are saved in this browser. **Free drive**, below the cards in the Map menu, lets you pick a road or stand-alone mode without advancing the Tour. Press **Enter** to retry an event from its start with that run's score cleared; a saved best result or earned unlock remains.
 
-> A plain box drives around a big paved circle in 3D. Every number that shapes how it accelerates, brakes, grips, slides and drifts is a slider on an options page that applies live. Overlays show what the physics is doing. A human can sit in it for an hour and find the fun.
+| Mode | How to start | What to do |
+| --- | --- | --- |
+| **Takedown** | **Map → Free drive → Takedown** | Chase the marked red/yellow rivals on the wide walled course. Shunt one into a wall, traffic, or another hard object for a takedown and more boost. The mini-map and edge pointer help you find the pack. |
+| **Road Rage** | Earn a City Sprint medal, then choose **World Tour → Road Rage**; it is also a Free drive map. | Score takedowns before the three-minute clock expires. Three earn bronze; damage and wrecks can end the run early. |
+| **City / City Sprint** | **Map → Free drive → City** for open driving; **World Tour → City Sprint** for the first Tour card. | Drive the city streets and crossings. In City Sprint, pass both gates and finish before the clock runs out. |
+| **Circuit Race** | Unlock its Tour card through Crash Junction, or choose the Circuit Race Free drive map. | Race five rivals around the circuit. Pass the route gates; a shortcut does not count as a finished lap. |
+| **Face Off** | Unlock its Tour card through Circuit Race, or choose the Face Off Free drive map. | Race Vesper one on one. Beat Vesper to earn the special Garage paint. |
+| **Highway Eliminator** | Unlock its Tour card through Face Off, or choose the Highway Eliminator Free drive map. | At each lap end, the last-place car is cut. Survive cuts to earn a medal; be the final car for gold. |
+| **Three-Venue Grand Prix** | Unlock its Tour card through Eliminator, or choose the Grand Prix venue in Free drive. | Carry points through City, Coast, and Highway heats. Press **Enter** after a heat to move to the next venue; finish in the top three for a medal. |
+| **Crash Junction** | Unlock the south-approach Tour card through Road Rage, or choose **Crash South** or **Crash West** in Free drive. | Launch into crossing traffic and start a chain reaction. Each distinct wreck adds damage score; a bigger pileup earns a better medal. |
 
-Why start here? Browser racers usually fail on one thing: the driving does not feel right. Too floaty, too sim-heavy, or too sticky, and the speed never lands. If the box feels fast and fun on flat pavement, everything else (car models, crashes, traffic, opponents) is content on a foundation that works. If it does not, no content will save it.
+The **Garage** is in the pause menu. Compact, Muscle, Coupe, Sports, and Super are race classes with different size, pace, and steering. Select one before an event; the choice persists in this browser. Pickup, SUV, and Bus are **Crash-only** heavyweights: a Crash bronze medal unlocks Pickup, silver unlocks SUV, and gold unlocks Bus. Locked entries show their requirement. Tour cards only admit eligible, unlocked cars.
 
-The lab is built around six design pillars:
+Coast shoreline and headland routes, their reverse directions, highway express and interchange, the circuit, the city, the proving ground, and the lab ring are available under **Map → Free drive**. Free driving is a way to learn the roads and the handling without a Tour result.
 
-1. **Speed is felt, not read.** Punchy acceleration, a world that streams past, a camera and field of view that react to speed.
-2. **Drifting is easy to start and rewarding to hold.** Grip hard, let go progressively, catch it, charge the boost meter.
-3. **Braking is powerful and predictable.** Late braking is a tactic. Brake response is a real curve, not one number.
-4. **Assists are dials, not walls.** Every arcade assist is a slider that goes to zero.
-5. **Tunability beats correctness.** Any physical shortcut is fine if it feels better and has a slider.
-6. **Latency is a feature.** Input-to-motion delay is measured and minimized.
+## Crashes, boost, and recovery
 
-![The Options page open over the running game, with the Quick Tune sliders at the top](docs/screenshots/options-quick-tune.png)
+Use **Left Shift** (controller **X**) to spend boost. A credited takedown refills it and can extend the bar up to four sections; a player wreck removes a section. Scrapes leave small dents, hard hits fold body panels, and a badly damaged player car wrecks. After a short wreck beat it returns pristine, stationary, and facing the road ahead. **R** respawns you during a drive; **Enter** restarts the whole run.
 
-Every slider applies while you drive. Press **O**, drag, feel the difference, drag it back. The full HUD shows what the physics is doing underneath: a G-G diagram, grip usage on each wheel, slide angle, and ten seconds of graphs.
-
-![The full HUD: G-G diagram, per-wheel grip bars, pedals, slide angle gauge and scrolling graphs over the ring](docs/screenshots/hud-full.png)
-
-When you are tuning and something feels wrong, start with [docs/TUNING_PLAYBOOK.md](docs/TUNING_PLAYBOOK.md). The full design brief is [docs/vertical-slice-design.md](docs/vertical-slice-design.md).
-
-## Run it
-
-**Play it in your browser:** <https://hunterdavis.com/slamdemonium/>
-
-Open the link in Chrome, Firefox or Safari on a desktop, click the page, press **W** and go. Nothing to install, no account.
-
-### Run it from source
-
-For contributors, or if you want to change the code. You need [Node.js](https://nodejs.org) 22 or newer. Then, from the project folder:
-
-```sh
-npm install
-npm run dev
-```
-
-Open <http://127.0.0.1:5173/> in your browser. Changes to the code reload in place while the dev server runs.
-
-To build a standalone copy for any static web host:
-
-```sh
-npm run build
-```
-
-The result lands in `dist/`. Nothing on the server side is required.
+When **IMPACT TIME** appears after your car wrecks, **hold T** (controller **LB + D-pad Down**) and steer with **A/D** or the left stick. This briefly slows the wreck and lets you push it into another car for an **Aftertouch takedown**. Release the hold to leave slow motion. Outside a wreck, pressing **T** toggles ordinary slow motion.
 
 ## Controls
 
-Keyboard and controller both work, at the same time, with nothing to switch. A controller is the better experience: its triggers are analog, so you can feed in half throttle or trail the brake, which the keyboard cannot do. Keyboard steering and pedals are smoothed so digital keys still feel like pedals.
+Keyboard and a standard-layout controller both work. Click the game and press a controller button once if the pad is not detected. Analog triggers give finer throttle and braking; keyboard inputs are smoothed. The pause menu's **Controls** screen has the full live mapping.
 
-### Keyboard
+| Action | Keyboard | Controller |
+| --- | --- | --- |
+| Throttle / brake or reverse | **W** or **↑** / **S** or **↓** | Right / left trigger |
+| Steer | **A/D** or **←/→** | Left stick |
+| Handbrake | **Space** | **A** |
+| Boost | **Left Shift** | **X** |
+| Respawn / retry event | **R** / **Enter** | **Y** / pause-menu Restart |
+| Impact Time slow motion | Hold **T** after a wreck | Hold **LB + D-pad Down** |
+| Pause menu / pause toggle | **Escape** / **P** | **Start / Menu** |
+| Camera / HUD / options | **C** / **H** / **O** | Pause menu, or **LB + D-pad Right / Up** for camera / HUD |
+| Mute all audio | **M** | Pause menu, or **LB + RB** |
 
-| Action | Keys |
-|---|---|
-| Throttle | W, Up |
-| Brake / reverse | S, Down |
-| Steer | A / D, Left / Right |
-| Handbrake | Space |
-| Boost | Left Shift |
-| Respawn (keeps the score) | R |
-| Retry: onto the start line, score and run cleared | Enter |
-| Pause menu (resume, restart, options) | Escape |
-| Pause, without the menu | P |
-| Options panel, directly | O |
-| HUD mode (full / minimal / off) | H |
-| Debug gizmos | G |
-| Camera preset (chase / far / hood) | C |
-| Slow motion toggle (0.25x) | T |
-| Latency probe | L |
-| A/B tuning swap | Tab |
-| Telemetry recording (CSV) | F9 |
-| Fill the boost bar (test cheat) | B |
-
-### Controller
-
-> **Plugged in and nothing happens?** Browsers do not hand a controller to a page until you press a button on it. Click the game once, then press any face button on the pad. After that it just works. If the pad still does nothing, it is probably not reporting the standard layout; most Xbox and PlayStation style pads do.
-
-| Action | Control |
-|---|---|
-| Throttle | Right trigger (analog) |
-| Brake / reverse | Left trigger (analog) |
-| Steer | Left stick, left and right |
-| Handbrake | A (bottom face button) |
-| Boost | X (left face button) |
-| Respawn | Y (top face button) |
-| Pause menu | Start / Menu |
-| In menus: move | D-pad or left stick |
-| In menus: select | A |
-| In menus: back | B |
-| In Options: adjust a slider or preset | D-pad or stick, left and right |
-
-The pause menu is built for a pad: Start opens it, the stick moves, A picks Resume, Restart or Options, and B backs out. Inside Options, left and right on the stick adjust whatever is highlighted, so you never need a mouse. Only typing a number or picking a file falls back to the keyboard or a browser dialog. Everything not in this table (HUD, camera, slow motion, A/B swap, recording) stays on the keyboard. If you press a driving key on the keyboard while holding the pad, the keyboard wins for as long as the key is down, then the pad takes over again.
-
-One browser quirk: if you are in fullscreen, the first **Escape** leaves fullscreen and the second opens the menu.
+In menus, use **↑/↓** or the D-pad/left stick to move, **Enter** or **A** to select, and **Escape** or **B** to go back. In fullscreen, the first Escape may leave fullscreen; press it again for the pause menu.
