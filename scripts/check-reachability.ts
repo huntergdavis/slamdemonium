@@ -16,7 +16,7 @@ export interface ReachabilityResult {
 const ALLOWLIST = 'scripts/reachability-allowlist.json';
 const codeFile = /\.(?:[cm]?[jt]sx?)$/;
 const assetFile =
-  /\.(?:css|json|md|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|wasm|ogg|txt)$/;
+  /\.(?:css|json|md|glb|gltf|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|wasm|ogg|txt)$/;
 /** F1 shipped sounds/notices must have a runtime import, never an exception. */
 const trackedAssetFile = /\.(?:ogg|txt)$/;
 

@@ -1,4 +1,5 @@
 import { HERO_PAINTS, type HeroPaint } from '../vehicle/vehicleDefinition';
+import carLicenseUrl from '../../assets/cars/kenney-car-kit-3.1/LICENSE.txt?url&no-inline';
 
 const STORAGE_KEY = 'slamdemonium.heroPaint';
 
@@ -41,6 +42,12 @@ export function mountCarChoice(
     }
   });
   label.append(select);
-  (options.querySelector('.sl-options__header') ?? options).append(label);
-  return { dispose: () => label.remove() };
+  const license = doc.createElement('a');
+  license.href = carLicenseUrl;
+  license.textContent = 'Car model: Kenney (CC0)';
+  license.target = '_blank';
+  license.rel = 'noopener noreferrer';
+  license.className = 'sl-caption';
+  (options.querySelector('.sl-options__header') ?? options).append(label, license);
+  return { dispose: () => { label.remove(); license.remove(); } };
 }
