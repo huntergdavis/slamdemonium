@@ -41,7 +41,7 @@ export interface TrafficCarRecord {
   readonly speed: number;
   /** An optional crossing road. All streams still share one physical pool. */
   readonly path?: RoadPath;
-  /** Extra signed metres from the usual lane centre, for multi-lane roads. */
+  /** Signed lane offset; city adds it to the usual lane, race detours author it directly. */
   readonly laneOffset?: number;
   /** +1 follows circuit stations; -1 travels against them. */
   readonly direction?: -1 | 1;
@@ -59,8 +59,6 @@ export interface TrafficCarRecord {
   }[];
   /** Circuit Race uses a standing grid and independent pace, never takedown rubber-banding. */
   readonly raceEntrant?: boolean;
-  /** Metres left of the centreline; overrides the ordinary two-lane offset. */
-  readonly laneOffset?: number;
   /** Optional authored road detour, evaluated at the car's route station. */
   readonly laneOffsetAt?: (station: number) => number;
 }
