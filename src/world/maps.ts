@@ -4,6 +4,7 @@ import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { createCircuitMap } from './circuit';
 import { createCityMap } from './cityCourse';
+import { createCrashJunctionMap } from './crashJunction';
 import { createTakedownMap } from './takedownCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
@@ -62,7 +63,14 @@ export interface MapDefinition {
   readonly cityBuildings?: readonly CityBuildingSpec[];
 }
 export type MapName =
-  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'city' | 'city-reverse';
+  | 'lab'
+  | 'proving-ground'
+  | 'circuit'
+  | 'takedown'
+  | 'city'
+  | 'city-reverse'
+  | 'crash-south'
+  | 'crash-west';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -346,6 +354,8 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   takedown: createTakedownMap(),
   city: createCityMap(),
   'city-reverse': createCityMap(true),
+  'crash-south': createCrashJunctionMap('south'),
+  'crash-west': createCrashJunctionMap('west'),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 
