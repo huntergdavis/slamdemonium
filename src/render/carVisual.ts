@@ -181,6 +181,10 @@ export function createCarVisual(scene: Scene) {
     // Shorten and pinch the nose, then buckle the hood across the part the
     // chase camera actually sees. The shifted creases make the fold diagonal.
     const frontCorner = front * Math.min(1, Math.abs(nx) * 2);
+    // The wheels remain on their suspension mounts after a crash. Keep the
+    // outer fenders around those mounts instead of pulling the whole nose
+    // behind the front axle; the centre of the hood can still buckle deeply.
+    const frontShoulder = 1 - 0.78 * Math.min(1, Math.abs(nx) * 3);
     const trough = crush.front * crease(nz, -0.3 - nx * 0.05, 0.13);
     const crest =
       crush.front *
@@ -195,7 +199,9 @@ export function createCarVisual(scene: Scene) {
             0.24 * trough +
             0.15 * frontCorner) +
         roof * 0.9 * crest,
-      z + front * 1.08 * (0.92 + 0.08 * fold) - rear * 0.72 * fold,
+      z +
+        front * frontShoulder * 1.08 * (0.92 + 0.08 * fold) -
+        rear * 0.72 * fold,
     ];
   }
   function setCrush(next: Readonly<CarCrushState>): void {
