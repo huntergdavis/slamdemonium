@@ -39,6 +39,7 @@ it.each(['south', 'west'] as const)(
         speed: number;
         closing: number;
       } | null = null;
+      let ambientWrecks = 0;
       let wrecks = 0;
       world.onContact((a, b, impulse, _point, normal, readVelocities) => {
         if (a !== vehicle.body && b !== vehicle.body) {
@@ -99,10 +100,12 @@ it.each(['south', 'west'] as const)(
           );
           loop.stepMany(1);
           traffic.postStep();
-          wrecks += traffic.newlyWrecked.length;
+          if (firstContact) wrecks += traffic.newlyWrecked.length;
+          else ambientWrecks += traffic.newlyWrecked.length;
         }
         results[id] = {
           firstContact,
+          ambientWrecks,
           wrecks,
           recoveryCount: vehicle.telemetry.recoveryCount,
           groundedWheels: vehicle.telemetry.groundedWheels,
@@ -111,6 +114,7 @@ it.each(['south', 'west'] as const)(
           firstContact,
           `${id} reaches live crossing traffic`,
         ).not.toBeNull();
+        expect(ambientWrecks, `${id} sees an intact crossing`).toBe(0);
         expect(wrecks, `${id} grows a physical crash`).toBeGreaterThan(0);
         expect(vehicle.telemetry.recoveryCount).toBe(0);
       } finally {
