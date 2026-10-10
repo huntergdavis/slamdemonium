@@ -26,6 +26,13 @@ export class InputMapper {
   private readUiCapture: (() => boolean) | undefined;
   private scriptProcessor: ((sample: StepInput) => void) | undefined;
 
+  get slowMotionHeld(): boolean {
+    return (
+      !(this.readUiCapture?.() ?? false) &&
+      (this.keyboard.state.held.KeyT || this.gamepad.state.slowMotionHeld)
+    );
+  }
+
   constructor(
     readonly keyboard: KeyboardInput,
     readonly gamepad: GamepadInput = new GamepadInput(),
