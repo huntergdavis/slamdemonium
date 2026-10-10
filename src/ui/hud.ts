@@ -839,12 +839,14 @@ export class Hud {
     const target =
       state.nextTarget === null ? 'GOLD SECURED' : `NEXT ${state.nextTarget}`;
     const takedownWord = state.count === 1 ? 'TAKEDOWN' : 'TAKEDOWNS';
+    const wrecksLeft = 3 - state.wrecks;
+    const wreckBudget = `${wrecksLeft} WRECK${wrecksLeft === 1 ? '' : 'S'} LEFT`;
     const label =
       state.phase === 'countdown'
         ? `ROAD RAGE · ${Math.ceil(state.countdown)}`
         : state.goCue > 0
           ? 'ROAD RAGE · GO!'
-          : `ROAD RAGE · ${clock} · ${state.count} ${takedownWord} · ${target}${state.wrecks === 2 && state.phase === 'running' ? ' · CRITICAL · 1 WRECK LEFT' : ''}`;
+          : `ROAD RAGE · ${clock} · ${state.count} ${takedownWord} · ${target}${state.phase === 'running' ? ` · ${state.wrecks === 2 ? 'CRITICAL · ' : ''}${wreckBudget}` : ''}`;
     if (this.roadRageCard.textContent !== label)
       this.roadRageCard.textContent = label;
     this.roadRageCard.dataset.phase = state.phase;
@@ -853,7 +855,9 @@ export class Hud {
     if (state.phase === 'finished') {
       const best = this.options.readRoadRageBest?.();
       const outcome =
-        state.finishReason === 'wrecks' ? 'FAILED' : state.medal.toUpperCase();
+        state.finishReason === 'wrecks'
+          ? 'FAILED · NO MEDAL'
+          : `TIME UP · ${state.medal.toUpperCase()}`;
       const result = `${outcome} · ${state.count} ${takedownWord} · BEST ${best?.count ?? '—'} · ENTER TO RETRY`;
       if (this.roadRageResult.textContent !== result)
         this.roadRageResult.textContent = result;
