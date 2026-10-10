@@ -15,6 +15,7 @@ const MAX_PAIRS = 32;
 const MAX_GRINDS = 8;
 const NEAR_SQUARED = 400 * 400;
 const SPARKS = 48;
+const GRIND_SPARKS = 16;
 const METAL = 24;
 const GLASS = 16;
 const PAIR_COOLDOWN = 0.14;
@@ -22,6 +23,7 @@ const GRIND_GAP = 0.08;
 
 type Particle = {
   active: boolean;
+  grind: boolean;
   age: number;
   life: number;
   groundY: number;
@@ -71,6 +73,7 @@ type GrindPair = {
 
 const particle = (): Particle => ({
   active: false,
+  grind: false,
   age: 0,
   life: 0,
   groundY: 0,
@@ -95,9 +98,9 @@ export function createWreckParticles(scene: Scene) {
     flatShading: true,
   });
   const glassMaterial = new MeshBasicMaterial({
-    color: 0xa8e5f8,
+    color: 0xd0f5ff,
     transparent: true,
-    opacity: 0.68,
+    opacity: 0.88,
     depthWrite: false,
   });
   const pools = [
@@ -238,14 +241,19 @@ export function createWreckParticles(scene: Scene) {
       slot = pairCursor;
       pairCursor = (pairCursor + 1) % MAX_PAIRS;
     }
+    let eventIndex = queued;
+    if (queued === MAX_EVENTS) {
+      let weakest = 0;
+      for (let index = 1; index < MAX_EVENTS; index++)
+        if (events[index]!.closing < events[weakest]!.closing) weakest = index;
+      dropped++;
+      if (closing <= events[weakest]!.closing) return;
+      eventIndex = weakest;
+    } else queued++;
     pairA[slot] = a;
     pairB[slot] = b;
     pairAt[slot] = seconds;
-    if (queued === MAX_EVENTS) {
-      dropped++;
-      return;
-    }
-    const event = events[queued++]!;
+    const event = events[eventIndex]!;
     event.a = a;
     event.b = b;
     event.x = point.x;
@@ -275,9 +283,31 @@ export function createWreckParticles(scene: Scene) {
     vy: number,
     vz: number,
     strength: number,
+    grind = false,
   ): void {
     const pool = pools[kind];
-    const item = pool.particles.find((candidate) => !candidate.active);
+    // Sustained grinds can occupy only the tail of the spark pool. An impact
+    // always has its own 32 slots and may replace the oldest impact fragment
+    // in a pileup; it cannot vanish behind a long wall scrape.
+    const start = kind === 0 && grind ? SPARKS - GRIND_SPARKS : 0;
+    const end =
+      kind === 0 && !grind ? SPARKS - GRIND_SPARKS : pool.particles.length;
+    let item: Particle | undefined;
+    for (let index = start; index < end; index++)
+      if (!pool.particles[index]!.active) {
+        item = pool.particles[index]!;
+        break;
+      }
+    if (!item && !grind) {
+      let oldest = -1;
+      for (let index = start; index < end; index++) {
+        const candidate = pool.particles[index]!;
+        if (candidate.age > oldest) {
+          oldest = candidate.age;
+          item = candidate;
+        }
+      }
+    }
     if (!item) {
       dropped++;
       return;
@@ -292,21 +322,25 @@ export function createWreckParticles(scene: Scene) {
     const across = next() * 2 - 1;
     const lift = next();
     const along = next() * 2 - 1;
+    const energy = Math.max(0, Math.min(1, (strength - 5) / 45));
     item.active = true;
+    item.grind = grind;
     item.age = 0;
     item.life =
       kind === 0
-        ? 0.28 + next() * 0.45
+        ? grind
+          ? 0.2 + next() * 0.2
+          : 0.48 + next() * 0.35
         : kind === 1
           ? 0.8 + next() * 1.1
-          : 0.55 + next() * 0.9;
+          : 0.7 + next() * 0.65;
     item.groundY = groundY + (kind === 1 ? 0.03 : 0.01);
     item.position.set(x + across * 0.12, y + lift * 0.1, z + along * 0.12);
-    const speed = kind === 0 ? 3 + strength * 0.4 : 1.8 + strength * 0.25;
+    const speed = grind ? 3 : kind === 0 ? 4 + energy * 5 : 3 + energy * 3;
     item.velocity.set(
-      vx * 0.35 + nx * speed + across * speed,
-      vy * 0.35 + ny * speed + 1.5 + lift * speed,
-      vz * 0.35 + nz * speed + along * speed,
+      vx * 0.14 + nx * speed + across * speed,
+      vy * 0.14 + ny * speed + 2.5 + lift * speed,
+      vz * 0.14 + nz * speed + along * speed,
     );
     item.angle.set(next() * Math.PI, next() * Math.PI, next() * Math.PI);
     item.spin.set(
@@ -314,11 +348,17 @@ export function createWreckParticles(scene: Scene) {
       (next() - 0.5) * 14,
       (next() - 0.5) * 14,
     );
-    const scale = kind === 0 ? 0.025 : kind === 1 ? 0.08 : 0.055;
+    const width = grind
+      ? 0.035
+      : kind === 0
+        ? 0.07 + energy * 0.07
+        : kind === 1
+          ? 0.14 + energy * 0.16
+          : 0.16 + energy * 0.16;
     item.size.set(
-      scale,
-      scale * (kind === 1 ? 0.5 : 0.3),
-      scale * (kind === 0 ? 7 : 2),
+      width,
+      width * (kind === 1 ? 0.45 : grind ? 0.3 : 0.18),
+      grind ? 0.22 : kind === 0 ? 0.6 + energy * 0.6 : width * 2.4,
     );
     item.paint = kind === 1 ? 0x65717b : 0xffffff;
   }
@@ -361,7 +401,7 @@ export function createWreckParticles(scene: Scene) {
           event.closing,
         );
       if (event.glass)
-        for (let part = 0; part < 5; part++)
+        for (let part = 0; part < 8; part++)
           emit(
             2,
             event.x,
@@ -398,6 +438,7 @@ export function createWreckParticles(scene: Scene) {
           pair.vy,
           pair.vz,
           pair.tangent,
+          true,
         );
         emit(
           0,
@@ -412,6 +453,7 @@ export function createWreckParticles(scene: Scene) {
           pair.vy,
           pair.vz,
           pair.tangent,
+          true,
         );
         pair.nextAt = seconds + 0.07;
         grindCount++;
@@ -469,6 +511,14 @@ export function createWreckParticles(scene: Scene) {
     render,
     get activeSparks() {
       return pools[0].particles.filter((item) => item.active).length;
+    },
+    get activeImpactSparks() {
+      return pools[0].particles.filter((item) => item.active && !item.grind)
+        .length;
+    },
+    get activeGrindSparks() {
+      return pools[0].particles.filter((item) => item.active && item.grind)
+        .length;
     },
     get activeMetal() {
       return pools[1].particles.filter((item) => item.active).length;

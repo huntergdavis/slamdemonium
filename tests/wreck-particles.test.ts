@@ -1,4 +1,4 @@
-import { Scene } from 'three';
+import { InstancedMesh, Matrix4, Quaternion, Scene, Vector3 } from 'three';
 import { expect, it } from 'vitest';
 import { createWreckParticles } from '../src/render/wreckParticles';
 
@@ -96,6 +96,83 @@ it('emits sparks only after sustained nearby grind contact', () => {
     const count = effects.grindCount;
     effects.advance(0.2);
     expect(effects.grindCount).toBe(count);
+  } finally {
+    effects.dispose();
+  }
+});
+
+it('keeps a chase-visible hard burst and upper-body glass available during a saturated grind', () => {
+  const scene = new Scene();
+  const effects = createWreckParticles(scene);
+  try {
+    for (let step = 0; step < 120; step++) {
+      effects.noteContact(
+        1,
+        2,
+        point,
+        0,
+        normal,
+        velocity,
+        0,
+        12,
+        false,
+        player,
+      );
+      effects.advance(1 / 60);
+    }
+    expect(effects.activeGrindSparks).toBeGreaterThan(0);
+    expect(effects.activeGrindSparks).toBeLessThanOrEqual(16);
+    effects.noteContact(3, 4, point, 0, normal, velocity, 45, 0, true, player);
+    effects.advance(1 / 60);
+    effects.render();
+    expect(effects.activeImpactSparks).toBeGreaterThanOrEqual(12);
+    expect(effects.activeGlass).toBeGreaterThanOrEqual(8);
+    const sparks = scene.getObjectByName('traffic.wreck.sparks');
+    expect(sparks).toBeInstanceOf(InstancedMesh);
+    const matrix = new Matrix4();
+    (sparks as InstancedMesh).getMatrixAt(0, matrix);
+    const size = new Vector3();
+    matrix.decompose(new Vector3(), new Quaternion(), size);
+    expect(size.x).toBeGreaterThan(0.1);
+    expect(size.z).toBeGreaterThan(0.8);
+  } finally {
+    effects.dispose();
+  }
+});
+
+it('keeps a late hard hit when eight lighter contacts fill the step queue', () => {
+  const effects = createWreckParticles(new Scene());
+  try {
+    for (let id = 1; id <= 8; id++)
+      effects.noteContact(
+        id,
+        id + 100,
+        point,
+        0,
+        normal,
+        velocity,
+        4,
+        0,
+        false,
+        player,
+      );
+    effects.noteContact(
+      9,
+      109,
+      point,
+      0,
+      normal,
+      velocity,
+      45,
+      0,
+      true,
+      player,
+    );
+    effects.advance(1 / 60);
+    expect(effects.burstCount).toBe(8);
+    expect(effects.dropped).toBe(1);
+    expect(effects.activeMetal).toBeGreaterThan(0);
+    expect(effects.activeGlass).toBeGreaterThanOrEqual(8);
   } finally {
     effects.dispose();
   }
