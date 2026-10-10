@@ -20,7 +20,6 @@ import { Takedowns } from './core/takedowns';
 import { RoadRage } from './core/roadRage';
 import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
-import { HERO_SEDAN } from './vehicle/vehicleDefinition';
 import { ImpactTime } from './core/impactTime';
 import {
   GARAGE_CLASSES,
