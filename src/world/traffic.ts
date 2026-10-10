@@ -376,7 +376,6 @@ export function createTraffic(
   const angular: V3 = { x: 0, y: 0, z: 0 };
   const routeScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
   const nextScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
-  const cornerScratchA: MutableRoadPose = { x: 0, z: 0, heading: 0 };
   const cornerScratchB: MutableRoadPose = { x: 0, z: 0, heading: 0 };
 
   for (let i = 0; i < POOL_SIZE; i++) {
@@ -456,23 +455,24 @@ export function createTraffic(
     authoredSpeed: number,
   ): number {
     let limit = authoredSpeed;
+    let previousHeading = routePose(
+      record,
+      record.station,
+      routeScratch,
+    ).heading;
     for (
       let distance = 0;
       distance < CORNER_LOOKAHEAD;
       distance += CORNER_SAMPLE
     ) {
-      const a = routePose(
-        record,
-        record.station + record.state.direction * distance,
-        routeScratch,
-      );
-      const b = routePose(
+      const heading = routePose(
         record,
         record.station + record.state.direction * (distance + CORNER_SAMPLE),
         nextScratch,
-      );
+      ).heading;
       const curvature =
-        Math.abs(wrapAngle(b.heading - a.heading)) / CORNER_SAMPLE;
+        Math.abs(wrapAngle(heading - previousHeading)) / CORNER_SAMPLE;
+      previousHeading = heading;
       if (curvature < 0.0001) continue;
       limit = Math.min(
         limit,
@@ -671,19 +671,24 @@ export function createTraffic(
     // A fast rival can outrun its lane follower through the R200 chicane.
     // Preview each bend and shed speed before reaching it, rather than
     // waiting for the turn to throw the chassis toward roadside props.
+    let previousHeading = routePose(
+      record,
+      record.station,
+      cornerScratchB,
+    ).heading;
     for (
       let distance = 0;
       distance < RACE_CORNER_LOOKAHEAD;
       distance += RACE_CORNER_SAMPLE
     ) {
-      const a = routePose(record, record.station + distance, cornerScratchA);
-      const b = routePose(
+      const heading = routePose(
         record,
         record.station + distance + RACE_CORNER_SAMPLE,
         cornerScratchB,
-      );
+      ).heading;
       const curvature =
-        Math.abs(wrapAngle(b.heading - a.heading)) / RACE_CORNER_SAMPLE;
+        Math.abs(wrapAngle(heading - previousHeading)) / RACE_CORNER_SAMPLE;
+      previousHeading = heading;
       if (curvature < 0.0001) continue;
       const cornerSpeed = Math.sqrt(RACE_CORNER_LATERAL_ACCEL / curvature);
       limit = Math.min(
