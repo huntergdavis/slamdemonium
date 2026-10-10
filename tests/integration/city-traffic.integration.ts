@@ -9,6 +9,7 @@ import {
 import { createSurfacedBodies } from '../../src/world/surfacedBodies';
 import { createSurfaceRegistry } from '../../src/world/surfaceRegistry';
 import { createTraffic, MAX_DRIVING } from '../../src/world/traffic';
+import { poseAt } from '../../src/world/roadGenerator';
 
 const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
@@ -108,3 +109,47 @@ it('authors at least 24 m between cars in each city stream and lane', () => {
       expect(stations[i]! - stations[i - 1]!).toBeGreaterThanOrEqual(24);
   }
 });
+
+it.each(['parked', 'moving'] as const)(
+  'keeps city traffic intact for 60 s with a %s observer and promotion active',
+  async (mode) => {
+    const map = createCityMap();
+    const world = await createPhysicsWorld({ wasmPath });
+    world.setGravity(20);
+    world.createStaticBox(
+      { x: 0, y: -0.5, z: 0 },
+      { x: 1200, y: 0.5, z: 1200 },
+    );
+    const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+    const traffic = createTraffic(world, bodies, map.path!, map.traffic!, {
+      density: 1,
+      minGap: 24,
+      maxGap: 45,
+    });
+    const west = CITY_INTERSECTIONS[0]!;
+    const observer = { x: west.x, y: 1, z: west.z - 12 };
+    try {
+      for (let step = 0; step < 60 * 120; step++) {
+        if (mode === 'moving') {
+          const pose = poseAt(
+            map.path!,
+            (map.path!.length - 35 + step * DT * 30) % map.path!.length,
+          );
+          observer.x = pose.x;
+          observer.z = pose.z;
+        }
+        traffic.preStep(DT, observer, mode === 'moving' ? 30 : 0);
+        world.step(DT);
+        traffic.postStep();
+        if (step % 120 === 0)
+          expect(traffic.states.filter((car) => car.wrecked)).toEqual([]);
+      }
+      expect(traffic.activeCount).toBeGreaterThan(100);
+    } finally {
+      traffic.dispose();
+      bodies.dispose();
+      world.dispose();
+    }
+  },
+  120_000,
+);

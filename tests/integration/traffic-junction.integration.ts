@@ -81,3 +81,60 @@ it('gives a crossing car a green gap after the arterial car passes', async () =>
     world.dispose();
   }
 }, 45_000);
+
+it('does not launch a red-light visual car when it is promoted at the stop line', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  world.setGravity(20);
+  world.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 500, y: 0.5, z: 500 });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const junction = [{ x: -3.5, z: 3.5 }];
+  const path = sampleRoad([{ kind: 'straight', length: 800 }], {
+    x: 0,
+    z: -400,
+    heading: Math.PI,
+  });
+  const traffic = createTraffic(world, bodies, path, [
+    {
+      station: 5,
+      laneSide: -1,
+      speed: 30,
+      signalStream: 'arterial',
+      signalJunctions: junction,
+    },
+  ]);
+  const far = { x: 200, y: 1, z: 0 };
+  const near = { x: junction[0]!.x, y: 1, z: junction[0]!.z - 75 };
+  let stoppedAtRed = false;
+  try {
+    for (let step = 0; step < 19 * 120; step++) {
+      traffic.preStep(DT, far, 0);
+      world.step(DT);
+      traffic.postStep();
+      const car = traffic.states[0];
+      if (!car) continue;
+      const phase = (step * DT) % 20;
+      const ahead = junction[0]!.z - car.position.z;
+      if (
+        phase < 13 ||
+        phase >= 18 ||
+        ahead <= 0 ||
+        ahead > 18.5 ||
+        car.speed >= 3
+      )
+        continue;
+      stoppedAtRed = true;
+      traffic.preStep(DT, near, 0);
+      expect(car.bodyId).toBeGreaterThan(0);
+      expect(car.speed).toBeLessThan(5);
+      world.step(DT);
+      traffic.postStep();
+      expect(car.wrecked).toBe(false);
+      break;
+    }
+    expect(stoppedAtRed).toBe(true);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 45_000);

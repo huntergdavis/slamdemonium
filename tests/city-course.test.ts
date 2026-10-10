@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createTimedRun } from '../src/core/timedRun';
 import {
   CITY_BUILDINGS,
+  CITY_CROSS_PATH,
   CITY_CROSS_STREET_WIDTH,
   CITY_INTERSECTIONS,
   CITY_ROAD_WIDTH,
@@ -15,6 +16,23 @@ import { runwayInstances, runwayLaneClearance } from '../src/world/runways';
 describe('city graybox', () => {
   const forward = createCityMap();
   const reverse = createCityMap(true);
+
+  it('opts both traffic streams into the shared junction signals', () => {
+    for (const map of [forward, reverse]) {
+      expect(map.traffic!.length).toBeGreaterThan(100);
+      for (const record of map.traffic!) {
+        expect(record.signalStream).toBe(
+          record.path === CITY_CROSS_PATH ? 'cross' : 'arterial',
+        );
+        expect(record.signalJunctions).toBe(CITY_INTERSECTIONS);
+        const pose = poseAt(record.path ?? map.path!, record.station);
+        for (const junction of CITY_INTERSECTIONS)
+          expect(
+            Math.hypot(pose.x - junction.x, pose.z - junction.z),
+          ).toBeGreaterThanOrEqual(35);
+      }
+    }
+  });
 
   it('offers the same closed 3.16 km road in opposite directions', () => {
     const a = forward.path!;
@@ -69,6 +87,17 @@ describe('city graybox', () => {
                   mark.size.z < 0.5,
               ),
             ).toBe(true);
+          }
+          for (const distance of [55, 85]) {
+            expect(
+              paint.filter(
+                (mark) =>
+                  Math.abs(mark.center.x - junction.x) < 5 &&
+                  Math.abs(mark.center.z - side * distance) < 0.1 &&
+                  mark.size.x === 0.9 &&
+                  mark.size.z === 6,
+              ),
+            ).toHaveLength(2);
           }
         }
       }

@@ -38,8 +38,8 @@ const PLAN: readonly RoadSegment[] = [
   { kind: 'arc', radius: CORNER, angle: ARC },
 ];
 
-/** Low corner blocks define the two cross-road openings at driving speed;
- * taller blocks further away give each straight a different skyline. */
+/** Set-back corner blocks expose the cross-road opening before the player
+ * reaches its approach marks; taller blocks give each straight a skyline. */
 export const CITY_BUILDINGS: readonly CityBuildingSpec[] = [
   ...[-430, -345, -170, -90, 0, 90, 170, 345, 430].flatMap((x, column) =>
     [-340, -250, -160, -80, 80, 160, 250, 340].map((z, row) => {
@@ -63,11 +63,11 @@ export const CITY_BUILDINGS: readonly CityBuildingSpec[] = [
         const height = index === 1 ? 34 : 22;
         return {
           center: {
-            x: junction.x + xSide * 26,
+            x: junction.x + xSide * 40,
             y: height / 2,
             z: zSide * 38,
           },
-          size: { x: 18, y: height, z: 24 },
+          size: { x: 12, y: height, z: 24 },
           color: index === 1 ? 0x81908d : 0x59666c,
         };
       }),
@@ -95,6 +95,8 @@ function cityTraffic(road: RoadPath): TrafficCarRecord[] {
           laneOffset: outer ? laneSide * 4.5 : 0,
           direction,
           speed: 25 + ((car * 7 + (outer ? 3 : 0) + direction + 4) % 10),
+          signalStream: 'arterial',
+          signalJunctions: CITY_INTERSECTIONS,
         });
         station += 32 + ((car * 11 + (outer ? 5 : 0)) % 24);
         car++;
@@ -114,9 +116,18 @@ function cityTraffic(road: RoadPath): TrafficCarRecord[] {
         laneSide,
         direction,
         speed: 20 + ((car * 5 + (direction < 0 ? 3 : 0)) % 8),
+        signalStream: 'cross',
+        signalJunctions: CITY_INTERSECTIONS,
       });
   }
-  return records;
+  // Start every stream outside the signal approach. A car authored inside a
+  // red stop line can already occupy the box when the other stream turns green.
+  return records.filter((record) => {
+    const pose = poseAt(record.path ?? road, record.station);
+    return CITY_INTERSECTIONS.every(
+      (junction) => Math.hypot(pose.x - junction.x, pose.z - junction.z) >= 35,
+    );
+  });
 }
 
 /** The same world geometry and start point, traversed toward the other end. */
@@ -162,16 +173,18 @@ function crossStreetPaint(): RunwaySpec[] {
   ];
 }
 
-/** Painted warning bars on each approach, still part of the one runway draw. */
+/** Broad paired arrows announce the crossing before its side street is visible.
+ * They share the existing paint draw and never interrupt the asphalt collider. */
 function intersectionApproachPaint(): RunwaySpec[] {
   return CITY_INTERSECTIONS.flatMap((junction) =>
     [-1, 1].map((side) => ({
       x: junction.x,
       z: side * 48,
-      heading: 0,
+      heading: side > 0 ? 0 : Math.PI,
       length: 100,
       width: CITY_ROAD_WIDTH,
       markerMeters: 20,
+      chevronsAt: [-37, -7],
     })),
   );
 }

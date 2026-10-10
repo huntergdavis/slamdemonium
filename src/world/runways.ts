@@ -18,6 +18,8 @@ export interface RunwaySpec {
   readonly markerMeters: number;
   /** Extra dashed dividers measured from the road centre, in metres. */
   readonly laneStripes?: readonly number[];
+  /** Large paired approach marks, measured along the strip from its centre. */
+  readonly chevronsAt?: readonly number[];
 }
 
 export const RUNWAY_CROSSBAR_WIDTH = 0.4;
@@ -64,6 +66,7 @@ export function runwayInstances(
       across: number,
       sizeAcross: number,
       sizeAlong: number,
+      heading = spec.heading,
     ): void => {
       out.push({
         center: {
@@ -72,7 +75,7 @@ export function runwayInstances(
           z: spec.z + f.z * along + left.z * across,
         },
         size: { x: sizeAcross, y: 1, z: sizeAlong },
-        rotY: spec.heading,
+        rotY: heading,
       });
     };
     const half = spec.length / 2;
@@ -97,6 +100,9 @@ export function runwayInstances(
       )
         place(along, 0, inner, RUNWAY_CROSSBAR_WIDTH);
     }
+    for (const along of spec.chevronsAt ?? [])
+      for (const side of [-1, 1])
+        place(along, side * 3.8, 0.9, 6, spec.heading + side * 0.55);
   }
   return out;
 }

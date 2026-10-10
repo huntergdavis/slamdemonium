@@ -22,17 +22,25 @@ export function garageSilhouettePoint(
       // High hatch and short bonnet, especially clear from the chase camera.
       return [x, y + roof * (0.08 + 0.13 * rear), z + roof * 0.1];
     case 'muscle':
-      // Long, low bonnet with the short roof set back over the rear axle.
-      return [x, y - roof * 0.12, z + roof * 0.25];
-    case 'coupe':
-      // Forward roof peak falling away into a fastback tail.
-      return [x, y - roof * (0.08 + 0.12 * rear), z - roof * 0.13];
-    case 'super':
-      // Low tapered greenhouse and a descending wedge toward the nose.
+      // Broad square rear shoulders separate it from the Super's narrow wedge.
       return [
-        x * (1 - 0.12 * roof),
-        y - roof * (0.19 + 0.08 * nose),
-        z - roof * 0.1,
+        x * (1 + 0.12 * roof * rear),
+        y + roof * (0.08 * rear - 0.04),
+        z + roof * 0.25,
+      ];
+    case 'coupe':
+      // A pronounced fastback falls away behind the forward roof peak.
+      return [
+        x * (1 - 0.08 * roof * rear),
+        y - roof * (0.04 + 0.23 * rear),
+        z - roof * 0.18,
+      ];
+    case 'super':
+      // Low, narrow greenhouse and a descending wedge toward the nose.
+      return [
+        x * (1 - 0.2 * roof),
+        y - roof * (0.23 + 0.04 * nose),
+        z - roof * 0.15,
       ];
     case 'pickup':
       // The roof ends behind the cab; the separate bed rails mark the tail.

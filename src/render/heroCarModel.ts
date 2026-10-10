@@ -153,11 +153,24 @@ export async function mountHeroCarModel(
     [body, 'body'],
     [spoiler, 'spoiler'],
   ] as const) {
+    // The clean fastback tail is the Coupe's chase-view silhouette cue.
+    if (name === 'spoiler' && classId === 'coupe') continue;
     const shape = part.geometry.clone().applyMatrix4(part.matrixWorld);
     shape.translate(-center.x, -center.y, -center.z);
     // Kenney's front is +Z. Two negative axes rotate it into the game's -Z
     // forward convention without reversing triangle winding.
     shape.scale(-sx, sy, -sz);
+    if (name === 'spoiler' && classId === 'super') {
+      const vertices = shape.getAttribute('position');
+      for (let index = 0; index < vertices.count; index++)
+        vertices.setXYZ(
+          index,
+          vertices.getX(index) * 1.25,
+          vertices.getY(index) + 0.16,
+          vertices.getZ(index),
+        );
+      vertices.needsUpdate = true;
+    }
     if (classId !== 'sports') {
       const vertices = shape.getAttribute('position');
       for (let index = 0; index < vertices.count; index++) {
@@ -310,16 +323,24 @@ export async function mountHeroCarModel(
           vent,
         );
     }
-    for (const side of [-1, 1])
-      piece(
-        0.045,
-        height * 0.18,
-        length * 0.16,
-        side * width * 0.51,
-        centerY - height * 0.36,
-        centerZ + length * 0.34,
-        dark,
-      );
+    // Outline the rear-quarter wheel openings on the actual body rear plane.
+    // The cab's rear plane is ahead of the trunk and would be occluded in the
+    // chase camera. These dark U shapes merge into the cab draw and crush.
+    for (const side of [-1, 1]) {
+      const rearFace = G.length / 2 + 0.02;
+      const archCenter = G.track / 2 - 0.12;
+      piece(0.43, 0.09, 0.025, side * archCenter, -0.03, rearFace, dark);
+      for (const offset of [-0.16, 0.17])
+        piece(
+          0.1,
+          0.31,
+          0.025,
+          side * (archCenter + offset),
+          -0.2,
+          rearFace,
+          dark,
+        );
+    }
     const cab = mergeGeometries(pieces, false);
     for (const shape of pieces) shape.dispose();
     if (!cab) throw new Error('Heavy cab geometry unavailable');
