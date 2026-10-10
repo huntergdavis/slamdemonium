@@ -8,7 +8,9 @@ export function racePaceTarget(
   id: number,
 ): number {
   const phase = (((seconds + id * 1.37) % 7) + 7) % 7;
-  const ordinary = baseSpeed + (phase < 1.8 ? 12 : 0);
+  // Let the standing grid clear before staggered boost pulses can close a
+  // bumper gap. After the launch, each rival still gets its own pulse phase.
+  const ordinary = baseSpeed + (seconds >= 8 && phase < 1.8 ? 8 : 0);
   const behind = Math.max(0, -signedGap - 40);
   const catchUp = Math.min(
     8,

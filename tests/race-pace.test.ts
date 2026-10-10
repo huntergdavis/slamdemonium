@@ -3,8 +3,9 @@ import { racePaceTarget } from '../src/world/racePace';
 
 describe('circuit race pace', () => {
   it('pulses boost and caps catch-up without a position jump', () => {
-    expect(racePaceTarget(50, 50, 20, 0, 0)).toBe(62);
-    expect(racePaceTarget(50, 85, -300, 0, 0)).toBe(70);
+    expect(racePaceTarget(50, 50, 20, 0, 0)).toBe(50);
+    expect(racePaceTarget(50, 85, -300, 0, 0)).toBe(58);
+    expect(racePaceTarget(50, 50, 20, 14, 0)).toBe(58);
     expect(racePaceTarget(50, 85, -300, 3, 7)).toBe(58);
   });
 
