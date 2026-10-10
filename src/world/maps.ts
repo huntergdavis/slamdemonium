@@ -4,6 +4,7 @@ import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { CIRCUIT_STATIONS, createCircuitMap } from './circuit';
 import { createCityMap } from './cityCourse';
+import { createCrashJunctionMap } from './crashJunction';
 import { createTakedownMap } from './takedownCourse';
 import { COAST_HEADLAND_MAP, COAST_SHORELINE_MAP } from './coastCourse';
 import { HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP } from './highwayCourse';
@@ -64,7 +65,7 @@ export interface MapDefinition {
   readonly cityBuildings?: readonly CityBuildingSpec[];
 }
 export type MapName =
-  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off' | 'city' | 'city-reverse' | 'coast-shoreline' | 'coast-headland' | 'highway-express' | 'highway-interchange';
+  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off' | 'city' | 'city-reverse' | 'coast-shoreline' | 'coast-headland' | 'highway-express' | 'highway-interchange' | 'crash-south' | 'crash-west';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -516,6 +517,8 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   'coast-headland': COAST_HEADLAND_MAP,
   'highway-express': HIGHWAY_EXPRESS_MAP,
   'highway-interchange': HIGHWAY_INTERCHANGE_MAP,
+  'crash-south': createCrashJunctionMap('south'),
+  'crash-west': createCrashJunctionMap('west'),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 

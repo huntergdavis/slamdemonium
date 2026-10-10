@@ -148,6 +148,8 @@ describe('map selection', () => {
       'coast-shoreline',
       'highway-express',
       'highway-interchange',
+      'crash-south',
+      'crash-west',
       'lab',
       'proving-ground',
       'road-rage',
