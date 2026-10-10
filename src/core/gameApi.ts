@@ -1,5 +1,6 @@
 import type { PhysicsSpikeResult } from '../physics/spike';
 import type { PhysicsMemory, V3 } from '../physics/adapter';
+
 import type { PaceReport, PerformanceBatch } from './performance';
 import type { CameraPreset } from '../render/cameraRig';
 import type { ScriptController } from '../input/script';
@@ -46,6 +47,7 @@ export interface GameTestApi {
   getTelemetry(): Readonly<Record<string, unknown>>;
   /** Traffic cars in play, for headless instruments; absent without traffic. */
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
+
   /** Sampled centreline for a browser route gate; never mutates the map. */
   getRoadPath?: () => {
     points: readonly (readonly [number, number])[];
@@ -65,7 +67,7 @@ export interface GameTestApi {
   /** Read-only rival controller decisions for hosted diagnosis. */
   getRivalControl?: () => Readonly<Record<string, unknown>> | null;
   /** Read-only circuit-race standings and controller targets for hosted gates. */
-  getRace?: () => {
+  getRace?: () => Readonly<RaceState> & {
     state: Readonly<RaceState>;
     order: readonly number[];
     cars: readonly Readonly<Record<string, unknown>>[];

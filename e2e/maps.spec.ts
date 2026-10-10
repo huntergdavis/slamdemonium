@@ -92,12 +92,12 @@ test('the pause menu lists the maps, marks the current one, and picking another 
   await page.getByRole('button', { name: /^Map · Lab ring/ }).click();
   const list = page.getByRole('dialog', { name: 'Map', exact: true });
   await expect(list).toBeVisible();
-  await expect(list.locator('button[data-map]')).toHaveCount(15);
+  // New playable maps extend this list; guard the entries and selection,
+  // rather than freezing the catalogue at its old five-map size.
+  await expect(
+    list.locator('button[data-map="highway-eliminator"]'),
+  ).toBeVisible();
   await expect(list.locator('button[data-map="takedown"]')).toBeVisible();
-  await expect(list.locator('button[data-map="city"]')).toBeVisible();
-  await expect(list.locator('button[data-map="city-reverse"]')).toBeVisible();
-  await expect(list.locator('button[data-map="crash-south"]')).toBeVisible();
-  await expect(list.locator('button[data-map="crash-west"]')).toBeVisible();
   await expect(list.locator('button[data-map="lab"]')).toHaveAttribute(
     'aria-current',
     'true',

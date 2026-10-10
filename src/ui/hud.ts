@@ -14,6 +14,7 @@ import {
 } from './hudTelemetry';
 import { HudPlots } from './hudPlots';
 import type { TimedRunState } from '../core/timedRun';
+
 import type { RoadRageState } from '../core/roadRage';
 import type { RoadRageBestResult } from '../core/roadRageBest';
 import type { RaceState } from '../core/raceEvent';
@@ -62,6 +63,7 @@ export interface HudOptions extends RecorderOptions {
   readScore?: () => Readonly<CrashScoreState>;
   /** The timed run (NS3): countdown, clock and finish on the persistent seam. */
   readRun?: () => Readonly<TimedRunState>;
+
   /** Road Rage's fixed-step event, persistent even when the HUD is off. */
   readRoadRage?: () => Readonly<RoadRageState>;
   readRoadRageBest?: () => Readonly<RoadRageBestResult> | null;
@@ -605,6 +607,7 @@ export class Hud {
     this.updateNotice();
     this.updateScore(nowMs, this.options.readScore?.());
     this.updateRun(this.options.readRun?.());
+
     this.updateRoadRage();
     this.updateRace(this.options.readRace?.());
     this.updateCrashMode();
@@ -813,6 +816,8 @@ export class Hud {
     )
       return;
     this.race.dataset.phase = race.phase;
+
+    this.race.dataset.mode = race.mode;
     write(
       this.raceClock,
       race.phase === 'countdown'
@@ -821,7 +826,26 @@ export class Hud {
           ? 'GO'
           : formatRunClock(race.clock),
     );
-    write(this.raceRank, `P${race.position}/${race.fieldSize}`);
+
+    write(
+      this.raceRank,
+      race.mode === 'eliminator' && race.eliminated
+        ? 'ELIMINATED'
+        : `P${race.position}/${race.mode === 'eliminator' ? race.remaining : race.fieldSize}`,
+    );
+    if (race.mode === 'eliminator') {
+      write(
+        this.raceGate,
+        race.phase === 'countdown'
+          ? 'HIGHWAY ELIMINATOR'
+          : race.phase === 'finished'
+            ? race.won
+              ? 'WINNER · GOLD · ENTER RETRY'
+              : `OUT · ${race.medal === 'none' ? 'NO MEDAL' : race.medal.toUpperCase()} · ENTER RETRY`
+            : `LAP ${Math.min(race.lap + 1, race.lapTarget)}/${race.lapTarget} · ${race.atRisk ? 'AT RISK' : 'SAFE'}`,
+      );
+      return;
+    }
     write(
       this.raceGate,
       race.phase === 'finished'

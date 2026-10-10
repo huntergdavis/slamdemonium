@@ -1,4 +1,5 @@
 import { runGateContains, type RunRouteSpec } from './timedRun';
+import { eliminatorMedal, type EliminatorMedal } from './eliminator';
 import type { RoadPath } from '../world/roadGenerator';
 
 export type RacePhase = 'countdown' | 'running' | 'finished';
@@ -12,6 +13,7 @@ export interface RaceCar {
 }
 
 export interface RaceState {
+  readonly mode: 'race' | 'eliminator';
   readonly phase: RacePhase;
   readonly countdown: number;
   readonly clock: number;
@@ -21,6 +23,15 @@ export interface RaceState {
   readonly checkpointCount: number;
   readonly finishOrder: readonly number[];
   readonly finishTime: number;
+  readonly lap: number;
+  readonly lapTarget: number;
+  readonly remaining: number;
+  readonly atRisk: boolean;
+  readonly eliminated: boolean;
+  readonly won: boolean;
+  readonly cutCount: number;
+  readonly lastCutId: number;
+  readonly medal: EliminatorMedal;
 }
 
 interface Entry {
@@ -29,25 +40,47 @@ interface Entry {
   inside: boolean;
   progress: number;
   finishTime: number;
+  lap: number;
+  eliminated: boolean;
+  place: number;
 }
 
-/** One-lap standings. A nearest-station estimate can order cars only within
- * their currently validated gate sector; it can never award a skipped gate. */
+export interface RaceOptions {
+  /** The ordinary circuit race is one lap; Eliminator repeats the validated
+   * gate sequence and cuts the last surviving entrant after each leader lap. */
+  readonly mode?: 'race' | 'eliminator';
+  readonly laps?: number;
+}
+
+/** Shared one-lap and Eliminator standings. A nearest-station estimate can
+ * order cars only within their validated lap and gate sector; it can never
+ * award a skipped gate or an unearned elimination cut. */
 export function createRaceEvent(
   route: RunRouteSpec,
   path: RoadPath,
   rivalIds: readonly number[],
+  options: RaceOptions = {},
 ) {
   if (route.gates.length < 3 || rivalIds.length < 1)
     throw new RangeError(
       'A race needs a start, checkpoints, goal and at least one rival.',
     );
+  const mode = options.mode ?? 'race';
+  const lapTarget = mode === 'eliminator' ? (options.laps ?? 5) : 1;
+  if (
+    !Number.isInteger(lapTarget) ||
+    (mode === 'eliminator' && lapTarget !== rivalIds.length)
+  )
+    throw new RangeError('Six-car Eliminator needs exactly five lap cuts.');
   const entries: Entry[] = [0, ...rivalIds].map((id) => ({
     id,
     nextGate: 0,
     inside: false,
     progress: -100,
     finishTime: Infinity,
+    lap: 0,
+    eliminated: false,
+    place: 0,
   }));
   const ordered: number[] = [...rivalIds, 0];
   const finishOrder: number[] = [];
@@ -64,7 +97,16 @@ export function createRaceEvent(
     position: number;
     nextCheckpoint: number;
     finishTime: number;
+    lap: number;
+    remaining: number;
+    atRisk: boolean;
+    eliminated: boolean;
+    won: boolean;
+    cutCount: number;
+    lastCutId: number;
+    medal: EliminatorMedal;
   } = {
+    mode,
     phase: 'countdown',
     countdown: 3,
     clock: 0,
@@ -74,6 +116,15 @@ export function createRaceEvent(
     checkpointCount: route.gates.length - 2,
     finishOrder,
     finishTime: Infinity,
+    lap: 0,
+    lapTarget,
+    remaining: entries.length,
+    atRisk: false,
+    eliminated: false,
+    won: false,
+    cutCount: 0,
+    lastCutId: -1,
+    medal: 'none',
   };
 
   function reset(): void {
@@ -83,6 +134,14 @@ export function createRaceEvent(
     values.position = entries.length;
     values.nextCheckpoint = 1;
     values.finishTime = Infinity;
+    values.lap = 0;
+    values.remaining = entries.length;
+    values.atRisk = false;
+    values.eliminated = false;
+    values.won = false;
+    values.cutCount = 0;
+    values.lastCutId = -1;
+    values.medal = 'none';
     finishOrder.length = 0;
     rankDelay = 0;
     for (let index = 0; index < rivalIds.length; index++)
@@ -93,6 +152,9 @@ export function createRaceEvent(
       entry.inside = false;
       entry.progress = -100;
       entry.finishTime = Infinity;
+      entry.lap = 0;
+      entry.eliminated = false;
+      entry.place = 0;
     }
   }
 
@@ -110,7 +172,7 @@ export function createRaceEvent(
     let crossedAny = false;
     for (const entry of entries) {
       const car = cars.find((candidate) => candidate.id === entry.id);
-      if (!car || entry.finishTime < Infinity) continue;
+      if (!car || entry.finishTime < Infinity || entry.eliminated) continue;
       const gate = route.gates[entry.nextGate];
       if (gate) {
         const inside = runGateContains(gate, car.x, car.z);
@@ -122,8 +184,11 @@ export function createRaceEvent(
           crossedAny = true;
           entry.nextGate++;
           if (entry.nextGate === route.gates.length) {
-            entry.finishTime = values.clock;
-            finishOrder.push(entry.id);
+            entry.lap++;
+            if (mode === 'race') {
+              entry.finishTime = values.clock;
+              finishOrder.push(entry.id);
+            } else entry.nextGate = 0;
           }
         }
         entry.inside = crossed ? false : inside;
@@ -135,6 +200,10 @@ export function createRaceEvent(
     for (const entry of entries) {
       const car = cars.find((candidate) => candidate.id === entry.id);
       if (!car) continue;
+      if (entry.eliminated) {
+        entry.progress = -Infinity;
+        continue;
+      }
       if (entry.finishTime < Infinity) {
         entry.progress = path.length;
         continue;
@@ -147,22 +216,51 @@ export function createRaceEvent(
       // the grid, not one lap ahead. Within a sector, clamp shortcuts to its
       // far edge until the correct physical gate is crossed.
       entry.progress =
-        entry.nextGate === 0
+        entry.nextGate === 0 && entry.lap === 0
           ? Math.min(
               0,
               station > path.length - 150 ? station - path.length : -100,
             )
-          : entry.nextGate === 1 && station > path.length - 150
-            ? 0
-            : Math.max(passed, Math.min(next - 0.01, station));
+          : entry.lap * path.length +
+            (entry.nextGate === 0
+              ? Math.max(-30, station - path.length)
+              : Math.max(passed, Math.min(next - 0.01, station)));
     }
     entries.sort((a, b) =>
-      a.finishTime < Infinity || b.finishTime < Infinity
-        ? a.finishTime - b.finishTime
-        : b.nextGate - a.nextGate ||
-          b.progress - a.progress ||
-          (a.id === 0 ? 1 : b.id === 0 ? -1 : a.id - b.id),
+      a.eliminated || b.eliminated
+        ? Number(a.eliminated) - Number(b.eliminated) || a.place - b.place
+        : a.finishTime < Infinity || b.finishTime < Infinity
+          ? a.finishTime - b.finishTime
+          : b.lap - a.lap ||
+            b.nextGate - a.nextGate ||
+            b.progress - a.progress ||
+            (mode === 'eliminator'
+              ? a.id - b.id
+              : a.id === 0
+                ? 1
+                : b.id === 0
+                  ? -1
+                  : a.id - b.id),
     );
+    if (mode === 'eliminator') {
+      const leader = entries[0]!;
+      if (leader.lap > values.cutCount && values.cutCount < lapTarget) {
+        const last = entries[values.remaining - 1]!;
+        last.eliminated = true;
+        last.place = values.remaining;
+        values.lastCutId = last.id;
+        values.cutCount++;
+        values.remaining--;
+        finishOrder.unshift(last.id);
+        if (last.id === 0 || values.cutCount === lapTarget) {
+          values.phase = 'finished';
+          values.finishTime = values.clock;
+          values.eliminated = last.id === 0;
+          values.won = !values.eliminated;
+          if (values.won) finishOrder.unshift(leader.id);
+        }
+      }
+    }
     for (let index = 0; index < entries.length; index++)
       ordered[index] = entries[index]!.id;
     values.position = ordered.indexOf(0) + 1;
@@ -171,7 +269,17 @@ export function createRaceEvent(
       1,
       Math.min(player.nextGate, route.gates.length - 1),
     );
-    if (player.finishTime < Infinity) {
+    values.lap = player.lap;
+    if (mode === 'eliminator')
+      values.medal = eliminatorMedal(
+        player.eliminated ? entries.length - player.place : values.cutCount,
+        values.won,
+      );
+    values.atRisk =
+      mode === 'eliminator' &&
+      !player.eliminated &&
+      values.position === values.remaining;
+    if (mode === 'race' && player.finishTime < Infinity) {
       values.phase = 'finished';
       values.finishTime = player.finishTime;
     }

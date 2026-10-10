@@ -86,6 +86,7 @@ import { createCoastVisual } from './world/coastVisual';
 import { createHighwayVisual } from './world/highwayVisual';
 import { createTimedRun } from './core/timedRun';
 import { createRaceEvent, type RaceCar } from './core/raceEvent';
+
 import { awardFaceOffWin, createFaceOffReward } from './core/faceOffReward';
 import { mountFaceOffPaintChoice } from './ui/faceOffPaintChoice';
 import { createAwakeBudget } from './world/awakeBudget';
@@ -259,6 +260,7 @@ async function boot(): Promise<void> {
   // per visit; with drift charge slowed, this is how boost is earned.
   // The timed run (NS3): the start line is a thing in the world he drives
   // into; the clock runs to the goal; Enter is the retry, onto the line.
+
   const isCrashJunction = mapName === 'crash-south' || mapName === 'crash-west';
   const crashMode = isCrashJunction
     ? new CrashMode(
@@ -276,7 +278,7 @@ async function boot(): Promise<void> {
       )
     : undefined;
   const isTakedownRoad = mapName === 'takedown' || !!roadRage;
-  const timedRun = createTimedRun(roadRage || (mapName === 'circuit-race' || mapName === 'face-off') ? undefined : map.runs?.[0]);
+  const timedRun = createTimedRun(roadRage || (mapName === 'circuit-race' || mapName === 'face-off' || mapName === 'highway-eliminator') ? undefined : map.runs?.[0]);
   const runStartGate = map.runs?.[0]?.gates[0];
   const runStart = roadRage
     ? track.spawn
@@ -359,7 +361,8 @@ async function boot(): Promise<void> {
         })
       : undefined;
   const race =
-    (mapName === 'circuit-race' || mapName === 'face-off') &&
+
+    (mapName === 'circuit-race' || mapName === 'face-off' || mapName === 'highway-eliminator') &&
     map.path &&
     map.runs?.[0] &&
     traffic
@@ -367,8 +370,13 @@ async function boot(): Promise<void> {
           map.runs[0],
           map.path,
           traffic.raceStates.map((car) => car.id),
+
+          mapName === 'highway-eliminator'
+            ? { mode: 'eliminator', laps: 5 }
+            : {},
         )
       : undefined;
+  let lastCutId = -1;
   const raceCars: RaceCar[] = race
     ? [
         { id: 0, x: 0, z: 0, vx: 0, vz: 0 },
@@ -381,6 +389,7 @@ async function boot(): Promise<void> {
         })),
       ]
     : [];
+
   const takedowns = isTakedownRoad ? new Takedowns() : undefined;
   const takedownMoment = takedowns ? new TakedownMoment() : undefined;
   const playerDamage = takedowns || crashMode ? new PlayerDamage() : undefined;
@@ -634,8 +643,10 @@ async function boot(): Promise<void> {
         vehicle.preStep(
           dt,
           playerDamage?.wrecked ||
+
             (roadRage && roadRage.state.phase !== 'running') ||
             race?.state.phase === 'countdown' ||
+            (race?.state.mode === 'eliminator' && race.state.phase === 'finished') ||
             (crashMode && crashMode.state.phase !== 'running')
             ? wreckInput
             : sampled,
@@ -817,16 +828,26 @@ async function boot(): Promise<void> {
           }
           race.update(dt, raceCars);
           if (
+
             mapName === 'face-off' &&
             awardFaceOffWin(race.state, faceOffReward)
           )
             faceOffPaintChoice?.refresh();
+          if (
+            race.state.mode === 'eliminator' &&
+            race.state.lastCutId > 0 &&
+            race.state.lastCutId !== lastCutId
+          ) {
+            lastCutId = race.state.lastCutId;
+            traffic.eliminateRaceEntrant(lastCutId);
+          }
           for (const state of traffic.raceStates)
-            traffic.setRaceValidatedStation(
-              state.id,
-              race.validatedStation(state.id),
-            );
-          traffic.setRaceRunning(race.state.phase !== 'countdown');
+            traffic.setRaceValidatedStation(state.id, race.validatedStation(state.id));
+          traffic.setRaceRunning(
+            race.state.mode === 'eliminator'
+              ? race.state.phase === 'running'
+              : race.state.phase !== 'countdown',
+          );
         }
         propStreamer.update();
         awakeBudget.update(
@@ -972,6 +993,7 @@ async function boot(): Promise<void> {
     respawnRequested = true;
   }
   function respawn(): void {
+
     if (roadRage || race || crashMode) {
       retry();
       return;
@@ -1016,6 +1038,8 @@ async function boot(): Promise<void> {
     timedRun.reset();
     if (race) {
       race.reset();
+
+      lastCutId = -1;
       traffic?.resetRaceGrid();
     }
     scripts.noteRespawn(restart, 0);
@@ -1215,6 +1239,7 @@ async function boot(): Promise<void> {
     ...(!crashMode ? { readScore: () => crashScore.state } : {}),
     readRun: () => timedRun.state,
     ...(race ? { readRace: () => race.state } : {}),
+
     ...(race
       ? {
           raceKind:
@@ -1731,11 +1756,14 @@ async function boot(): Promise<void> {
     }),
   });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
+
   if (race && traffic)
     game.getRace = () => ({
+      ...race.state,
       state: race.state,
       order: [...race.order],
       cars: traffic.debugRivals().cars.filter((car) => car.raceEntrant),
+      finishOrder: [...race.state.finishOrder],
     });
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
