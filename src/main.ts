@@ -547,6 +547,9 @@ async function boot(): Promise<void> {
   let inspectionCamera: { position: V3; target: V3 } | null = null;
   let respawnRequested = false;
   let retryRequested = false;
+  // location.assign is asynchronous: the old venue may run more physics
+  // steps after the ledger advances. Never score its finished race twice.
+  let grandPrixNavigating = false;
   let playerWreckPending = false;
   const wreckInput = {
     throttle: 0,
@@ -733,6 +736,7 @@ async function boot(): Promise<void> {
           race.update(dt, raceCars);
           if (
             grandPrix &&
+            !grandPrixNavigating &&
             race.state.phase === 'finished' &&
             grandPrix.state.phase === 'racing' &&
             Number.isFinite(race.state.finishTimes[0])
@@ -912,8 +916,16 @@ async function boot(): Promise<void> {
    * whatever the timed run adds (its clock) resets here too. It is applied
    * on the same step the key is read, so "again" is one press and no wait. */
   function retry(): void {
+    if (grandPrixNavigating) {
+      retryRequested = false;
+      return;
+    }
     if (grandPrix?.state.phase === 'between') {
       if (grandPrix.nextHeat()) {
+        retryRequested = false;
+        respawnRequested = false;
+        grandPrixNavigating = true;
+        race?.freeze();
         saveGrandPrix();
         location.assign(
           mapUrl(location.pathname, GRAND_PRIX_MAPS[grandPrix.state.heat]!) +
@@ -923,6 +935,10 @@ async function boot(): Promise<void> {
       return;
     }
     if (grandPrix?.state.phase === 'finished') {
+      retryRequested = false;
+      respawnRequested = false;
+      grandPrixNavigating = true;
+      race?.freeze();
       grandPrix.reset();
       saveGrandPrix();
       location.assign(mapUrl(location.pathname, 'grand-prix-city') + '&gp=1');
