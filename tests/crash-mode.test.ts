@@ -20,6 +20,8 @@ describe('Crash Junction', () => {
     expect(CRASH_JUNCTION).toEqual({ x: 275, z: 0, reservedForCrash: true });
     expect(south.spawn).toMatchObject({ x: 280, z: -180 });
     expect(west.spawn).toMatchObject({ x: 95, z: -5 });
+    expect(-Math.cos(south.spawn!.heading)).toBeCloseTo(1);
+    expect(-Math.sin(west.spawn!.heading)).toBeCloseTo(1);
     for (const map of [south, west]) {
       expect(map.roadDecks).toEqual(createCityMap().roadDecks);
       expect(map.shuntWalls).toHaveLength(8);

@@ -142,6 +142,8 @@ describe('map selection', () => {
       'circuit',
       'city',
       'city-reverse',
+      'crash-south',
+      'crash-west',
       'lab',
       'proving-ground',
       'road-rage',

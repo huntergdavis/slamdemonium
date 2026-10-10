@@ -64,11 +64,15 @@ describe('breakable props', () => {
     expect(firstPropDescriptor.mass).toBe(15);
     expect(firstPropDescriptor.restitution).toBe(0.2);
     const breaks: number[] = [];
+    const brokenIndices: number[] = [];
     const props = createBreakableProps({
       physics: world,
       pools,
       vehicleBody: 1,
-      onBreak: (severity) => breaks.push(severity),
+      onBreak: (severity, index) => {
+        breaks.push(severity);
+        brokenIndices.push(index);
+      },
       placements: [
         {
           position: { x: 0, y: 0.5, z: -10 },
@@ -97,6 +101,7 @@ describe('breakable props', () => {
     expect(active.get(prop)).toBe(false);
     expect(pools.debris.liveCount).toBe(8);
     expect(breaks).toEqual([0.5]);
+    expect(brokenIndices).toEqual([0]);
     expect(
       (world.createPooledBox as ReturnType<typeof vi.fn>).mock.calls.length,
     ).toBe(creates);
@@ -118,6 +123,7 @@ describe('breakable props', () => {
     props.onContact(1, activated[0]!, point, normal, vehicleVelocity, impact);
     props.update(0);
     expect(pools.debris.liveCount).toBe(8);
+    expect(brokenIndices).toEqual([0, 0]);
 
     props.reset();
     expect(pools.breakables.liveCount).toBe(2);

@@ -96,6 +96,8 @@ test('the pause menu lists the maps, marks the current one, and picking another 
   await expect(list.locator('button[data-map="takedown"]')).toBeVisible();
   await expect(list.locator('button[data-map="city"]')).toBeVisible();
   await expect(list.locator('button[data-map="city-reverse"]')).toBeVisible();
+  await expect(list.locator('button[data-map="crash-south"]')).toBeVisible();
+  await expect(list.locator('button[data-map="crash-west"]')).toBeVisible();
   await expect(list.locator('button[data-map="lab"]')).toHaveAttribute(
     'aria-current',
     'true',

@@ -41,6 +41,8 @@ export interface GameTestApi {
   getTakedowns?: () => { count: number; boostSections: number };
   /** Read-only timed takedown event state for built-browser guards. */
   getRoadRage?: () => Readonly<RoadRageState>;
+  /** Read-only Crash Junction score and unique-award ledger. */
+  getCrashMode?: () => Readonly<Record<string, unknown>>;
   /** Read-only player wreck budget for hosted takedown-road inspection. */
   getPlayerDamage?: () => {
     amount: number;
