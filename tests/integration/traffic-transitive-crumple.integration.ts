@@ -11,7 +11,7 @@ const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
 );
 const DT = 1 / 120;
-const PLAYER = { x: 3.5, y: 1, z: -100 };
+const PLAYER = { x: 30, y: 1, z: -100 };
 
 async function fixture(records: readonly TrafficCarRecord[]) {
   const world = await createPhysicsWorld({ wasmPath });
@@ -47,8 +47,8 @@ async function fixture(records: readonly TrafficCarRecord[]) {
 it('crumples both cars in each link of a live A into B into C chain', async () => {
   const run = await fixture([
     { station: 90, laneSide: -1, speed: 38, modelKind: 'sedan' },
-    { station: 99, laneSide: -1, speed: 0, modelKind: 'sedan' },
-    { station: 108, laneSide: -1, speed: 0, modelKind: 'sedan' },
+    { station: 105, laneSide: -1, speed: 0, modelKind: 'sedan' },
+    { station: 120, laneSide: -1, speed: 0, modelKind: 'sedan' },
   ]);
   const shapeSwap = vi.spyOn(run.world, 'setBodyConvexShape');
   try {

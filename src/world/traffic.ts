@@ -1,6 +1,7 @@
 import type { Scene } from 'three';
 import type { ImpactSeverity } from '../core/impactSeverity';
 import { SURFACE_IDS } from '../content/surfaces';
+import { VEHICLE_GEOMETRY } from '../vehicle/constants';
 import {
   type BodyId,
   type ContactVelocityReader,
@@ -132,6 +133,11 @@ const WRECK_PHYSICS_RADIUS = 220;
 const WRECK_BRAKE = 9;
 const WRECK_PLANNED_BRAKE = 4;
 const WRECK_STOP_MARGIN = 12;
+const PROMOTION_CLEARANCE = 2;
+const PLAYER_FOOTPRINT_RADIUS = Math.hypot(
+  VEHICLE_GEOMETRY.length / 2,
+  VEHICLE_GEOMETRY.width / 2,
+);
 const BODY_MASS = 1100;
 /** Every kind weighs the same in v1; per-kind mass waits for crumple. */
 const BODY_MASS_DESC = {
@@ -511,6 +517,8 @@ export function createTraffic(
         )
         .sort((a, b) => direction * (a.station - b.station));
       const chosen: RecordState[] = [];
+      const left: RecordState[] = [];
+      const right: RecordState[] = [];
       let lastProgress = -Infinity;
       let nextGap = 0;
       for (const record of lane) {
@@ -523,6 +531,7 @@ export function createTraffic(
           continue;
         record.enabled = true;
         chosen.push(record);
+        (record.authored.laneSide < 0 ? left : right).push(record);
         lastProgress = progress;
         const zone = noise(
           Math.floor(record.station / 180) * 17 + direction * 131,
@@ -550,12 +559,13 @@ export function createTraffic(
         if (wrapGap < Math.max(minGap, safeFollowingGap(first, last))) {
           last.enabled = false;
           chosen.pop();
+          (last.authored.laneSide < 0 ? left : right).pop();
         }
       }
-      if (chosen.length > 1)
-        for (let i = 0; i < chosen.length; i++)
-          chosen[i]!.leader =
-            chosen[i + 1] ?? (path.closed ? chosen[0]! : null);
+      for (const lane of [left, right])
+        if (lane.length > 1)
+          for (let i = 0; i < lane.length; i++)
+            lane[i]!.leader = lane[i + 1] ?? (path.closed ? lane[0]! : null);
     }
     // The density slider controls background traffic, never the four authored
     // opponents. They also need their own pace controller rather than an
@@ -572,7 +582,51 @@ export function createTraffic(
     }
   }
 
-  function promote(record: RecordState): void {
+  /** Body creation is deferred until its full footprint is clear. A visual
+   * follower may still brake or queue while waiting for a physical slot. */
+  function promotionIsClear(record: RecordState, player: V3): boolean {
+    const car = record.state;
+    const shape = CAR_MODELS[car.modelKind].halfExtents;
+    const forwardX = car.forward.x;
+    const forwardZ = car.forward.z;
+    const rightX = -forwardZ;
+    const rightZ = forwardX;
+    const playerDx = player.x - car.position.x;
+    const playerDz = player.z - car.position.z;
+    if (
+      Math.abs(playerDx * forwardX + playerDz * forwardZ) <
+        shape.z + PLAYER_FOOTPRINT_RADIUS + PROMOTION_CLEARANCE &&
+      Math.abs(playerDx * rightX + playerDz * rightZ) <
+        shape.x + PLAYER_FOOTPRINT_RADIUS + PROMOTION_CLEARANCE
+    )
+      return false;
+    for (const slot of slots) {
+      const other = slot.record?.state;
+      if (!other) continue;
+      const otherShape = CAR_MODELS[other.modelKind].halfExtents;
+      const dx = other.position.x - car.position.x;
+      const dz = other.position.z - car.position.z;
+      const along = Math.abs(dx * forwardX + dz * forwardZ);
+      const across = Math.abs(dx * rightX + dz * rightZ);
+      const aligned = Math.abs(
+        forwardX * other.forward.x + forwardZ * other.forward.z,
+      );
+      const crossed = Math.abs(
+        forwardX * other.forward.z - forwardZ * other.forward.x,
+      );
+      const otherLong = aligned * otherShape.z + crossed * otherShape.x;
+      const otherWide = crossed * otherShape.z + aligned * otherShape.x;
+      if (
+        along < shape.z + otherLong + PROMOTION_CLEARANCE &&
+        across < shape.x + otherWide + PROMOTION_CLEARANCE
+      )
+        return false;
+    }
+    return true;
+  }
+
+  function promote(record: RecordState, player: V3): void {
+    if (!promotionIsClear(record, player)) return;
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
     const state = record.state;
@@ -809,7 +863,7 @@ export function createTraffic(
       );
       if (distanceSquared > WRECK_PHYSICS_RADIUS ** 2) continue;
       makeRoomFor(player, distanceSquared, true);
-      if (physicalCount < MAX_DRIVING) promote(wreck);
+      if (physicalCount < MAX_DRIVING) promote(wreck, player);
     }
     // A car too close to brake must get a real collision, rather than keep
     // following its visual-only lane pose through the wreck.
@@ -823,7 +877,7 @@ export function createTraffic(
       );
       if (distanceSquared > WRECK_PHYSICS_RADIUS ** 2) continue;
       makeRoomFor(player, distanceSquared, true);
-      if (physicalCount < MAX_DRIVING) promote(record);
+      if (physicalCount < MAX_DRIVING) promote(record, player);
     }
     // Refresh one distant slice per step instead of all authored cars on the
     // same 10 Hz tick. Nearby poses still update every step.
@@ -1017,7 +1071,7 @@ export function createTraffic(
       }
       if (!record.slot && distanceSquared <= ENTER * ENTER) {
         makeRoomFor(player, distanceSquared);
-        if (physicalCount < MAX_DRIVING) promote(record);
+        if (physicalCount < MAX_DRIVING) promote(record, player);
       }
       const slot = record.slot;
       if (!slot) continue;
