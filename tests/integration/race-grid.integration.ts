@@ -173,3 +173,54 @@ it('keeps an occupied racer and civilian on the marked hard-loop bypass', async 
     world.dispose();
   }
 }, 30_000);
+
+it('routes a moving physical civilian around the hard-loop entry deck', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  world.setGravity(20);
+  world.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 3200, y: 0.5, z: 3200 });
+  const map = MAPS['circuit-race'];
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  installLoops(bodies, [map.loops[1]!]);
+  const civilianRecord = map.traffic!.find(
+    (car) => !car.raceEntrant && car.station >= 8680 && car.station < 8720,
+  );
+  expect(civilianRecord).toBeDefined();
+  const racerRecord = map.traffic!.find((car) => car.raceEntrant)!;
+  const traffic = createTraffic(
+    world,
+    bodies,
+    map.path!,
+    [{ ...racerRecord, station: 8500 }, civilianRecord!],
+    { density: 1, minGap: 12, maxGap: 12 },
+  );
+  const approach = poseAt(map.path!, civilianRecord!.station - 80);
+  const player = { x: approach.x, y: 1, z: approach.z };
+  const lip = poseAt(map.path!, 8900);
+  let minDistance = Infinity;
+  let physicalAtLip = false;
+  try {
+    traffic.setRaceRunning(true);
+    traffic.preStep(1 / 120, player, 42);
+    for (let step = 0; step < 14 * 120; step++) {
+      const civilian = traffic.states.find((car) => !car.rival)!;
+      player.x = civilian.position.x - civilian.forward.x * 80;
+      player.z = civilian.position.z - civilian.forward.z * 80;
+      traffic.preStep(1 / 120, player, 42);
+      world.step(1 / 120);
+      traffic.postStep();
+      const distance = Math.hypot(
+        civilian.position.x - lip.x,
+        civilian.position.z - lip.z,
+      );
+      minDistance = Math.min(minDistance, distance);
+      if (distance < 35 && civilian.bodyId > 0) physicalAtLip = true;
+      expect(civilian.wrecked).toBe(false);
+    }
+    expect(minDistance).toBeLessThan(35);
+    expect(physicalAtLip).toBe(true);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+    world.dispose();
+  }
+}, 30_000);
