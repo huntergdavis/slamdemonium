@@ -92,7 +92,7 @@ test('the pause menu lists the maps, marks the current one, and picking another 
   await page.getByRole('button', { name: /^Map · Lab ring/ }).click();
   const list = page.getByRole('dialog', { name: 'Map', exact: true });
   await expect(list).toBeVisible();
-  await expect(list.locator('button[data-map]')).toHaveCount(5);
+  await expect(list.locator('button[data-map]')).toHaveCount(6);
   await expect(list.locator('button[data-map="takedown"]')).toBeVisible();
   await expect(list.locator('button[data-map="lab"]')).toHaveAttribute(
     'aria-current',
