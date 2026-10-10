@@ -5,6 +5,7 @@ const harness = vi.hoisted(() => ({
     options: HowlOptions;
     live: Set<number>;
     fades: number[][];
+    loads: number;
   }[],
   next: 1000,
   running: false,
@@ -30,6 +31,7 @@ vi.mock('howler', () => ({
   Howl: class {
     live = new Set<number>();
     fades: number[][] = [];
+    loads = 0;
     constructor(readonly options: HowlOptions) {
       harness.sounds.push(this);
     }
@@ -38,10 +40,18 @@ vi.mock('howler', () => ({
       this.live.add(id);
       return id;
     }
+    load() {
+      this.loads++;
+      this.options.onload?.(0);
+      return this;
+    }
     volume() {
       return this;
     }
     rate() {
+      return this;
+    }
+    stereo() {
       return this;
     }
     fade(from: number, to: number, ms: number, id: number) {
@@ -80,7 +90,8 @@ async function ready() {
   harness.running = false;
   harness.muted = false;
   const output = new HowlerOutput(DEFAULT_ENGINE);
-  for (const sound of harness.sounds) sound.options.onload?.(0);
+  for (const sound of harness.sounds)
+    if (sound.options.preload !== false) sound.options.onload?.(0);
   output.unlock();
   await Promise.resolve();
   output.apply(mix);
@@ -145,6 +156,35 @@ describe('bounded Web Audio output', () => {
     output.setMasterMuted(true);
     expect(harness.muted).toBe(true);
     expect(output.playImpact('asphalt', 1, 1)).toBe(false);
+    output.dispose();
+  });
+  it('loads hard alternatives only after a hard hit and counts two grind loops in the same voice ceiling', async () => {
+    const output = await ready();
+    const lazy = harness.sounds.filter(
+      (sound) => sound.options.preload === false,
+    );
+    expect(lazy).toHaveLength(2);
+    expect(lazy.map((sound) => sound.loads)).toEqual([0, 0]);
+    output.setGrind(0, 0.3, 1, -0.6);
+    output.setGrind(1, 0.2, 1.1, 0.6);
+    expect(output.state.activeVoices).toBe(6);
+    const cue = {
+      tier: 'hard',
+      kind: 'contact',
+      gain: 0.6,
+      rate: 1,
+      pan: 0,
+      glass: true,
+      debris: true,
+    } as const;
+    output.playCrash(cue);
+    expect(lazy.map((sound) => sound.loads)).toEqual([1, 1]);
+    for (let i = 0; i < 20; i++) output.playCrash(cue);
+    expect(output.state.activeVoices).toBeLessThanOrEqual(15);
+    expect(output.state.droppedVoices).toBeGreaterThan(0);
+    output.pause(30);
+    output.apply(mix);
+    expect(output.state.activeVoices).toBe(4);
     output.dispose();
   });
 });

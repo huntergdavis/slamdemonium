@@ -50,6 +50,8 @@ function setup() {
     ),
     playImpact: vi.fn(() => true),
     playBoostAttack: vi.fn(() => true),
+    playCrash: vi.fn(() => true),
+    setGrind: vi.fn(),
     pause: vi.fn(),
     setMasterMuted: vi.fn(),
     reset: vi.fn(),
