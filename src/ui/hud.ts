@@ -62,11 +62,13 @@ export interface HudOptions extends RecorderOptions {
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
   readTakedowns?: () => number;
+  readTakedownKind?: () => 'ordinary' | 'aftertouch' | null;
   /** Takedown-map player damage and the short wreck/recovery beat. */
   readPlayerDamage?: () => {
     amount: number;
     wrecked: boolean;
     secondsLeft: number;
+    impactTime?: boolean;
   };
   miniMap?: Omit<MiniMapOptions, 'host'>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
@@ -799,7 +801,11 @@ export class Hud {
       this.takedownFlashUntilMs = nowMs + 1500;
     }
     const flashing = nowMs < this.takedownFlashUntilMs;
-    const label = flashing ? 'TAKEDOWN! · ' + count : 'TAKEDOWNS ' + count;
+    const label = flashing
+      ? (this.options.readTakedownKind?.() === 'aftertouch'
+          ? 'AFTERTOUCH TAKEDOWN! · '
+          : 'TAKEDOWN! · ') + count
+      : 'TAKEDOWNS ' + count;
     if (this.takedownCount.textContent !== label)
       this.takedownCount.textContent = label;
     this.takedownCount.dataset.flash = String(flashing);
@@ -810,9 +816,11 @@ export class Hud {
     const state = this.options.readPlayerDamage?.();
     if (!state) return;
     this.playerDamageNotice.hidden = !state.wrecked && state.amount <= 0;
-    const label = state.wrecked
-      ? 'WRECKED · RESPAWNING'
-      : 'DAMAGE ' + Math.round(state.amount * 100) + '%';
+    const label = state.impactTime
+      ? 'IMPACT TIME · HOLD T OR LB+↓ · STEER'
+      : state.wrecked
+        ? 'WRECKED · RESPAWNING'
+        : 'DAMAGE ' + Math.round(state.amount * 100) + '%';
     if (this.playerDamageNotice.textContent !== label)
       this.playerDamageNotice.textContent = label;
     this.playerDamageNotice.dataset.wrecked = String(state.wrecked);
