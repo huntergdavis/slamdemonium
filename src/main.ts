@@ -60,7 +60,13 @@ import {
   storeMapName,
 } from './world/mapChoice';
 import { createRunwayVisual } from './world/runways';
+import { createRoadDeckVisual } from './world/roadDeck';
+import { createCityBuildingsVisual } from './world/cityBuildings';
+import { createCoastVisual } from './world/coastVisual';
+import { createHighwayVisual } from './world/highwayVisual';
 import { createTimedRun } from './core/timedRun';
+import { createRaceEvent, type RaceCar } from './core/raceEvent';
+import { createGrandPrix, GRAND_PRIX_MAPS } from './core/grandPrix';
 import { createAwakeBudget } from './world/awakeBudget';
 import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
@@ -118,11 +124,55 @@ async function boot(): Promise<void> {
     }
   })();
   const storedMapName = readStoredMapName(mapStorage);
-  const mapName = chooseMapName(
+  let mapName = chooseMapName(
     location.search,
     import.meta.env.VITE_DEFAULT_MAP,
     storedMapName,
   );
+  const grandPrixStorage = (() => {
+    try {
+      return window.sessionStorage;
+    } catch {
+      return null;
+    }
+  })();
+  const grandPrixKey = 'slamdemonium.grand-prix.v1';
+  const isGrandPrix = mapName.startsWith('grand-prix-');
+  const resumeGrandPrix =
+    new URLSearchParams(location.search).get('gp') === '1';
+  let grandPrixSaved: unknown;
+  if (isGrandPrix && resumeGrandPrix) {
+    try {
+      grandPrixSaved = JSON.parse(
+        grandPrixStorage?.getItem(grandPrixKey) ?? 'null',
+      );
+    } catch {
+      grandPrixSaved = null;
+    }
+  }
+  const grandPrix = isGrandPrix ? createGrandPrix(grandPrixSaved) : undefined;
+  const saveGrandPrix = (): void => {
+    if (!grandPrix) return;
+    try {
+      grandPrixStorage?.setItem(
+        grandPrixKey,
+        JSON.stringify(grandPrix.snapshot()),
+      );
+    } catch {
+      // Storage may be blocked; the current three-heat session still runs.
+    }
+  };
+  if (grandPrix) {
+    const expected = GRAND_PRIX_MAPS[grandPrix.state.heat]!;
+    if (mapName !== expected) {
+      mapName = expected;
+      window.history.replaceState(
+        null,
+        '',
+        mapUrl(location.pathname, expected) + '&gp=1',
+      );
+    }
+  }
   const offerMapsAtBoot = shouldOfferMapsAtBoot(
     location.search,
     import.meta.env.VITE_DEFAULT_MAP,
@@ -142,6 +192,14 @@ async function boot(): Promise<void> {
     ...(map.spawn ? { spawn: map.spawn } : {}),
   });
   resources.push(track);
+  if (map.roadDecks?.length)
+    resources.push(createRoadDeckVisual(view.scene, map.roadDecks));
+  if (map.cityBuildings?.length)
+    resources.push(createCityBuildingsVisual(view.scene, map.cityBuildings));
+  if (mapName === 'coast-shoreline' || mapName === 'grand-prix-coast')
+    resources.push(createCoastVisual(view.scene));
+  if (mapName === 'highway-express' || mapName === 'grand-prix-highway')
+    resources.push(createHighwayVisual(view.scene));
   view.renderer.shadowMap.enabled = true;
   const trackBodies = installTrackColliders(
     physics,
@@ -208,7 +266,11 @@ async function boot(): Promise<void> {
   // per visit; with drift charge slowed, this is how boost is earned.
   // The timed run (NS3): the start line is a thing in the world he drives
   // into; the clock runs to the goal; Enter is the retry, onto the line.
-  const timedRun = createTimedRun(map.runs?.[0]);
+  const timedRun = createTimedRun(
+    mapName === 'circuit-race' || mapName === 'highway-eliminator' || grandPrix
+      ? undefined
+      : map.runs?.[0],
+  );
   const runStartGate = map.runs?.[0]?.gates[0];
   const runStart = runStartGate
     ? {
@@ -281,6 +343,38 @@ async function boot(): Promise<void> {
           maxGap: tuning.get('trafficMaxGap'),
         })
       : undefined;
+  const race =
+    (mapName === 'circuit-race' ||
+      mapName === 'highway-eliminator' ||
+      grandPrix) &&
+    map.path &&
+    map.runs?.[0] &&
+    traffic
+      ? createRaceEvent(
+          map.runs[0],
+          map.path,
+          traffic.raceStates.map((car) => car.id),
+          mapName === 'highway-eliminator'
+            ? { mode: 'eliminator', laps: 5 }
+            : grandPrix
+              ? { mode: 'grand-prix' }
+              : {},
+        )
+      : undefined;
+  if (grandPrix && grandPrix.state.phase !== 'racing') race?.freeze();
+  let lastCutId = -1;
+  const raceCars: RaceCar[] = race
+    ? [
+        { id: 0, x: 0, z: 0, vx: 0, vz: 0 },
+        ...traffic!.raceStates.map((car) => ({
+          id: car.id,
+          x: 0,
+          z: 0,
+          vx: 0,
+          vz: 0,
+        })),
+      ]
+    : [];
   const takedowns = mapName === 'takedown' ? new Takedowns() : undefined;
   const takedownMoment = takedowns ? new TakedownMoment() : undefined;
   const playerDamage = takedowns ? new PlayerDamage() : undefined;
@@ -453,6 +547,9 @@ async function boot(): Promise<void> {
   let inspectionCamera: { position: V3; target: V3 } | null = null;
   let respawnRequested = false;
   let retryRequested = false;
+  // location.assign is asynchronous: the old venue may run more physics
+  // steps after the ledger advances. Never score its finished race twice.
+  let grandPrixNavigating = false;
   let playerWreckPending = false;
   const wreckInput = {
     throttle: 0,
@@ -516,7 +613,13 @@ async function boot(): Promise<void> {
         stepStart = performance.now();
         vehicle.preStep(
           dt,
-          playerDamage?.wrecked ? wreckInput : sampled,
+          playerDamage?.wrecked ||
+            race?.state.phase === 'countdown' ||
+            ((race?.state.mode === 'eliminator' ||
+              race?.state.mode === 'grand-prix') &&
+              race.state.phase === 'finished')
+            ? wreckInput
+            : sampled,
           source,
         );
         traffic?.preStep(
@@ -610,6 +713,55 @@ async function boot(): Promise<void> {
           vehicle.telemetry.position.z,
           vehicle.telemetry.speed,
         );
+        if (race && traffic) {
+          const player = raceCars[0]! as {
+            id: number;
+            x: number;
+            z: number;
+            vx: number;
+            vz: number;
+          };
+          player.x = vehicle.telemetry.position.x;
+          player.z = vehicle.telemetry.position.z;
+          player.vx = vehicle.telemetry.velocity.x;
+          player.vz = vehicle.telemetry.velocity.z;
+          for (let index = 0; index < traffic.raceStates.length; index++) {
+            const state = traffic.raceStates[index]!;
+            const car = raceCars[index + 1]! as typeof player;
+            car.x = state.position.x;
+            car.z = state.position.z;
+            car.vx = state.velocity.x;
+            car.vz = state.velocity.z;
+          }
+          race.update(dt, raceCars);
+          if (
+            grandPrix &&
+            !grandPrixNavigating &&
+            race.state.phase === 'finished' &&
+            grandPrix.state.phase === 'racing' &&
+            Number.isFinite(race.state.finishTimes[0])
+          ) {
+            const slotById = new Map(
+              raceCars.map((car, slot) => [car.id, slot]),
+            );
+            const order = race.order.map((id) => slotById.get(id)!);
+            if (grandPrix.recordHeat(order, race.state.finishTimes))
+              saveGrandPrix();
+          }
+          if (
+            race.state.mode === 'eliminator' &&
+            race.state.lastCutId > 0 &&
+            race.state.lastCutId !== lastCutId
+          ) {
+            lastCutId = race.state.lastCutId;
+            traffic.eliminateRaceEntrant(lastCutId);
+          }
+          traffic.setRaceRunning(
+            race.state.mode === 'eliminator' || race.state.mode === 'grand-prix'
+              ? race.state.phase === 'running'
+              : race.state.phase !== 'countdown',
+          );
+        }
         propStreamer.update();
         awakeBudget.update(
           tuning.get('awakeBudget'),
@@ -743,6 +895,10 @@ async function boot(): Promise<void> {
     respawnRequested = true;
   }
   function respawn(): void {
+    if (race) {
+      retry();
+      return;
+    }
     respawnRequested = false;
     playerWreckPending = false;
     scripts.cancel();
@@ -760,6 +916,34 @@ async function boot(): Promise<void> {
    * whatever the timed run adds (its clock) resets here too. It is applied
    * on the same step the key is read, so "again" is one press and no wait. */
   function retry(): void {
+    if (grandPrixNavigating) {
+      retryRequested = false;
+      return;
+    }
+    if (grandPrix?.state.phase === 'between') {
+      if (grandPrix.nextHeat()) {
+        retryRequested = false;
+        respawnRequested = false;
+        grandPrixNavigating = true;
+        race?.freeze();
+        saveGrandPrix();
+        location.assign(
+          mapUrl(location.pathname, GRAND_PRIX_MAPS[grandPrix.state.heat]!) +
+            '&gp=1',
+        );
+      }
+      return;
+    }
+    if (grandPrix?.state.phase === 'finished') {
+      retryRequested = false;
+      respawnRequested = false;
+      grandPrixNavigating = true;
+      race?.freeze();
+      grandPrix.reset();
+      saveGrandPrix();
+      location.assign(mapUrl(location.pathname, 'grand-prix-city') + '&gp=1');
+      return;
+    }
     retryRequested = false;
     respawnRequested = false;
     playerWreckPending = false;
@@ -768,13 +952,19 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     // Onto the start line itself: the next step is an arrival and the
     // countdown begins at once.
-    vehicle.respawn(runStart.position, runStart.rotation);
+    const restart = race ? track.spawn : runStart;
+    vehicle.respawn(restart.position, restart.rotation);
     playerDamage?.reset();
     resetPresentation();
     takedowns?.reset();
     crashScore.reset();
     timedRun.reset();
-    scripts.noteRespawn(runStart, 0);
+    if (race) {
+      race.reset();
+      lastCutId = -1;
+      traffic?.resetRaceGrid();
+    }
+    scripts.noteRespawn(restart, 0);
     syncPause();
   }
   /** A takedown-map wreck preserves the race and earned sections after losing
@@ -897,10 +1087,12 @@ async function boot(): Promise<void> {
     onToggleAudioMute: () => menuAudio?.toggleMasterMute(),
     maps: {
       current: mapName,
-      entries: Object.entries(MAPS).map(([name, entry]) => ({
-        name,
-        label: entry.label,
-      })),
+      entries: Object.entries(MAPS)
+        .filter(
+          ([name]) =>
+            !name.startsWith('grand-prix-') || name === 'grand-prix-city',
+        )
+        .map(([name, entry]) => ({ name, label: entry.label })),
       onSelect(name) {
         if (name === mapName) {
           pauseMenu.setOpen(false);
@@ -924,6 +1116,16 @@ async function boot(): Promise<void> {
     readTelemetry: () => vehicle.telemetry,
     readScore: () => crashScore.state,
     readRun: () => timedRun.state,
+    ...(race ? { readRace: () => race.state } : {}),
+    ...(grandPrix
+      ? {
+          readGrandPrix: () => ({
+            ...grandPrix.state,
+            order: grandPrix.order,
+            medal: grandPrix.medal(),
+          }),
+        }
+      : {}),
     readTrafficEvents: () => trafficEvents.state,
     ...(takedowns ? { readTakedowns: () => takedowns.count } : {}),
     ...(playerDamage
@@ -1275,6 +1477,22 @@ async function boot(): Promise<void> {
       };
     });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
+  game.getRace = () =>
+    race
+      ? {
+          ...race.state,
+          finishOrder: [...race.state.finishOrder],
+          finishTimes: [...race.state.finishTimes],
+        }
+      : null;
+  game.getGrandPrix = () =>
+    grandPrix
+      ? {
+          ...grandPrix.snapshot(),
+          order: [...grandPrix.order],
+          medal: grandPrix.medal(),
+        }
+      : null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
     boostSections: vehicle.telemetry.boostSections,

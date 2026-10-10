@@ -15,6 +15,7 @@ function car(id: number, rival = false): TrafficCarState {
     speed: 20,
     wrecked: false,
     rival,
+    raceEntrant: false,
     modelKind: 'sedan',
     crush: { front: 0, rear: 0, left: 0, right: 0 },
   };
