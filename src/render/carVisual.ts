@@ -7,10 +7,13 @@ import {
   DoubleSide,
   Float32BufferAttribute,
   Group,
+  InstancedMesh,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
+  Quaternion,
   SphereGeometry,
   Vector3,
   type Material,
@@ -19,6 +22,8 @@ import {
 import type { VehicleVisualState } from './carVisualState';
 import { VEHICLE_GEOMETRY as G } from '../vehicle/constants';
 import type { CarCrushState } from '../world/carModels';
+import type { HeroPaint } from '../vehicle/vehicleDefinition';
+import type { HeroCarModel } from './heroCarModel';
 
 export type { VehicleVisualState, WheelVisualState } from './carVisualState';
 
@@ -179,6 +184,10 @@ export function createCarVisual(scene: Scene) {
     // Shorten and pinch the nose, then buckle the hood across the part the
     // chase camera actually sees. The shifted creases make the fold diagonal.
     const frontCorner = front * Math.min(1, Math.abs(nx) * 2);
+    // The wheels remain on their suspension mounts after a crash. Keep the
+    // outer fenders around those mounts instead of pulling the whole nose
+    // behind the front axle; the centre of the hood can still buckle deeply.
+    const frontShoulder = 1 - 0.78 * Math.min(1, Math.abs(nx) * 3);
     const trough = crush.front * crease(nz, -0.3 - nx * 0.05, 0.13);
     const crest =
       crush.front *
@@ -193,7 +202,9 @@ export function createCarVisual(scene: Scene) {
             0.24 * trough +
             0.15 * frontCorner) +
         roof * 0.9 * crest,
-      z + front * 1.08 * (0.92 + 0.08 * fold) - rear * 0.72 * fold,
+      z +
+        front * frontShoulder * 1.08 * (0.92 + 0.08 * fold) -
+        rear * 0.72 * fold,
     ];
   }
   function setCrush(next: Readonly<CarCrushState>): void {
@@ -234,6 +245,24 @@ export function createCarVisual(scene: Scene) {
     nose.position.y = 0.125 * HEIGHT_SCALE - next.front * 0.3;
     nose.scale.y = (0.75 - next.front * 0.18) * HEIGHT_SCALE;
     tail.position.z = G.length / 2 + 0.003 - next.rear * 0.55;
+    if (hero) {
+      for (const { geometry: shape, pristine } of hero.deformMeshes) {
+        const position = shape.getAttribute('position');
+        for (let i = 0; i < position.count; i++) {
+          const [x, y, z] = deformedBodyPoint(
+            pristine[i * 3]!,
+            pristine[i * 3 + 1]!,
+            pristine[i * 3 + 2]!,
+            next,
+          );
+          position.setXYZ(i, x, y, z);
+        }
+        position.needsUpdate = true;
+        shape.computeVertexNormals();
+        shape.computeBoundingSphere();
+      }
+    }
+    updateHeroLamps(next);
   }
 
   const wheelGeometry = geometry(
@@ -268,8 +297,68 @@ export function createCarVisual(scene: Scene) {
     );
     stripe.rotation.y = Math.PI / 2;
     stripe.scale.set(0.05 * WIDTH_SCALE, G.wheelRadius, 1);
-    return { pivot, spin };
+    return { pivot, spin, tire, stripe };
   });
+
+  const heroLights = new Group();
+  heroLights.name = 'car.hero.lights';
+  heroLights.visible = false;
+  root.add(heroLights);
+  const headlights = new InstancedMesh(unitBox, noseMaterial, 2);
+  headlights.name = 'car.hero.headlamps';
+  const brakelights = new InstancedMesh(unitBox, tailMaterial, 2);
+  brakelights.name = 'car.hero.brakelamps';
+  heroLights.add(headlights, brakelights);
+  const lampMatrix = new Matrix4();
+  const lampRotation = new Quaternion();
+  const lampPosition = new Vector3();
+  const lampScale = new Vector3();
+  function placeLamp(
+    lights: InstancedMesh,
+    index: number,
+    x: number,
+    y: number,
+    z: number,
+    width: number,
+    height: number,
+    depth: number,
+    crush: Readonly<CarCrushState>,
+  ): void {
+    const [px, py, pz] = deformedBodyPoint(x, y, z, crush);
+    lampPosition.set(px, py, pz);
+    lampScale.set(width, height, depth);
+    lampMatrix.compose(lampPosition, lampRotation, lampScale);
+    lights.setMatrixAt(index, lampMatrix);
+    lights.instanceMatrix.needsUpdate = true;
+  }
+  function updateHeroLamps(crush: Readonly<CarCrushState>): void {
+    for (let index = 0; index < 2; index++) {
+      const side = index === 0 ? -1 : 1;
+      placeLamp(
+        headlights,
+        index,
+        side * G.width * 0.34,
+        -0.07,
+        -G.length / 2 + 0.03,
+        0.3,
+        0.13,
+        0.07,
+        crush,
+      );
+      placeLamp(
+        brakelights,
+        index,
+        side * G.width * 0.35,
+        -0.03,
+        G.length / 2 - 0.03,
+        0.32,
+        0.15,
+        0.07,
+        crush,
+      );
+    }
+  }
+  updateHeroLamps(visibleCrush);
 
   const headingMaterial = unlit(0xfff4b3, true);
   const velocityMaterial = unlit(0x3ed8ee, true);
@@ -348,7 +437,52 @@ export function createCarVisual(scene: Scene) {
   const up = new Vector3(0, 1, 0);
   let lastState: VehicleVisualState | undefined;
   let disposed = false;
+  let hero: HeroCarModel | undefined;
+  let heroPaint: HeroPaint = 'orange';
   scene.add(root, debug);
+
+  async function loadHeroModel(): Promise<boolean> {
+    if (disposed) return false;
+    if (hero) return true;
+    try {
+      const { mountHeroCarModel } = await import('./heroCarModel');
+      const loaded = await mountHeroCarModel(
+        root,
+        wheels.map((wheel) => wheel.spin),
+      );
+      if (disposed) {
+        loaded.dispose();
+        return false;
+      }
+      hero = loaded;
+      hero.setPaint(heroPaint);
+      body.visible = false;
+      nose.visible = false;
+      tail.visible = false;
+      for (const { strip } of chevronStrips) strip.visible = false;
+      for (const wheel of wheels) {
+        wheel.tire.visible = false;
+        wheel.stripe.visible = false;
+      }
+      heroLights.visible = true;
+      // The model may load after a collision has already damaged the fallback.
+      const current = { ...visibleCrush };
+      Object.assign(visibleCrush, { front: -1, rear: -1, left: -1, right: -1 });
+      setCrush(current);
+      return true;
+    } catch (error) {
+      console.warn(
+        'Hero car asset unavailable; using the playable fallback.',
+        error,
+      );
+      return false;
+    }
+  }
+
+  function setPaint(paint: HeroPaint): void {
+    heroPaint = paint;
+    hero?.setPaint(paint);
+  }
 
   function updateDebug(state: VehicleVisualState): void {
     direction.set(0, 0, -1).applyQuaternion(root.quaternion);
@@ -425,6 +559,7 @@ export function createCarVisual(scene: Scene) {
     disposed = true;
     root.removeFromParent();
     debug.removeFromParent();
+    hero?.dispose();
     for (const value of geometries) value.dispose();
     for (const value of materials) value.dispose();
     lastState = undefined;
@@ -434,6 +569,7 @@ export function createCarVisual(scene: Scene) {
     update,
     setCrush,
     setPaint,
+    loadHeroModel,
     setDebugVisible,
     toggleDebug,
     dispose,
