@@ -15,7 +15,7 @@ import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import type { RunwaySpec } from './runways';
 import type { TrackConfig } from './trackConfig';
 import type { JumpRampSpec } from './jumpRamp';
-import type { RoadPath } from './roadGenerator';
+import { poseAt, type RoadPath } from './roadGenerator';
 import type { TrafficCarRecord } from './traffic';
 import type { ShuntWallSpec } from './shuntWalls';
 
@@ -54,7 +54,8 @@ export interface MapDefinition {
   /** Short walls beside a road, shared by collision and visuals. */
   readonly shuntWalls?: readonly ShuntWallSpec[];
 }
-export type MapName = 'lab' | 'proving-ground' | 'circuit' | 'takedown';
+export type MapName =
+  'lab' | 'proving-ground' | 'circuit' | 'circuit-race' | 'takedown';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -331,10 +332,45 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
   ]),
 });
 
+const circuit = createCircuitMap();
+const raceGrid = poseAt(circuit.path, circuit.path.length - 50);
+/** Six-car standing grid: the player is rear-centre, five rivals are beside
+ * and ahead. The first/last 150 m is free of civilian spawn records. */
+const circuitRace: MapDefinition = {
+  ...circuit,
+  name: 'circuit-race',
+  label: 'Circuit Race · six-car grid',
+  spawn: { x: raceGrid.x, z: raceGrid.z, heading: raceGrid.heading },
+  traffic: [
+    ...circuit.traffic.filter(
+      (car) => car.station > 150 && car.station < circuit.path.length - 150,
+    ),
+    ...(
+      [
+        [-35, -5, 'sedan'],
+        [-35, 0, 'hatch'],
+        [-35, 5, 'pickup'],
+        [-50, -5, 'sedan'],
+        [-50, 5, 'hatch'],
+      ] as const
+    ).map(([station, laneOffset, modelKind]) => ({
+      station: circuit.path.length + station,
+      laneSide: laneOffset < 0 ? (-1 as const) : (1 as const),
+      laneOffset,
+      direction: 1 as const,
+      speed: 50,
+      rival: true,
+      raceEntrant: true,
+      modelKind,
+    })),
+  ],
+};
+
 export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   lab: LAB_MAP,
   'proving-ground': PROVING_GROUND_MAP,
-  circuit: createCircuitMap(),
+  circuit,
+  'circuit-race': circuitRace,
   takedown: createTakedownMap(),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';

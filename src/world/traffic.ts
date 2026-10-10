@@ -42,6 +42,10 @@ export interface TrafficCarRecord {
   readonly modelKind?: CarModelKind;
   /** Rivals contest the player's line and remain identifiable through LOD. */
   readonly rival?: boolean;
+  /** Circuit Race uses a standing grid and independent pace, never takedown rubber-banding. */
+  readonly raceEntrant?: boolean;
+  /** Metres left of the centreline; overrides the ordinary two-lane offset. */
+  readonly laneOffset?: number;
 }
 
 /** Centre-to-centre spacing in metres. The 12 m authored grid is the hard
@@ -66,6 +70,7 @@ export interface TrafficCarState {
   speed: number;
   wrecked: boolean;
   rival: boolean;
+  raceEntrant: boolean;
   /** The catalogue kind: collision box, visual parts and ride height. */
   modelKind: CarModelKind;
   /** Visual crush persists with this encounter across body LOD handoffs. */
@@ -249,6 +254,7 @@ export function createTraffic(
       speed: record.speed,
       wrecked: false,
       rival: record.rival === true,
+      raceEntrant: record.raceEntrant === true,
       modelKind: record.modelKind ?? pickCarModelKind(index + 1),
       crush: { front: 0, rear: 0, left: 0, right: 0 },
     },
@@ -257,7 +263,7 @@ export function createTraffic(
     wreckRotation: { ...IDENTITY },
     slot: null,
     enabled: true,
-    driveSpeed: record.speed,
+    driveSpeed: record.raceEntrant ? 0 : record.speed,
     wreckAge: 0,
     attackOffset: 0,
     leader: null,
@@ -275,6 +281,12 @@ export function createTraffic(
     scrapeSides: 0,
   }));
   const hasRivals = records.some((record) => record.rival === true);
+  const hasTakedownRivals = records.some(
+    (record) => record.rival === true && record.raceEntrant !== true,
+  );
+  const raceRecords = authored.filter((record) => record.state.raceEntrant);
+  const raceStates = raceRecords.map((record) => record.state);
+  let raceRunning = false;
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
   const slots: Slot[] = [];
@@ -359,12 +371,14 @@ export function createTraffic(
       a.x +
       (b.x - a.x) * t -
       Math.cos(out.heading) *
-        (record.authored.laneSide * 3.5 + record.attackOffset);
+        ((record.authored.laneOffset ?? record.authored.laneSide * 3.5) +
+          record.attackOffset);
     out.z =
       a.z +
       (b.z - a.z) * t +
       Math.sin(out.heading) *
-        (record.authored.laneSide * 3.5 + record.attackOffset);
+        ((record.authored.laneOffset ?? record.authored.laneSide * 3.5) +
+          record.attackOffset);
     return out;
   }
 
@@ -675,11 +689,11 @@ export function createTraffic(
   function preStep(dt: number, player: V3, playerSpeed = 0): void {
     newlyWrecked.length = 0;
     stepDt = dt;
-    if (!rivalryStarted && playerSpeed > 10) {
+    if (hasTakedownRivals && !rivalryStarted && playerSpeed > 10) {
       rivalDriveSeconds += dt;
       rivalryStarted = rivalDriveSeconds >= RIVAL_ATTACK_GRACE_SECONDS;
     }
-    if (hasRivals) {
+    if (hasTakedownRivals) {
       if (rivalryStarted) rivalSeconds += dt;
       rivalTargets.length = 0;
       for (const record of authored)
@@ -714,14 +728,15 @@ export function createTraffic(
         }
       }
     }
-    if (hasRivals) stationRefresh += dt;
-    if (hasRivals && stationRefresh >= 0.2) {
+    if (hasTakedownRivals) stationRefresh += dt;
+    if (hasTakedownRivals && stationRefresh >= 0.2) {
       stationRefresh = 0;
       playerStation = nearestRoadStation(player);
     }
-    if (hasRivals)
+    if (hasTakedownRivals)
       for (const record of authored) {
-        if (!record.state.rival || !record.wrecked) continue;
+        if (!record.state.rival || record.state.raceEntrant || !record.wrecked)
+          continue;
         record.wreckAge += dt;
         const behind =
           (playerStation - record.station + path.length) % path.length;
@@ -825,6 +840,19 @@ export function createTraffic(
       makeRoomFor(player, distanceSquared, true);
       if (physicalCount < MAX_DRIVING) promote(record);
     }
+    // The five grid rivals are part of the race, not decorative far traffic.
+    // Give them bodies before ordinary civilian promotion at every start.
+    for (const record of raceRecords) {
+      if (record.wrecked || record.slot) continue;
+      const distanceSquared = horizontalDistanceSquared(
+        player,
+        record.state.position.x,
+        record.state.position.z,
+      );
+      if (distanceSquared > ENTER * ENTER) continue;
+      makeRoomFor(player, distanceSquared, true);
+      if (physicalCount < MAX_DRIVING) promote(record);
+    }
     // Refresh one distant slice per step instead of all authored cars on the
     // same 10 Hz tick. Nearby poses still update every step.
     const farPoseBuckets = Math.max(1, Math.round(0.1 / dt));
@@ -852,6 +880,7 @@ export function createTraffic(
       const state = record.state;
       if (
         state.rival &&
+        !state.raceEntrant &&
         !record.wrecked &&
         !record.slot &&
         horizontalDistanceSquared(player, state.position.x, state.position.z) >
@@ -870,11 +899,12 @@ export function createTraffic(
       }
       const attackNow =
         state.rival &&
+        !state.raceEntrant &&
         rivalryStarted &&
         playerSpeed >= RIVAL_PLAYER_ATTACK_MIN_SPEED &&
         state.id === attackCarId;
       const attackPlayer = attackNow ? player : state.position;
-      if (state.rival && !record.wrecked) {
+      if (state.rival && !state.raceEntrant && !record.wrecked) {
         const target = rivalAttackTarget(
           state.position,
           state.forward,
@@ -890,7 +920,9 @@ export function createTraffic(
       if (!record.wrecked) {
         const direction = state.direction;
         let desiredSpeed = record.authored.speed;
-        if (state.rival) {
+        if (state.raceEntrant) {
+          desiredSpeed = raceRunning ? record.authored.speed : 0;
+        } else if (state.rival) {
           const ahead =
             (record.station - playerStation + path.length) % path.length;
           const behind =
@@ -1377,6 +1409,29 @@ export function createTraffic(
     return slotByBodyId.get(bodyId)?.record?.state.velocity;
   }
 
+  function resetRaceGrid(): void {
+    raceRunning = false;
+    for (const record of raceRecords) {
+      if (record.slot) demote(record);
+      const wreckIndex = wreckRecords.indexOf(record);
+      if (wreckIndex >= 0) wreckRecords.splice(wreckIndex, 1);
+      record.station = record.authored.station;
+      record.wrecked = record.state.wrecked = false;
+      record.wreckAge = 0;
+      record.driveSpeed = 0;
+      record.attackOffset = 0;
+      record.obstacle = null;
+      record.crashPending = false;
+      record.shapeDirty = true;
+      record.state.crush.front =
+        record.state.crush.rear =
+        record.state.crush.left =
+        record.state.crush.right =
+          0;
+      updateVisualPose(record);
+    }
+  }
+
   if (initialRules) setRules(initialRules);
 
   return {
@@ -1385,6 +1440,8 @@ export function createTraffic(
     visualStates: visualStates as readonly TrafficCarState[],
     /** Wreck transitions from this physics step, including off-screen cars. */
     newlyWrecked: newlyWrecked as readonly TrafficCarState[],
+    /** All five stable race entrants, including those outside visual range. */
+    raceStates: raceStates as readonly TrafficCarState[],
     hasRivals,
     recordCount: authored.length,
     /** Test-only controller snapshot, allocated only when browser tooling asks. */
@@ -1420,6 +1477,13 @@ export function createTraffic(
       return activeCount;
     },
     setRules,
+    setRaceRunning(running: boolean) {
+      raceRunning = running;
+    },
+    resetRaceGrid,
+    get physicalCount() {
+      return physicalCount;
+    },
     preStep,
     postStep,
     onPlayerContact,
@@ -1451,7 +1515,13 @@ export function createTrafficVisual(
         state.rotation,
         state.id,
         state.crush,
-        state.rival ? 0 : traffic.hasRivals ? (state.id % 7) + 1 : undefined,
+        state.raceEntrant
+          ? state.id % 7
+          : state.rival
+            ? 0
+            : traffic.hasRivals
+              ? (state.id % 7) + 1
+              : undefined,
       );
     cars.end();
   }
