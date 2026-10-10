@@ -14,6 +14,7 @@ import {
 } from './hudTelemetry';
 import { HudPlots } from './hudPlots';
 import type { TimedRunState } from '../core/timedRun';
+import type { RaceState } from '../core/raceEvent';
 import { HudChainState, isChainAlive } from './hudChain';
 import type { TrafficEventsState } from '../core/trafficEvents';
 import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
@@ -58,6 +59,7 @@ export interface HudOptions extends RecorderOptions {
   readScore?: () => Readonly<CrashScoreState>;
   /** The timed run (NS3): countdown, clock and finish on the persistent seam. */
   readRun?: () => Readonly<TimedRunState>;
+  readRace?: () => Readonly<RaceState>;
   /** Traffic events: the one short label beside the boost bar. */
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
@@ -135,6 +137,10 @@ export class Hud {
   private readonly run: HTMLElement;
   private readonly runClock: Text;
   private readonly runLabel: Text;
+  private readonly race: HTMLElement | null;
+  private readonly raceClock: Text | null;
+  private readonly raceRank: Text | null;
+  private readonly raceGate: Text | null;
   private readonly plots: HudPlots;
   private readonly miniMap?: MiniMap;
   private readonly unsubscribe: () => void;
@@ -307,6 +313,26 @@ export class Hud {
     this.runLabel = reading(this.run, 'runLabel', '', 'sl-run__label')
       .firstChild as Text;
     this.element.append(this.run);
+    this.race = options.readRace
+      ? node(doc, 'section', 'sl-card sl-hud__race')
+      : null;
+    this.raceClock = this.race
+      ? (reading(this.race, 'raceClock', '3', 'sl-race__clock')
+          .firstChild as Text)
+      : null;
+    this.raceRank = this.race
+      ? (reading(this.race, 'raceRank', 'P6/6', 'sl-race__rank')
+          .firstChild as Text)
+      : null;
+    this.raceGate = this.race
+      ? (reading(this.race, 'raceGate', 'GRID', 'sl-race__gate')
+          .firstChild as Text)
+      : null;
+    if (this.race) {
+      this.race.dataset.hudPersistent = '';
+      this.race.setAttribute('aria-live', 'polite');
+      this.element.append(this.race);
+    }
     if (options.miniMap)
       this.miniMap = new MiniMap({ host: this.element, ...options.miniMap });
     this.plots = new HudPlots(this.root);
@@ -528,6 +554,7 @@ export class Hud {
     this.updateNotice();
     this.updateScore(nowMs, this.options.readScore?.());
     this.updateRun(this.options.readRun?.());
+    this.updateRace(this.options.readRace?.());
     const collapsed = this.element.dataset.collapsed === 'true';
     // The mini-map is HUD-persistent, so keep its position live while the
     // instrument cards are collapsed or the HUD mode is off. HUDs without a
@@ -720,6 +747,56 @@ export class Hud {
         : run.gatesTaken > 1
           ? `GATE ${run.gatesTaken - 1} of ${run.gateCount - 1}`
           : 'RUN',
+    );
+  }
+
+  private updateRace(race: Readonly<RaceState> | undefined): void {
+    if (
+      !race ||
+      !this.race ||
+      !this.raceClock ||
+      !this.raceRank ||
+      !this.raceGate
+    )
+      return;
+    this.race.dataset.phase = race.phase;
+    this.race.dataset.mode = race.mode;
+    write(
+      this.raceClock,
+      race.phase === 'countdown'
+        ? String(Math.ceil(race.countdown))
+        : race.phase === 'running' && race.clock < 0.8
+          ? 'GO'
+          : formatRunClock(race.clock),
+    );
+    write(
+      this.raceRank,
+      race.mode === 'eliminator' && race.eliminated
+        ? 'ELIMINATED'
+        : `P${race.position}/${race.mode === 'eliminator' ? race.remaining : race.fieldSize}`,
+    );
+    if (race.mode === 'eliminator') {
+      write(
+        this.raceGate,
+        race.phase === 'countdown'
+          ? 'HIGHWAY ELIMINATOR'
+          : race.phase === 'finished'
+            ? race.won
+              ? 'WINNER · GOLD · ENTER RETRY'
+              : `OUT · ${race.medal === 'none' ? 'NO MEDAL' : race.medal.toUpperCase()} · ENTER RETRY`
+            : `LAP ${Math.min(race.lap + 1, race.lapTarget)}/${race.lapTarget} · ${race.atRisk ? 'AT RISK' : 'SAFE'}`,
+      );
+      return;
+    }
+    write(
+      this.raceGate,
+      race.phase === 'finished'
+        ? 'FINISH'
+        : race.phase === 'countdown'
+          ? 'CIRCUIT RACE'
+          : race.nextCheckpoint >= race.checkpointCount + 1
+            ? 'GOAL'
+            : `GATE ${race.nextCheckpoint}/${race.checkpointCount}`,
     );
   }
 

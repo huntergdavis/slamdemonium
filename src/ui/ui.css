@@ -914,6 +914,41 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.sl-hud__race {
+  position: fixed;
+  top: 88px;
+  left: var(--sl-safe);
+  width: 168px;
+  padding: 8px 10px;
+  text-align: center;
+  pointer-events: none;
+}
+.sl-hud__race[data-mode='eliminator'] {
+  width: 220px;
+}
+.sl-race__clock {
+  display: block;
+  font: 800 30px/1 var(--sl-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--sl-accent);
+}
+.sl-hud__race[data-phase='countdown'] .sl-race__clock {
+  font-size: 48px;
+  color: var(--sl-warning);
+}
+.sl-race__rank {
+  display: block;
+  margin-top: 4px;
+  font: 800 24px/1 var(--sl-mono);
+  color: #fff;
+}
+.sl-race__gate {
+  display: block;
+  margin-top: 4px;
+  color: var(--sl-muted);
+  font: 12px var(--sl-mono);
+  letter-spacing: 0.08em;
+}
 .sl-chain__mult {
   display: block;
   font: 800 40px/1 var(--sl-mono);
