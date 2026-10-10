@@ -14,8 +14,8 @@ Open the [game](https://hunterdavis.com/slamdemonium/) in Chrome, Firefox, or Sa
 | Mode | How to start | What to do |
 | --- | --- | --- |
 | **Takedown** | **Map → Free drive → Takedown** | Chase the marked red/yellow rivals on the wide walled course. Shunt one into a wall, traffic, or another hard object for a takedown and more boost. The mini-map and edge pointer help you find the pack. |
-| **Road Rage** | Earn a City Sprint medal, then choose **World Tour → Road Rage**; it is also a Free drive map. | Score takedowns before the three-minute clock expires. Three earn bronze; damage and wrecks can end the run early. |
-| **City / City Sprint** | **Map → Free drive → City** for open driving; **World Tour → City Sprint** for the first Tour card. | Drive the city streets and crossings. In City Sprint, pass both gates and finish before the clock runs out. |
+| **Road Rage** | Earn a City Sprint medal, then choose **World Tour → Road Rage**; it is also a Free drive map. | Score takedowns before the three-minute clock expires. Three earn bronze; three player wrecks end the run early. |
+| **City / City Sprint** | **Map → Free drive → City** for open driving; **World Tour → City Sprint** for the first Tour card. | Drive the city streets and crossings. In City Sprint, pass both gates and finish; the clock records your time. |
 | **Circuit Race** | Unlock its Tour card through Crash Junction, or choose the Circuit Race Free drive map. | Race five rivals around the circuit. Pass the route gates; a shortcut does not count as a finished lap. |
 | **Face Off** | Unlock its Tour card through Circuit Race, or choose the Face Off Free drive map. | Race Vesper one on one. Beat Vesper to earn the special Garage paint. |
 | **Highway Eliminator** | Unlock its Tour card through Face Off, or choose the Highway Eliminator Free drive map. | At each lap end, the last-place car is cut. Survive cuts to earn a medal; be the final car for gold. |
