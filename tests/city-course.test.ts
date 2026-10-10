@@ -25,6 +25,11 @@ describe('city graybox', () => {
           record.path === CITY_CROSS_PATH ? 'cross' : 'arterial',
         );
         expect(record.signalJunctions).toBe(CITY_INTERSECTIONS);
+        const pose = poseAt(record.path ?? map.path!, record.station);
+        for (const junction of CITY_INTERSECTIONS)
+          expect(
+            Math.hypot(pose.x - junction.x, pose.z - junction.z),
+          ).toBeGreaterThanOrEqual(35);
       }
     }
   });

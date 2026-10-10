@@ -502,7 +502,10 @@ export function createTraffic(
       const dz = junction.z - car.position.z;
       const ahead = dx * forwardX + dz * forwardZ;
       if (ahead < 0 && record.signalCommit === index) record.signalCommit = -1;
-      if (ahead <= SIGNAL_STOP_LINE || ahead > SIGNAL_LOOKAHEAD) continue;
+      // The stop line is where an uncommitted car must *remain* stopped.
+      // Dropping the signal at that line re-accelerates a visual car before
+      // promotion and launches it into cross traffic on red.
+      if (ahead <= 0 || ahead > SIGNAL_LOOKAHEAD) continue;
       if (Math.abs(dx * rightX + dz * rightZ) > 15) continue;
       if (record.signalCommit === index) continue;
       const green =

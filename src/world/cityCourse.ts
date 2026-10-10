@@ -120,7 +120,14 @@ function cityTraffic(road: RoadPath): TrafficCarRecord[] {
         signalJunctions: CITY_INTERSECTIONS,
       });
   }
-  return records;
+  // Start every stream outside the signal approach. A car authored inside a
+  // red stop line can already occupy the box when the other stream turns green.
+  return records.filter((record) => {
+    const pose = poseAt(record.path ?? road, record.station);
+    return CITY_INTERSECTIONS.every(
+      (junction) => Math.hypot(pose.x - junction.x, pose.z - junction.z) >= 35,
+    );
+  });
 }
 
 /** The same world geometry and start point, traversed toward the other end. */
