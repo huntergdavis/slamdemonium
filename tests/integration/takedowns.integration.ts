@@ -13,7 +13,7 @@ import {
 
 const DT = 1 / 120;
 
-it('awards one takedown and one boost section for a real rival wreck', async () => {
+async function runRivalWreck(aftertouch: boolean) {
   const harness = await scriptVehicleHarness({ flatPlane: true });
   const { world, surfacedBodies, vehicle } = harness;
   const path = sampleRoad([{ kind: 'straight', length: 500 }], {
@@ -25,6 +25,7 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
     { station: 140, laneSide: -1, speed: 20, rival: true },
   ]);
   const takedowns = new Takedowns();
+  if (aftertouch) takedowns.beginAftertouchEpisode();
   const impact = createImpactSeverity();
   const normal = { x: 0, y: 0, z: 0 };
   const relative = { x: 0, y: 0, z: 0 };
@@ -87,9 +88,24 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
     expect(wreckEventSteps).toBe(1);
     expect(traffic.newlyWrecked).toHaveLength(0);
     expect(takedowns.count).toBe(1);
+    expect(takedowns.lastCreditKind).toBe(
+      aftertouch ? 'aftertouch' : 'ordinary',
+    );
     expect(vehicle.telemetry.boostSections).toBe(2);
   } finally {
     traffic.dispose();
     harness.dispose();
   }
-}, 120_000);
+}
+
+it(
+  'awards one ordinary takedown and boost section for a real rival wreck',
+  () => runRivalWreck(false),
+  120_000,
+);
+
+it(
+  'awards one Aftertouch takedown and boost section from a real rival wreck',
+  () => runRivalWreck(true),
+  120_000,
+);
