@@ -2,7 +2,7 @@
  * opening straight, then time ten seconds of their impact. Run main and the PR
  * interleaved on the same box; compare full-step p99 and frame cost.
  *
- * xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/perf/traffic-pileup-browser.mjs <url> <out.json>
+ * xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/perf/traffic-pileup-browser.mjs <url> <out.json> [cars=5]
  */
 /* global process, console, window, document, fetch, performance, requestAnimationFrame */
 import { chromium } from '@playwright/test';
@@ -11,8 +11,11 @@ import { loadavg } from 'node:os';
 
 const url = process.argv[2];
 const out = process.argv[3];
+const cars = Number(process.argv[4] ?? 5);
 if (!url || !out)
   throw new Error('Expected a preview URL and output JSON path.');
+if (!Number.isInteger(cars) || cars < 2 || cars > 12)
+  throw new Error('Pileup size must be an integer from 2 to 12.');
 const loadBefore = loadavg()[0];
 const browser = await chromium.launch({
   headless: false,
@@ -48,12 +51,13 @@ const renderer = await page.evaluate(() => {
     : String(gl?.getParameter(gl.RENDERER));
 });
 
-await page.evaluate(() => {
+await page.evaluate((count) => {
   const game = window.__game;
   game.respawn();
   game.releaseInput();
-  const ids = game.stageTrafficPileup?.(5);
-  if (!ids || ids.length !== 5) throw new Error('Five-body pileup not staged.');
+  const ids = game.stageTrafficPileup?.(count);
+  if (!ids || ids.length !== count)
+    throw new Error(`${count}-body pileup not staged.`);
   const state = {
     done: false,
     timedOut: false,
@@ -63,10 +67,16 @@ await page.evaluate(() => {
     crushed: new Set(),
     wrecked: new Set(),
     maxNearby: 0,
+    lastFrameAt: null,
+    burstFrameMs: [],
   };
   window.__pileup = state;
   game.perf.start(1e9);
   const tick = () => {
+    const now = performance.now();
+    if (state.lastFrameAt !== null && now - state.started <= 2000)
+      state.burstFrameMs.push(now - state.lastFrameAt);
+    state.lastFrameAt = now;
     if (state.frames++ % 12 === 0) {
       const traffic = game.getTraffic?.() ?? [];
       const player = game.getTelemetry().position;
@@ -81,11 +91,11 @@ await page.evaluate(() => {
       }
       state.maxNearby = Math.max(state.maxNearby, nearby);
     }
-    if (performance.now() - state.started >= 10000) state.done = true;
+    if (now - state.started >= 10000) state.done = true;
     else requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
-});
+}, cars);
 
 const frame = [];
 const fullStep = [];
@@ -110,10 +120,12 @@ const pileup = await page.evaluate(() => ({
   crushedIds: [...window.__pileup.crushed],
   wreckedIds: [...window.__pileup.wrecked],
   maxNearby: window.__pileup.maxNearby,
+  burstFrameMs: window.__pileup.burstFrameMs,
   stagedCrush: (window.__game.getTraffic?.() ?? [])
     .filter((car) => window.__pileup.ids.includes(car.id))
     .map((car) => ({ id: car.id, crush: car.crush, wrecked: car.wrecked })),
 }));
+const pace = await page.evaluate(() => window.__game.perf.pace());
 await browser.close();
 
 function percentile(values, fraction) {
@@ -130,11 +142,22 @@ const report = {
   renderer,
   loadBefore: +loadBefore.toFixed(2),
   pileup,
+  pace,
+  burstFrame: {
+    count: pileup.burstFrameMs.length,
+    p99: percentile(pileup.burstFrameMs, 0.99),
+    worst: pileup.burstFrameMs.length
+      ? +Math.max(...pileup.burstFrameMs).toFixed(2)
+      : null,
+    over100ms: pileup.burstFrameMs.filter((ms) => ms > 100).length,
+  },
   frame: {
     count: frame.length,
     fps: mean(frame) ? +(1000 / mean(frame)).toFixed(1) : null,
     p50: percentile(frame, 0.5),
     p99: percentile(frame, 0.99),
+    worst: frame.length ? +Math.max(...frame).toFixed(2) : null,
+    over100ms: frame.filter((ms) => ms > 100).length,
   },
   fullStep: {
     count: fullStep.length,
