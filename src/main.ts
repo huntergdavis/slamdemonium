@@ -16,6 +16,8 @@ import { Takedowns } from './core/takedowns';
 import { RoadRage } from './core/roadRage';
 import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
+import { CRASH_PICKUP_BEST_KEY, CrashMode } from './core/crashMode';
+import { ImpactTime } from './core/impactTime';
 import {
   GARAGE_CLASSES,
   GARAGE_CLASS_IDS,
@@ -25,8 +27,6 @@ import {
   storeGarageClass,
 } from './vehicle/garageClasses';
 import { WORKING_SET_KEY } from './tuning/storage';
-import { CrashMode } from './core/crashMode';
-import { ImpactTime } from './core/impactTime';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
@@ -243,7 +243,12 @@ async function boot(): Promise<void> {
   // into; the clock runs to the goal; Enter is the retry, onto the line.
   const isCrashJunction = mapName === 'crash-south' || mapName === 'crash-west';
   const crashMode = isCrashJunction
-    ? new CrashMode(mapStorage ?? undefined)
+    ? new CrashMode(
+        mapStorage ?? undefined,
+        garageClassId === 'pickup'
+          ? { vehicleMultiplier: 2, bestKey: CRASH_PICKUP_BEST_KEY }
+          : {},
+      )
     : undefined;
   const roadRage = mapName === 'road-rage' ? new RoadRage() : undefined;
   const roadRageBest = roadRage
