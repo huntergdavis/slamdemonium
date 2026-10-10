@@ -67,9 +67,9 @@ function traffic(path: RoadPath, interchange: boolean): TrafficCarRecord[] {
       station,
       laneSide: 1,
       direction: 1,
-      // Keep heavy vehicles visibly slower without making the 38 m stream
-      // close faster than the pooled body's 5 m/s² controller can brake.
-      speed: heavy ? 42 + (index % 4) : 46 + (index % 9),
+      // A 38 m authored stream cannot safely mix 46-54 m/s cars: faster
+      // followers reach the slower car near the lap seam before they brake.
+      speed: 46,
       ...(heavy ? { modelKind: heavy } : {}),
     });
     if (!interchange)
@@ -77,7 +77,7 @@ function traffic(path: RoadPath, interchange: boolean): TrafficCarRecord[] {
         station: station + 19,
         laneSide: -1,
         direction: 1,
-        speed: 43 + (index % 12),
+        speed: 46,
         ...(index % 11 === 0 ? { modelKind: 'van' as const } : {}),
       });
   }
