@@ -4,6 +4,7 @@ import type { PerformanceBatch } from './performance';
 import type { CameraPreset } from '../render/cameraRig';
 import type { ScriptController } from '../input/script';
 import type { HudMode } from '../ui/hud';
+import type { RoadRageState } from './roadRage';
 
 export interface GameInput {
   throttle: number;
@@ -28,6 +29,16 @@ export interface GameTestApi {
   setCameraPreset(preset: CameraPreset): void;
   /** Optional fixed pose for repeatable browser inspection; null restores follow. */
   setInspectionCamera(pose: { position: V3; target: V3 } | null): void;
+  /** Read-only projected-size gate for the authored hero far LOD. */
+  getHeroLod?: () => { lod: 'near' | 'far'; pixels: number };
+  /** Selected garage identity and physical bounds for browser drive checks. */
+  getGarageClass?: () => {
+    id: import('../vehicle/garageClasses').GarageClassId;
+    width: number;
+    height: number;
+    length: number;
+    mass: number;
+  };
   setHudMode(mode: HudMode): void;
   setOptionsOpen(open: boolean): void;
   stepMany(steps: number): void;
@@ -38,6 +49,10 @@ export interface GameTestApi {
   getRivalControl?: () => Readonly<Record<string, unknown>> | null;
   /** Read-only takedown state for hosted driving checks. */
   getTakedowns?: () => { count: number; boostSections: number };
+  /** Read-only timed takedown event state for built-browser guards. */
+  getRoadRage?: () => Readonly<RoadRageState>;
+  /** Read-only Crash Junction score and unique-award ledger. */
+  getCrashMode?: () => Readonly<Record<string, unknown>>;
   /** Read-only player wreck budget for hosted takedown-road inspection. */
   getPlayerDamage?: () => {
     amount: number;

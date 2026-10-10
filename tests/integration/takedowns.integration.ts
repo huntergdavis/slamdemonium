@@ -3,6 +3,7 @@ import {
   createImpactSeverity,
   estimateImpactSeverity,
 } from '../../src/core/impactSeverity';
+import { PlayerDamage } from '../../src/core/playerDamage';
 import { Takedowns } from '../../src/core/takedowns';
 import { sampleRoad } from '../../src/world/roadGenerator';
 import { createTraffic } from '../../src/world/traffic';
@@ -13,7 +14,7 @@ import {
 
 const DT = 1 / 120;
 
-it('awards one takedown and one boost section for a real rival wreck', async () => {
+async function runRivalWreck(aftertouch: boolean) {
   const harness = await scriptVehicleHarness({ flatPlane: true });
   const { world, surfacedBodies, vehicle } = harness;
   const path = sampleRoad([{ kind: 'straight', length: 500 }], {
@@ -25,10 +26,15 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
     { station: 140, laneSide: -1, speed: 20, rival: true },
   ]);
   const takedowns = new Takedowns();
+  const damage = new PlayerDamage();
+  const wall = aftertouch
+    ? world.createStaticBox({ x: 100, y: 1, z: -20 }, { x: 10, y: 2, z: 0.5 })
+    : -1;
   const impact = createImpactSeverity();
   const normal = { x: 0, y: 0, z: 0 };
   const relative = { x: 0, y: 0, z: 0 };
   let contacts = 0;
+  let wallContacts = 0;
   let peakSeverity = 0;
   let wreckEventSteps = 0;
   try {
@@ -37,21 +43,22 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
     traffic.postStep();
     const rival = traffic.states[0]!;
     expect(rival.bodyId).toBeGreaterThan(0);
-    // A boosted rear-end against a slowing rival must still award the
-    // takedown even though the race AI now reaches boosted pace itself.
-    world.setLinearVelocity(rival.bodyId, { x: 0, y: 0, z: 0 });
-    vehicle.respawn(
-      { x: rival.position.x, y: 1, z: rival.position.z + 12 },
-      { x: 0, y: 0, z: 0, w: 1 },
-    );
-    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -80 });
     world.onContact((a, b, impulse, _point, contactNormal) => {
       const other = a === vehicle.body ? b : b === vehicle.body ? a : -1;
-      if (other !== rival.bodyId) return;
+      if (other !== wall && other !== rival.bodyId) return;
       const sign = a === vehicle.body ? -1 : 1;
       normal.x = contactNormal.x * sign;
       normal.y = contactNormal.y * sign;
       normal.z = contactNormal.z * sign;
+      if (other === wall) {
+        damage.noteContact(
+          normal,
+          vehicle.telemetry.velocity,
+          vehicle.telemetry.rotation,
+        );
+        wallContacts++;
+        return;
+      }
       const trafficVelocity = traffic.velocityForBody(other)!;
       relative.x = vehicle.telemetry.velocity.x - trafficVelocity.x;
       relative.y = vehicle.telemetry.velocity.y - trafficVelocity.y;
@@ -68,6 +75,33 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
       traffic.onPlayerContact(other, impact, normal, relative);
       contacts++;
     });
+    if (aftertouch) {
+      for (let hit = 0; hit < 2; hit++) {
+        vehicle.respawn({ x: 100, y: 1, z: -9 }, { x: 0, y: 0, z: 0, w: 1 });
+        world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -55 });
+        const before = wallContacts;
+        for (let step = 0; step < 180 && wallContacts === before; step++) {
+          vehicle.preStep(DT, neutralScriptInput, 'gamepad');
+          world.step(DT);
+          vehicle.postStep(DT);
+          damage.step(DT);
+        }
+        expect(wallContacts).toBeGreaterThan(before);
+        damage.step(0.2);
+      }
+      expect(damage.wrecked).toBe(true);
+      // The wall collision has settled; the later rival contact begins the
+      // wreck episode's first eligible Aftertouch influence.
+      takedowns.beginAftertouchEpisode();
+    }
+    // A boosted rear-end against a slowing rival must still award the
+    // takedown even though the race AI now reaches boosted pace itself.
+    world.setLinearVelocity(rival.bodyId, { x: 0, y: 0, z: 0 });
+    vehicle.respawn(
+      { x: rival.position.x, y: 1, z: rival.position.z + 12 },
+      { x: 0, y: 0, z: 0, w: 1 },
+    );
+    world.setLinearVelocity(vehicle.body, { x: 0, y: 0, z: -80 });
     for (let step = 0; step < 240; step++) {
       vehicle.preStep(DT, neutralScriptInput, 'gamepad');
       traffic.preStep(DT, vehicle.telemetry.position, vehicle.telemetry.speed);
@@ -87,9 +121,24 @@ it('awards one takedown and one boost section for a real rival wreck', async () 
     expect(wreckEventSteps).toBe(1);
     expect(traffic.newlyWrecked).toHaveLength(0);
     expect(takedowns.count).toBe(1);
+    expect(takedowns.lastCreditKind).toBe(
+      aftertouch ? 'aftertouch' : 'ordinary',
+    );
     expect(vehicle.telemetry.boostSections).toBe(2);
   } finally {
     traffic.dispose();
     harness.dispose();
   }
-}, 120_000);
+}
+
+it(
+  'awards one ordinary takedown and boost section for a real rival wreck',
+  () => runRivalWreck(false),
+  120_000,
+);
+
+it(
+  'awards one Aftertouch takedown and boost section from a real rival wreck',
+  () => runRivalWreck(true),
+  120_000,
+);
