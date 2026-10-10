@@ -144,6 +144,7 @@ describe('map selection', () => {
       'city-reverse',
       'lab',
       'proving-ground',
+      'road-rage',
       'takedown',
     ]);
   });
