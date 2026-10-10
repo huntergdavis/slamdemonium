@@ -13,7 +13,7 @@ import {
 } from '../src/world/takedownCourse';
 
 describe('takedown course', () => {
-  it('is a selectable, wide and sparse closed road with four rivals and shunt points', () => {
+  it('is a selectable, wide and sparse closed road with four rivals and roadside walls', () => {
     const map = createTakedownMap();
     expect(isMapName('takedown')).toBe(true);
     expect(MAPS.takedown.name).toBe('takedown');
@@ -29,7 +29,10 @@ describe('takedown course', () => {
     expect(map.traffic?.filter((car) => car.rival)).toHaveLength(4);
     expect(map.traffic!.length).toBeGreaterThan(40);
     expect(map.traffic!.length).toBeLessThan(65);
-    expect(map.shuntWalls).toHaveLength(36);
+    // Long straight boxes keep the collider count well below one per road
+    // paint chunk while short chords follow the 420 m sweepers.
+    expect(map.shuntWalls!.length).toBeGreaterThan(130);
+    expect(map.shuntWalls!.length).toBeLessThan(180);
     expect(map.placements!.length).toBeGreaterThan(400);
     expect(map.placements!.length).toBeLessThan(800);
     for (const wall of map.shuntWalls!) {
@@ -48,6 +51,23 @@ describe('takedown course', () => {
       );
       expect(nearest).toBeGreaterThan(TAKEDOWN_ROAD_WIDTH / 2);
     }
+    // The shoulder field remains beyond the long boxes, including their
+    // rotated corners on the sweepers, without a runtime placement filter.
+    let leastPropClearance = Infinity;
+    for (const prop of map.placements!)
+      for (const wall of map.shuntWalls!) {
+        const dx = prop.position.x - wall.center.x;
+        const dz = prop.position.z - wall.center.z;
+        const c = Math.cos(wall.heading);
+        const s = Math.sin(wall.heading);
+        const along = Math.abs(s * dx + c * dz) - wall.halfExtents.z;
+        if (along > 0.6) continue;
+        leastPropClearance = Math.min(
+          leastPropClearance,
+          Math.abs(c * dx - s * dz) - wall.halfExtents.x,
+        );
+      }
+    expect(leastPropClearance).toBeGreaterThan(0.6);
   });
 
   it('aims a bounded nudge toward an alongside player and eases back', () => {
