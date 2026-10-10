@@ -76,9 +76,16 @@ import {
   chooseMapName,
   mapUrl,
   readStoredMapName,
+  resolveTourEvent,
   shouldOfferMapsAtBoot,
   storeMapName,
+  tourUrl,
 } from './world/mapChoice';
+import {
+  TOUR_EVENTS,
+  tourEventAvailable,
+  tourRewardFor,
+} from './world/tourCatalogue';
 import { createRunwayVisual } from './world/runways';
 import { createRoadDeckVisual } from './world/roadDeck';
 import { createCityBuildingsVisual } from './world/cityBuildings';
@@ -92,6 +99,12 @@ import { awardFaceOffWin, createFaceOffReward } from './core/faceOffReward';
 import { mountFaceOffPaintChoice } from './ui/faceOffPaintChoice';
 
 import { createGrandPrix, GRAND_PRIX_MAPS } from './core/grandPrix';
+import {
+  TourProgress,
+  tourTuningFingerprint,
+  type TourMedal,
+} from './core/tourProgress';
+import { mountTourStatus } from './ui/tourStatus';
 import { createAwakeBudget } from './world/awakeBudget';
 import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
@@ -150,11 +163,44 @@ async function boot(): Promise<void> {
   })();
   const faceOffReward = createFaceOffReward(mapStorage);
   const storedMapName = readStoredMapName(mapStorage);
+  const tourProgress = new TourProgress(mapStorage);
+  const tourRoutes = new Set(Object.keys(MAPS));
+  const garageRewards = new GarageRewards(mapStorage);
+  const requestedGarageClassId = readGarageClass(mapStorage, location.search);
+  // A locked direct URL cannot satisfy a Tour card's car requirement.
+  const tourCarId = garageRewards.isUnlocked(requestedGarageClassId)
+    ? requestedGarageClassId
+    : 'sports';
+  const tourEvent = resolveTourEvent(
+    location.search,
+    tourProgress,
+    tourRoutes,
+    tourCarId,
+  );
+  const requestedTour = new URLSearchParams(location.search).has('tour');
   let mapName = chooseMapName(
     location.search,
     import.meta.env.VITE_DEFAULT_MAP,
     storedMapName,
   );
+  if (requestedTour && !tourEvent) {
+    mapName = 'proving-ground';
+    window.history.replaceState(null, '', mapUrl(location.pathname, mapName));
+  } else if (tourEvent) {
+    mapName =
+      tourEvent.format === 'grand-prix' && mapName.startsWith('grand-prix-')
+        ? mapName
+        : (tourEvent.routeId as keyof typeof MAPS);
+    if (new URLSearchParams(location.search).get('map') !== mapName) {
+      const query = new URLSearchParams({
+        map: mapName,
+        tour: tourEvent.id,
+        car: tourCarId,
+      });
+      if (tourEvent.format === 'grand-prix') query.set('gp', '1');
+      window.history.replaceState(null, '', `${location.pathname}?${query}`);
+    }
+  }
   const grandPrixStorage = (() => {
     try {
       return window.sessionStorage;
@@ -195,20 +241,22 @@ async function boot(): Promise<void> {
       window.history.replaceState(
         null,
         '',
-        mapUrl(location.pathname, expected) + '&gp=1',
+        mapUrl(location.pathname, expected) +
+          '&gp=1' +
+          (tourEvent ? '&tour=grand-prix' : ''),
       );
     }
   }
-  const offerMapsAtBoot = shouldOfferMapsAtBoot(
-    location.search,
-    import.meta.env.VITE_DEFAULT_MAP,
-    storedMapName,
-  );
+  const offerMapsAtBoot =
+    (requestedTour && !tourEvent) ||
+    shouldOfferMapsAtBoot(
+      location.search,
+      import.meta.env.VITE_DEFAULT_MAP,
+      storedMapName,
+    );
   // An explicit URL switch is a choice too: the plain URL keeps it next time.
-  if (new URLSearchParams(location.search).get('map') === mapName)
+  if (!tourEvent && new URLSearchParams(location.search).get('map') === mapName)
     storeMapName(mapStorage, mapName);
-  const garageRewards = new GarageRewards(mapStorage);
-  const requestedGarageClassId = readGarageClass(mapStorage, location.search);
   const garageClassId = garageRewards.canSelect(requestedGarageClassId, mapName)
     ? requestedGarageClassId
     : 'sports';
@@ -433,6 +481,8 @@ async function boot(): Promise<void> {
       : undefined;
   if (grandPrix && grandPrix.state.phase !== 'racing') race?.freeze();
   let lastCutId = -1;
+  let tourResultRecorded = false;
+  let tourStatus: ReturnType<typeof mountTourStatus> | undefined;
   const raceCars: RaceCar[] = race
     ? [
         { id: 0, x: 0, z: 0, vx: 0, vz: 0 },
@@ -921,6 +971,88 @@ async function boot(): Promise<void> {
               : race.state.phase !== 'countdown',
           );
         }
+        if (tourEvent && !tourResultRecorded) {
+          let finished = false;
+          let medal: TourMedal = 'none';
+          let score = 0;
+          if (
+            tourEvent.format === 'burning-lap' &&
+            timedRun.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal = 'bronze';
+            score = Math.max(
+              0,
+              10_000_000 - Math.round(timedRun.state.clock * 1000),
+            );
+          } else if (
+            tourEvent.format === 'road-rage' &&
+            roadRage?.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal = roadRage.state.medal;
+            score = roadRage.state.count;
+          } else if (
+            tourEvent.format === 'crash' &&
+            crashMode?.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal = crashMode.state.medal;
+            score = crashMode.state.damage;
+          } else if (
+            tourEvent.format === 'grand-prix' &&
+            grandPrix?.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal = grandPrix.medal();
+            score = grandPrix.state.points[0] ?? 0;
+          } else if (
+            (tourEvent.format === 'race' ||
+              tourEvent.format === 'face-off' ||
+              tourEvent.format === 'eliminator') &&
+            race?.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal =
+              tourEvent.format === 'eliminator'
+                ? race.state.medal
+                : tourEvent.format === 'face-off'
+                  ? race.state.position === 1
+                    ? 'gold'
+                    : 'none'
+                  : race.state.position === 1
+                    ? 'gold'
+                    : race.state.position === 2
+                      ? 'silver'
+                      : race.state.position === 3
+                        ? 'bronze'
+                        : 'none';
+            score =
+              tourEvent.format === 'eliminator'
+                ? race.state.cutCount
+                : Math.max(0, race.state.fieldSize - race.state.position);
+          }
+          if (finished) {
+            tourResultRecorded = true;
+            const rewards = tourRewardFor(tourEvent, medal);
+            const unlocked =
+              medal !== 'none' &&
+              rewards.some((id) => !tourProgress.hasReward(id));
+            tourProgress.record(
+              {
+                eventId: tourEvent.id,
+                routeId: tourEvent.routeId,
+                carId: tourCarId,
+                tuningFingerprint: tourTuningFingerprint(tuning.snapshot()),
+                rulesVersion: 1,
+                medal,
+                score,
+              },
+              rewards,
+            );
+            tourStatus?.showResult(medal, unlocked);
+          }
+        }
         propStreamer.update();
         awakeBudget.update(
           tuning.get('awakeBudget'),
@@ -1100,7 +1232,8 @@ async function boot(): Promise<void> {
         saveGrandPrix();
         location.assign(
           mapUrl(location.pathname, GRAND_PRIX_MAPS[grandPrix.state.heat]!) +
-            '&gp=1',
+            '&gp=1' +
+            (tourEvent ? '&tour=grand-prix' : ''),
         );
       }
       return;
@@ -1112,7 +1245,11 @@ async function boot(): Promise<void> {
       race?.freeze();
       grandPrix.reset();
       saveGrandPrix();
-      location.assign(mapUrl(location.pathname, 'grand-prix-city') + '&gp=1');
+      location.assign(
+        mapUrl(location.pathname, 'grand-prix-city') +
+          '&gp=1' +
+          (tourEvent ? '&tour=grand-prix' : ''),
+      );
       return;
     }
     retryRequested = false;
@@ -1136,6 +1273,8 @@ async function boot(): Promise<void> {
     }
     crashScore.reset();
     timedRun.reset();
+    tourResultRecorded = false;
+    tourStatus?.showObjective();
     if (race) {
       race.reset();
 
@@ -1302,6 +1441,7 @@ async function boot(): Promise<void> {
         }
       },
     },
+
     garage: {
       current: garageClassId,
       entries: GARAGE_CLASS_IDS.filter((id) =>
@@ -1326,6 +1466,41 @@ async function boot(): Promise<void> {
         const url = new URL(location.href);
         url.searchParams.set('car', name);
         location.assign(url.toString());
+      },
+    },
+
+    tour: {
+      current: tourEvent?.id,
+      entries: TOUR_EVENTS,
+      status(event) {
+        const available = tourEventAvailable(
+          event,
+          tourProgress,
+          tourRoutes,
+          tourCarId,
+        );
+        return {
+          available,
+          medal: tourProgress.bestMedal(event.id),
+          reason: !tourRoutes.has(event.routeId)
+            ? 'Route coming soon'
+            : !event.eligibleCars.some((id) => id === tourCarId)
+              ? 'Choose an eligible car'
+              : 'Earn the prior event medal',
+        };
+      },
+      onSelect(id) {
+        const event = TOUR_EVENTS.find((entry) => entry.id === id);
+        if (
+          !event ||
+          !tourEventAvailable(event, tourProgress, tourRoutes, tourCarId)
+        )
+          return;
+        if (tourEvent?.id === id) {
+          pauseMenu.setOpen(false);
+          return;
+        }
+        location.assign(tourUrl(location.pathname, event, tourCarId));
       },
     },
   });
@@ -1406,6 +1581,10 @@ async function boot(): Promise<void> {
         : {}),
     },
   });
+  if (tourEvent) {
+    tourStatus = mountTourStatus(options.root, tourEvent);
+    resources.push(tourStatus);
+  }
   const scripts = new ScriptController({
     store: tuning,
     mapper: input,
