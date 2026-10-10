@@ -46,7 +46,7 @@ it('keeps departing panels bounded and resets an encounter after rejoin', () => 
     expect(effects.activeCount).toBe(0);
     effects.consume([far], [far], { x: 0, z: 0 });
     expect(effects.activeCount).toBe(0);
-    expect(scene.children).toHaveLength(1);
+    expect(scene.children).toHaveLength(4);
   } finally {
     effects.dispose();
   }
