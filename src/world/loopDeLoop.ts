@@ -357,6 +357,21 @@ export function loopFootprint(spec: Readonly<LoopSpec>): {
   };
 }
 
+/** A low-frame-rate player needs another steering sample while climbing a
+ * loop. Keep the broader catch-up budget everywhere else for wall-clock pace. */
+export function loopStepBudget(
+  position: Readonly<V3>,
+  loops: readonly LoopSpec[],
+): number {
+  for (const loop of loops) {
+    const dx = position.x - loop.x;
+    const dz = position.z - loop.z;
+    const reach = loop.radius + 50;
+    if (dx * dx + dz * dz < reach * reach) return 16;
+  }
+  return 32;
+}
+
 /** Where the exit lane meets the ground, and its direction: the same
  * heading as the entry, one `shift` to the side. */
 export function loopExit(spec: Readonly<LoopSpec>): {

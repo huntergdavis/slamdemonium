@@ -17,8 +17,21 @@ import {
 import { ImpactFeedback } from './core/impactFeedback';
 import { CrashScore } from './core/crashScore';
 import { Takedowns } from './core/takedowns';
+import { RoadRage } from './core/roadRage';
+import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
-import { DEFAULT_ENGINE } from './vehicle/engineProfile';
+import { CRASH_PICKUP_BEST_KEY, CrashMode } from './core/crashMode';
+import { GarageRewards, garageRewardRequirement } from './core/garageRewards';
+import { ImpactTime } from './core/impactTime';
+import {
+  GARAGE_CLASSES,
+  GARAGE_CLASS_IDS,
+  garageClassAllowedOnMap,
+  isGarageClassId,
+  readGarageClass,
+  storeGarageClass,
+} from './vehicle/garageClasses';
+import { WORKING_SET_KEY } from './tuning/storage';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
@@ -27,6 +40,7 @@ import { createRenderer } from './render/renderer';
 import { CameraRig } from './render/cameraRig';
 import { TakedownMoment, canFocusTakedown } from './render/takedownMoment';
 import { createCarVisual } from './render/carVisual';
+import { createWreckEffects } from './render/wreckEffects';
 import { createSkidMarks } from './render/skidMarks';
 import { createSpeedCues } from './render/speedCues';
 import { createBreakablePropsVisual } from './render/breakablePropsVisual';
@@ -41,6 +55,7 @@ import { InputMapper } from './input/mapper';
 import { ScriptController } from './input/script';
 import type { ActionCounts } from './input/types';
 import { mountOptionsPanel } from './ui/optionsPanel';
+import { mountCarChoice } from './ui/carChoice';
 import { mountHud } from './ui/hud';
 import { createRivalGuidance } from './ui/rivalGuidance';
 import { mountPauseMenu } from './ui/pauseMenu';
@@ -52,19 +67,47 @@ import { createTestTrack, installTrackColliders } from './world/track';
 import { nearestRoadPose } from './world/roadGenerator';
 import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
-import { createLoopVisual, installLoops } from './world/loopDeLoop';
+import {
+  createLoopVisual,
+  installLoops,
+  loopStepBudget,
+} from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { createJumpRampVisual, installJumpRamps } from './world/jumpRamp';
 import { MAPS } from './world/maps';
+import { CAR_MODELS } from './world/carModels';
 import {
   chooseMapName,
   mapUrl,
   readStoredMapName,
+  resolveTourEvent,
   shouldOfferMapsAtBoot,
   storeMapName,
+  tourUrl,
 } from './world/mapChoice';
+import {
+  TOUR_EVENTS,
+  tourEventAvailable,
+  tourRewardFor,
+} from './world/tourCatalogue';
 import { createRunwayVisual } from './world/runways';
+import { createRoadDeckVisual } from './world/roadDeck';
+import { createCityBuildingsVisual } from './world/cityBuildings';
+import { createCoastVisual } from './world/coastVisual';
+import { createHighwayVisual } from './world/highwayVisual';
 import { createTimedRun } from './core/timedRun';
+import { createRaceEvent, type RaceCar } from './core/raceEvent';
+
+import { awardFaceOffWin, createFaceOffReward } from './core/faceOffReward';
+import { mountFaceOffPaintChoice } from './ui/faceOffPaintChoice';
+
+import { createGrandPrix, GRAND_PRIX_MAPS } from './core/grandPrix';
+import {
+  TourProgress,
+  tourTuningFingerprint,
+  type TourMedal,
+} from './core/tourProgress';
+import { mountTourStatus } from './ui/tourStatus';
 import { createAwakeBudget } from './world/awakeBudget';
 import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
@@ -121,20 +164,119 @@ async function boot(): Promise<void> {
       return null;
     }
   })();
+  const faceOffReward = createFaceOffReward(mapStorage);
   const storedMapName = readStoredMapName(mapStorage);
-  const mapName = chooseMapName(
+  const tourProgress = new TourProgress(mapStorage);
+  const tourRoutes = new Set(Object.keys(MAPS));
+  const garageRewards = new GarageRewards(mapStorage);
+  const requestedGarageClassId = readGarageClass(mapStorage, location.search);
+  // A locked direct URL cannot satisfy a Tour card's car requirement.
+  const tourCarId = garageRewards.isUnlocked(requestedGarageClassId)
+    ? requestedGarageClassId
+    : 'sports';
+  const tourEvent = resolveTourEvent(
+    location.search,
+    tourProgress,
+    tourRoutes,
+    tourCarId,
+  );
+  const requestedTour = new URLSearchParams(location.search).has('tour');
+  let mapName = chooseMapName(
     location.search,
     import.meta.env.VITE_DEFAULT_MAP,
     storedMapName,
   );
-  const offerMapsAtBoot = shouldOfferMapsAtBoot(
-    location.search,
-    import.meta.env.VITE_DEFAULT_MAP,
-    storedMapName,
-  );
+  if (requestedTour && !tourEvent) {
+    mapName = 'proving-ground';
+    window.history.replaceState(null, '', mapUrl(location.pathname, mapName));
+  } else if (tourEvent) {
+    mapName =
+      tourEvent.format === 'grand-prix' && mapName.startsWith('grand-prix-')
+        ? mapName
+        : (tourEvent.routeId as keyof typeof MAPS);
+    if (new URLSearchParams(location.search).get('map') !== mapName) {
+      const query = new URLSearchParams({
+        map: mapName,
+        tour: tourEvent.id,
+        car: tourCarId,
+      });
+      if (tourEvent.format === 'grand-prix') query.set('gp', '1');
+      window.history.replaceState(null, '', `${location.pathname}?${query}`);
+    }
+  }
+  const grandPrixStorage = (() => {
+    try {
+      return window.sessionStorage;
+    } catch {
+      return null;
+    }
+  })();
+  const grandPrixKey = 'slamdemonium.grand-prix.v1';
+  const isGrandPrix = mapName.startsWith('grand-prix-');
+  const resumeGrandPrix =
+    new URLSearchParams(location.search).get('gp') === '1';
+  let grandPrixSaved: unknown;
+  if (isGrandPrix && resumeGrandPrix) {
+    try {
+      grandPrixSaved = JSON.parse(
+        grandPrixStorage?.getItem(grandPrixKey) ?? 'null',
+      );
+    } catch {
+      grandPrixSaved = null;
+    }
+  }
+  const grandPrix = isGrandPrix ? createGrandPrix(grandPrixSaved) : undefined;
+  const saveGrandPrix = (): void => {
+    if (!grandPrix) return;
+    try {
+      grandPrixStorage?.setItem(
+        grandPrixKey,
+        JSON.stringify(grandPrix.snapshot()),
+      );
+    } catch {
+      // Storage may be blocked; the current three-heat session still runs.
+    }
+  };
+  if (grandPrix) {
+    const expected = GRAND_PRIX_MAPS[grandPrix.state.heat]!;
+    if (mapName !== expected) {
+      mapName = expected;
+      window.history.replaceState(
+        null,
+        '',
+        mapUrl(location.pathname, expected) +
+          '&gp=1' +
+          (tourEvent ? '&tour=grand-prix' : ''),
+      );
+    }
+  }
+  const offerMapsAtBoot =
+    (requestedTour && !tourEvent) ||
+    shouldOfferMapsAtBoot(
+      location.search,
+      import.meta.env.VITE_DEFAULT_MAP,
+      storedMapName,
+    );
   // An explicit URL switch is a choice too: the plain URL keeps it next time.
-  if (new URLSearchParams(location.search).get('map') === mapName)
+  if (!tourEvent && new URLSearchParams(location.search).get('map') === mapName)
     storeMapName(mapStorage, mapName);
+  const garageClassId = garageRewards.canSelect(requestedGarageClassId, mapName)
+    ? requestedGarageClassId
+    : 'sports';
+  const garageClass = GARAGE_CLASSES[garageClassId];
+  if (garageClassId !== requestedGarageClassId) {
+    try {
+      mapStorage?.removeItem(WORKING_SET_KEY);
+    } catch {
+      // Blocked storage still leaves the safe Sports profile in this session.
+    }
+  }
+  if (
+    new URLSearchParams(location.search).get('car') === garageClassId &&
+    readGarageClass(mapStorage) !== garageClassId
+  )
+    storeGarageClass(mapStorage, garageClassId, WORKING_SET_KEY);
+  tuning.replace({ ...garageClass.tuning }, 'restore');
   const map = MAPS[mapName];
   const track = createTestTrack(view.scene, {
     maxAnisotropy: view.renderer.capabilities.getMaxAnisotropy(),
@@ -146,6 +288,23 @@ async function boot(): Promise<void> {
     ...(map.spawn ? { spawn: map.spawn } : {}),
   });
   resources.push(track);
+
+  if (map.roadDecks?.length)
+    resources.push(createRoadDeckVisual(view.scene, map.roadDecks));
+  if (map.cityBuildings?.length)
+    resources.push(createCityBuildingsVisual(view.scene, map.cityBuildings));
+  if (
+    mapName === 'coast-shoreline' ||
+    mapName === 'coast-headland' ||
+    mapName === 'grand-prix-coast'
+  )
+    resources.push(createCoastVisual(view.scene));
+  if (
+    mapName === 'highway-express' ||
+    mapName === 'highway-interchange' ||
+    mapName === 'grand-prix-highway'
+  )
+    resources.push(createHighwayVisual(view.scene));
   view.renderer.shadowMap.enabled = true;
   const trackBodies = installTrackColliders(
     physics,
@@ -212,23 +371,51 @@ async function boot(): Promise<void> {
   // per visit; with drift charge slowed, this is how boost is earned.
   // The timed run (NS3): the start line is a thing in the world he drives
   // into; the clock runs to the goal; Enter is the retry, onto the line.
-  const timedRun = createTimedRun(map.runs?.[0]);
+
+  const isCrashJunction = mapName === 'crash-south' || mapName === 'crash-west';
+  const crashMode = isCrashJunction
+    ? new CrashMode(
+        mapStorage ?? undefined,
+        garageClassId === 'pickup'
+          ? { vehicleMultiplier: 2, bestKey: CRASH_PICKUP_BEST_KEY }
+          : {},
+      )
+    : undefined;
+  const roadRage = mapName === 'road-rage' ? new RoadRage() : undefined;
+  const roadRageBest = roadRage
+    ? new RoadRageBest(
+        roadRageBestKey(mapName, 'player-4.8x2.16', tuning.snapshot()),
+        mapStorage,
+      )
+    : undefined;
+  const isTakedownRoad = mapName === 'takedown' || !!roadRage;
+  const timedRun = createTimedRun(
+    roadRage ||
+      mapName === 'circuit-race' ||
+      mapName === 'face-off' ||
+      mapName === 'highway-eliminator' ||
+      grandPrix
+      ? undefined
+      : map.runs?.[0],
+  );
   const runStartGate = map.runs?.[0]?.gates[0];
-  const runStart = runStartGate
-    ? {
-        position: {
-          x: runStartGate.x,
-          y: track.spawn.position.y,
-          z: runStartGate.z,
-        },
-        rotation: {
-          x: 0,
-          y: Math.sin(runStartGate.heading / 2),
-          z: 0,
-          w: Math.cos(runStartGate.heading / 2),
-        },
-      }
-    : track.spawn;
+  const runStart = roadRage
+    ? track.spawn
+    : runStartGate
+      ? {
+          position: {
+            x: runStartGate.x,
+            y: track.spawn.position.y,
+            z: runStartGate.z,
+          },
+          rotation: {
+            x: 0,
+            y: Math.sin(runStartGate.heading / 2),
+            z: 0,
+            w: Math.cos(runStartGate.heading / 2),
+          },
+        }
+      : track.spawn;
   resources.push(
     createRunGateVisual(view.scene, map.runs?.[0], track.config.paintHeight),
   );
@@ -236,6 +423,11 @@ async function boot(): Promise<void> {
   resources.push(
     createBoostPadVisual(view.scene, map.boostPads, track.config.paintHeight),
   );
+  // City road decks are one visual draw over the continuous ground collider.
+  if (map.roadDecks?.length)
+    resources.push(createRoadDeckVisual(view.scene, map.roadDecks));
+  if (map.cityBuildings?.length)
+    resources.push(createCityBuildingsVisual(view.scene, map.cityBuildings));
   // Runways are paint on the infield collider: one instanced draw, no bodies.
   resources.push(
     createRunwayVisual(
@@ -253,6 +445,8 @@ async function boot(): Promise<void> {
     tuning,
     track.spawn.position,
     surfaceResolver,
+    garageClass.engineProfile,
+    garageClass.geometry,
   );
   // Traffic events (NS4): near misses, wrong-side driving and slams feed the
   // boost bar. The detector reads the traffic cars' states after physics;
@@ -280,20 +474,64 @@ async function boot(): Promise<void> {
   const traffic =
     map.path && map.traffic
       ? createTraffic(physics, surfacedBodies, map.path, map.traffic, {
-          density: tuning.get('trafficDensity'),
-          minGap: tuning.get('trafficMinGap'),
-          maxGap: tuning.get('trafficMaxGap'),
+          density: isCrashJunction ? 1 : tuning.get('trafficDensity'),
+          minGap: isCrashJunction ? 12 : tuning.get('trafficMinGap'),
+          maxGap: isCrashJunction ? 12 : tuning.get('trafficMaxGap'),
         })
       : undefined;
-  const takedowns = mapName === 'takedown' ? new Takedowns() : undefined;
+  const race =
+    (mapName === 'circuit-race' ||
+      mapName === 'face-off' ||
+      mapName === 'highway-eliminator' ||
+      !!grandPrix) &&
+    map.path &&
+    map.runs?.[0] &&
+    traffic
+      ? createRaceEvent(
+          map.runs[0],
+          map.path,
+          traffic.raceStates.map((car) => car.id),
+
+          mapName === 'highway-eliminator'
+            ? { mode: 'eliminator', laps: 5 }
+            : grandPrix
+              ? { mode: 'grand-prix' }
+              : {},
+        )
+      : undefined;
+  if (grandPrix && grandPrix.state.phase !== 'racing') race?.freeze();
+  let lastCutId = -1;
+  let tourResultRecorded = false;
+  let tourStatus: ReturnType<typeof mountTourStatus> | undefined;
+  const raceCars: RaceCar[] = race
+    ? [
+        { id: 0, x: 0, z: 0, vx: 0, vz: 0 },
+        ...traffic!.raceStates.map((car) => ({
+          id: car.id,
+          x: 0,
+          z: 0,
+          vx: 0,
+          vz: 0,
+        })),
+      ]
+    : [];
+
+  const takedowns = isTakedownRoad ? new Takedowns() : undefined;
   const takedownMoment = takedowns ? new TakedownMoment() : undefined;
-  const playerDamage = takedowns ? new PlayerDamage() : undefined;
+  const playerDamage = takedowns || crashMode ? new PlayerDamage() : undefined;
+  const impactTime = playerDamage ? new ImpactTime() : undefined;
   const trafficVisual = traffic
     ? createTrafficVisual(view.scene, traffic)
     : undefined;
   if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
+  const wreckEffects = traffic
+    ? createWreckEffects(view.scene, traffic.hasRivals)
+    : undefined;
+  if (wreckEffects) resources.push(wreckEffects);
   const rivalGuidance =
-    mapName === 'takedown' ? createRivalGuidance(host!) : undefined;
+    isTakedownRoad || !!race || mapName === 'face-off'
+      ? createRivalGuidance(host!, mapName === 'face-off' ? 'VESPER' : 'RIVAL')
+      : undefined;
   if (rivalGuidance) resources.push(rivalGuidance);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
@@ -304,7 +542,10 @@ async function boot(): Promise<void> {
     pools: propPools,
     placements: map.placements ?? BREAKABLE_PROP_PLACEMENTS,
     vehicleBody: vehicle.body,
-    onBreak: (severity) => crashScore.recordBreakSeverity(severity),
+    onBreak: (severity, placementIndex) => {
+      crashScore.recordBreakSeverity(severity);
+      crashMode?.notePropBreak(placementIndex, true);
+    },
     initialActiveIndices: [],
     maxActiveProps: MAX_RESIDENT_BREAKABLES,
   });
@@ -377,7 +618,13 @@ async function boot(): Promise<void> {
   );
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
-  const carVisual = createCarVisual(view.scene);
+  const carVisual = createCarVisual(
+    view.scene,
+    garageClass.geometry,
+    garageClassId,
+  );
+  carVisual.setPaint(faceOffReward.selected);
+  await carVisual.loadHeroModel();
   // Line of sight for the camera: static geometry between car and camera
   // pulls the camera in, so the loop, a bridge or a prop bank never hides
   // the car. The car's own body is ignored; the ray record is reused.
@@ -458,6 +705,9 @@ async function boot(): Promise<void> {
   let inspectionCamera: { position: V3; target: V3 } | null = null;
   let respawnRequested = false;
   let retryRequested = false;
+  // location.assign is asynchronous: the old venue may run more physics
+  // steps after the ledger advances. Never score its finished race twice.
+  let grandPrixNavigating = false;
   let playerWreckPending = false;
   const wreckInput = {
     throttle: 0,
@@ -498,9 +748,12 @@ async function boot(): Promise<void> {
         return tuning.get('physicsHz');
       },
       get timeScale() {
+        if (impactTime?.active) return impactTime.timeScale;
         return tuning.get('timeScale') * (takedownMoment?.timeScale ?? 1);
       },
-      maxStepsPerFrame: 32,
+      get maxStepsPerFrame() {
+        return loopStepBudget(vehicle.telemetry.position, map.loops);
+      },
       maxFrameDeltaSeconds: 0.25,
     },
     {
@@ -523,9 +776,24 @@ async function boot(): Promise<void> {
         stepStart = performance.now();
         vehicle.preStep(
           dt,
-          playerDamage?.wrecked ? wreckInput : sampled,
+          playerDamage?.wrecked ||
+            (roadRage && roadRage.state.phase !== 'running') ||
+            race?.state.phase === 'countdown' ||
+            ((race?.state.mode === 'eliminator' ||
+              race?.state.mode === 'grand-prix') &&
+              race.state.phase === 'finished') ||
+            (crashMode && crashMode.state.phase !== 'running')
+            ? wreckInput
+            : sampled,
           source,
+          impactTime?.active ?? false,
         );
+        if (impactTime?.active)
+          vehicle.applyAftertouch(
+            sampled.steer,
+            impactTime.steerDeltaVelocity(sampled.steer, dt),
+            dt,
+          );
         traffic?.preStep(
           dt,
           vehicle.telemetry.position,
@@ -540,6 +808,14 @@ async function boot(): Promise<void> {
       postStep(dt) {
         traffic?.postStep(vehicle.body, vehicle.currentMass);
         vehicle.postStep(dt);
+        if (traffic && wreckEffects) {
+          wreckEffects.consume(
+            traffic.newlyWrecked,
+            traffic.states,
+            vehicle.telemetry.position,
+          );
+          wreckEffects.advance(dt);
+        }
         const playerRotation = vehicle.telemetry.rotation;
         playerView.forward.x =
           -2 *
@@ -550,26 +826,48 @@ async function boot(): Promise<void> {
           2 * (playerRotation.x ** 2 + playerRotation.y ** 2)
         );
         playerView.speed = vehicle.telemetry.speed;
+        const wasWrecked = playerDamage?.wrecked ?? false;
+        if (!wasWrecked) playerDamage?.step(dt);
+        if (!wasWrecked && playerDamage?.wrecked) playerWreckPending = true;
+        const startedPlayerWreck = playerWreckPending;
         if (playerWreckPending) {
+          roadRage?.notePlayerWreck();
+          crashMode?.notePlayerWreck();
           vehicle.loseBoostSection();
+          audio.onPlayerWreck();
+          impactTime?.start();
+          takedownMoment?.reset();
+          cameraRig.setWreckFocus(true);
           playerWreckPending = false;
         }
-        const playerWreckRecoveryDue = playerDamage?.step(dt) ?? false;
+        impactTime?.advanceSimulation(dt);
+        const playerWreckRecoveryDue = impactTime?.consumeRecovery() ?? false;
+        if (crashMode) {
+          for (const car of traffic?.newlyWrecked ?? [])
+            crashMode.noteWreck({ id: car.id, modelKind: car.modelKind });
+        }
         if (takedowns) {
           const countBefore = takedowns.count;
           const victim = takedowns.update(dt, traffic?.newlyWrecked ?? []);
-          for (let count = countBefore; count < takedowns.count; count++)
-            vehicle.awardTakedown();
-          if (
-            victim &&
+          const eventRunning = !roadRage || roadRage.state.phase === 'running';
+          const earned = eventRunning ? takedowns.count - countBefore : 0;
+          for (let count = 0; count < earned; count++) vehicle.awardTakedown();
+          // The collision that wrecked the player is ordinary; only later
+          // contacts in this episode can earn Aftertouch credit.
+          if (startedPlayerWreck) takedowns.beginAftertouchEpisode();
+          const focusVictim =
+            eventRunning &&
+            !impactTime?.active &&
+            !!victim &&
             canFocusTakedown(
               victim,
               vehicle.telemetry.position,
               playerView.forward,
-            )
-          )
+            );
+          if (focusVictim) audio.onTakedown();
+          if (victim && focusVictim)
             takedownMoment?.start(victim.id, performance.now());
-          else if (!victim && takedowns.lastObservedVictim) {
+          else if (eventRunning && !victim && takedowns.lastObservedVictim) {
             const other = takedowns.lastObservedVictim;
             const player = vehicle.telemetry.position;
             if (
@@ -582,8 +880,28 @@ async function boot(): Promise<void> {
               rivalGuidance?.showRivalWreck(nowMs);
             }
           }
+          if (roadRage) {
+            const wasCountdown = roadRage.state.phase === 'countdown';
+            roadRage.step(dt, earned);
+            if (
+              roadRage.state.changed &&
+              roadRage.state.finishReason === 'time'
+            )
+              roadRageBest?.record(roadRage.state.count, roadRage.state.wrecks);
+            // Wrecks during the countdown have been observed but can never
+            // carry player attribution or score over the GO boundary.
+            if (wasCountdown && roadRage.state.phase === 'running')
+              takedowns.reset();
+          }
         }
         breakableProps.update(dt);
+        crashMode?.step(
+          dt,
+          impactTime?.active ?? false,
+          vehicle.telemetry.speed,
+        );
+        if (crashMode?.state.phase === 'finished')
+          garageRewards.awardCrashMedal(crashMode.state.medal);
         {
           const entered = boostPads.update(
             vehicle.telemetry.position.x,
@@ -602,12 +920,18 @@ async function boot(): Promise<void> {
           trafficTuning.wrongSideReach = tuning.get('wrongSideReach');
           trafficTuning.wrongSideRate = tuning.get('wrongSideRate');
           trafficTuning.slamBoost = tuning.get('slamBoost');
+          const nearMissesBefore = trafficEvents.state.nearMisses;
           const grant = trafficEvents.update(
             dt,
             playerView,
             traffic?.states ?? trafficStates,
             trafficTuning,
           );
+          if (trafficEvents.state.nearMisses !== nearMissesBefore)
+            audio.onNearMiss(
+              trafficEvents.state.nearMissSide,
+              trafficEvents.state.nearMissClosingSpeed,
+            );
           if (grant > 0) vehicle.applyPad(0, grant);
         }
         crashScore.update(dt);
@@ -617,13 +941,154 @@ async function boot(): Promise<void> {
           vehicle.telemetry.position.z,
           vehicle.telemetry.speed,
         );
+        if (race && traffic) {
+          const player = raceCars[0]! as {
+            id: number;
+            x: number;
+            z: number;
+            vx: number;
+            vz: number;
+          };
+          player.x = vehicle.telemetry.position.x;
+          player.z = vehicle.telemetry.position.z;
+          player.vx = vehicle.telemetry.velocity.x;
+          player.vz = vehicle.telemetry.velocity.z;
+          for (let index = 0; index < traffic.raceStates.length; index++) {
+            const state = traffic.raceStates[index]!;
+            const car = raceCars[index + 1]! as typeof player;
+            car.x = state.position.x;
+            car.z = state.position.z;
+            car.vx = state.velocity.x;
+            car.vz = state.velocity.z;
+          }
+          race.update(dt, raceCars);
+          if (
+            mapName === 'face-off' &&
+            awardFaceOffWin(race.state, faceOffReward)
+          )
+            faceOffPaintChoice?.refresh();
+          if (
+            grandPrix &&
+            !grandPrixNavigating &&
+            race.state.phase === 'finished' &&
+            grandPrix.state.phase === 'racing' &&
+            Number.isFinite(race.state.finishTimes[0])
+          ) {
+            const slotById = new Map(
+              raceCars.map((car, slot) => [car.id, slot]),
+            );
+            const order = race.order.map((id) => slotById.get(id)!);
+            if (grandPrix.recordHeat(order, race.state.finishTimes))
+              saveGrandPrix();
+          }
+          if (
+            race.state.mode === 'eliminator' &&
+            race.state.lastCutId > 0 &&
+            race.state.lastCutId !== lastCutId
+          ) {
+            lastCutId = race.state.lastCutId;
+            traffic.eliminateRaceEntrant(lastCutId);
+          }
+          for (const state of traffic.raceStates)
+            traffic.setRaceValidatedStation(
+              state.id,
+              race.validatedStation(state.id),
+            );
+          traffic.setRaceRunning(
+            race.state.mode === 'eliminator' || race.state.mode === 'grand-prix'
+              ? race.state.phase === 'running'
+              : race.state.phase !== 'countdown',
+          );
+        }
+        if (tourEvent && !tourResultRecorded) {
+          let finished = false;
+          let medal: TourMedal = 'none';
+          let score = 0;
+          if (
+            tourEvent.format === 'burning-lap' &&
+            timedRun.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal = 'bronze';
+            score = Math.max(
+              0,
+              10_000_000 - Math.round(timedRun.state.clock * 1000),
+            );
+          } else if (
+            tourEvent.format === 'road-rage' &&
+            roadRage?.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal = roadRage.state.medal;
+            score = roadRage.state.count;
+          } else if (
+            tourEvent.format === 'crash' &&
+            crashMode?.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal = crashMode.state.medal;
+            score = crashMode.state.damage;
+          } else if (
+            tourEvent.format === 'grand-prix' &&
+            grandPrix?.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal = grandPrix.medal();
+            score = grandPrix.state.points[0] ?? 0;
+          } else if (
+            (tourEvent.format === 'race' ||
+              tourEvent.format === 'face-off' ||
+              tourEvent.format === 'eliminator') &&
+            race?.state.phase === 'finished'
+          ) {
+            finished = true;
+            medal =
+              tourEvent.format === 'eliminator'
+                ? race.state.medal
+                : tourEvent.format === 'face-off'
+                  ? race.state.position === 1
+                    ? 'gold'
+                    : 'none'
+                  : race.state.position === 1
+                    ? 'gold'
+                    : race.state.position === 2
+                      ? 'silver'
+                      : race.state.position === 3
+                        ? 'bronze'
+                        : 'none';
+            score =
+              tourEvent.format === 'eliminator'
+                ? race.state.cutCount
+                : Math.max(0, race.state.fieldSize - race.state.position);
+          }
+          if (finished) {
+            tourResultRecorded = true;
+            const rewards = tourRewardFor(tourEvent, medal);
+            const unlocked =
+              medal !== 'none' &&
+              rewards.some((id) => !tourProgress.hasReward(id));
+            tourProgress.record(
+              {
+                eventId: tourEvent.id,
+                routeId: tourEvent.routeId,
+                carId: tourCarId,
+                tuningFingerprint: tourTuningFingerprint(tuning.snapshot()),
+                rulesVersion: 1,
+                medal,
+                score,
+              },
+              rewards,
+            );
+            tourStatus?.showResult(medal, unlocked);
+          }
+        }
         propStreamer.update();
         awakeBudget.update(
           tuning.get('awakeBudget'),
           tuning.get('awakeKeepRadius'),
         );
         history.afterStep();
-        if (!playerDamage?.wrecked)
+        if (!playerDamage?.wrecked && roadRage?.state.phase !== 'finished')
           track.checkKillPlane(vehicle.telemetry.position, requestRespawn);
         vehicle.telemetry.physicsStepMs = performance.now() - stepStart;
         if (
@@ -663,8 +1128,14 @@ async function boot(): Promise<void> {
         audio.afterStep(dt);
         scripts.afterStep();
         if (retryRequested) retry();
-        else if (respawnRequested) respawn();
-        else if (playerWreckRecoveryDue) respawnAfterWreck();
+        else if (respawnRequested && roadRage?.state.phase !== 'finished')
+          respawn();
+        else if (
+          playerWreckRecoveryDue &&
+          !crashMode &&
+          roadRage?.state.phase !== 'finished'
+        )
+          respawnAfterWreck();
       },
       render(alpha) {
         vehicle.telemetry.totalSteps = loop.totalSteps;
@@ -677,9 +1148,10 @@ async function boot(): Promise<void> {
         if (playerDamage) carVisual.setCrush(playerDamage.crush);
         breakablePropsVisual.update();
         trafficVisual?.update();
+        wreckEffects?.render();
         streamedPropVisual.update();
         cameraRig.update(pose, vehicle.telemetry, loop.renderDeltaSeconds);
-        if (takedownMoment && traffic)
+        if (takedownMoment && traffic && !impactTime?.active)
           takedownMoment.apply(
             view.camera,
             traffic.states,
@@ -706,6 +1178,7 @@ async function boot(): Promise<void> {
             traffic.states,
             vehicle.telemetry.position,
           );
+        carVisual.updateLod(view.camera, view.size.height);
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
         view.render(frameTime);
@@ -733,9 +1206,12 @@ async function boot(): Promise<void> {
     },
   );
   function resetPresentation(): void {
+    wreckEffects?.reset();
     boostPads.reset();
     trafficEvents.reset();
     takedownMoment?.reset();
+    takedowns?.endAftertouchEpisode();
+    impactTime?.reset();
     history.reset();
     visualHistory.reset();
     cameraRig.reset();
@@ -750,6 +1226,10 @@ async function boot(): Promise<void> {
     respawnRequested = true;
   }
   function respawn(): void {
+    if (roadRage || race || crashMode) {
+      retry();
+      return;
+    }
     respawnRequested = false;
     playerWreckPending = false;
     scripts.cancel();
@@ -767,6 +1247,39 @@ async function boot(): Promise<void> {
    * whatever the timed run adds (its clock) resets here too. It is applied
    * on the same step the key is read, so "again" is one press and no wait. */
   function retry(): void {
+    if (grandPrixNavigating) {
+      retryRequested = false;
+      return;
+    }
+    if (grandPrix?.state.phase === 'between') {
+      if (grandPrix.nextHeat()) {
+        retryRequested = false;
+        respawnRequested = false;
+        grandPrixNavigating = true;
+        race?.freeze();
+        saveGrandPrix();
+        location.assign(
+          mapUrl(location.pathname, GRAND_PRIX_MAPS[grandPrix.state.heat]!) +
+            '&gp=1' +
+            (tourEvent ? '&tour=grand-prix' : ''),
+        );
+      }
+      return;
+    }
+    if (grandPrix?.state.phase === 'finished') {
+      retryRequested = false;
+      respawnRequested = false;
+      grandPrixNavigating = true;
+      race?.freeze();
+      grandPrix.reset();
+      saveGrandPrix();
+      location.assign(
+        mapUrl(location.pathname, 'grand-prix-city') +
+          '&gp=1' +
+          (tourEvent ? '&tour=grand-prix' : ''),
+      );
+      return;
+    }
     retryRequested = false;
     respawnRequested = false;
     playerWreckPending = false;
@@ -775,13 +1288,28 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     // Onto the start line itself: the next step is an arrival and the
     // countdown begins at once.
-    vehicle.respawn(runStart.position, runStart.rotation);
+    const restart = race ? track.spawn : runStart;
+    vehicle.respawn(restart.position, restart.rotation);
     playerDamage?.reset();
     resetPresentation();
     takedowns?.reset();
+    if (roadRage || crashMode) {
+      traffic?.resetForEvent();
+      roadRage?.reset();
+      crashMode?.reset();
+      if (crashMode) garageRewards.beginCrashRun();
+    }
     crashScore.reset();
     timedRun.reset();
-    scripts.noteRespawn(runStart, 0);
+    tourResultRecorded = false;
+    tourStatus?.showObjective();
+    if (race) {
+      race.reset();
+
+      lastCutId = -1;
+      traffic?.resetRaceGrid();
+    }
+    scripts.noteRespawn(restart, 0);
     syncPause();
   }
   /** A takedown-map wreck preserves the race and earned sections after losing
@@ -817,9 +1345,9 @@ async function boot(): Promise<void> {
       change.key === 'trafficMaxGap'
     )
       traffic?.setRules({
-        density: tuning.get('trafficDensity'),
-        minGap: tuning.get('trafficMinGap'),
-        maxGap: tuning.get('trafficMaxGap'),
+        density: isCrashJunction ? 1 : tuning.get('trafficDensity'),
+        minGap: isCrashJunction ? 12 : tuning.get('trafficMinGap'),
+        maxGap: isCrashJunction ? 12 : tuning.get('trafficMaxGap'),
       });
     if (change.key === 'propGlow' || change.key === 'propFarScale')
       applyPropLook();
@@ -859,6 +1387,26 @@ async function boot(): Promise<void> {
       syncPause();
     },
   });
+  const faceOffPaintChoice = mountFaceOffPaintChoice(
+    options.element,
+    faceOffReward,
+    () => carVisual.setPaint(faceOffReward.selected),
+  );
+  let applyingStoredCarPaint = true;
+  resources.push(
+    mountCarChoice(options.element, (paint) => {
+      if (applyingStoredCarPaint && faceOffReward.selected === 'vesper-gold') {
+        applyingStoredCarPaint = false;
+        return;
+      }
+      applyingStoredCarPaint = false;
+      if (faceOffReward.selected === 'vesper-gold') {
+        faceOffReward.select('orange');
+        faceOffPaintChoice.refresh();
+      }
+      carVisual.setPaint(paint);
+    }),
+  );
   const miniMapLandmarks: MiniMapLandmark[] = [];
   for (const ramp of map.ramps)
     miniMapLandmarks.push({
@@ -904,10 +1452,12 @@ async function boot(): Promise<void> {
     onToggleAudioMute: () => menuAudio?.toggleMasterMute(),
     maps: {
       current: mapName,
-      entries: Object.entries(MAPS).map(([name, entry]) => ({
-        name,
-        label: entry.label,
-      })),
+      entries: Object.entries(MAPS)
+        .filter(
+          ([name]) =>
+            !name.startsWith('grand-prix-') || name === 'grand-prix-city',
+        )
+        .map(([name, entry]) => ({ name, label: entry.label })),
       onSelect(name) {
         if (name === mapName) {
           pauseMenu.setOpen(false);
@@ -917,6 +1467,68 @@ async function boot(): Promise<void> {
           storeMapName(mapStorage, name as keyof typeof MAPS);
           location.assign(mapUrl(location.pathname, name as keyof typeof MAPS));
         }
+      },
+    },
+
+    garage: {
+      current: garageClassId,
+      entries: GARAGE_CLASS_IDS.filter((id) =>
+        garageClassAllowedOnMap(id, mapName),
+      ).map((id) => ({
+        name: id,
+        label: GARAGE_CLASSES[id].label,
+        trait: GARAGE_CLASSES[id].trait,
+        unlocked: () => garageRewards.isUnlocked(id),
+        requirement: garageRewardRequirement(id),
+      })),
+      onSelect(name) {
+        if (
+          !isGarageClassId(name) ||
+          !garageRewards.canSelect(name, mapName) ||
+          name === garageClassId
+        ) {
+          pauseMenu.setOpen(false);
+          return;
+        }
+        storeGarageClass(mapStorage, name, WORKING_SET_KEY);
+        const url = new URL(location.href);
+        url.searchParams.set('car', name);
+        location.assign(url.toString());
+      },
+    },
+
+    tour: {
+      current: tourEvent?.id,
+      entries: TOUR_EVENTS,
+      status(event) {
+        const available = tourEventAvailable(
+          event,
+          tourProgress,
+          tourRoutes,
+          tourCarId,
+        );
+        return {
+          available,
+          medal: tourProgress.bestMedal(event.id),
+          reason: !tourRoutes.has(event.routeId)
+            ? 'Route coming soon'
+            : !event.eligibleCars.some((id) => id === tourCarId)
+              ? 'Choose an eligible car'
+              : 'Earn the prior event medal',
+        };
+      },
+      onSelect(id) {
+        const event = TOUR_EVENTS.find((entry) => entry.id === id);
+        if (
+          !event ||
+          !tourEventAvailable(event, tourProgress, tourRoutes, tourCarId)
+        )
+          return;
+        if (tourEvent?.id === id) {
+          pauseMenu.setOpen(false);
+          return;
+        }
+        location.assign(tourUrl(location.pathname, event, tourCarId));
       },
     },
   });
@@ -929,16 +1541,55 @@ async function boot(): Promise<void> {
     store: tuning,
     session: options.session,
     readTelemetry: () => vehicle.telemetry,
-    readScore: () => crashScore.state,
+    ...(!crashMode ? { readScore: () => crashScore.state } : {}),
     readRun: () => timedRun.state,
+    ...(race ? { readRace: () => race.state } : {}),
+
+    ...(race
+      ? {
+          raceKind:
+            mapName === 'face-off'
+              ? ('face-off' as const)
+              : ('circuit' as const),
+        }
+      : {}),
+    ...(grandPrix
+      ? {
+          readGrandPrix: () => ({
+            ...grandPrix.state,
+            order: grandPrix.order,
+            medal: grandPrix.medal(),
+          }),
+        }
+      : {}),
     readTrafficEvents: () => trafficEvents.state,
-    ...(takedowns ? { readTakedowns: () => takedowns.count } : {}),
+    ...(takedowns
+      ? {
+          readTakedowns: () => roadRage?.state.count ?? takedowns.count,
+          readTakedownKind: () => takedowns.lastCreditKind,
+        }
+      : {}),
+    ...(roadRage
+      ? {
+          readRoadRage: () => roadRage.state,
+          readRoadRageBest: () => roadRageBest?.value ?? null,
+        }
+      : {}),
+    ...(crashMode
+      ? {
+          readCrashMode: () => crashMode.state,
+          readCrashReward: () =>
+            garageRewards.resultText(crashMode.state.medal),
+        }
+      : {}),
     ...(playerDamage
       ? {
           readPlayerDamage: () => ({
             amount: playerDamage.damage,
             wrecked: playerDamage.wrecked,
             secondsLeft: playerDamage.wreckSecondsLeft,
+            impactTime: impactTime?.active ?? false,
+            willRespawn: !crashMode,
           }),
         }
       : {}),
@@ -947,16 +1598,20 @@ async function boot(): Promise<void> {
       landmarks: miniMapLandmarks,
       route: map.route,
       halfSize:
-        mapName === 'takedown'
+        isTakedownRoad || !!race || mapName === 'face-off'
           ? 200
           : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
-      followPlayer: mapName === 'takedown',
-      headingUp: mapName === 'takedown',
-      ...(mapName === 'takedown'
+      followPlayer: isTakedownRoad || !!race || mapName === 'face-off',
+      headingUp: isTakedownRoad || !!race || mapName === 'face-off',
+      ...(isTakedownRoad || !!race || mapName === 'face-off'
         ? { readRivals: () => traffic?.states ?? [] }
         : {}),
     },
   });
+  if (tourEvent) {
+    tourStatus = mountTourStatus(options.root, tourEvent);
+    resources.push(tourStatus);
+  }
   const scripts = new ScriptController({
     store: tuning,
     mapper: input,
@@ -999,9 +1654,10 @@ async function boot(): Promise<void> {
   const audio = mountAudioDirector({
     host: host!,
     tuning,
-    engine: DEFAULT_ENGINE,
+    engine: garageClass.engineProfile,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
+    readPresentationTimeScale: () => takedownMoment?.timeScale ?? 1,
     resolveGroundedSurface,
   });
   menuAudio = audio;
@@ -1011,6 +1667,8 @@ async function boot(): Promise<void> {
   resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
   const relativeImpactVelocity: V3 = { x: 0, y: 0, z: 0 };
+  const otherContactVelocityA: V3 = { x: 0, y: 0, z: 0 };
+  const otherContactVelocityB: V3 = { x: 0, y: 0, z: 0 };
   const impact = createImpactSeverity();
   let landingsSeen = vehicle.telemetry.landingCount;
   const impactFeedback = new ImpactFeedback({
@@ -1025,10 +1683,43 @@ async function boot(): Promise<void> {
   // speed against a static obstacle; the record says it is estimated.
   physics.onContact((a, b, impulse, point, normal, readVelocities) => {
     if (a !== vehicle.body && b !== vehicle.body) {
-      takedowns?.noteCarContact(
-        traffic?.stateForBody(a),
-        traffic?.stateForBody(b),
-      );
+      const carA = traffic?.stateForBody(a);
+      const carB = traffic?.stateForBody(b);
+      if (carA || carB) {
+        readVelocities(otherContactVelocityA, otherContactVelocityB);
+        const dx = otherContactVelocityA.x - otherContactVelocityB.x;
+        const dy = otherContactVelocityA.y - otherContactVelocityB.y;
+        const dz = otherContactVelocityA.z - otherContactVelocityB.z;
+        const normalSpeed = dx * normal.x + dy * normal.y + dz * normal.z;
+        const closing = Math.max(0, normalSpeed);
+        const tangent = Math.sqrt(
+          Math.max(0, dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed),
+        );
+        const glassEligible =
+          Math.abs(normal.y) < 0.55 &&
+          ((carA !== undefined &&
+            point.y - (carA.position.y - CAR_MODELS[carA.modelKind].ride) >=
+              CAR_MODELS[carA.modelKind].halfExtents.y * 1.1) ||
+            (carB !== undefined &&
+              point.y - (carB.position.y - CAR_MODELS[carB.modelKind].ride) >=
+                CAR_MODELS[carB.modelKind].halfExtents.y * 1.1));
+        audio.onCrashContact(a, b, closing, tangent, point, 2, glassEligible);
+        const struck = carA ?? carB!;
+        wreckEffects?.noteContact(
+          a,
+          b,
+          point,
+          struck.position.y - CAR_MODELS[struck.modelKind].ride,
+          normal,
+          struck.velocity,
+          closing,
+          tangent,
+          glassEligible,
+          vehicle.telemetry.position,
+        );
+      }
+      if (carA && carB) crashMode?.noteCarContact(carA.id, carB.id);
+      takedowns?.noteCarContact(carA, carB);
       traffic?.onWorldContact(a, b, normal, readVelocities);
       return;
     }
@@ -1056,14 +1747,20 @@ async function boot(): Promise<void> {
       vehicle.currentMass,
       impact,
     );
-    if (playerDamage) {
+    if (
+      playerDamage &&
+      (!roadRage || roadRage.state.phase === 'running') &&
+      (!crashMode || crashMode.state.phase === 'running')
+    ) {
       const wasWrecked = playerDamage.wrecked;
       playerDamage.noteContact(
         impactNormal,
         severityVelocity,
         vehicle.telemetry.rotation,
       );
-      if (!wasWrecked && playerDamage.wrecked) playerWreckPending = true;
+      if (!wasWrecked && playerDamage.wrecked) {
+        playerWreckPending = true;
+      }
     }
     // Breakables consume this same record; they never estimate the contact a
     // second time. Their boundary copies the borrowed point immediately.
@@ -1079,16 +1776,90 @@ async function boot(): Promise<void> {
       traffic?.stateForBody(otherBody),
       impact.severity,
     );
+    const crashCar = traffic?.stateForBody(otherBody);
+    if (crashCar && impact.severity >= 0.05)
+      crashMode?.notePlayerContact(crashCar.id);
     traffic?.onPlayerContact(otherBody, impact, impactNormal, severityVelocity);
     if (trafficVelocity) trafficEvents.noteContact(otherBody, impact.severity);
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
       vehicle.noteChassisContact(impactNormal);
+    const profile =
+      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null;
+    const crashKind: 0 | 1 | null = trafficVelocity
+      ? 0
+      : profile === 'concrete' ||
+          (!surfaceRegistry.has(otherBody) && impact.approachSpeed >= 4)
+        ? 1
+        : null;
+    if (crashKind !== null) {
+      const normalSpeed =
+        severityVelocity.x * impactNormal.x +
+        severityVelocity.y * impactNormal.y +
+        severityVelocity.z * impactNormal.z;
+      const speedSquared =
+        severityVelocity.x ** 2 +
+        severityVelocity.y ** 2 +
+        severityVelocity.z ** 2;
+      const tangent = Math.sqrt(
+        Math.max(0, speedSquared - normalSpeed * normalSpeed),
+      );
+      const struck = traffic?.stateForBody(otherBody);
+      const struckModel = struck && CAR_MODELS[struck.modelKind];
+      const glassEligible =
+        !!struck &&
+        !!struckModel &&
+        Math.abs(impactNormal.y) < 0.55 &&
+        point.y - (struck.position.y - struckModel.ride) >=
+          struckModel.halfExtents.y * 1.1;
+      audio.onCrashContact(
+        vehicle.body,
+        otherBody,
+        impact.approachSpeed,
+        tangent,
+        point,
+        crashKind,
+        glassEligible,
+      );
+      if (struck)
+        wreckEffects?.noteContact(
+          vehicle.body,
+          otherBody,
+          point,
+          struck.position.y - CAR_MODELS[struck.modelKind].ride,
+          impactNormal,
+          struck.velocity,
+          impact.approachSpeed,
+          tangent,
+          glassEligible,
+          vehicle.telemetry.position,
+        );
+      else if (crashKind === 1 && Math.abs(impactNormal.y) < 0.55) {
+        let groundY = point.y - 0.5;
+        for (const wheel of vehicle.telemetry.wheels)
+          if (wheel.grounded) {
+            groundY = wheel.hit.point.y;
+            break;
+          }
+        wreckEffects?.noteContact(
+          vehicle.body,
+          otherBody,
+          point,
+          groundY,
+          impactNormal,
+          vehicle.telemetry.velocity,
+          impact.approachSpeed,
+          tangent,
+          false,
+          vehicle.telemetry.position,
+        );
+      }
+    }
     // This callback runs inside physics.step: consumers only queue fixed
     // scalars here. Audio output runs after simulation in update().
     impactFeedback.onContact(
       otherBody,
-      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null,
+      crashKind === null ? profile : null,
       impact,
     );
   });
@@ -1114,7 +1885,7 @@ async function boot(): Promise<void> {
     // evaluates production preview builds, which carry no test API.
     if (actions.fillBoost > 0)
       vehicle.setDriftMeter(vehicle.telemetry.boostSections);
-    if (actions.slowMotion % 2)
+    if (actions.slowMotion % 2 && !playerDamage?.wrecked)
       tuning.set('timeScale', tuning.get('timeScale') === 0.25 ? 1 : 0.25);
     if (actions.pause % 2) {
       userPaused = !userPaused;
@@ -1199,6 +1970,14 @@ async function boot(): Promise<void> {
       };
     } else inspectionCamera = null;
   };
+  game.getHeroLod = () => carVisual.lodInfo();
+  game.getGarageClass = () => ({
+    id: garageClassId,
+    width: garageClass.geometry.width,
+    height: garageClass.geometry.height,
+    length: garageClass.geometry.length,
+    mass: vehicle.currentMass,
+  });
   game.setHudMode = (mode) => hud.setMode(mode);
   game.setOptionsOpen = (open) => options.setOpen(open);
   game.stepMany = (count) => {
@@ -1274,6 +2053,8 @@ async function boot(): Promise<void> {
         vz: car.velocity.z,
         speed: car.speed,
         wrecked: car.wrecked,
+        wreckSide: car.wreckSide ?? null,
+        tornSide: car.tornSide ?? null,
         rival: car.rival,
         modelKind: (car as { modelKind?: string }).modelKind ?? null,
         crush: { ...car.crush },
@@ -1281,11 +2062,46 @@ async function boot(): Promise<void> {
         screenPixels,
       };
     });
+  game.getWreckEffects = () => ({
+    activePanels: wreckEffects?.activeCount ?? 0,
+    ...(wreckEffects?.particleState ?? {
+      sparks: 0,
+      metal: 0,
+      glass: 0,
+      bursts: 0,
+      grinds: 0,
+      dropped: 0,
+    }),
+  });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
+
+  if (race && traffic)
+    game.getRace = () => ({
+      ...race.state,
+      state: race.state,
+      order: [...race.order],
+      cars: traffic.debugRivals().cars.filter((car) => car.raceEntrant),
+      finishOrder: [...race.state.finishOrder],
+    });
+  game.getGrandPrix = () =>
+    grandPrix
+      ? {
+          ...grandPrix.snapshot(),
+          order: [...grandPrix.order],
+          medal: grandPrix.medal(),
+        }
+      : null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
+    lastCreditKind: takedowns?.lastCreditKind ?? null,
     boostSections: vehicle.telemetry.boostSections,
   });
+  if (roadRage) game.getRoadRage = () => ({ ...roadRage.state });
+  if (crashMode)
+    game.getCrashMode = () => ({
+      ...crashMode.state,
+      awards: crashMode.awards.map((award) => ({ ...award })),
+    });
   if (playerDamage)
     game.getPlayerDamage = () => ({
       amount: playerDamage.damage,
@@ -1447,7 +2263,9 @@ async function boot(): Promise<void> {
       return memory;
     },
   };
+  let previousWallFrameMs: number | undefined;
   visibilityChanged = () => {
+    previousWallFrameMs = undefined;
     syncPause();
     view.resolution.resetClock();
     // Hidden tabs may stop RAF before it can schedule the audio-clock fade.
@@ -1457,6 +2275,11 @@ async function boot(): Promise<void> {
   visibilityChanged();
   function frame(nowMs: number): void {
     frameTime = nowMs;
+    const wallDt =
+      previousWallFrameMs === undefined
+        ? 0
+        : Math.max(0, (nowMs - previousWallFrameMs) / 1000);
+    previousWallFrameMs = nowMs;
     try {
       // No physics/input-script sample while paused. Both readers consume the
       // mapper's same edge counters, so unpausing cannot replay an action.
@@ -1467,6 +2290,10 @@ async function boot(): Promise<void> {
         else if (respawnRequested) respawn();
       }
       loop.frame(nowMs);
+      if (!isPaused() && tuning.get('timeScale') !== 0) {
+        impactTime?.advanceWall(wallDt, input.slowMotionHeld);
+        crashMode?.advanceWall(wallDt);
+      }
       pauseMenu.update(nowMs);
       controllerSupport.update(nowMs);
       hud.setInputDevice(controllerSupport.device);

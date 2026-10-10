@@ -2,8 +2,15 @@ import { SURFACE_IDS } from '../content/surfaces';
 import type { BoostPadSpec } from './boostPads';
 import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
-import { createCircuitMap } from './circuit';
+import { CIRCUIT_STATIONS, createCircuitMap } from './circuit';
+import { createCityMap } from './cityCourse';
+
+import { createCrashJunctionMap } from './crashJunction';
+import { createGrandPrixMap } from './grandPrixCourse';
 import { createTakedownMap } from './takedownCourse';
+import { COAST_HEADLAND_MAP, COAST_SHORELINE_MAP } from './coastCourse';
+import { HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP } from './highwayCourse';
+import { ELIMINATOR_MAP } from './eliminatorCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
@@ -12,12 +19,15 @@ import {
   type LoopSpec,
 } from './loopDeLoop';
 import { RAMP_LAYOUT, type RampSpec } from './ramps';
-import type { RunwaySpec } from './runways';
+import { runwayLaneClearance, type RunwaySpec } from './runways';
+import type { RoadDeckSpec } from './roadDeck';
+
 import type { TrackConfig } from './trackConfig';
 import type { JumpRampSpec } from './jumpRamp';
-import type { RoadPath } from './roadGenerator';
+import { poseAt, type RoadPath } from './roadGenerator';
 import type { TrafficCarRecord } from './traffic';
 import type { ShuntWallSpec } from './shuntWalls';
+import type { CityBuildingSpec } from './cityBuildings';
 
 /** A named world: track geometry overrides, where the car starts, and the
  * structures built on it. Every placement is data in absolute metres, so a
@@ -39,6 +49,9 @@ export interface MapDefinition {
   readonly halfPipes: readonly HalfPipeSpec[];
   readonly jumpRamps: readonly JumpRampSpec[];
   readonly runways: readonly RunwaySpec[];
+
+  /** A dark instanced road surface over the single ground collider. */
+  readonly roadDecks?: readonly RoadDeckSpec[];
   /** Accelerator triangles: a speed kick and boost when driven over. */
   readonly boostPads: readonly BoostPadSpec[];
   /** Timed-run routes (NS3); the first is the one on offer. */
@@ -53,8 +66,30 @@ export interface MapDefinition {
   readonly traffic?: readonly TrafficCarRecord[];
   /** Short walls beside a road, shared by collision and visuals. */
   readonly shuntWalls?: readonly ShuntWallSpec[];
+
+  /** Distant city blocks and junction corners, one visual instanced draw. */
+  readonly cityBuildings?: readonly CityBuildingSpec[];
 }
-export type MapName = 'lab' | 'proving-ground' | 'circuit' | 'takedown';
+export type MapName =
+  | 'lab'
+  | 'proving-ground'
+  | 'circuit'
+  | 'takedown'
+  | 'road-rage'
+  | 'circuit-race'
+  | 'face-off'
+  | 'city'
+  | 'city-reverse'
+  | 'coast-shoreline'
+  | 'coast-headland'
+  | 'highway-express'
+  | 'highway-interchange'
+  | 'crash-south'
+  | 'crash-west'
+  | 'highway-eliminator'
+  | 'grand-prix-city'
+  | 'grand-prix-coast'
+  | 'grand-prix-highway';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -331,11 +366,194 @@ export const PROVING_GROUND_MAP: MapDefinition = Object.freeze({
   ]),
 });
 
+const TAKEDOWN_MAP = createTakedownMap();
+const ROAD_RAGE_MAP: MapDefinition = {
+  ...TAKEDOWN_MAP,
+  name: 'road-rage',
+  label: 'Road Rage · 3 min',
+  // This route is paint only. Road Rage owns its countdown and time-out; the
+  // normal start/goal timer remains exclusive to the other maps.
+  runs: [
+    {
+      name: 'Road Rage start',
+      gates: [
+        {
+          kind: 'start',
+          x: TAKEDOWN_MAP.spawn!.x - Math.sin(TAKEDOWN_MAP.spawn!.heading) * 14,
+          z: TAKEDOWN_MAP.spawn!.z - Math.cos(TAKEDOWN_MAP.spawn!.heading) * 14,
+          heading: TAKEDOWN_MAP.spawn!.heading,
+          width: 28,
+          length: 1.5,
+        },
+      ],
+    },
+  ],
+};
+
+const circuit = createCircuitMap();
+const raceGrid = poseAt(circuit.path, circuit.path.length - 65);
+/** The six-car race keeps the circuit road and its stunts, but the AI takes
+ * painted ground bypasses. At 20–50 m/s its lane follower cannot drive a
+ * vertical loop, and static spawn exclusions do not stop moving civilians
+ * from reaching the loop lip later in the lap. All three lanes shift together
+ * so their separation and passing rules remain intact. */
+const raceDetours = [
+  {
+    station: CIRCUIT_STATIONS.giantRamp,
+    half: 60,
+    transition: 200,
+    shift: -17,
+  },
+  {
+    station: CIRCUIT_STATIONS.forgivingLoop,
+    half: 100,
+    transition: 200,
+    shift: -23.25,
+  },
+  { station: CIRCUIT_STATIONS.hardLoop, half: 100, transition: 200, shift: 20 },
+] as const;
+const smooth = (t: number) => t * t * (3 - 2 * t);
+function raceDetourShift(station: number): number {
+  for (const detour of raceDetours) {
+    const distance = Math.abs(station - detour.station);
+    if (distance <= detour.half) return detour.shift;
+    if (distance < detour.half + detour.transition)
+      return (
+        detour.shift * smooth(1 - (distance - detour.half) / detour.transition)
+      );
+  }
+  return 0;
+}
+const raceLaneAt = (base: number) => (station: number) =>
+  base + raceDetourShift(station);
+const civilianRaceLaneAt = raceLaneAt(6.25);
+const raceBypassRunways: RunwaySpec[] = [];
+for (const detour of raceDetours) {
+  const start = detour.station - detour.half - detour.transition;
+  const end = detour.station + detour.half + detour.transition;
+  for (let station = start; station < end; station += 20) {
+    const shifted = (s: number) => {
+      const pose = poseAt(circuit.path, s);
+      const offset = raceDetourShift(s);
+      return {
+        x: pose.x - Math.cos(pose.heading) * offset,
+        z: pose.z + Math.sin(pose.heading) * offset,
+      };
+    };
+    const a = shifted(station);
+    const b = shifted(Math.min(end, station + 20));
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    raceBypassRunways.push({
+      x: (a.x + b.x) / 2,
+      z: (a.z + b.z) / 2,
+      heading: Math.atan2(-dx, -dz),
+      length: Math.hypot(dx, dz) + 0.1,
+      width: 18,
+      markerMeters: 0,
+    });
+  }
+}
+/** Six-car standing grid: the player is rear-centre, five rivals are beside
+ * and ahead. Circuit Race keeps same-direction civilian traffic for shunts,
+ * but clears the launch corridor and excludes oncoming cars from the grid's
+ * left race lane. */
+const circuitRace: MapDefinition = {
+  ...circuit,
+  name: 'circuit-race',
+  label: 'Circuit Race · six-car grid',
+  spawn: { x: raceGrid.x, z: raceGrid.z, heading: raceGrid.heading },
+  runways: [...circuit.runways, ...raceBypassRunways],
+  placements: circuit.placements.filter((prop) =>
+    raceBypassRunways.every(
+      (lane) => runwayLaneClearance(lane, prop.position.x, prop.position.z) > 2,
+    ),
+  ),
+  traffic: [
+    ...circuit.traffic
+      .filter(
+        (car) =>
+          car.direction === 1 &&
+          car.station > 350 &&
+          car.station < circuit.path.length - 150,
+      )
+      .map((car) => ({
+        ...car,
+        laneOffset: 6.25,
+        laneOffsetAt: civilianRaceLaneAt,
+      })),
+    ...(
+      [
+        [-35, -6.25, 'sedan'],
+        [-35, -0.75, 'hatch'],
+        [-50, -6.25, 'pickup'],
+        [-50, -0.75, 'sedan'],
+        [-65, -6.25, 'hatch'],
+      ] as const
+    ).map(([station, laneOffset, modelKind]) => ({
+      station: circuit.path.length + station,
+      laneSide: laneOffset < 0 ? (-1 as const) : (1 as const),
+      laneOffset,
+      laneOffsetAt: raceLaneAt(laneOffset),
+      direction: 1 as const,
+      speed: 50,
+      rival: true,
+      raceEntrant: true,
+      modelKind,
+    })),
+  ],
+};
+
+/** A two-car standing grid on the same validated one-lap circuit. The named
+ * rival uses the gold palette that the player earns by beating it. */
+const faceOff: MapDefinition = {
+  ...circuitRace,
+  name: 'face-off',
+  label: 'Face Off · beat Vesper',
+  traffic: [
+    ...circuitRace.traffic!.filter((car) => !car.raceEntrant),
+    {
+      station: circuit.path.length - 35,
+      laneSide: -1,
+      laneOffset: -6.25,
+      laneOffsetAt: raceLaneAt(-6.25),
+      direction: 1,
+      speed: 50,
+      rival: true,
+      raceEntrant: true,
+      modelKind: 'hatch',
+      paintIndex: 1,
+    },
+  ],
+};
+
 export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   lab: LAB_MAP,
   'proving-ground': PROVING_GROUND_MAP,
-  circuit: createCircuitMap(),
-  takedown: createTakedownMap(),
+  circuit,
+  'circuit-race': circuitRace,
+  'face-off': faceOff,
+  takedown: TAKEDOWN_MAP,
+  'road-rage': ROAD_RAGE_MAP,
+  city: createCityMap(),
+  'city-reverse': createCityMap(true),
+  'coast-shoreline': COAST_SHORELINE_MAP,
+  'coast-headland': COAST_HEADLAND_MAP,
+  'highway-express': HIGHWAY_EXPRESS_MAP,
+  'highway-interchange': HIGHWAY_INTERCHANGE_MAP,
+  'crash-south': createCrashJunctionMap('south'),
+  'crash-west': createCrashJunctionMap('west'),
+  'highway-eliminator': ELIMINATOR_MAP,
+
+  'grand-prix-city': createGrandPrixMap(createCityMap(), 'grand-prix-city'),
+  'grand-prix-coast': createGrandPrixMap(
+    COAST_SHORELINE_MAP,
+    'grand-prix-coast',
+  ),
+  'grand-prix-highway': createGrandPrixMap(
+    HIGHWAY_EXPRESS_MAP,
+    'grand-prix-highway',
+  ),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 

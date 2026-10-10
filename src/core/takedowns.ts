@@ -8,18 +8,38 @@ export class Takedowns {
   private seconds = 0;
   private nextPruneSeconds = 1;
   private readonly influencedUntil = new Map<number, number>();
+  private readonly aftertouchUntil = new Map<number, number>();
   private readonly counted = new Set<number>();
+  private aftertouchActive = false;
+  private aftertouchCredited = false;
   count = 0;
   lastVictimId = -1;
+  lastCreditKind: 'ordinary' | 'aftertouch' | null = null;
   /** Any newly wrecked rival, including an uncredited AI-versus-AI wreck. */
   lastObservedVictim: TrafficCarState | undefined;
+
+  beginAftertouchEpisode(): void {
+    if (this.aftertouchActive) return;
+    this.aftertouchActive = true;
+    this.aftertouchCredited = false;
+    this.aftertouchUntil.clear();
+  }
+
+  endAftertouchEpisode(): void {
+    this.aftertouchActive = false;
+    this.aftertouchCredited = false;
+    this.aftertouchUntil.clear();
+  }
 
   notePlayerContact(
     car: Readonly<TrafficCarState> | undefined,
     severity: number,
   ): void {
     if (!car || car.wrecked || severity < 0.05) return;
-    this.influencedUntil.set(car.id, this.seconds + TAKEDOWN_CHAIN_SECONDS);
+    (this.aftertouchActive ? this.aftertouchUntil : this.influencedUntil).set(
+      car.id,
+      this.seconds + TAKEDOWN_CHAIN_SECONDS,
+    );
   }
 
   /** A shunted car can shove the next car; a wall contact needs no transfer. */
@@ -28,13 +48,16 @@ export class Takedowns {
     b: Readonly<TrafficCarState> | undefined,
   ): void {
     if (!a || !b) return;
+    const influence = this.aftertouchActive
+      ? this.aftertouchUntil
+      : this.influencedUntil;
     const until = Math.max(
-      this.influencedUntil.get(a.id) ?? -Infinity,
-      this.influencedUntil.get(b.id) ?? -Infinity,
+      influence.get(a.id) ?? -Infinity,
+      influence.get(b.id) ?? -Infinity,
     );
     if (until < this.seconds) return;
-    this.influencedUntil.set(a.id, until);
-    this.influencedUntil.set(b.id, until);
+    influence.set(a.id, until);
+    influence.set(b.id, until);
   }
 
   /** Return the newly credited rival, if any, after traffic has settled. */
@@ -49,8 +72,19 @@ export class Takedowns {
       if (!car.rival || !car.wrecked || this.counted.has(car.id)) continue;
       this.counted.add(car.id);
       this.lastObservedVictim = car;
-      if ((this.influencedUntil.get(car.id) ?? -Infinity) < this.seconds)
-        continue;
+      if (this.aftertouchActive) {
+        if (
+          this.aftertouchCredited ||
+          (this.aftertouchUntil.get(car.id) ?? -Infinity) < this.seconds
+        )
+          continue;
+        this.aftertouchCredited = true;
+        this.lastCreditKind = 'aftertouch';
+      } else {
+        if ((this.influencedUntil.get(car.id) ?? -Infinity) < this.seconds)
+          continue;
+        this.lastCreditKind = 'ordinary';
+      }
       this.count++;
       this.lastVictimId = car.id;
       victim = car;
@@ -59,6 +93,8 @@ export class Takedowns {
       this.nextPruneSeconds = this.seconds + 1;
       for (const [id, until] of this.influencedUntil)
         if (until < this.seconds) this.influencedUntil.delete(id);
+      for (const [id, until] of this.aftertouchUntil)
+        if (until < this.seconds) this.aftertouchUntil.delete(id);
     }
     return victim;
   }
@@ -67,9 +103,11 @@ export class Takedowns {
     this.seconds = 0;
     this.nextPruneSeconds = 1;
     this.influencedUntil.clear();
+    this.endAftertouchEpisode();
     this.counted.clear();
     this.count = 0;
     this.lastVictimId = -1;
+    this.lastCreditKind = null;
     this.lastObservedVictim = undefined;
   }
 }

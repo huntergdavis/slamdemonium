@@ -3,6 +3,8 @@ import {
   Box3,
   BufferGeometry,
   Color,
+  InstancedMesh,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   Quaternion,
@@ -11,8 +13,10 @@ import {
 } from 'three';
 import {
   createCarVisual,
+  nextHeroLod,
   type VehicleVisualState,
 } from '../src/render/carVisual';
+import { VEHICLE_GEOMETRY } from '../src/vehicle/constants';
 
 function fixture() {
   return {
@@ -48,6 +52,19 @@ type MutableWheel = {
 };
 
 describe('car visual contract', () => {
+  it('switches far only below 7 px and returns near above 10 px without losing lamps', () => {
+    expect(nextHeroLod('near', 8)).toBe('near');
+    expect(nextHeroLod('near', 6.9)).toBe('far');
+    expect(nextHeroLod('far', 8)).toBe('far');
+    expect(nextHeroLod('far', 10.1)).toBe('near');
+    const car = createCarVisual(new Scene());
+    const lights = car.root.getObjectByName('car.hero.lights')!;
+    // Far geometry is part of the lazy hero asset, not the startup car bundle.
+    expect(car.root.getObjectByName('car.hero.far')).toBeUndefined();
+    expect(lights.getObjectByName('car.hero.headlamps')).toBeTruthy();
+    expect(lights.getObjectByName('car.hero.brakelamps')).toBeTruthy();
+    car.dispose();
+  });
   it('matches the enlarged body, chevron endpoints and wheel placement', () => {
     const car = createCarVisual(new Scene());
     const size = new Vector3();
@@ -173,6 +190,36 @@ describe('car visual contract', () => {
     state.handbrake01 = -1;
     car.update(state);
     expect(tail.material.color.getHex()).toBe(0x9f2838);
+    car.dispose();
+  });
+
+  it('keeps authored lamps attached to the wheel-side fenders after a hard crush', () => {
+    const car = createCarVisual(new Scene());
+    const lights = car.root.getObjectByName('car.hero.lights')!;
+    expect(lights.children).toHaveLength(2); // One headlamp and one brake-lamp draw.
+    const front = car.root.getObjectByName(
+      'car.hero.headlamps',
+    ) as InstancedMesh;
+    const rear = car.root.getObjectByName(
+      'car.hero.brakelamps',
+    ) as InstancedMesh;
+    const matrix = new Matrix4();
+    front.getMatrixAt(0, matrix);
+    const frontZ = new Vector3().setFromMatrixPosition(matrix).z;
+    rear.getMatrixAt(1, matrix);
+    const rearZ = new Vector3().setFromMatrixPosition(matrix).z;
+    car.setCrush({ front: 1, rear: 1, left: 0, right: 0 });
+    front.getMatrixAt(0, matrix);
+    const crushedFrontZ = new Vector3().setFromMatrixPosition(matrix).z;
+    // Pulling the lamp all the way behind the axle left it detached from the
+    // fixed suspension wheel even though the centre hood was visibly folded.
+    expect(crushedFrontZ - frontZ).toBeGreaterThan(0.15);
+    expect(crushedFrontZ - frontZ).toBeLessThan(0.4);
+    expect(crushedFrontZ).toBeLessThan(-VEHICLE_GEOMETRY.wheelbase / 2);
+    rear.getMatrixAt(1, matrix);
+    expect(
+      rearZ - new Vector3().setFromMatrixPosition(matrix).z,
+    ).toBeGreaterThan(0.6);
     car.dispose();
   });
 

@@ -17,6 +17,7 @@ import {
   rivalBoostBonus,
   rivalRamSpeedBonus,
 } from './rivals';
+import { racePaceTarget } from './racePace';
 import type { SurfacedBodies } from './surfacedBodies';
 import { trafficCrushShape } from './trafficCrushShape';
 import {
@@ -24,6 +25,7 @@ import {
   createCarModelInstances,
   pickCarModelKind,
   type CarCrushState,
+  type CarDamageSide,
   type CarModelKind,
 } from './carModels';
 
@@ -37,10 +39,16 @@ export interface TrafficCarRecord {
   readonly station: number;
   readonly laneSide: -1 | 1;
   readonly speed: number;
+  /** An optional crossing road. All streams still share one physical pool. */
+  readonly path?: RoadPath;
+  /** Signed lane offset; city adds it to the usual lane, race detours author it directly. */
+  readonly laneOffset?: number;
   /** +1 follows circuit stations; -1 travels against them. */
   readonly direction?: -1 | 1;
   /** The catalogue kind; picked by id when not authored. */
   readonly modelKind?: CarModelKind;
+  /** Optional catalogue paint, stable across visual/physics handoffs. */
+  readonly paintIndex?: number;
   /** Rivals contest the player's line and remain identifiable through LOD. */
   readonly rival?: boolean;
   /** Opt-in junction priority for authored crossing roads. */
@@ -49,6 +57,10 @@ export interface TrafficCarRecord {
     readonly x: number;
     readonly z: number;
   }[];
+  /** Circuit Race uses a standing grid and independent pace, never takedown rubber-banding. */
+  readonly raceEntrant?: boolean;
+  /** Optional authored road detour, evaluated at the car's route station. */
+  readonly laneOffsetAt?: (station: number) => number;
 }
 
 /** Centre-to-centre spacing in metres. The 12 m authored grid is the hard
@@ -73,14 +85,21 @@ export interface TrafficCarState {
   speed: number;
   wrecked: boolean;
   rival: boolean;
+  raceEntrant: boolean;
   /** The catalogue kind: collision box, visual parts and ride height. */
   modelKind: CarModelKind;
+  paintIndex?: number | undefined;
   /** Visual crush persists with this encounter across body LOD handoffs. */
   crush: CarCrushState;
+  /** Side of the contact that first wrecked this encounter. */
+  wreckSide?: CarDamageSide;
+  /** Visual face that actually shed trim; stays with the encounter. */
+  tornSide?: CarDamageSide;
 }
 
 interface RecordState {
   readonly authored: TrafficCarRecord;
+  readonly path: RoadPath;
   station: number;
   readonly state: TrafficCarState;
   wrecked: boolean;
@@ -88,10 +107,13 @@ interface RecordState {
   wreckRotation: Quat;
   slot: Slot | null;
   enabled: boolean;
+  eliminated: boolean;
   driveSpeed: number;
   cornerLimit: number;
   signalCommit: number;
   wreckAge: number;
+  raceCheckpointStation: number;
+  racePassId: number | null;
   attackOffset: number;
   leader: RecordState | null;
   obstacle: RecordState | null;
@@ -103,6 +125,7 @@ interface RecordState {
   crashClosingSpeed: number;
   crashBleedRemaining: number;
   shapeDirty: boolean;
+  lastCrushSide: CarDamageSide | null;
   /** Contact episode state: one slam chunk, or one scrape increment per side
    * per physics step even when Jolt reports several contact points. */
   contactGap: number;
@@ -131,6 +154,7 @@ const RIVAL_PACK_OFFSETS = [36, 24, -24, -36] as const;
 const RIVAL_STRIKE_OFFSET = 12;
 const RIVAL_REJOIN_SECONDS = 4;
 const RIVAL_REJOIN_BEHIND = 220;
+const RACE_REJOIN_SECONDS = 5;
 const RIVAL_ATTACK_GRACE_SECONDS = 6;
 const RIVAL_PLAYER_ATTACK_MIN_SPEED = 20;
 const CRUSH_SHAPE_UPDATES_PER_STEP = 1;
@@ -154,6 +178,11 @@ const PLAYER_FOOTPRINT_RADIUS = Math.hypot(
   VEHICLE_GEOMETRY.length / 2,
   VEHICLE_GEOMETRY.width / 2,
 );
+const RACE_TRAFFIC_LOOKAHEAD = 150;
+const RACE_TRAFFIC_BRAKE = 8;
+const RACE_CORNER_LOOKAHEAD = 100;
+const RACE_CORNER_SAMPLE = 20;
+const RACE_CORNER_LATERAL_ACCEL = 9.5;
 const BODY_MASS = 1100;
 /** Every kind weighs the same in v1; per-kind mass waits for crumple. */
 const BODY_MASS_DESC = {
@@ -254,6 +283,7 @@ export function createTraffic(
 ) {
   const authored: RecordState[] = records.map((record, index) => ({
     authored: record,
+    path: record.path ?? path,
     station: record.station,
     state: {
       id: index + 1,
@@ -271,7 +301,9 @@ export function createTraffic(
       speed: record.speed,
       wrecked: false,
       rival: record.rival === true,
+      raceEntrant: record.raceEntrant === true,
       modelKind: record.modelKind ?? pickCarModelKind(index + 1),
+      paintIndex: record.paintIndex,
       crush: { front: 0, rear: 0, left: 0, right: 0 },
     },
     wrecked: false,
@@ -279,10 +311,13 @@ export function createTraffic(
     wreckRotation: { ...IDENTITY },
     slot: null,
     enabled: true,
-    driveSpeed: record.speed,
+    eliminated: false,
+    driveSpeed: record.raceEntrant ? 0 : record.speed,
     cornerLimit: record.speed,
     signalCommit: -1,
     wreckAge: 0,
+    raceCheckpointStation: 0,
+    racePassId: null,
     attackOffset: 0,
     leader: null,
     obstacle: null,
@@ -294,11 +329,19 @@ export function createTraffic(
     crashClosingSpeed: 0,
     crashBleedRemaining: 0,
     shapeDirty: false,
+    lastCrushSide: null,
     contactGap: Infinity,
     slamSides: 0,
     scrapeSides: 0,
   }));
   const hasRivals = records.some((record) => record.rival === true);
+  const hasTakedownRivals = records.some(
+    (record) => record.rival === true && record.raceEntrant !== true,
+  );
+  const raceRecords = authored.filter((record) => record.state.raceEntrant);
+  const raceStates = raceRecords.map((record) => record.state);
+  let raceRunning = false;
+  let raceSeconds = 0;
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
   const slots: Slot[] = [];
@@ -333,6 +376,8 @@ export function createTraffic(
   const angular: V3 = { x: 0, y: 0, z: 0 };
   const routeScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
   const nextScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
+  const cornerScratchA: MutableRoadPose = { x: 0, z: 0, heading: 0 };
+  const cornerScratchB: MutableRoadPose = { x: 0, z: 0, heading: 0 };
 
   for (let i = 0; i < POOL_SIZE; i++) {
     const bodyId = bodies.createPooledBox({
@@ -364,8 +409,9 @@ export function createTraffic(
     station: number,
     out: MutableRoadPose,
   ): MutableRoadPose {
-    const { samples, length } = path;
-    const s = path.closed
+    const road = record.path;
+    const { samples, length } = road;
+    const s = road.closed
       ? ((station % length) + length) % length
       : Math.max(0, Math.min(length, station));
     let lo = 0;
@@ -384,12 +430,22 @@ export function createTraffic(
       a.x +
       (b.x - a.x) * t -
       Math.cos(out.heading) *
-        (record.authored.laneSide * 3.5 + record.attackOffset);
+        ((record.authored.laneOffsetAt?.(s) ??
+          (record.authored.raceEntrant
+            ? (record.authored.laneOffset ?? record.authored.laneSide * 3.5)
+            : record.authored.laneSide * 3.5 +
+              (record.authored.laneOffset ?? 0))) +
+          record.attackOffset);
     out.z =
       a.z +
       (b.z - a.z) * t +
       Math.sin(out.heading) *
-        (record.authored.laneSide * 3.5 + record.attackOffset);
+        ((record.authored.laneOffsetAt?.(s) ??
+          (record.authored.raceEntrant
+            ? (record.authored.laneOffset ?? record.authored.laneSide * 3.5)
+            : record.authored.laneSide * 3.5 +
+              (record.authored.laneOffset ?? 0))) +
+          record.attackOffset);
     return out;
   }
 
@@ -470,10 +526,10 @@ export function createTraffic(
     return speed;
   }
 
-  function nearestRoadStation(position: V3): number {
+  function nearestRoadStation(position: V3, road: RoadPath = path): number {
     let best = Infinity;
     let station = 0;
-    for (const sample of path.samples) {
+    for (const sample of road.samples) {
       const distance = horizontalDistanceSquared(position, sample.x, sample.z);
       if (distance < best) {
         best = distance;
@@ -557,10 +613,195 @@ export function createTraffic(
             (speed * speed) / (2 * WRECK_BRAKE) + WRECK_STOP_MARGIN;
   }
 
+  /** Race entrants anticipate even visual-only civilians. Their station and
+   * authored lane exist long before a body is promoted near the player. */
+  function raceTrafficSpeedLimit(
+    record: RecordState,
+    desiredSpeed: number,
+  ): number {
+    const carShape = CAR_MODELS[record.state.modelKind].halfExtents;
+    const lane =
+      record.authored.laneOffsetAt?.(record.station) ??
+      record.authored.laneOffset ??
+      record.state.laneSide * 3.5;
+    let limit = desiredSpeed;
+    // A boost pulse is only safe with open road in this lane. Preserve the
+    // ordinary race pace instead of cascading braking through the whole pack.
+    if (desiredSpeed > record.authored.speed) {
+      for (const other of raceRecords) {
+        if (other === record || other.wrecked) continue;
+        const otherLane =
+          (other.authored.laneOffsetAt?.(record.station) ??
+            other.authored.laneOffset ??
+            other.state.laneSide * 3.5) + other.attackOffset;
+        const otherShape = CAR_MODELS[other.state.modelKind].halfExtents;
+        if (
+          Math.abs(lane + record.attackOffset - otherLane) >
+          carShape.x + otherShape.x + 0.75
+        )
+          continue;
+        const gap =
+          (other.station - record.station + path.length) % path.length;
+        if (gap > 0 && gap < 60) {
+          limit = Math.min(limit, record.authored.speed);
+          break;
+        }
+      }
+    }
+    // Match a slowing rival at close range before the physical chassis reaches
+    // its bumper. Farther away, each car keeps its own pace and can overtake.
+    for (const other of raceRecords) {
+      if (other === record || other.wrecked) continue;
+      const otherLane =
+        (other.authored.laneOffsetAt?.(record.station) ??
+          other.authored.laneOffset ??
+          other.state.laneSide * 3.5) + other.attackOffset;
+      const otherShape = CAR_MODELS[other.state.modelKind].halfExtents;
+      if (
+        Math.abs(lane + record.attackOffset - otherLane) >
+        carShape.x + otherShape.x + 0.75
+      )
+        continue;
+      const gap = (other.station - record.station + path.length) % path.length;
+      if (gap <= 0 || gap >= 35) continue;
+      const safeGap = carShape.z + otherShape.z + 5;
+      const otherSpeed = other.slot ? other.state.speed : other.driveSpeed;
+      limit = Math.min(limit, otherSpeed + Math.max(0, gap - safeGap) * 0.28);
+    }
+    // A fast rival can outrun its lane follower through the R200 chicane.
+    // Preview each bend and shed speed before reaching it, rather than
+    // waiting for the turn to throw the chassis toward roadside props.
+    for (
+      let distance = 0;
+      distance < RACE_CORNER_LOOKAHEAD;
+      distance += RACE_CORNER_SAMPLE
+    ) {
+      const a = routePose(record, record.station + distance, cornerScratchA);
+      const b = routePose(
+        record,
+        record.station + distance + RACE_CORNER_SAMPLE,
+        cornerScratchB,
+      );
+      const curvature =
+        Math.abs(wrapAngle(b.heading - a.heading)) / RACE_CORNER_SAMPLE;
+      if (curvature < 0.0001) continue;
+      const cornerSpeed = Math.sqrt(RACE_CORNER_LATERAL_ACCEL / curvature);
+      limit = Math.min(
+        limit,
+        Math.sqrt(
+          cornerSpeed * cornerSpeed + 2 * RACE_TRAFFIC_BRAKE * distance,
+        ),
+      );
+    }
+    for (const other of authored) {
+      if (
+        !other.enabled ||
+        other.wrecked ||
+        other.state.rival ||
+        other.state.direction !== record.state.direction
+      )
+        continue;
+      const otherLane =
+        (other.authored.laneOffsetAt?.(record.station) ??
+          other.authored.laneOffset ??
+          other.state.laneSide * 3.5) + other.attackOffset;
+      const otherShape = CAR_MODELS[other.state.modelKind].halfExtents;
+      if (
+        Math.abs(lane + record.attackOffset - otherLane) >
+        carShape.x + otherShape.x + 0.75
+      )
+        continue;
+      const gap = (other.station - record.station + path.length) % path.length;
+      if (gap <= 0 || gap > RACE_TRAFFIC_LOOKAHEAD) continue;
+      const clearance = gap - carShape.z - otherShape.z - 12;
+      const otherSpeed = other.slot
+        ? Math.min(other.driveSpeed, other.state.speed)
+        : other.driveSpeed;
+      limit = Math.min(
+        limit,
+        otherSpeed + Math.sqrt(2 * RACE_TRAFFIC_BRAKE * Math.max(0, clearance)),
+      );
+    }
+    return limit;
+  }
+
+  function updateRacePassingLine(record: RecordState, dt: number): void {
+    const baseLane = record.authored.laneOffset ?? 0;
+    const authoredLane =
+      record.authored.laneOffsetAt?.(record.station) ?? baseLane;
+    // Both race columns are cleared of roadside props in the authored map.
+    // The outside shoulder is not: passing there wrecked the opening pack.
+    if (
+      !raceRunning ||
+      raceSeconds < 8 ||
+      Math.abs(authoredLane - baseLane) > 1
+    ) {
+      record.racePassId = null;
+      record.attackOffset = approachRivalLine(record.attackOffset, 0, dt);
+      return;
+    }
+    const passingOffset = baseLane < -3 ? 5.5 : -5.5;
+    const passingLane = authoredLane + passingOffset;
+    let target = raceRecords.find(
+      (other) => other.state.id === record.racePassId,
+    );
+    if (target?.wrecked) target = undefined;
+    if (target) {
+      const behind =
+        (record.station - target.station + path.length) % path.length;
+      if (behind > 20 && behind < path.length / 2) target = undefined;
+    }
+    if (!target) {
+      record.racePassId = null;
+      for (const other of raceRecords) {
+        if (other === record || other.wrecked) continue;
+        const otherLane =
+          (other.authored.laneOffsetAt?.(record.station) ??
+            other.authored.laneOffset ??
+            0) + other.attackOffset;
+        const gap =
+          (other.station - record.station + path.length) % path.length;
+        if (gap <= 15 || gap >= 65 || Math.abs(otherLane - authoredLane) > 3)
+          continue;
+        const blocked = raceRecords.some((car) => {
+          if (car === record || car === other || car.wrecked || !car.enabled)
+            return false;
+          const lane =
+            (car.authored.laneOffsetAt?.(record.station) ??
+              car.authored.laneOffset ??
+              car.state.laneSide * 3.5) +
+            (car.racePassId === null
+              ? car.attackOffset
+              : (car.authored.laneOffset ?? 0) < -3
+                ? 5.5
+                : -5.5);
+          const ahead =
+            (car.station - record.station + path.length) % path.length;
+          const distance = Math.min(ahead, path.length - ahead);
+          const shape = CAR_MODELS[car.state.modelKind].halfExtents;
+          const self = CAR_MODELS[record.state.modelKind].halfExtents;
+          return (
+            Math.abs(lane - passingLane) < self.x + shape.x + 1 && distance < 45
+          );
+        });
+        if (blocked) continue;
+        target = other;
+        record.racePassId = other.state.id;
+        break;
+      }
+    }
+    record.attackOffset = approachRivalLine(
+      record.attackOffset,
+      target ? passingOffset : 0,
+      dt,
+    );
+  }
+
   function markWreck(record: RecordState): void {
     if (record.wrecked) return;
     record.wrecked = true;
     record.state.wrecked = true;
+    if (record.lastCrushSide) record.state.wreckSide = record.lastCrushSide;
     newlyWrecked.push(record.state);
     wreckRecords.push(record);
     // Keep the existing ordered lane links. Followers skip wrecked entries
@@ -602,72 +843,75 @@ export function createTraffic(
     rules = { density, minGap, maxGap };
     activeCount = 0;
     for (const record of authored) {
-      record.enabled = record.wrecked;
+      record.enabled = record.wrecked && !record.eliminated;
       record.leader = null;
     }
-    for (const direction of [1, -1] as const) {
-      const lane = authored
-        .filter(
-          (record) =>
-            !record.wrecked && (record.authored.direction ?? 1) === direction,
-        )
-        .sort((a, b) => direction * (a.station - b.station));
-      const chosen: RecordState[] = [];
-      const left: RecordState[] = [];
-      const right: RecordState[] = [];
-      let lastProgress = -Infinity;
-      let nextGap = 0;
-      for (const record of lane) {
-        const progress = direction * record.station;
-        const last = chosen.at(-1);
-        if (
-          progress - lastProgress + 0.001 <
-          Math.max(nextGap, last ? safeFollowingGap(last, record) : 0)
-        )
-          continue;
-        record.enabled = true;
-        chosen.push(record);
-        (record.authored.laneSide < 0 ? left : right).push(record);
-        lastProgress = progress;
-        const zone = noise(
-          Math.floor(record.station / 180) * 17 + direction * 131,
-        );
-        const variation = noise(record.state.id * 31 + direction * 761);
-        // Quantization against the 12 m authoring grid needs explicit short
-        // gaps. Otherwise even 12.1 m rounds every cluster up to 24 m.
-        const extra = (1 - density) * (maxGap - minGap);
-        nextGap =
-          zone < 0.55
-            ? variation < density
-              ? minGap
-              : minGap + 12 + extra
-            : zone > 0.85
-              ? maxGap + extra
-              : minGap + (maxGap - minGap) * (0.35 + variation * 0.3) + extra;
-      }
-      if (path.closed && chosen.length > 1) {
-        const first = chosen[0]!;
-        const last = chosen[chosen.length - 1]!;
-        const wrapGap =
-          (((direction * (first.station - last.station)) % path.length) +
-            path.length) %
-          path.length;
-        if (wrapGap < Math.max(minGap, safeFollowingGap(first, last))) {
-          last.enabled = false;
-          chosen.pop();
-          (last.authored.laneSide < 0 ? left : right).pop();
-        }
-      }
-      for (const lane of [left, right])
-        if (lane.length > 1)
-          for (let i = 0; i < lane.length; i++)
-            lane[i]!.leader = lane[i + 1] ?? (path.closed ? lane[0]! : null);
+    const lanes = new Map<RoadPath, Map<string, RecordState[]>>();
+    for (const record of authored) {
+      if (record.wrecked || record.eliminated) continue;
+      let byLane = lanes.get(record.path);
+      if (!byLane) lanes.set(record.path, (byLane = new Map()));
+      const key = `${record.authored.direction ?? 1}:${record.authored.laneSide}:${record.authored.laneOffset ?? 0}`;
+      const lane = byLane.get(key);
+      if (lane) lane.push(record);
+      else byLane.set(key, [record]);
     }
+    for (const [road, byLane] of lanes)
+      for (const [key, lane] of byLane) {
+        const direction = Number(key.split(':')[0]);
+        lane.sort((a, b) => direction * (a.station - b.station));
+        const chosen: RecordState[] = [];
+        let lastProgress = -Infinity;
+        let nextGap = 0;
+        for (const record of lane) {
+          const progress = direction * record.station;
+          const last = chosen.at(-1);
+          if (
+            progress - lastProgress + 0.001 <
+            Math.max(nextGap, last ? safeFollowingGap(last, record) : 0)
+          )
+            continue;
+          record.enabled = true;
+          chosen.push(record);
+          lastProgress = progress;
+          const zone = noise(
+            Math.floor(record.station / 180) * 17 + direction * 131,
+          );
+          const variation = noise(record.state.id * 31 + direction * 761);
+          // Quantization against the 12 m authoring grid needs explicit short
+          // gaps. Otherwise even 12.1 m rounds every cluster up to 24 m.
+          const extra = (1 - density) * (maxGap - minGap);
+          nextGap =
+            zone < 0.55
+              ? variation < density
+                ? minGap
+                : minGap + 12 + extra
+              : zone > 0.85
+                ? maxGap + extra
+                : minGap + (maxGap - minGap) * (0.35 + variation * 0.3) + extra;
+        }
+        if (road.closed && chosen.length > 1) {
+          const first = chosen[0]!;
+          const last = chosen[chosen.length - 1]!;
+          const wrapGap =
+            (((direction * (first.station - last.station)) % road.length) +
+              road.length) %
+            road.length;
+          if (wrapGap < Math.max(minGap, safeFollowingGap(first, last))) {
+            last.enabled = false;
+            chosen.pop();
+          }
+        }
+        if (chosen.length > 1)
+          for (let i = 0; i < chosen.length; i++)
+            chosen[i]!.leader =
+              chosen[i + 1] ?? (road.closed ? chosen[0]! : null);
+      }
     // The density slider controls background traffic, never the four authored
     // opponents. They also need their own pace controller rather than an
     // ordinary follower speed limit from the sparse traffic selection.
     for (const record of authored)
-      if (record.state.rival && !record.wrecked) {
+      if (record.state.rival && !record.wrecked && !record.eliminated) {
         record.enabled = true;
         record.leader = null;
       }
@@ -722,6 +966,7 @@ export function createTraffic(
   }
 
   function promote(record: RecordState, player: V3): void {
+    if (!record.enabled || record.eliminated) return;
     if (!promotionIsClear(record, player)) return;
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
@@ -782,7 +1027,7 @@ export function createTraffic(
       // or demotion would teleport it to the stale target station.
       physics.getTransform(slot.bodyId, readPosition, readRotation);
       Object.assign(record.state.position, readPosition);
-      record.station = nearestRoadStation(readPosition);
+      record.station = nearestRoadStation(readPosition, record.path);
     }
     physics.deactivateBody(slot.bodyId);
     record.state.bodyId = -1;
@@ -826,11 +1071,11 @@ export function createTraffic(
     trafficSeconds += dt;
     newlyWrecked.length = 0;
     stepDt = dt;
-    if (!rivalryStarted && playerSpeed > 10) {
+    if (hasTakedownRivals && !rivalryStarted && playerSpeed > 10) {
       rivalDriveSeconds += dt;
       rivalryStarted = rivalDriveSeconds >= RIVAL_ATTACK_GRACE_SECONDS;
     }
-    if (hasRivals) {
+    if (hasTakedownRivals) {
       if (rivalryStarted) rivalSeconds += dt;
       rivalTargets.length = 0;
       for (const record of authored)
@@ -865,14 +1110,16 @@ export function createTraffic(
         }
       }
     }
-    if (hasRivals) stationRefresh += dt;
-    if (hasRivals && stationRefresh >= 0.2) {
+    if (hasTakedownRivals || raceRecords.length) stationRefresh += dt;
+    if ((hasTakedownRivals || raceRecords.length) && stationRefresh >= 0.2) {
       stationRefresh = 0;
       playerStation = nearestRoadStation(player);
     }
-    if (hasRivals)
+    if (raceRunning) raceSeconds += dt;
+    if (hasTakedownRivals)
       for (const record of authored) {
-        if (!record.state.rival || !record.wrecked) continue;
+        if (!record.state.rival || record.state.raceEntrant || !record.wrecked)
+          continue;
         record.wreckAge += dt;
         const behind =
           (playerStation - record.station + path.length) % path.length;
@@ -894,6 +1141,9 @@ export function createTraffic(
         if (index >= 0) wreckRecords.splice(index, 1);
         record.wrecked = false;
         record.state.wrecked = false;
+        record.lastCrushSide = null;
+        delete record.state.wreckSide;
+        delete record.state.tornSide;
         record.state.id = nextEncounterId++;
         record.state.crush.front =
           record.state.crush.rear =
@@ -909,11 +1159,82 @@ export function createTraffic(
         record.driveSpeed = record.authored.speed;
         record.wreckAge = 0;
         record.attackOffset = 0;
+        record.racePassId = null;
         record.obstacle = null;
         record.obstacleLate = false;
         record.shapeDirty = true;
         updateVisualPose(record);
       }
+    // A race wreck costs visible time and road position. Rejoin only after
+    // both the wreck and the checkpoint-safe return pose are out of view.
+    for (const record of raceRecords) {
+      if (!record.wrecked) continue;
+      record.wreckAge += dt;
+      if (record.wreckAge < RACE_REJOIN_SECONDS) continue;
+      if (
+        horizontalDistanceSquared(
+          player,
+          record.state.position.x,
+          record.state.position.z,
+        ) <=
+        (VISUAL_RADIUS + 40) ** 2
+      )
+        continue;
+      const candidate = Math.max(0, record.raceCheckpointStation - 40);
+      const pose = routePose(record, candidate, nextScratch);
+      if (
+        horizontalDistanceSquared(player, pose.x, pose.z) <=
+        (VISUAL_RADIUS + 40) ** 2
+      )
+        continue;
+      if (
+        raceRecords.some(
+          (other) =>
+            other !== record &&
+            !other.wrecked &&
+            horizontalDistanceSquared(other.state.position, pose.x, pose.z) <
+              20 ** 2,
+        )
+      )
+        continue;
+      const candidateShape = CAR_MODELS[record.state.modelKind].halfExtents;
+      const forwardX = -Math.sin(pose.heading);
+      const forwardZ = -Math.cos(pose.heading);
+      const sideX = -Math.cos(pose.heading);
+      const sideZ = Math.sin(pose.heading);
+      if (
+        authored.some((other) => {
+          if (other === record || !other.enabled || other.state.raceEntrant)
+            return false;
+          const dx = other.state.position.x - pose.x;
+          const dz = other.state.position.z - pose.z;
+          const shape = CAR_MODELS[other.state.modelKind].halfExtents;
+          return (
+            Math.abs(dx * sideX + dz * sideZ) <
+              candidateShape.x + shape.x + 1 &&
+            Math.abs(dx * forwardX + dz * forwardZ) <
+              candidateShape.z + shape.z + 3
+          );
+        })
+      )
+        continue;
+      demote(record);
+      const wreckIndex = wreckRecords.indexOf(record);
+      if (wreckIndex >= 0) wreckRecords.splice(wreckIndex, 1);
+      record.wrecked = record.state.wrecked = false;
+      record.state.crush.front =
+        record.state.crush.rear =
+        record.state.crush.left =
+        record.state.crush.right =
+          0;
+      record.station = candidate;
+      record.driveSpeed = Math.max(20, record.authored.speed * 0.6);
+      record.wreckAge = 0;
+      record.obstacle = null;
+      record.obstacleLate = false;
+      record.shapeDirty = true;
+      updateVisualPose(record);
+    }
     visualStates.length = 0;
     nearbyWrecks.length = 0;
     for (const record of wreckRecords) {
@@ -976,6 +1297,19 @@ export function createTraffic(
       makeRoomFor(player, distanceSquared, true);
       if (physicalCount < MAX_DRIVING) promote(record, player);
     }
+    // The five grid rivals are part of the race, not decorative far traffic.
+    // Give them bodies before ordinary civilian promotion at every start.
+    for (const record of raceRecords) {
+      if (record.wrecked || record.eliminated || record.slot) continue;
+      const distanceSquared = horizontalDistanceSquared(
+        player,
+        record.state.position.x,
+        record.state.position.z,
+      );
+      if (distanceSquared > ENTER * ENTER) continue;
+      makeRoomFor(player, distanceSquared, true);
+      if (physicalCount < MAX_DRIVING) promote(record, player);
+    }
     // Refresh one distant slice per step instead of all authored cars on the
     // same 10 Hz tick. Nearby poses still update every step.
     const farPoseBuckets = Math.max(1, Math.round(0.1 / dt));
@@ -1000,9 +1334,11 @@ export function createTraffic(
     }
     for (let i = 0; i < authored.length; i++) {
       const record = authored[i]!;
+      if (record.eliminated) continue;
       const state = record.state;
       if (
         state.rival &&
+        !state.raceEntrant &&
         !record.wrecked &&
         !record.slot &&
         horizontalDistanceSquared(player, state.position.x, state.position.z) >
@@ -1021,11 +1357,12 @@ export function createTraffic(
       }
       const attackNow =
         state.rival &&
+        !state.raceEntrant &&
         rivalryStarted &&
         playerSpeed >= RIVAL_PLAYER_ATTACK_MIN_SPEED &&
         state.id === attackCarId;
       const attackPlayer = attackNow ? player : state.position;
-      if (state.rival && !record.wrecked) {
+      if (state.rival && !state.raceEntrant && !record.wrecked) {
         const target = rivalAttackTarget(
           state.position,
           state.forward,
@@ -1038,21 +1375,40 @@ export function createTraffic(
           dt,
         );
       }
+      if (state.raceEntrant && !record.wrecked)
+        updateRacePassingLine(record, dt);
       if (!record.wrecked) {
         const direction = state.direction;
         if (
           !state.rival &&
+          !state.raceEntrant &&
           (record.slot || i % farPoseBuckets === farPoseBucket)
         )
           record.cornerLimit = civilianCornerSpeed(
             record,
             record.authored.speed,
           );
-        let desiredSpeed = state.rival
-          ? record.authored.speed
-          : record.cornerLimit;
-        if (!state.rival) desiredSpeed = signalSpeed(record, desiredSpeed);
-        if (state.rival) {
+        let desiredSpeed =
+          state.raceEntrant || state.rival
+            ? record.authored.speed
+            : signalSpeed(record, record.cornerLimit);
+        if (state.raceEntrant) {
+          const ahead =
+            (record.station - playerStation + path.length) % path.length;
+          const behind =
+            (playerStation - record.station + path.length) % path.length;
+          desiredSpeed = raceRunning
+            ? racePaceTarget(
+                record.authored.speed,
+                playerSpeed,
+                ahead <= behind ? ahead : -behind,
+                raceSeconds,
+                state.id,
+              )
+            : 0;
+          if (raceRunning)
+            desiredSpeed = raceTrafficSpeedLimit(record, desiredSpeed);
+        } else if (state.rival) {
           const ahead =
             (record.station - playerStation + path.length) % path.length;
           const behind =
@@ -1109,19 +1465,27 @@ export function createTraffic(
         }
         if (rules && record.enabled && record.leader) {
           let ahead: RecordState | null = record.leader;
-          while (ahead?.wrecked) ahead = ahead.leader;
-          if (ahead === record) ahead = null;
+          for (let scan = 0; ahead?.wrecked && scan < authored.length; scan++)
+            ahead = ahead.leader;
+          if (ahead === record || ahead?.wrecked) ahead = null;
           if (ahead) {
             const gap =
-              (((direction * (ahead.station - record.station)) % path.length) +
-                path.length) %
-              path.length;
+              (((direction * (ahead.station - record.station)) %
+                record.path.length) +
+                record.path.length) %
+              record.path.length;
             // A faster car queues behind a slower one, without lane swapping.
             const safeGap = Math.max(
               rules.minGap,
               safeFollowingGap(record, ahead),
             );
-            const followingSpeed = ahead.driveSpeed + (gap - safeGap) * 0.6;
+            const leadSpeed = ahead.slot
+              ? Math.min(ahead.driveSpeed, ahead.state.speed)
+              : ahead.driveSpeed;
+            const clearance = Math.max(0, gap - safeGap);
+            const followingSpeed = Math.sqrt(
+              leadSpeed * leadSpeed + 2 * CIVILIAN_BRAKE * clearance,
+            );
             record.driveSpeed = Math.max(
               0,
               Math.min(desiredSpeed, followingSpeed),
@@ -1144,9 +1508,26 @@ export function createTraffic(
               record.driveSpeed = Math.min(record.driveSpeed, clearance / dt);
           }
         }
-        record.station += direction * record.driveSpeed * dt;
-        if (record.station >= path.length) record.station -= path.length;
-        else if (record.station < 0) record.station += path.length;
+        // Keep a small target lead to overcome drag, but never let a physical
+        // civilian's station run far ahead of the speed the solver achieved.
+        // On a fast bend that old drift could exceed 80 m and send the body
+        // through oncoming traffic at the interchange.
+        const stationSpeed =
+          record.slot && !state.rival && !state.raceEntrant
+            ? Math.min(
+                record.driveSpeed,
+                Math.max(
+                  0,
+                  state.velocity.x * state.forward.x +
+                    state.velocity.z * state.forward.z +
+                    2,
+                ),
+              )
+            : record.driveSpeed;
+        record.station += direction * stationSpeed * dt;
+        if (record.station >= record.path.length)
+          record.station -= record.path.length;
+        else if (record.station < 0) record.station += record.path.length;
       }
       if (!record.enabled) continue;
       const oldDistanceSquared = horizontalDistanceSquared(
@@ -1212,8 +1593,10 @@ export function createTraffic(
         nextScratch,
       );
       const nextHeading = Math.atan2(-(next.x - pose.x), -(next.z - pose.z));
-      const lateralCorrectionCap = state.rival && rivalryStarted ? 6 : 3;
-      const laneFollowGain = state.rival && rivalryStarted ? 2 : 0.7;
+      const activeRivalSteering =
+        state.raceEntrant || (state.rival && rivalryStarted);
+      const lateralCorrectionCap = activeRivalSteering ? 6 : 3;
+      const laneFollowGain = activeRivalSteering ? 2 : 0.7;
       const desiredX =
         -Math.sin(nextHeading) * record.driveSpeed +
         Math.max(
@@ -1313,6 +1696,26 @@ export function createTraffic(
             physics.setLinearVelocity(playerBodyId, playerVelocity);
             physics.setLinearVelocity(slot.bodyId, readVelocity);
           }
+          // A perfectly centred rear hit otherwise leaves both cars with the
+          // same forward speed: the wreck can be carried on the player's nose
+          // for an entire straight. Give that newly wrecked body one sideways
+          // shove so subsequent contact is glancing, while retaining the
+          // inelastic forward crunch and a physical collider for followers.
+          const forward = record.state.forward;
+          const longitudinal = Math.abs(
+            normal.x * forward.x + normal.z * forward.z,
+          );
+          if (longitudinal > 0.7 && record.crashClosingSpeed >= 8) {
+            const horizontal = Math.hypot(normal.x, normal.z);
+            const side = record.state.id % 2 === 0 ? -1 : 1;
+            const kick = Math.min(
+              14,
+              Math.max(12, record.crashClosingSpeed * 0.16),
+            );
+            readVelocity.x += (-normal.z / horizontal) * kick * side;
+            readVelocity.z += (normal.x / horizontal) * kick * side;
+            physics.setLinearVelocity(slot.bodyId, readVelocity);
+          }
         }
         physics.getAngularVelocity(slot.bodyId, angular);
         const spin = Math.hypot(angular.x, angular.y, angular.z);
@@ -1373,6 +1776,7 @@ export function createTraffic(
         return;
       for (let sideIndex = 0; sideIndex < CRUSH_SIDES.length; sideIndex++)
         addSlam(record, sideIndex, closingSpeed, slamMultiplier);
+      record.lastCrushSide = 'front';
       record.contactGap = 0;
       return;
     }
@@ -1383,6 +1787,7 @@ export function createTraffic(
       addSlam(record, sideIndex, closingSpeed, slamMultiplier);
     else if (allowScrape) record.scrapeSides |= 1 << sideIndex;
     else return;
+    record.lastCrushSide = side;
     record.contactGap = 0;
   }
 
@@ -1539,6 +1944,109 @@ export function createTraffic(
     return slotByBodyId.get(bodyId)?.record?.state.velocity;
   }
 
+  /** Restart an event without recreating pooled Jolt bodies. A retired
+   * encounter gets a new id so contact/near-miss history cannot leak into the
+   * next run, even if the same authored rival starts in the same lane. */
+  function resetForEvent(): void {
+    for (const record of authored) {
+      demote(record);
+      record.station = record.authored.station;
+      record.state.id = nextEncounterId++;
+      record.state.bodyId = -1;
+      record.state.speed = record.authored.speed;
+      record.state.wrecked = false;
+      record.state.crush.front = 0;
+      record.state.crush.rear = 0;
+      record.state.crush.left = 0;
+      record.state.crush.right = 0;
+      record.wrecked = false;
+      record.wreckAge = 0;
+      record.driveSpeed = record.authored.speed;
+      record.attackOffset = 0;
+      record.obstacle = null;
+      record.obstacleClearance = Infinity;
+      record.obstacleLate = false;
+      record.threatened = false;
+      record.crashPending = false;
+      record.crashClosingSpeed = 0;
+      record.crashBleedRemaining = 0;
+      record.shapeDirty = false;
+      record.contactGap = Infinity;
+      record.slamSides = 0;
+      record.scrapeSides = 0;
+      record.leader = null;
+      record.enabled = true;
+      updateVisualPose(record);
+    }
+    wreckRecords.length = 0;
+    nearbyWrecks.length = 0;
+    newlyWrecked.length = 0;
+    visualStates.length = 0;
+    rivalTargets.length = 0;
+    hadNearbyWrecks = false;
+    physicalCount = 0;
+    activeCount = authored.length;
+    playerStation = 0;
+    stationRefresh = 0.2;
+    rivalSeconds = 0;
+    rivalDriveSeconds = 0;
+    rivalryStarted = false;
+    attackWindowIndex = -1;
+    attackCarId = 0;
+    // Force following gaps to be rebuilt at authored stations, even when the
+    // density sliders retain exactly the same values as the previous run.
+    if (rules) {
+      const current = rules;
+      rules = undefined;
+      setRules(current);
+    }
+  }
+  function resetRaceGrid(): void {
+    raceRunning = false;
+    raceSeconds = 0;
+    for (const record of raceRecords) {
+      if (record.slot) demote(record);
+      const wreckIndex = wreckRecords.indexOf(record);
+      if (wreckIndex >= 0) wreckRecords.splice(wreckIndex, 1);
+      record.station = record.authored.station;
+      record.eliminated = false;
+      record.enabled = true;
+      record.wrecked = record.state.wrecked = false;
+      record.wreckAge = 0;
+      record.raceCheckpointStation = 0;
+      record.racePassId = null;
+      record.driveSpeed = 0;
+      record.attackOffset = 0;
+      record.obstacle = null;
+      record.crashPending = false;
+      record.shapeDirty = true;
+      record.state.crush.front =
+        record.state.crush.rear =
+        record.state.crush.left =
+        record.state.crush.right =
+          0;
+      updateVisualPose(record);
+    }
+    activeCount = authored.filter((record) => record.enabled).length;
+  }
+
+  function eliminateRaceEntrant(id: number): void {
+    const record = raceRecords.find((candidate) => candidate.state.id === id);
+    if (!record || record.eliminated) return;
+    if (record.slot) demote(record);
+    if (record.enabled) activeCount--;
+    record.enabled = false;
+    record.eliminated = true;
+    record.driveSpeed = 0;
+    record.state.speed = 0;
+    record.state.velocity.x =
+      record.state.velocity.y =
+      record.state.velocity.z =
+        0;
+    const visualIndex = visualStates.indexOf(record.state);
+    if (visualIndex >= 0) visualStates.splice(visualIndex, 1);
+  }
+
   if (initialRules) setRules(initialRules);
 
   return {
@@ -1547,6 +2055,8 @@ export function createTraffic(
     visualStates: visualStates as readonly TrafficCarState[],
     /** Wreck transitions from this physics step, including off-screen cars. */
     newlyWrecked: newlyWrecked as readonly TrafficCarState[],
+    /** All five stable race entrants, including those outside visual range. */
+    raceStates: raceStates as readonly TrafficCarState[],
     hasRivals,
     recordCount: authored.length,
     /** Test-only controller snapshot, allocated only when browser tooling asks. */
@@ -1562,6 +2072,7 @@ export function createTraffic(
             const target = routePose(record, record.station, routeScratch);
             return {
               id: record.state.id,
+              raceEntrant: record.state.raceEntrant,
               selected: record.state.id === attackCarId,
               enabled: record.enabled,
               physical: !!record.slot,
@@ -1582,6 +2093,19 @@ export function createTraffic(
       return activeCount;
     },
     setRules,
+    resetForEvent,
+    setRaceRunning(running: boolean) {
+      raceRunning = running;
+    },
+    setRaceValidatedStation(id: number, station: number) {
+      const record = raceRecords.find((candidate) => candidate.state.id === id);
+      if (record) record.raceCheckpointStation = station;
+    },
+    resetRaceGrid,
+    eliminateRaceEntrant,
+    get physicalCount() {
+      return physicalCount;
+    },
     preStep,
     postStep,
     onPlayerContact,
@@ -1613,7 +2137,14 @@ export function createTrafficVisual(
         state.rotation,
         state.id,
         state.crush,
-        state.rival ? 0 : traffic.hasRivals ? (state.id % 7) + 1 : undefined,
+        state.raceEntrant
+          ? (state.paintIndex ?? state.id % 7)
+          : state.rival
+            ? 0
+            : traffic.hasRivals
+              ? (state.id % 7) + 1
+              : undefined,
+        state.tornSide,
       );
     cars.end();
   }
