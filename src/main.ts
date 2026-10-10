@@ -37,6 +37,7 @@ import { InputMapper } from './input/mapper';
 import { ScriptController } from './input/script';
 import type { ActionCounts } from './input/types';
 import { mountOptionsPanel } from './ui/optionsPanel';
+import { mountCarChoice } from './ui/carChoice';
 import { mountHud } from './ui/hud';
 import { createRivalGuidance } from './ui/rivalGuidance';
 import { mountPauseMenu } from './ui/pauseMenu';
@@ -374,6 +375,7 @@ async function boot(): Promise<void> {
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
   const carVisual = createCarVisual(view.scene);
+  await carVisual.loadHeroModel();
   // Line of sight for the camera: static geometry between car and camera
   // pulls the camera in, so the loop, a bridge or a prop bank never hides
   // the car. The car's own body is ignored; the ray record is reused.
@@ -852,6 +854,7 @@ async function boot(): Promise<void> {
       syncPause();
     },
   });
+  resources.push(mountCarChoice(options.element, carVisual.setPaint));
   const miniMapLandmarks: MiniMapLandmark[] = [];
   for (const ramp of map.ramps)
     miniMapLandmarks.push({
