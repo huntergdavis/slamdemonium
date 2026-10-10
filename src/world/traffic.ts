@@ -16,6 +16,7 @@ import {
   rivalBoostBonus,
   rivalRamSpeedBonus,
 } from './rivals';
+import { racePaceTarget } from './racePace';
 import type { SurfacedBodies } from './surfacedBodies';
 import { trafficCrushShape } from './trafficCrushShape';
 import {
@@ -90,6 +91,7 @@ interface RecordState {
   enabled: boolean;
   driveSpeed: number;
   wreckAge: number;
+  raceCheckpointStation: number;
   attackOffset: number;
   leader: RecordState | null;
   obstacle: RecordState | null;
@@ -129,6 +131,7 @@ const RIVAL_PACK_OFFSETS = [36, 24, -24, -36] as const;
 const RIVAL_STRIKE_OFFSET = 12;
 const RIVAL_REJOIN_SECONDS = 4;
 const RIVAL_REJOIN_BEHIND = 220;
+const RACE_REJOIN_SECONDS = 5;
 const RIVAL_ATTACK_GRACE_SECONDS = 6;
 const RIVAL_PLAYER_ATTACK_MIN_SPEED = 20;
 const CRUSH_SHAPE_UPDATES_PER_STEP = 1;
@@ -273,6 +276,7 @@ export function createTraffic(
     enabled: true,
     driveSpeed: record.raceEntrant ? 0 : record.speed,
     wreckAge: 0,
+    raceCheckpointStation: 0,
     attackOffset: 0,
     leader: null,
     obstacle: null,
@@ -295,6 +299,7 @@ export function createTraffic(
   const raceRecords = authored.filter((record) => record.state.raceEntrant);
   const raceStates = raceRecords.map((record) => record.state);
   let raceRunning = false;
+  let raceSeconds = 0;
   let rules: TrafficSpacingRules | undefined;
   let activeCount = authored.length;
   const slots: Slot[] = [];
@@ -858,11 +863,12 @@ export function createTraffic(
         }
       }
     }
-    if (hasTakedownRivals) stationRefresh += dt;
-    if (hasTakedownRivals && stationRefresh >= 0.2) {
+    if (hasTakedownRivals || raceRecords.length) stationRefresh += dt;
+    if ((hasTakedownRivals || raceRecords.length) && stationRefresh >= 0.2) {
       stationRefresh = 0;
       playerStation = nearestRoadStation(player);
     }
+    if (raceRunning) raceSeconds += dt;
     if (hasTakedownRivals)
       for (const record of authored) {
         if (!record.state.rival || record.state.raceEntrant || !record.wrecked)
@@ -908,6 +914,56 @@ export function createTraffic(
         record.shapeDirty = true;
         updateVisualPose(record);
       }
+    // A race wreck costs visible time and road position. Rejoin only after
+    // both the wreck and the checkpoint-safe return pose are out of view.
+    for (const record of raceRecords) {
+      if (!record.wrecked) continue;
+      record.wreckAge += dt;
+      if (record.wreckAge < RACE_REJOIN_SECONDS) continue;
+      if (
+        horizontalDistanceSquared(
+          player,
+          record.state.position.x,
+          record.state.position.z,
+        ) <=
+        (VISUAL_RADIUS + 40) ** 2
+      )
+        continue;
+      const candidate =
+        (record.raceCheckpointStation - 40 + path.length) % path.length;
+      const pose = routePose(record, candidate, nextScratch);
+      if (
+        horizontalDistanceSquared(player, pose.x, pose.z) <=
+        (VISUAL_RADIUS + 40) ** 2
+      )
+        continue;
+      if (
+        raceRecords.some(
+          (other) =>
+            other !== record &&
+            !other.wrecked &&
+            horizontalDistanceSquared(other.state.position, pose.x, pose.z) <
+              20 ** 2,
+        )
+      )
+        continue;
+      demote(record);
+      const wreckIndex = wreckRecords.indexOf(record);
+      if (wreckIndex >= 0) wreckRecords.splice(wreckIndex, 1);
+      record.wrecked = record.state.wrecked = false;
+      record.state.crush.front =
+        record.state.crush.rear =
+        record.state.crush.left =
+        record.state.crush.right =
+          0;
+      record.station = candidate;
+      record.driveSpeed = Math.max(20, record.authored.speed * 0.6);
+      record.wreckAge = 0;
+      record.obstacle = null;
+      record.obstacleLate = false;
+      record.shapeDirty = true;
+      updateVisualPose(record);
+    }
     visualStates.length = 0;
     nearbyWrecks.length = 0;
     for (const record of wreckRecords) {
@@ -1051,7 +1107,19 @@ export function createTraffic(
         const direction = state.direction;
         let desiredSpeed = record.authored.speed;
         if (state.raceEntrant) {
-          desiredSpeed = raceRunning ? record.authored.speed : 0;
+          const ahead =
+            (record.station - playerStation + path.length) % path.length;
+          const behind =
+            (playerStation - record.station + path.length) % path.length;
+          desiredSpeed = raceRunning
+            ? racePaceTarget(
+                record.authored.speed,
+                playerSpeed,
+                ahead <= behind ? ahead : -behind,
+                raceSeconds,
+                state.id,
+              )
+            : 0;
           if (raceRunning)
             desiredSpeed = raceTrafficSpeedLimit(record, desiredSpeed);
         } else if (state.rival) {
@@ -1545,6 +1613,7 @@ export function createTraffic(
 
   function resetRaceGrid(): void {
     raceRunning = false;
+    raceSeconds = 0;
     for (const record of raceRecords) {
       if (record.slot) demote(record);
       const wreckIndex = wreckRecords.indexOf(record);
@@ -1552,6 +1621,7 @@ export function createTraffic(
       record.station = record.authored.station;
       record.wrecked = record.state.wrecked = false;
       record.wreckAge = 0;
+      record.raceCheckpointStation = 0;
       record.driveSpeed = 0;
       record.attackOffset = 0;
       record.obstacle = null;
@@ -1591,6 +1661,7 @@ export function createTraffic(
             const target = routePose(record, record.station, routeScratch);
             return {
               id: record.state.id,
+              raceEntrant: record.state.raceEntrant,
               selected: record.state.id === attackCarId,
               enabled: record.enabled,
               physical: !!record.slot,
@@ -1613,6 +1684,10 @@ export function createTraffic(
     setRules,
     setRaceRunning(running: boolean) {
       raceRunning = running;
+    },
+    setRaceValidatedStation(id: number, station: number) {
+      const record = raceRecords.find((candidate) => candidate.state.id === id);
+      if (record) record.raceCheckpointStation = station;
     },
     resetRaceGrid,
     get physicalCount() {

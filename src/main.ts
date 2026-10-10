@@ -312,7 +312,9 @@ async function boot(): Promise<void> {
     : undefined;
   if (traffic && trafficVisual) resources.push(trafficVisual, traffic);
   const rivalGuidance =
-    mapName === 'takedown' ? createRivalGuidance(host!) : undefined;
+    mapName === 'takedown' || mapName === 'circuit-race'
+      ? createRivalGuidance(host!)
+      : undefined;
   if (rivalGuidance) resources.push(rivalGuidance);
   const crashScore = new CrashScore();
   // Authored prop records are promoted near the car and represented by a
@@ -656,6 +658,11 @@ async function boot(): Promise<void> {
             car.vz = state.velocity.z;
           }
           race.update(dt, raceCars);
+          for (const state of traffic.raceStates)
+            traffic.setRaceValidatedStation(
+              state.id,
+              race.validatedStation(state.id),
+            );
           traffic.setRaceRunning(race.state.phase !== 'countdown');
         }
         propStreamer.update();
@@ -998,12 +1005,12 @@ async function boot(): Promise<void> {
       landmarks: miniMapLandmarks,
       route: map.route,
       halfSize:
-        mapName === 'takedown'
+        mapName === 'takedown' || mapName === 'circuit-race'
           ? 200
           : Math.max(track.config.pavedRadius, track.config.barrierInnerRadius),
-      followPlayer: mapName === 'takedown',
-      headingUp: mapName === 'takedown',
-      ...(mapName === 'takedown'
+      followPlayer: mapName === 'takedown' || mapName === 'circuit-race',
+      headingUp: mapName === 'takedown' || mapName === 'circuit-race',
+      ...(mapName === 'takedown' || mapName === 'circuit-race'
         ? { readRivals: () => traffic?.states ?? [] }
         : {}),
     },
@@ -1333,6 +1340,12 @@ async function boot(): Promise<void> {
       };
     });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
+  if (race && traffic)
+    game.getRace = () => ({
+      state: race.state,
+      order: [...race.order],
+      cars: traffic.debugRivals().cars.filter((car) => car.raceEntrant),
+    });
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
     boostSections: vehicle.telemetry.boostSections,

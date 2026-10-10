@@ -152,7 +152,9 @@ export function createRaceEvent(
               0,
               station > path.length - 150 ? station - path.length : -100,
             )
-          : Math.max(passed, Math.min(next - 0.01, station));
+          : entry.nextGate === 1 && station > path.length - 150
+            ? 0
+            : Math.max(passed, Math.min(next - 0.01, station));
     }
     entries.sort((a, b) =>
       a.finishTime < Infinity || b.finishTime < Infinity
@@ -178,6 +180,14 @@ export function createRaceEvent(
   return {
     state: values as Readonly<RaceState>,
     order: ordered as readonly number[],
+    /** Re-entry anchor; race position is still awarded only by gate crossing. */
+    validatedStation(id: number): number {
+      const entry = entries.find((candidate) => candidate.id === id);
+      if (!entry || entry.nextGate <= 1) return 0;
+      return gateStations[
+        Math.min(entry.nextGate - 1, gateStations.length - 1)
+      ]!;
+    },
     update,
     reset,
   };
