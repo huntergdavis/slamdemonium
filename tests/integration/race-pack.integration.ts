@@ -51,6 +51,22 @@ it('holds a race wreck in view, then rejoins offscreen behind its validated gate
     expect(
       car.crush.front + car.crush.rear + car.crush.left + car.crush.right,
     ).toBe(0);
+
+    // Before checkpoint one, the safe rejoin is the start, never the end of
+    // the closed route where it would silently gain almost a full lap.
+    const returned = poseAt(road, 2460);
+    traffic.preStep(1 / 120, { x: returned.x, y: 1, z: returned.z });
+    world.step(1 / 120);
+    traffic.postStep();
+    expect(car.bodyId).toBeGreaterThan(0);
+    traffic.setRaceValidatedStation(car.id, 0);
+    traffic.onPlayerContact(car.bodyId, impact);
+    expect(car.wrecked).toBe(true);
+    for (let second = 0; second < 6; second++)
+      traffic.preStep(1, { x: returned.x, y: 1, z: returned.z });
+    traffic.preStep(1 / 120, { x: far.x, y: 1, z: far.z });
+    expect(car.wrecked).toBe(false);
+    expect(traffic.debugRivals().cars[0]!.station).toBe(0);
   } finally {
     traffic.dispose();
     bodies.dispose();

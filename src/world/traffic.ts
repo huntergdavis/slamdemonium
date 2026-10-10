@@ -937,8 +937,7 @@ export function createTraffic(
         (VISUAL_RADIUS + 40) ** 2
       )
         continue;
-      const candidate =
-        (record.raceCheckpointStation - 40 + path.length) % path.length;
+      const candidate = Math.max(0, record.raceCheckpointStation - 40);
       const pose = routePose(record, candidate, nextScratch);
       if (
         horizontalDistanceSquared(player, pose.x, pose.z) <=

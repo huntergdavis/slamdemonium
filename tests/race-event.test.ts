@@ -44,6 +44,7 @@ describe('six-car circuit race', () => {
     step(2, 2500);
     step(2, 2510);
     step(1, 2460); // A penalized re-entry behind its last valid gate.
+    race.update(0.11, cars); // Standings refresh at 10 Hz between crossings.
     expect(race.order.indexOf(2)).toBeLessThan(race.order.indexOf(1));
     step(0, 2500);
     step(0, 5000);
