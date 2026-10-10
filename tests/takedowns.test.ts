@@ -109,4 +109,20 @@ describe('takedown attribution', () => {
     tracker.endAftertouchEpisode();
     expect(tracker.update(1 / 120, [second])).toBeUndefined();
   });
+
+  it('keeps the wreck-causing hit ordinary before the next-step Aftertouch episode', () => {
+    const tracker = new Takedowns();
+    const first = car(40, true);
+    const second = car(41, true);
+    tracker.notePlayerContact(first, 0.5);
+    first.wrecked = true;
+    expect(tracker.update(1 / 120, [first])).toBe(first);
+    expect(tracker.lastCreditKind).toBe('ordinary');
+    tracker.beginAftertouchEpisode();
+    tracker.notePlayerContact(second, 0.5);
+    second.wrecked = true;
+    expect(tracker.update(1 / 120, [second])).toBe(second);
+    expect(tracker.lastCreditKind).toBe('aftertouch');
+    expect(tracker.count).toBe(2);
+  });
 });

@@ -556,8 +556,8 @@ async function boot(): Promise<void> {
         const wasWrecked = playerDamage?.wrecked ?? false;
         if (!wasWrecked) playerDamage?.step(dt);
         if (!wasWrecked && playerDamage?.wrecked) playerWreckPending = true;
+        const startedPlayerWreck = playerWreckPending;
         if (playerWreckPending) {
-          takedowns?.beginAftertouchEpisode();
           vehicle.loseBoostSection();
           impactTime?.start();
           takedownMoment?.reset();
@@ -571,6 +571,9 @@ async function boot(): Promise<void> {
           const victim = takedowns.update(dt, traffic?.newlyWrecked ?? []);
           for (let count = countBefore; count < takedowns.count; count++)
             vehicle.awardTakedown();
+          // The collision that wrecked the player settles as an ordinary
+          // takedown. Only a later physics step can earn Aftertouch credit.
+          if (startedPlayerWreck) takedowns.beginAftertouchEpisode();
           if (
             !impactTime?.active &&
             victim &&
@@ -1085,7 +1088,6 @@ async function boot(): Promise<void> {
       );
       if (!wasWrecked && playerDamage.wrecked) {
         playerWreckPending = true;
-        takedowns?.beginAftertouchEpisode();
       }
     }
     // Breakables consume this same record; they never estimate the contact a
