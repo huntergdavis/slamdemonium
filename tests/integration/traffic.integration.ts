@@ -128,6 +128,72 @@ it('slows a faster visual follower behind a slower car in the same lane', async 
   }
 });
 
+it('follows the car in its own lane, not the intervening car in another lane', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  const path = sampleRoad([{ kind: 'straight', length: 1000 }], {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(
+    world,
+    bodies,
+    path,
+    [
+      { station: 20, laneSide: -1, speed: 26 },
+      { station: 35, laneSide: 1, speed: 26 },
+      { station: 50, laneSide: -1, speed: 0 },
+    ],
+    { density: 1, minGap: 12, maxGap: 12 },
+  );
+  try {
+    traffic.preStep(1 / 120, { x: 100, y: 1, z: -350 });
+    const follower = traffic.states.find((car) => car.id === 1)!;
+    expect(follower.speed).toBeLessThan(26);
+    expect(follower.speed).toBeGreaterThan(0);
+    expect(traffic.states.find((car) => car.id === 2)!.speed).toBe(26);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
+});
+
+it('waits to promote an overlapping visual car until its footprint is clear', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  world.setGravity(20);
+  world.createStaticBox({ x: 0, y: -0.5, z: -250 }, { x: 300, y: 0.5, z: 400 });
+  const path = sampleRoad([{ kind: 'straight', length: 500 }], {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(world, bodies, path, [
+    { station: 100, laneSide: -1, speed: 20 },
+    { station: 101, laneSide: -1, speed: 0 },
+  ]);
+  const player = { x: 100, y: 1, z: -100 };
+  try {
+    traffic.preStep(1 / 120, player);
+    expect(traffic.states.map((car) => car.bodyId > 0)).toEqual([true, false]);
+    let promotedAfterClear = false;
+    for (let step = 0; step < 3 * 120; step++) {
+      traffic.preStep(1 / 120, player);
+      world.step(1 / 120);
+      traffic.postStep();
+      promotedAfterClear ||= traffic.states[1]!.bodyId > 0;
+    }
+    expect(promotedAfterClear).toBe(true);
+    expect(traffic.newlyWrecked).toHaveLength(0);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
+});
+
 it('holds authored traffic speed for ten seconds inside the drive radius', async () => {
   const world = await createPhysicsWorld({ wasmPath });
   worlds.push(world);
@@ -269,14 +335,15 @@ it('gives a closer car a physical body when the pool is full', async () => {
   const bodies = createSurfacedBodies(world, createSurfaceRegistry());
   const traffic = createTraffic(world, bodies, path, [
     ...Array.from({ length: MAX_DRIVING }, (_, i) => ({
-      station: 8 + i * 10,
+      station: 10 + i * 10,
       laneSide: -1 as const,
       speed: 22,
+      modelKind: 'sedan' as const,
     })),
-    { station: 1, laneSide: -1, speed: 22 },
+    { station: 0, laneSide: -1, speed: 22, modelKind: 'sedan' },
   ]);
   try {
-    traffic.preStep(1 / 120, { x: 0, y: 0.6, z: 0 });
+    traffic.preStep(1 / 120, { x: 15, y: 0.6, z: -5 });
     expect(traffic.states.filter((car) => car.bodyId !== -1)).toHaveLength(
       MAX_DRIVING,
     );
@@ -405,6 +472,9 @@ it('drives a pooled car, yields on impact, and keeps its identity through visual
   traffic.preStep(1 / 120, player);
   expect(traffic.states).toHaveLength(1);
   expect(traffic.states[0]!.id).toBe(firstEncounterId);
+  expect(traffic.states[0]!.bodyId).toBe(-1);
+  player.z = wreckZ + 25;
+  traffic.preStep(1 / 120, player);
   expect(traffic.states[0]!.bodyId).toBe(physicalBodyId);
   expect(traffic.states[0]!.wrecked).toBe(true);
   expect(traffic.states[0]!.crush).toBe(crush);

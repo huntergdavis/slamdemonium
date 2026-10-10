@@ -83,7 +83,11 @@ it('slow grinding dents to a small cap while separate slams add distinct chunks 
       world.step(DT);
       traffic.postStep();
       expect(car.bodyId).toBe(-1);
-      traffic.preStep(DT, car.position);
+      traffic.preStep(DT, {
+        x: car.position.x + 20,
+        y: 0.6,
+        z: car.position.z,
+      });
       world.step(DT);
       traffic.postStep();
       expect(car.bodyId).toBeGreaterThan(0);

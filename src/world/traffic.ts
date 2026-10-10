@@ -1,6 +1,7 @@
 import type { Scene } from 'three';
 import type { ImpactSeverity } from '../core/impactSeverity';
 import { SURFACE_IDS } from '../content/surfaces';
+import { VEHICLE_GEOMETRY } from '../vehicle/constants';
 import {
   type BodyId,
   type ContactVelocityReader,
@@ -34,7 +35,11 @@ interface MutableRoadPose {
 
 export interface TrafficCarRecord {
   readonly station: number;
+  /** Optional independent road, such as a street crossing the main route. */
+  readonly path?: RoadPath;
   readonly laneSide: -1 | 1;
+  /** Metres from centreline; defaults to the ordinary 3.5 m lane. */
+  readonly laneOffset?: number;
   readonly speed: number;
   /** +1 follows circuit stations; -1 travels against them. */
   readonly direction?: -1 | 1;
@@ -74,6 +79,7 @@ export interface TrafficCarState {
 
 interface RecordState {
   readonly authored: TrafficCarRecord;
+  readonly path: RoadPath;
   station: number;
   readonly state: TrafficCarState;
   wrecked: boolean;
@@ -132,6 +138,11 @@ const WRECK_PHYSICS_RADIUS = 220;
 const WRECK_BRAKE = 9;
 const WRECK_PLANNED_BRAKE = 4;
 const WRECK_STOP_MARGIN = 12;
+const PROMOTION_CLEARANCE = 2;
+const PLAYER_FOOTPRINT_RADIUS = Math.hypot(
+  VEHICLE_GEOMETRY.length / 2,
+  VEHICLE_GEOMETRY.width / 2,
+);
 const BODY_MASS = 1100;
 /** Every kind weighs the same in v1; per-kind mass waits for crumple. */
 const BODY_MASS_DESC = {
@@ -232,6 +243,7 @@ export function createTraffic(
 ) {
   const authored: RecordState[] = records.map((record, index) => ({
     authored: record,
+    path: record.path ?? path,
     station: record.station,
     state: {
       id: index + 1,
@@ -339,8 +351,8 @@ export function createTraffic(
     station: number,
     out: MutableRoadPose,
   ): MutableRoadPose {
-    const { samples, length } = path;
-    const s = path.closed
+    const { samples, length } = record.path;
+    const s = record.path.closed
       ? ((station % length) + length) % length
       : Math.max(0, Math.min(length, station));
     let lo = 0;
@@ -359,19 +371,21 @@ export function createTraffic(
       a.x +
       (b.x - a.x) * t -
       Math.cos(out.heading) *
-        (record.authored.laneSide * 3.5 + record.attackOffset);
+        ((record.authored.laneOffset ?? record.authored.laneSide * 3.5) +
+          record.attackOffset);
     out.z =
       a.z +
       (b.z - a.z) * t +
       Math.sin(out.heading) *
-        (record.authored.laneSide * 3.5 + record.attackOffset);
+        ((record.authored.laneOffset ?? record.authored.laneSide * 3.5) +
+          record.attackOffset);
     return out;
   }
 
-  function nearestRoadStation(position: V3): number {
+  function nearestRoadStation(position: V3, road = path): number {
     let best = Infinity;
     let station = 0;
-    for (const sample of path.samples) {
+    for (const sample of road.samples) {
       const distance = horizontalDistanceSquared(position, sample.x, sample.z);
       if (distance < best) {
         best = distance;
@@ -503,60 +517,86 @@ export function createTraffic(
       record.enabled = record.wrecked;
       record.leader = null;
     }
-    for (const direction of [1, -1] as const) {
-      const lane = authored
-        .filter(
-          (record) =>
-            !record.wrecked && (record.authored.direction ?? 1) === direction,
-        )
-        .sort((a, b) => direction * (a.station - b.station));
-      const chosen: RecordState[] = [];
-      let lastProgress = -Infinity;
-      let nextGap = 0;
-      for (const record of lane) {
-        const progress = direction * record.station;
-        const last = chosen.at(-1);
-        if (
-          progress - lastProgress + 0.001 <
-          Math.max(nextGap, last ? safeFollowingGap(last, record) : 0)
-        )
-          continue;
-        record.enabled = true;
-        chosen.push(record);
-        lastProgress = progress;
-        const zone = noise(
-          Math.floor(record.station / 180) * 17 + direction * 131,
-        );
-        const variation = noise(record.state.id * 31 + direction * 761);
-        // Quantization against the 12 m authoring grid needs explicit short
-        // gaps. Otherwise even 12.1 m rounds every cluster up to 24 m.
-        const extra = (1 - density) * (maxGap - minGap);
-        nextGap =
-          zone < 0.55
-            ? variation < density
-              ? minGap
-              : minGap + 12 + extra
-            : zone > 0.85
-              ? maxGap + extra
-              : minGap + (maxGap - minGap) * (0.35 + variation * 0.3) + extra;
+    // Preserve density selection across both lanes of one road, then give
+    // each selected car a leader in its own lane. Selection and following
+    // must not confuse cars on an independent crossing path.
+    const roadStreams = new Map<RoadPath, Map<-1 | 1, RecordState[]>>();
+    for (const record of authored) {
+      if (record.wrecked) continue;
+      let directions = roadStreams.get(record.path);
+      if (!directions) {
+        directions = new Map();
+        roadStreams.set(record.path, directions);
       }
-      if (path.closed && chosen.length > 1) {
-        const first = chosen[0]!;
-        const last = chosen[chosen.length - 1]!;
-        const wrapGap =
-          (((direction * (first.station - last.station)) % path.length) +
-            path.length) %
-          path.length;
-        if (wrapGap < Math.max(minGap, safeFollowingGap(first, last))) {
-          last.enabled = false;
-          chosen.pop();
-        }
+      let stream = directions.get(record.state.direction);
+      if (!stream) {
+        stream = [];
+        directions.set(record.state.direction, stream);
       }
-      if (chosen.length > 1)
-        for (let i = 0; i < chosen.length; i++)
-          chosen[i]!.leader =
-            chosen[i + 1] ?? (path.closed ? chosen[0]! : null);
+      stream.push(record);
     }
+    for (const [lanePath, directions] of roadStreams)
+      for (const [direction, stream] of directions) {
+        stream.sort((a, b) => direction * (a.station - b.station));
+        const chosen: RecordState[] = [];
+        let lastProgress = -Infinity;
+        let nextGap = 0;
+        for (const record of stream) {
+          const progress = direction * record.station;
+          const last = chosen.at(-1);
+          if (
+            progress - lastProgress + 0.001 <
+            Math.max(nextGap, last ? safeFollowingGap(last, record) : 0)
+          )
+            continue;
+          record.enabled = true;
+          chosen.push(record);
+          lastProgress = progress;
+          const zone = noise(
+            Math.floor(record.station / 180) * 17 + direction * 131,
+          );
+          const variation = noise(record.state.id * 31 + direction * 761);
+          // Quantization against the 12 m authoring grid needs explicit short
+          // gaps. Otherwise even 12.1 m rounds every cluster up to 24 m.
+          const extra = (1 - density) * (maxGap - minGap);
+          nextGap =
+            zone < 0.55
+              ? variation < density
+                ? minGap
+                : minGap + 12 + extra
+              : zone > 0.85
+                ? maxGap + extra
+                : minGap + (maxGap - minGap) * (0.35 + variation * 0.3) + extra;
+        }
+        if (lanePath.closed && chosen.length > 1) {
+          const first = chosen[0]!;
+          const last = chosen[chosen.length - 1]!;
+          const wrapGap =
+            (((direction * (first.station - last.station)) % lanePath.length) +
+              lanePath.length) %
+            lanePath.length;
+          if (wrapGap < Math.max(minGap, safeFollowingGap(first, last))) {
+            last.enabled = false;
+            chosen.pop();
+          }
+        }
+        const lanes = new Map<number, RecordState[]>();
+        for (const record of chosen) {
+          const offset =
+            record.authored.laneOffset ?? record.authored.laneSide * 3.5;
+          let lane = lanes.get(offset);
+          if (!lane) {
+            lane = [];
+            lanes.set(offset, lane);
+          }
+          lane.push(record);
+        }
+        for (const lane of lanes.values())
+          if (lane.length > 1)
+            for (let i = 0; i < lane.length; i++)
+              lane[i]!.leader =
+                lane[i + 1] ?? (lanePath.closed ? lane[0]! : null);
+      }
     // The density slider controls background traffic, never the four authored
     // opponents. They also need their own pace controller rather than an
     // ordinary follower speed limit from the sparse traffic selection.
@@ -572,7 +612,54 @@ export function createTraffic(
     }
   }
 
-  function promote(record: RecordState): void {
+  /** Body creation is deferred until its full footprint is clear. A visual
+   * follower may still brake or queue while waiting for a physical slot. */
+  function promotionIsClear(record: RecordState, player: V3): boolean {
+    const car = record.state;
+    const shape = CAR_MODELS[car.modelKind].halfExtents;
+    const forwardX = car.forward.x;
+    const forwardZ = car.forward.z;
+    const rightX = -forwardZ;
+    const rightZ = forwardX;
+    const playerDx = player.x - car.position.x;
+    const playerDz = player.z - car.position.z;
+    if (
+      Math.abs(playerDx * forwardX + playerDz * forwardZ) <
+        shape.z + PLAYER_FOOTPRINT_RADIUS + PROMOTION_CLEARANCE &&
+      Math.abs(playerDx * rightX + playerDz * rightZ) <
+        shape.x + PLAYER_FOOTPRINT_RADIUS + PROMOTION_CLEARANCE
+    )
+      return false;
+    for (const slot of slots) {
+      const other = slot.record?.state;
+      if (!other) continue;
+      const otherShape = CAR_MODELS[other.modelKind].halfExtents;
+      const dx = other.position.x - car.position.x;
+      const dz = other.position.z - car.position.z;
+      const otherRightX = -other.forward.z;
+      const otherRightZ = other.forward.x;
+      const along = Math.abs(dx * forwardX + dz * forwardZ);
+      const across = Math.abs(dx * rightX + dz * rightZ);
+      const otherLong =
+        Math.abs(forwardX * other.forward.x + forwardZ * other.forward.z) *
+          otherShape.z +
+        Math.abs(forwardX * otherRightX + forwardZ * otherRightZ) *
+          otherShape.x;
+      const otherWide =
+        Math.abs(rightX * other.forward.x + rightZ * other.forward.z) *
+          otherShape.z +
+        Math.abs(rightX * otherRightX + rightZ * otherRightZ) * otherShape.x;
+      if (
+        along < shape.z + otherLong + PROMOTION_CLEARANCE &&
+        across < shape.x + otherWide + PROMOTION_CLEARANCE
+      )
+        return false;
+    }
+    return true;
+  }
+
+  function promote(record: RecordState, player: V3): void {
+    if (!promotionIsClear(record, player)) return;
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
     const state = record.state;
@@ -632,7 +719,7 @@ export function createTraffic(
       // or demotion would teleport it to the stale target station.
       physics.getTransform(slot.bodyId, readPosition, readRotation);
       Object.assign(record.state.position, readPosition);
-      record.station = nearestRoadStation(readPosition);
+      record.station = nearestRoadStation(readPosition, record.path);
     }
     physics.deactivateBody(slot.bodyId);
     record.state.bodyId = -1;
@@ -809,7 +896,7 @@ export function createTraffic(
       );
       if (distanceSquared > WRECK_PHYSICS_RADIUS ** 2) continue;
       makeRoomFor(player, distanceSquared, true);
-      if (physicalCount < MAX_DRIVING) promote(wreck);
+      if (physicalCount < MAX_DRIVING) promote(wreck, player);
     }
     // A car too close to brake must get a real collision, rather than keep
     // following its visual-only lane pose through the wreck.
@@ -823,7 +910,7 @@ export function createTraffic(
       );
       if (distanceSquared > WRECK_PHYSICS_RADIUS ** 2) continue;
       makeRoomFor(player, distanceSquared, true);
-      if (physicalCount < MAX_DRIVING) promote(record);
+      if (physicalCount < MAX_DRIVING) promote(record, player);
     }
     // Refresh one distant slice per step instead of all authored cars on the
     // same 10 Hz tick. Nearby poses still update every step.
@@ -951,9 +1038,10 @@ export function createTraffic(
           if (ahead === record) ahead = null;
           if (ahead) {
             const gap =
-              (((direction * (ahead.station - record.station)) % path.length) +
-                path.length) %
-              path.length;
+              (((direction * (ahead.station - record.station)) %
+                record.path.length) +
+                record.path.length) %
+              record.path.length;
             // A faster car queues behind a slower one, without lane swapping.
             const safeGap = Math.max(
               rules.minGap,
@@ -983,8 +1071,9 @@ export function createTraffic(
           }
         }
         record.station += direction * record.driveSpeed * dt;
-        if (record.station >= path.length) record.station -= path.length;
-        else if (record.station < 0) record.station += path.length;
+        if (record.station >= record.path.length)
+          record.station -= record.path.length;
+        else if (record.station < 0) record.station += record.path.length;
       }
       if (!record.enabled) continue;
       const oldDistanceSquared = horizontalDistanceSquared(
@@ -1017,7 +1106,7 @@ export function createTraffic(
       }
       if (!record.slot && distanceSquared <= ENTER * ENTER) {
         makeRoomFor(player, distanceSquared);
-        if (physicalCount < MAX_DRIVING) promote(record);
+        if (physicalCount < MAX_DRIVING) promote(record, player);
       }
       const slot = record.slot;
       if (!slot) continue;

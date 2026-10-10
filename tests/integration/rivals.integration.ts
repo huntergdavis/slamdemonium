@@ -187,7 +187,7 @@ it('keeps a visible wreck, then rejoins offscreen with a fresh encounter id', as
   const map = createTakedownMap();
   const road = map.path!;
   const atCar = poseAt(road, 140);
-  const near = { x: atCar.x, y: 1, z: atCar.z };
+  const near = { x: atCar.x + 20, y: 1, z: atCar.z };
   const traffic = createTraffic(world, bodies, road, [
     { station: 140, laneSide: -1, speed: 35, rival: true },
   ]);
@@ -370,7 +370,7 @@ it('keeps the solved car pose continuous when a lagging rival demotes', async ()
   const path = map.path!;
   const ahead = poseAt(path, 200);
   const behind = poseAt(path, 10);
-  const player = { x: ahead.x, y: 1, z: ahead.z };
+  const player = { x: ahead.x + 20, y: 1, z: ahead.z };
   const traffic = createTraffic(world, bodies, path, [
     { station: 200, laneSide: -1, speed: 35, rival: true },
   ]);

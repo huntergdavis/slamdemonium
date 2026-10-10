@@ -10,7 +10,7 @@ const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
 );
 const DT = 1 / 120;
-const PLAYER = { x: 3.5, y: 0.8, z: -170 };
+const PLAYER = { x: 30, y: 0.8, z: -170 };
 const HARD_HIT = {
   approachSpeed: 25,
   energy: 343750,
@@ -164,7 +164,7 @@ it('queues behind a thirteen-wreck pile even when the physical pool is full', as
       run.traffic.onPlayerContact(wreck.bodyId, HARD_HIT);
       run.world.setLinearVelocity(wreck.bodyId, { x: 0, y: 0, z: 0 });
     }
-    run.player.z = -390;
+    run.player.z = -385;
     run.step();
     expect(target.bodyId).toBe(-1);
     const thirteenth = cars[12]!;
