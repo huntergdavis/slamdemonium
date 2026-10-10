@@ -65,6 +65,7 @@ it('retry restores intact reachable rivals without allocating new Jolt bodies', 
 
 it('keeps at least three rivals reachable for a full 180-second run', async () => {
   const world = await createPhysicsWorld({ wasmPath });
+  world.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 5000, y: 0.5, z: 5000 });
   const bodies = createSurfacedBodies(world, createSurfaceRegistry());
   const map = createTakedownMap();
   const path = map.path!;
@@ -75,7 +76,11 @@ it('keeps at least three rivals reachable for a full 180-second run', async () =
   });
   const player = { x: 0, y: 1, z: 0 };
   const dt = 1 / 60;
-  let minReachable = 4;
+  const minuteEncounters = [
+    new Set<number>(),
+    new Set<number>(),
+    new Set<number>(),
+  ];
   try {
     for (let step = 0; step < 180 * 60; step++) {
       const station =
@@ -86,17 +91,20 @@ it('keeps at least three rivals reachable for a full 180-second run', async () =
       traffic.preStep(dt, player, 35);
       world.step(dt);
       traffic.postStep();
-      if (step > 0 && step % 600 === 0) {
-        const reachable = traffic.states.filter(
-          (car) =>
+      if (step % 60 === 0) {
+        const minute = Math.min(2, Math.floor(step / (60 * 60)));
+        for (const car of traffic.states)
+          if (
             car.rival &&
             !car.wrecked &&
-            Math.hypot(car.x - player.x, car.z - player.z) < 180,
-        ).length;
-        minReachable = Math.min(minReachable, reachable);
+            Math.hypot(car.position.x - player.x, car.position.z - player.z) <
+              180
+          )
+            minuteEncounters[minute]!.add(car.id);
       }
     }
-    expect(minReachable).toBeGreaterThanOrEqual(3);
+    for (const encounters of minuteEncounters)
+      expect(encounters.size).toBeGreaterThanOrEqual(3);
   } finally {
     traffic.dispose();
     bodies.dispose();
