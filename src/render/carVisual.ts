@@ -313,56 +313,6 @@ export function createCarVisual(scene: Scene) {
   heroLights.name = 'car.hero.lights';
   heroLights.visible = false;
   root.add(heroLights);
-  // At 8 px the source's 2,088 triangles cannot resolve. Three low-cost draws
-  // retain its long sports-sedan silhouette and four wheels; the two instanced
-  // lamp draws above remain visible in both LODs.
-  const far = new Group();
-  far.name = 'car.hero.far';
-  far.visible = false;
-  root.add(far);
-  const farPaint = material(
-    new MeshStandardMaterial({ color: 0xff6b24, roughness: 0.74 }),
-  );
-  const farRubber = material(
-    new MeshStandardMaterial({ color: 0x171b20, roughness: 0.96 }),
-  );
-  const farBody = mesh(
-    far,
-    'car.hero.far.body',
-    geometry(new BoxGeometry(G.width * 0.97, G.height * 0.52, G.length * 0.98)),
-    farPaint,
-  );
-  farBody.position.y = -G.height * 0.14;
-  const farCabin = mesh(
-    far,
-    'car.hero.far.cabin',
-    geometry(new BoxGeometry(G.width * 0.7, G.height * 0.42, G.length * 0.46)),
-    farPaint,
-  );
-  farCabin.position.set(0, G.height * 0.24, G.length * 0.035);
-  const farWheels = new InstancedMesh(
-    geometry(
-      new BoxGeometry(
-        G.wheelRadius * 0.52,
-        G.wheelRadius * 2,
-        G.wheelRadius * 2,
-      ),
-    ),
-    farRubber,
-    4,
-  );
-  farWheels.name = 'car.hero.far.wheels';
-  const farMatrix = new Matrix4();
-  for (let index = 0; index < 4; index++) {
-    farMatrix.makeTranslation(
-      index % 2 ? G.track / 2 : -G.track / 2,
-      -G.height * 0.48,
-      index < 2 ? -G.wheelbase / 2 : G.wheelbase / 2,
-    );
-    farWheels.setMatrixAt(index, farMatrix);
-  }
-  farWheels.instanceMatrix.needsUpdate = true;
-  far.add(farWheels);
   const headlights = new InstancedMesh(unitBox, noseMaterial, 2);
   headlights.name = 'car.hero.headlamps';
   const brakelights = new InstancedMesh(unitBox, tailMaterial, 2);
@@ -527,8 +477,7 @@ export function createCarVisual(scene: Scene) {
         wheel.stripe.visible = false;
       }
       heroLights.visible = true;
-      hero.setVisible(heroLod === 'near');
-      far.visible = heroLod === 'far';
+      hero.setLod(heroLod);
       // The model may load after a collision has already damaged the fallback.
       const current = { ...visibleCrush };
       Object.assign(visibleCrush, { front: -1, rear: -1, left: -1, right: -1 });
@@ -546,9 +495,6 @@ export function createCarVisual(scene: Scene) {
   function setPaint(paint: HeroPaint): void {
     heroPaint = paint;
     hero?.setPaint(paint);
-    farPaint.color.setHex(
-      paint === 'blue' ? 0x4194eb : paint === 'green' ? 0x57c07e : 0xff6b24,
-    );
   }
 
   function updateLod(
@@ -568,8 +514,7 @@ export function createCarVisual(scene: Scene) {
     const next = nextHeroLod(heroLod, pixels);
     if (next !== heroLod) {
       heroLod = next;
-      hero.setVisible(next === 'near');
-      far.visible = next === 'far';
+      hero.setLod(next);
     }
     return heroLod;
   }

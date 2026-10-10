@@ -58,10 +58,9 @@ describe('car visual contract', () => {
     expect(nextHeroLod('far', 8)).toBe('far');
     expect(nextHeroLod('far', 10.1)).toBe('near');
     const car = createCarVisual(new Scene());
-    const far = car.root.getObjectByName('car.hero.far')!;
     const lights = car.root.getObjectByName('car.hero.lights')!;
-    expect(far.visible).toBe(false);
-    expect(far.children).toHaveLength(3);
+    // Far geometry is part of the lazy hero asset, not the startup car bundle.
+    expect(car.root.getObjectByName('car.hero.far')).toBeUndefined();
     expect(lights.getObjectByName('car.hero.headlamps')).toBeTruthy();
     expect(lights.getObjectByName('car.hero.brakelamps')).toBeTruthy();
     car.dispose();
