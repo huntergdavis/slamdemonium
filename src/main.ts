@@ -22,7 +22,6 @@ import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
 import { HERO_SEDAN } from './vehicle/vehicleDefinition';
 import { ImpactTime } from './core/impactTime';
-import { DEFAULT_ENGINE } from './vehicle/engineProfile';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
