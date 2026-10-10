@@ -3,6 +3,8 @@ import {
   Box3,
   BufferGeometry,
   Color,
+  InstancedMesh,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   Quaternion,
@@ -173,6 +175,33 @@ describe('car visual contract', () => {
     state.handbrake01 = -1;
     car.update(state);
     expect(tail.material.color.getHex()).toBe(0x9f2838);
+    car.dispose();
+  });
+
+  it('keeps authored lamps on the shortened ends after a hard crush', () => {
+    const car = createCarVisual(new Scene());
+    const lights = car.root.getObjectByName('car.hero.lights')!;
+    expect(lights.children).toHaveLength(2); // One headlamp and one brake-lamp draw.
+    const front = car.root.getObjectByName(
+      'car.hero.headlamps',
+    ) as InstancedMesh;
+    const rear = car.root.getObjectByName(
+      'car.hero.brakelamps',
+    ) as InstancedMesh;
+    const matrix = new Matrix4();
+    front.getMatrixAt(0, matrix);
+    const frontZ = new Vector3().setFromMatrixPosition(matrix).z;
+    rear.getMatrixAt(1, matrix);
+    const rearZ = new Vector3().setFromMatrixPosition(matrix).z;
+    car.setCrush({ front: 1, rear: 1, left: 0, right: 0 });
+    front.getMatrixAt(0, matrix);
+    expect(
+      new Vector3().setFromMatrixPosition(matrix).z - frontZ,
+    ).toBeGreaterThan(0.9);
+    rear.getMatrixAt(1, matrix);
+    expect(
+      rearZ - new Vector3().setFromMatrixPosition(matrix).z,
+    ).toBeGreaterThan(0.6);
     car.dispose();
   });
 
