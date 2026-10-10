@@ -548,6 +548,7 @@ async function boot(): Promise<void> {
         playerView.speed = vehicle.telemetry.speed;
         if (playerWreckPending) {
           vehicle.loseBoostSection();
+          audio.onPlayerWreck();
           playerWreckPending = false;
         }
         const playerWreckRecoveryDue = playerDamage?.step(dt) ?? false;
@@ -556,14 +557,15 @@ async function boot(): Promise<void> {
           const victim = takedowns.update(dt, traffic?.newlyWrecked ?? []);
           for (let count = countBefore; count < takedowns.count; count++)
             vehicle.awardTakedown();
-          if (
-            victim &&
+          const focusVictim =
+            !!victim &&
             canFocusTakedown(
               victim,
               vehicle.telemetry.position,
               playerView.forward,
-            )
-          )
+            );
+          if (focusVictim) audio.onTakedown();
+          if (victim && focusVictim)
             takedownMoment?.start(victim.id, performance.now());
           else if (!victim && takedowns.lastObservedVictim) {
             const other = takedowns.lastObservedVictim;
@@ -1000,6 +1002,7 @@ async function boot(): Promise<void> {
     engine: HERO_SEDAN.engineProfile,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
+    readPresentationTimeScale: () => takedownMoment?.timeScale ?? 1,
     resolveGroundedSurface,
   });
   menuAudio = audio;
@@ -1009,6 +1012,8 @@ async function boot(): Promise<void> {
   resources.push(audio, controllerSupport, pauseMenu, options, hud, scripts);
   const impactNormal: V3 = { x: 0, y: 0, z: 0 };
   const relativeImpactVelocity: V3 = { x: 0, y: 0, z: 0 };
+  const otherContactVelocityA: V3 = { x: 0, y: 0, z: 0 };
+  const otherContactVelocityB: V3 = { x: 0, y: 0, z: 0 };
   const impact = createImpactSeverity();
   let landingsSeen = vehicle.telemetry.landingCount;
   const impactFeedback = new ImpactFeedback({
@@ -1023,10 +1028,30 @@ async function boot(): Promise<void> {
   // speed against a static obstacle; the record says it is estimated.
   physics.onContact((a, b, impulse, point, normal, readVelocities) => {
     if (a !== vehicle.body && b !== vehicle.body) {
-      takedowns?.noteCarContact(
-        traffic?.stateForBody(a),
-        traffic?.stateForBody(b),
-      );
+      const carA = traffic?.stateForBody(a);
+      const carB = traffic?.stateForBody(b);
+      if (carA || carB) {
+        readVelocities(otherContactVelocityA, otherContactVelocityB);
+        const dx = otherContactVelocityA.x - otherContactVelocityB.x;
+        const dy = otherContactVelocityA.y - otherContactVelocityB.y;
+        const dz = otherContactVelocityA.z - otherContactVelocityB.z;
+        const normalSpeed = dx * normal.x + dy * normal.y + dz * normal.z;
+        audio.onCrashContact(
+          a,
+          b,
+          Math.max(0, normalSpeed),
+          Math.sqrt(
+            Math.max(
+              0,
+              dx * dx + dy * dy + dz * dz - normalSpeed * normalSpeed,
+            ),
+          ),
+          point,
+          2,
+          false,
+        );
+      }
+      takedowns?.noteCarContact(carA, carB);
       traffic?.onWorldContact(a, b, normal, readVelocities);
       return;
     }
@@ -1082,11 +1107,38 @@ async function boot(): Promise<void> {
     // Touching the static world ends a flight; a prop or debris does not.
     if (surfaceRegistry.has(otherBody))
       vehicle.noteChassisContact(impactNormal);
+    const profile =
+      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null;
+    const crashKind: 0 | 1 | null = trafficVelocity
+      ? 0
+      : profile === 'concrete' ||
+          (!surfaceRegistry.has(otherBody) && impact.approachSpeed >= 4)
+        ? 1
+        : null;
+    if (crashKind !== null) {
+      const normalSpeed =
+        severityVelocity.x * impactNormal.x +
+        severityVelocity.y * impactNormal.y +
+        severityVelocity.z * impactNormal.z;
+      const speedSquared =
+        severityVelocity.x ** 2 +
+        severityVelocity.y ** 2 +
+        severityVelocity.z ** 2;
+      audio.onCrashContact(
+        vehicle.body,
+        otherBody,
+        impact.approachSpeed,
+        Math.sqrt(Math.max(0, speedSquared - normalSpeed * normalSpeed)),
+        point,
+        crashKind,
+        !!trafficVelocity && Math.abs(impactNormal.y) < 0.55,
+      );
+    }
     // This callback runs inside physics.step: consumers only queue fixed
     // scalars here. Audio output runs after simulation in update().
     impactFeedback.onContact(
       otherBody,
-      surfaceResolver.resolveContactSurface(otherBody)?.audioProfile ?? null,
+      crashKind === null ? profile : null,
       impact,
     );
   });

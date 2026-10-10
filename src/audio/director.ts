@@ -2,6 +2,7 @@ import type { ImpactSeverity } from '../core/impactSeverity';
 import type { EngineProfile } from '../vehicle/engineProfile';
 import type { TuningStore } from '../tuning/store';
 import { AudioSettings } from './settings';
+import { CrashEvents } from './crashEvents';
 import type {
   AudioMix,
   AudioOutput,
@@ -34,6 +35,8 @@ export interface AudioDirectorOptions {
   engine: EngineProfile;
   readTelemetry: () => Readonly<AudioTelemetry>;
   readPaused: () => boolean;
+  /** The takedown camera's presentation scale, separate from tuning timeScale. */
+  readPresentationTimeScale?: () => number;
   /** F0's nonthrowing canonical resolver; unavailable surfaces remain silent. */
   resolveGroundedSurface: (
     grounded: boolean,
@@ -64,6 +67,7 @@ export class AudioDirector {
     volume: 0,
   };
   private readonly tyreTargets = new Float64Array(3);
+  private readonly crash = new CrashEvents();
   private readonly impactGains = new Float64Array(QUEUE_SIZE);
   private readonly impactProfiles = new Uint8Array(QUEUE_SIZE);
   private readonly pairIds = new Float64Array(PAIR_SLOTS).fill(-1);
@@ -107,6 +111,7 @@ export class AudioDirector {
   afterStep(dtSeconds: number): void {
     if (this.disposed) return;
     this.simulationTime += positive(dtSeconds);
+    this.crash.afterStep(dtSeconds);
     const telemetry = this.deps.readTelemetry();
     this.throttle = clamp01(telemetry.throttle);
     this.boost = clamp01(telemetry.boostEnvelope);
@@ -202,6 +207,43 @@ export class AudioDirector {
     this.queued++;
   }
 
+  /** Scalar-only physics seam for player, traffic and roadside contacts. */
+  onCrashContact(
+    a: number,
+    b: number,
+    closing: number,
+    tangent: number,
+    point: Readonly<{ x: number; z: number }>,
+    kind: 0 | 1 | 2,
+    glassEligible: boolean,
+  ): void {
+    if (this.disposed || !this.canEmit()) return;
+    if (kind === 2) {
+      const player = this.deps.readTelemetry().position;
+      if (player && Math.hypot(point.x - player.x, point.z - player.z) > 180)
+        return;
+    }
+    if (
+      !this.crash.noteContact(
+        a,
+        b,
+        closing,
+        tangent,
+        point.x,
+        point.z,
+        kind,
+        glassEligible,
+      )
+    )
+      this.mutableState.droppedImpacts++;
+  }
+  onTakedown(): void {
+    if (!this.disposed && this.canEmit()) this.crash.noteTakedown();
+  }
+  onPlayerWreck(): void {
+    if (!this.disposed && this.canEmit()) this.crash.notePlayerWreck();
+  }
+
   update(nowMs: number): void {
     if (this.disposed) return;
     const dt = Number.isFinite(this.lastUpdate)
@@ -215,6 +257,7 @@ export class AudioDirector {
       if (!this.paused) this.deps.output.pause(30);
       this.paused = true;
       this.discardEvents();
+      this.crash.reset();
       this.mix.engineIdle = this.mix.engineLoad = this.mix.boost = 0;
       this.mix.tyres.fill(0);
       return;
@@ -225,9 +268,16 @@ export class AudioDirector {
     mix.engineCharacter = this.deps.tuning.get('engineCharacter');
     const targetRate = Math.max(
       0.5,
-      Math.min(Math.SQRT2, Math.sqrt(this.deps.tuning.get('timeScale'))),
+      Math.min(
+        Math.SQRT2,
+        Math.sqrt(
+          this.deps.tuning.get('timeScale') *
+            (this.deps.readPresentationTimeScale?.() ?? 1),
+        ),
+      ),
     );
     mix.rate = approach(mix.rate, targetRate, dt, 0.1, 0.1);
+    mix.duck = this.crash.duck(dt);
     // Rpm and gear are shared derived state from the vehicle's rpm model
     // (design 6.7.1: one physical gear; the virtual gearbox is presentation).
     // Audio only reads them and adds the shift cut and boost load.
@@ -275,6 +325,25 @@ export class AudioDirector {
           mix.rate,
         );
     }
+    const telemetry = this.deps.readTelemetry();
+    const rotation = telemetry.rotation;
+    const forwardX = rotation
+      ? -2 * (rotation.x * rotation.z + rotation.y * rotation.w)
+      : 0;
+    const forwardZ = rotation
+      ? -(1 - 2 * (rotation.x * rotation.x + rotation.y * rotation.y))
+      : -1;
+    this.crash.flush(
+      this.deps.output,
+      mix.volume,
+      mix.rate,
+      dt,
+      telemetry.position?.x ?? 0,
+      telemetry.position?.z ?? 0,
+      -forwardZ,
+      forwardX,
+      this.canEmit(),
+    );
     // Locked, muted, zero-volume and paused events are never replayed later.
     this.discardEvents();
   }
@@ -291,6 +360,7 @@ export class AudioDirector {
     this.deps.output.setMasterMuted(muted);
     this.discardEvents();
     if (muted) this.deps.output.reset();
+    if (muted) this.crash.reset();
   }
   toggleMasterMute(): void {
     this.setMasterMuted(!this.mutableState.masterMuted);
@@ -298,6 +368,7 @@ export class AudioDirector {
 
   reset(): void {
     this.discardEvents();
+    this.crash.reset();
     this.pairIds.fill(-1);
     this.pairTimes.fill(-Infinity);
     this.pairCursor = 0;
@@ -314,6 +385,7 @@ export class AudioDirector {
     if (this.disposed) return;
     this.disposed = true;
     this.discardEvents();
+    this.crash.reset();
     this.deps.output.dispose();
   }
   private canEmit(): boolean {

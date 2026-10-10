@@ -136,7 +136,12 @@ test('controller-only play visibly explains locked sound; only a real click or k
     .toBe('ready');
   await expect(page.locator('.sl-audio-unlock')).toBeHidden();
   await expect.poll(() => rms(page)).toBeGreaterThan(0.0001);
-  expect(decodedFiles.size).toBe(6); // No engine sample: the engine is a worklet voice.
+  // Six existing clips plus twelve core crash clips; the two hard-hit variants
+  // stay unloaded until an actual hard contact.
+  expect(decodedFiles.size).toBe(18);
+  expect(
+    [...decodedFiles].some((url) => /crash-hard-alt|crash-wall-tail/.test(url)),
+  ).toBe(false);
   expect((await state(page)).output.peakVoices).toBeLessThanOrEqual(15);
   await cdp.detach();
 });
