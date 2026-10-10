@@ -1071,10 +1071,12 @@ async function boot(): Promise<void> {
     onToggleAudioMute: () => menuAudio?.toggleMasterMute(),
     maps: {
       current: mapName,
-      entries: Object.entries(MAPS).map(([name, entry]) => ({
-        name,
-        label: entry.label,
-      })),
+      entries: Object.entries(MAPS)
+        .filter(
+          ([name]) =>
+            !name.startsWith('grand-prix-') || name === 'grand-prix-city',
+        )
+        .map(([name, entry]) => ({ name, label: entry.label })),
       onSelect(name) {
         if (name === mapName) {
           pauseMenu.setOpen(false);
