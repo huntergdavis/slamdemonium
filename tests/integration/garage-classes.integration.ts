@@ -37,7 +37,10 @@ it('measures each garage car launch and full-lock turn on real Jolt', async () =
         loop.stepMany(1);
         if (to30 < 0 && vehicle.telemetry.speed >= 30) to30 = step / HZ;
       }
-      expect(to30, `${id} reaches 30 m/s`).toBeGreaterThan(0);
+      expect(
+        to30,
+        `${id} reaches 30 m/s (8 s speed ${vehicle.telemetry.speed.toFixed(1)})`,
+      ).toBeGreaterThan(0);
       const turnRadius = (entrySpeed: number) => {
         vehicle.respawn({ x: 130, y: 1, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
         world.setLinearVelocity(vehicle.body, {
@@ -78,6 +81,8 @@ it('measures each garage car launch and full-lock turn on real Jolt', async () =
   expect(measurements.pickup!.turn14).toBeGreaterThan(
     measurements.sports!.turn14,
   );
+  expect(measurements.suv!.turn14).toBeGreaterThan(measurements.pickup!.turn14);
+  expect(measurements.bus!.turn14).toBeGreaterThan(measurements.suv!.turn14);
 });
 
 it.each(GARAGE_CLASS_IDS)(
@@ -102,7 +107,22 @@ it.each(GARAGE_CLASS_IDS)(
           wallContacts++;
       });
       setPad(neutral);
-      vehicle.respawn({ x: 133, y: 1, z: 0 }, { x: 0, y: 0, z: 0, w: 1 });
+      const wallStartX =
+        133 -
+        Math.max(
+          0,
+          (GARAGE_CLASSES[id].geometry.width -
+            GARAGE_CLASSES.sports.geometry.width) /
+            2,
+        );
+      vehicle.respawn(
+        {
+          x: wallStartX,
+          y: GARAGE_CLASSES[id].geometry.height / 2 + 0.35,
+          z: 0,
+        },
+        { x: 0, y: 0, z: 0, w: 1 },
+      );
       world.setLinearVelocity(vehicle.body, { x: 16, y: 0, z: 0 });
       let maxX = -Infinity;
       let lowestLateralSpeed = Infinity;
@@ -127,7 +147,10 @@ it.each(GARAGE_CLASS_IDS)(
           z: sign * normal.z,
         });
       });
-      vehicle.respawn({ x: 130, y: 0.6, z: 0 }, { x: 0, y: 0, z: 1, w: 0 });
+      vehicle.respawn(
+        { x: 130, y: GARAGE_CLASSES[id].geometry.height / 2 + 0.1, z: 0 },
+        { x: 0, y: 0, z: 1, w: 0 },
+      );
       let rightedAt = -1;
       for (let step = 0; step < 4 * HZ; step++) {
         loop.stepMany(1);
@@ -196,6 +219,8 @@ it('holds distinct normal and boosted ceilings on a real flat road', async () =>
     sports: [60, 85],
     super: [65, 87],
     pickup: [45, 60],
+    suv: [43, 57],
+    bus: [38, 52],
   };
   const speeds: Record<string, { normal: number; boosted: number }> = {};
   for (const id of GARAGE_CLASS_IDS) {

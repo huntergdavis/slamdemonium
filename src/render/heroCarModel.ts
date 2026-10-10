@@ -2,6 +2,7 @@ import {
   BoxGeometry,
   BufferGeometry,
   CanvasTexture,
+  Float32BufferAttribute,
   Group,
   InstancedMesh,
   Matrix4,
@@ -16,7 +17,11 @@ import sedanUrl from '../../assets/cars/kenney-car-kit-3.1/sedan-sports-embedded
 import { VEHICLE_GEOMETRY as G } from '../vehicle/constants';
 import type { HeroPaint } from '../vehicle/vehicleDefinition';
 import type { GarageClassId } from '../vehicle/garageClasses';
-import { farCabinProfile, garageSilhouettePoint } from './garageSilhouette';
+import {
+  farCabinProfile,
+  garageSilhouettePoint,
+  heavyCabinProfile,
+} from './garageSilhouette';
 
 type DeformMesh = {
   geometry: BufferGeometry;
@@ -216,6 +221,120 @@ export async function mountHeroCarModel(
     });
   }
 
+  // One painted cab mesh per heavy class. Vertex colours put the windows in
+  // the same draw as the roof, and the shared crush pass folds both together.
+  const heavyCabin = heavyCabinProfile(classId);
+  const heavyCabMaterial = heavyCabin
+    ? new MeshStandardMaterial({
+        color: 0xff6b24,
+        vertexColors: true,
+        roughness: 0.72,
+      })
+    : undefined;
+  if (heavyCabMaterial) {
+    ownedMaterials.add(heavyCabMaterial);
+    const { width, height, length, centerY, centerZ } = heavyCabin!;
+    const pieces: BoxGeometry[] = [];
+    const piece = (
+      w: number,
+      h: number,
+      l: number,
+      x: number,
+      y: number,
+      z: number,
+      color: readonly [number, number, number],
+    ) => {
+      const shape = new BoxGeometry(w, h, l, 2, 2, 4);
+      shape.translate(x, y, z);
+      const count = shape.getAttribute('position').count;
+      const colors = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        colors[i * 3] = color[0];
+        colors[i * 3 + 1] = color[1];
+        colors[i * 3 + 2] = color[2];
+      }
+      shape.setAttribute('color', new Float32BufferAttribute(colors, 3));
+      pieces.push(shape);
+    };
+    piece(width, height, length, 0, centerY, centerZ, [1, 1, 1]);
+    const dark = [0.13, 0.2, 0.25] as const;
+    for (const side of [-1, 1])
+      piece(
+        0.025,
+        height * 0.28,
+        length * 0.82,
+        side * width * 0.505,
+        centerY + height * 0.15,
+        centerZ,
+        dark,
+      );
+    piece(
+      width * 0.76,
+      height * 0.27,
+      0.025,
+      0,
+      centerY + height * 0.15,
+      centerZ - length * 0.505,
+      dark,
+    );
+    piece(
+      width * 0.76,
+      height * (classId === 'bus' ? 0.32 : 0.3),
+      0.025,
+      0,
+      centerY + height * 0.13,
+      centerZ + length * 0.505,
+      dark,
+    );
+    if (classId === 'suv') {
+      for (const side of [-1, 1])
+        piece(
+          0.045,
+          0.055,
+          length * 0.78,
+          side * width * 0.36,
+          centerY + height * 0.53,
+          centerZ,
+          dark,
+        );
+    } else {
+      const vent = [0.55, 0.63, 0.68] as const;
+      for (const station of [-0.22, 0.22])
+        piece(
+          width * 0.54,
+          0.1,
+          length * 0.2,
+          0,
+          centerY + height * 0.55,
+          centerZ + length * station,
+          vent,
+        );
+    }
+    for (const side of [-1, 1])
+      piece(
+        0.045,
+        height * 0.18,
+        length * 0.16,
+        side * width * 0.51,
+        centerY - height * 0.36,
+        centerZ + length * 0.34,
+        dark,
+      );
+    const cab = mergeGeometries(pieces, false);
+    for (const shape of pieces) shape.dispose();
+    if (!cab) throw new Error('Heavy cab geometry unavailable');
+    ownedGeometries.add(cab);
+    const mesh = new Mesh(cab, heavyCabMaterial);
+    mesh.name = `car.hero.${classId}.cab`;
+    mesh.castShadow = true;
+    root.add(mesh);
+    mounted.push(mesh);
+    deformMeshes.push({
+      geometry: cab,
+      pristine: new Float32Array(cab.getAttribute('position').array),
+    });
+  }
+
   for (let i = 0; i < WHEEL_NODES.length; i++) {
     const part = namedMesh(source, WHEEL_NODES[i]!);
     const shape = part.geometry.clone();
@@ -303,6 +422,9 @@ export async function mountHeroCarModel(
     setPaint(paint) {
       shellMaterial.map = maps[paint];
       bedMaterial?.color.setHex(
+        paint === 'blue' ? 0x4194eb : paint === 'green' ? 0x57c07e : 0xff6b24,
+      );
+      heavyCabMaterial?.color.setHex(
         paint === 'blue' ? 0x4194eb : paint === 'green' ? 0x57c07e : 0xff6b24,
       );
       farPaint.color.setHex(

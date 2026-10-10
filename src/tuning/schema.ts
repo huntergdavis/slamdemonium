@@ -185,7 +185,7 @@ const definitions = [
     unit: 'kg',
     default: 1300.0,
     min: 500.0,
-    max: 4000.0,
+    max: 8000.0,
     step: 10.0,
     needsRebuild: true,
     help: 'Inertia. Scales forces, so acceleration stays as set; mass mostly changes crash behavior and feel of turning.',

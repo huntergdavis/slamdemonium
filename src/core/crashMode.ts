@@ -6,6 +6,9 @@ export const CRASH_PICKUP_BEST_KEY = `${CRASH_BEST_KEY}.pickup`;
 export const CRASH_MEDALS = [2000, 4000, 8000] as const;
 export const CRASH_CHAIN_SECONDS = 3;
 export const CRASH_SETTLE_SECONDS = 2;
+export const CRASH_SLOW_FINISH_SECONDS = 3;
+export const CRASH_SLOW_SPEED = 3;
+export const CRASH_MAX_RUN_SECONDS = 20;
 export const CRASH_WALL_CAP_SECONDS = 15;
 export const CRASH_COUNTDOWN_SECONDS = 3;
 export type CrashPhase = 'countdown' | 'running' | 'settling' | 'finished';
@@ -66,6 +69,7 @@ export class CrashMode {
   private readonly seenProps = new Set<number>();
   private seconds = 0;
   private quietSeconds = 0;
+  private slowSeconds = 0;
   private wallSinceWreck = 0;
 
   constructor(
@@ -82,7 +86,7 @@ export class CrashMode {
     }
   }
 
-  step(dt: number, impactActive = false): void {
+  step(dt: number, impactActive = false, playerSpeed = Infinity): void {
     const elapsed = Number.isFinite(dt) ? Math.max(0, dt) : 0;
     this.state.changed = false;
     if (this.state.phase === 'countdown') {
@@ -99,6 +103,17 @@ export class CrashMode {
     if (this.state.phase === 'settling' && !impactActive) {
       this.quietSeconds += elapsed;
       if (this.quietSeconds >= CRASH_SETTLE_SECONDS) this.finish();
+    }
+    if (this.state.phase === 'running') {
+      this.slowSeconds =
+        this.state.wrecks > 0 && playerSpeed < CRASH_SLOW_SPEED
+          ? this.slowSeconds + elapsed
+          : 0;
+      if (
+        this.seconds >= CRASH_MAX_RUN_SECONDS ||
+        (this.state.wrecks > 0 && this.slowSeconds >= CRASH_SLOW_FINISH_SECONDS)
+      )
+        this.finish();
     }
     for (const [id, until] of this.influencedUntil)
       if (until < this.seconds) this.influencedUntil.delete(id);
@@ -176,6 +191,7 @@ export class CrashMode {
     if (this.state.phase !== 'running') return;
     this.state.phase = 'settling';
     this.quietSeconds = 0;
+    this.slowSeconds = 0;
     this.wallSinceWreck = 0;
     this.state.changed = true;
   }
@@ -188,6 +204,7 @@ export class CrashMode {
     this.awards.length = 0;
     this.seconds = 0;
     this.quietSeconds = 0;
+    this.slowSeconds = 0;
     this.wallSinceWreck = 0;
     this.state.phase = 'countdown';
     this.state.countdown = CRASH_COUNTDOWN_SECONDS;

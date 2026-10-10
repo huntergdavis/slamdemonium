@@ -14,12 +14,11 @@ import {
 const DT = 1 / 120;
 
 it.each(['south', 'west'] as const)(
-  'naturally launches Sports and pickup into a live twelve-car %s crossing',
+  'naturally launches Sports and three heavyweights into the %s crossing',
   async (approach) => {
     const map = createCrashJunctionMap(approach);
     const results: Record<string, unknown> = {};
-    const wreckCounts: number[] = [];
-    for (const id of ['sports', 'pickup'] as const) {
+    for (const id of ['sports', 'pickup', 'suv', 'bus'] as const) {
       const rig = await scriptVehicleHarness({
         flatPlane: true,
         garageClass: GARAGE_CLASSES[id],
@@ -110,18 +109,17 @@ it.each(['south', 'west'] as const)(
           `${id} reaches live crossing traffic`,
         ).not.toBeNull();
         expect(ambientWrecks, `${id} sees an intact crossing`).toBe(0);
-        expect(wrecks, `${id} grows a multi-car crash`).toBeGreaterThanOrEqual(
-          2,
+        expect(wrecks, `${id} grows a physical crash`).toBeGreaterThanOrEqual(
+          id === 'sports' || id === 'pickup' ? 2 : 1,
         );
         expect(vehicle.telemetry.recoveryCount).toBe(0);
-        wreckCounts.push(wrecks);
       } finally {
         traffic.dispose();
         rig.dispose();
       }
     }
-    expect(wreckCounts).toHaveLength(2);
-    console.log(`PICKUP_CRASH_${approach} ${JSON.stringify(results)}`);
+    expect(Object.keys(results)).toHaveLength(4);
+    console.log(`HEAVY_CRASH_${approach} ${JSON.stringify(results)}`);
   },
-  60_000,
+  90_000,
 );

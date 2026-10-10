@@ -747,7 +747,11 @@ async function boot(): Promise<void> {
           }
         }
         breakableProps.update(dt);
-        crashMode?.step(dt, impactTime?.active ?? false);
+        crashMode?.step(
+          dt,
+          impactTime?.active ?? false,
+          vehicle.telemetry.speed,
+        );
         {
           const entered = boostPads.update(
             vehicle.telemetry.position.x,

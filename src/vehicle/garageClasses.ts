@@ -7,7 +7,14 @@ import {
 import type { ParamPatch } from '../tuning/schema';
 
 export type GarageClassId =
-  'compact' | 'muscle' | 'coupe' | 'sports' | 'super' | 'pickup';
+  | 'compact'
+  | 'muscle'
+  | 'coupe'
+  | 'sports'
+  | 'super'
+  | 'pickup'
+  | 'suv'
+  | 'bus';
 export const GARAGE_STORAGE_KEY = 'slamdemonium.garageClass.v1';
 
 export interface GarageClass {
@@ -78,6 +85,36 @@ const PICKUP_ENGINE: EngineProfile = {
   mufflerSeconds: 0.0038,
   mufflerFeedback: 0.41,
   mufflerLossHz: 880,
+};
+
+const SUV_ENGINE: EngineProfile = {
+  ...DEFAULT_ENGINE,
+  idleRpm: 690,
+  redlineRpm: 5650,
+  boostRpm: 6700,
+  firingStrength: [1, 0.88, 0.93, 0.79],
+  firingGap: [1.04, 0.96, 1.12, 0.88],
+  pipeSeconds: 0.013,
+  pipeFeedback: 0.61,
+  pipeLossHz: 1300,
+  mufflerSeconds: 0.0043,
+  mufflerFeedback: 0.44,
+  mufflerLossHz: 740,
+};
+
+const BUS_ENGINE: EngineProfile = {
+  ...DEFAULT_ENGINE,
+  idleRpm: 600,
+  redlineRpm: 4800,
+  boostRpm: 5900,
+  firingStrength: [1, 0.91, 0.82, 0.95],
+  firingGap: [1.16, 0.84, 1.08, 0.92],
+  pipeSeconds: 0.017,
+  pipeFeedback: 0.68,
+  pipeLossHz: 990,
+  mufflerSeconds: 0.0052,
+  mufflerFeedback: 0.51,
+  mufflerLossHz: 610,
 };
 
 function scaledGeometry(
@@ -188,6 +225,40 @@ export const GARAGE_CLASSES: Readonly<Record<GarageClassId, GarageClass>> = {
     },
     engineProfile: PICKUP_ENGINE,
   },
+  suv: {
+    id: 'suv',
+    label: 'SUV · Crash only',
+    trait: 'Wide second hit · heavy turn · 43 m/s cruise',
+    geometry: scaledGeometry(2.72, 1.82, 6.35),
+    tuning: {
+      mass: 3400,
+      accel0: 11,
+      topSpeed: 43,
+      boostTopSpeedAdd: 14,
+      steerMaxLowSpeed: 28.5,
+      steerMaxTopSpeed: 3.2,
+      camDistance: 9.5,
+      camHeight: 3.3,
+    },
+    engineProfile: SUV_ENGINE,
+  },
+  bus: {
+    id: 'bus',
+    label: 'Bus · Crash only',
+    trait: 'Blocks a lane · broadest sweep · 38 m/s cruise',
+    geometry: scaledGeometry(3.08, 2.52, 8.55),
+    tuning: {
+      mass: 6200,
+      accel0: 10.5,
+      topSpeed: 38,
+      boostTopSpeedAdd: 14,
+      steerMaxLowSpeed: 26,
+      steerMaxTopSpeed: 2.7,
+      camDistance: 12,
+      camHeight: 4.4,
+    },
+    engineProfile: BUS_ENGINE,
+  },
 };
 
 export const RACE_GARAGE_CLASS_IDS: readonly GarageClassId[] = [
@@ -200,6 +271,8 @@ export const RACE_GARAGE_CLASS_IDS: readonly GarageClassId[] = [
 export const GARAGE_CLASS_IDS: readonly GarageClassId[] = [
   ...RACE_GARAGE_CLASS_IDS,
   'pickup',
+  'suv',
+  'bus',
 ];
 
 export function garageClassAllowedOnMap(
@@ -207,7 +280,9 @@ export function garageClassAllowedOnMap(
   mapName: string,
 ): boolean {
   return (
-    id !== 'pickup' || mapName === 'crash-south' || mapName === 'crash-west'
+    (id !== 'pickup' && id !== 'suv' && id !== 'bus') ||
+    mapName === 'crash-south' ||
+    mapName === 'crash-west'
   );
 }
 
