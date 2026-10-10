@@ -1377,6 +1377,64 @@ export function createTraffic(
     return slotByBodyId.get(bodyId)?.record?.state.velocity;
   }
 
+  /** Restart an event without recreating pooled Jolt bodies. A retired
+   * encounter gets a new id so contact/near-miss history cannot leak into the
+   * next run, even if the same authored rival starts in the same lane. */
+  function resetForEvent(): void {
+    for (const record of authored) {
+      demote(record);
+      record.station = record.authored.station;
+      record.state.id = nextEncounterId++;
+      record.state.bodyId = -1;
+      record.state.speed = record.authored.speed;
+      record.state.wrecked = false;
+      record.state.crush.front = 0;
+      record.state.crush.rear = 0;
+      record.state.crush.left = 0;
+      record.state.crush.right = 0;
+      record.wrecked = false;
+      record.wreckAge = 0;
+      record.driveSpeed = record.authored.speed;
+      record.attackOffset = 0;
+      record.obstacle = null;
+      record.obstacleClearance = Infinity;
+      record.obstacleLate = false;
+      record.threatened = false;
+      record.crashPending = false;
+      record.crashClosingSpeed = 0;
+      record.crashBleedRemaining = 0;
+      record.shapeDirty = false;
+      record.contactGap = Infinity;
+      record.slamSides = 0;
+      record.scrapeSides = 0;
+      record.leader = null;
+      record.enabled = true;
+      updateVisualPose(record);
+    }
+    wreckRecords.length = 0;
+    nearbyWrecks.length = 0;
+    newlyWrecked.length = 0;
+    visualStates.length = 0;
+    rivalTargets.length = 0;
+    hadNearbyWrecks = false;
+    physicalCount = 0;
+    activeCount = authored.length;
+    playerStation = 0;
+    stationRefresh = 0.2;
+    rivalSeconds = 0;
+    rivalDriveSeconds = 0;
+    rivalryStarted = false;
+    attackWindowIndex = -1;
+    attackCarId = 0;
+    // Force following gaps to be rebuilt at authored stations, even when the
+    // density sliders retain exactly the same values as the previous run.
+    if (rules) {
+      const current = rules;
+      rules = undefined;
+      setRules(current);
+    }
+  }
+
   if (initialRules) setRules(initialRules);
 
   return {
@@ -1420,6 +1478,7 @@ export function createTraffic(
       return activeCount;
     },
     setRules,
+    resetForEvent,
     preStep,
     postStep,
     onPlayerContact,
