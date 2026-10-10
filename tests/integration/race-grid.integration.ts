@@ -11,15 +11,12 @@ const wasmPath = createRequire(import.meta.url).resolve(
   'jolt-physics/jolt-physics.wasm.wasm',
 );
 
-it('holds a physical six-car grid, releases at GO and restores it on retry', async () => {
+it('holds a physical six-car grid, runs a clean first lap through live traffic and retries', async () => {
   const world = await createPhysicsWorld({ wasmPath });
   world.setGravity(20);
   const map = MAPS['circuit-race'];
   const spawn = map.spawn!;
-  world.createStaticBox(
-    { x: spawn.x, y: -0.5, z: spawn.z },
-    { x: 300, y: 0.5, z: 300 },
-  );
+  world.createStaticBox({ x: 0, y: -0.5, z: 0 }, { x: 3200, y: 0.5, z: 3200 });
   const player = world.createStaticBox(
     { x: spawn.x, y: 0.65, z: spawn.z },
     { x: 1.08, y: 0.65, z: 2.4 },
@@ -52,18 +49,29 @@ it('holds a physical six-car grid, releases at GO and restores it on retry', asy
     expect(traffic.raceStates.every((car) => car.speed < 1)).toBe(true);
     expect(gridContacts).toBe(0);
 
+    world.destroyBody(player);
     traffic.setRaceRunning(true);
-    for (let step = 0; step < 1_200; step++) {
+    const lapSteps = Math.ceil((map.path!.length * 120) / 50);
+    let physicalSamples = 0;
+    let firstWreck: string | undefined;
+    for (let step = 0; step < lapSteps; step++) {
       const along = poseAt(
         map.path!,
-        map.path!.length - 50 + (step * 35) / 120,
+        map.path!.length - 65 + (step * 50) / 120,
       );
       playerPose.x = along.x;
       playerPose.z = along.z;
-      traffic.preStep(1 / 120, playerPose, 35);
+      traffic.preStep(1 / 120, playerPose, 50);
       world.step(1 / 120);
       traffic.postStep();
+      if (step % 120 === 0 && traffic.raceStates.every((car) => car.bodyId > 0))
+        physicalSamples++;
+      const wreck = traffic.raceStates.find((car) => car.wrecked);
+      if (wreck && !firstWreck)
+        firstWreck = `racer ${wreck.id} at ${((step * 50) / 120).toFixed(1)} m`;
     }
+    expect(firstWreck).toBeUndefined();
+    expect(physicalSamples).toBeGreaterThan(100);
     expect(traffic.raceStates.some((car) => car.speed > 15)).toBe(true);
     expect(traffic.raceStates.every((car) => !car.wrecked)).toBe(true);
     traffic.resetRaceGrid();
@@ -81,4 +89,4 @@ it('holds a physical six-car grid, releases at GO and restores it on retry', asy
     bodies.dispose();
     world.dispose();
   }
-}, 60_000);
+}, 120_000);

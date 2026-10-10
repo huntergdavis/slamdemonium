@@ -1082,8 +1082,10 @@ export function createTraffic(
         nextScratch,
       );
       const nextHeading = Math.atan2(-(next.x - pose.x), -(next.z - pose.z));
-      const lateralCorrectionCap = state.rival && rivalryStarted ? 6 : 3;
-      const laneFollowGain = state.rival && rivalryStarted ? 2 : 0.7;
+      const activeRivalSteering =
+        state.raceEntrant || (state.rival && rivalryStarted);
+      const lateralCorrectionCap = activeRivalSteering ? 6 : 3;
+      const laneFollowGain = activeRivalSteering ? 2 : 0.7;
       const desiredX =
         -Math.sin(nextHeading) * record.driveSpeed +
         Math.max(
