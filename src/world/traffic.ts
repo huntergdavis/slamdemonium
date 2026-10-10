@@ -141,6 +141,9 @@ const WRECK_PLANNED_BRAKE = 4;
 const WRECK_STOP_MARGIN = 12;
 const RACE_TRAFFIC_LOOKAHEAD = 150;
 const RACE_TRAFFIC_BRAKE = 8;
+const RACE_CORNER_LOOKAHEAD = 100;
+const RACE_CORNER_SAMPLE = 20;
+const RACE_CORNER_LATERAL_ACCEL = 9.5;
 const PROMOTION_CLEARANCE = 2;
 const BODY_MASS = 1100;
 /** Every kind weighs the same in v1; per-kind mass waits for crumple. */
@@ -325,6 +328,8 @@ export function createTraffic(
   const angular: V3 = { x: 0, y: 0, z: 0 };
   const routeScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
   const nextScratch: MutableRoadPose = { x: 0, z: 0, heading: 0 };
+  const cornerScratchA: MutableRoadPose = { x: 0, z: 0, heading: 0 };
+  const cornerScratchB: MutableRoadPose = { x: 0, z: 0, heading: 0 };
 
   for (let i = 0; i < POOL_SIZE; i++) {
     const bodyId = bodies.createPooledBox({
@@ -490,6 +495,31 @@ export function createTraffic(
       record.authored.laneOffset ??
       record.state.laneSide * 3.5;
     let limit = desiredSpeed;
+    // A fast rival can outrun its lane follower through the R200 chicane.
+    // Preview each bend and shed speed before reaching it, rather than
+    // waiting for the turn to throw the chassis toward roadside props.
+    for (
+      let distance = 0;
+      distance < RACE_CORNER_LOOKAHEAD;
+      distance += RACE_CORNER_SAMPLE
+    ) {
+      const a = routePose(record, record.station + distance, cornerScratchA);
+      const b = routePose(
+        record,
+        record.station + distance + RACE_CORNER_SAMPLE,
+        cornerScratchB,
+      );
+      const curvature =
+        Math.abs(wrapAngle(b.heading - a.heading)) / RACE_CORNER_SAMPLE;
+      if (curvature < 0.0001) continue;
+      const cornerSpeed = Math.sqrt(RACE_CORNER_LATERAL_ACCEL / curvature);
+      limit = Math.min(
+        limit,
+        Math.sqrt(
+          cornerSpeed * cornerSpeed + 2 * RACE_TRAFFIC_BRAKE * distance,
+        ),
+      );
+    }
     for (const other of authored) {
       if (
         !other.enabled ||
