@@ -1,4 +1,10 @@
 import { DEFAULT_MAP_NAME, isMapName, type MapName } from './maps';
+import type { TourProgress } from '../core/tourProgress';
+import {
+  tourEventAvailable,
+  tourEventById,
+  type TourEvent,
+} from './tourCatalogue';
 
 /** The level select's memory (NS2). The CTO asked to pick from a list; the
  * PM's rule is that booting straight into driving stays: the first boot
@@ -64,4 +70,33 @@ export function shouldOfferMapsAtBoot(
 /** The page URL that boots a map, keeping the path and dropping other query. */
 export function mapUrl(pathname: string, name: MapName): string {
   return `${pathname}?map=${encodeURIComponent(name)}`;
+}
+
+/** Tour identity is separate from the existing free-drive ?map= choice.
+ * A pasted locked URL may still open its free-drive map, never its event. */
+export function resolveTourEvent(
+  search: string,
+  progress: TourProgress,
+  availableRoutes: ReadonlySet<string>,
+  carId: string,
+): TourEvent | undefined {
+  const id = new URLSearchParams(search).get('tour');
+  if (!id) return;
+  const event = tourEventById(id);
+  return event && tourEventAvailable(event, progress, availableRoutes, carId)
+    ? event
+    : undefined;
+}
+
+export function tourUrl(
+  pathname: string,
+  event: TourEvent,
+  carId: string,
+): string {
+  const query = new URLSearchParams({
+    map: event.routeId,
+    tour: event.id,
+    car: carId,
+  });
+  return `${pathname}?${query.toString()}`;
 }
