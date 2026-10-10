@@ -3,6 +3,8 @@ import { createRaceEvent, type RaceCar } from '../src/core/raceEvent';
 import { eliminatorMedal } from '../src/core/eliminator';
 import { ELIMINATOR_MAP, ELIMINATOR_PATH } from '../src/world/eliminatorCourse';
 import { poseAt } from '../src/world/roadGenerator';
+import { createTestTrack } from '../src/world/track';
+import { Scene } from 'three';
 
 const route = ELIMINATOR_MAP.runs![0]!;
 const pose = (id: number, station: number, speed = 50): RaceCar => {
@@ -34,6 +36,17 @@ it('closes a 2–3 km physical loop with five rivals on a clear standing grid', 
   expect(ELIMINATOR_MAP.runways.length).toBeGreaterThan(100);
   expect(ELIMINATOR_MAP.traffic).toHaveLength(5);
   expect(ELIMINATOR_MAP.traffic!.every((car) => car.raceEntrant)).toBe(true);
+});
+
+it('boots the authored Eliminator track and spawn with valid nested radii', () => {
+  const scene = new Scene();
+  const track = createTestTrack(scene, {
+    maxAnisotropy: 1,
+    config: ELIMINATOR_MAP.track,
+    spawn: ELIMINATOR_MAP.spawn!,
+  });
+  expect(track.spawn.position.x).toBeCloseTo(ELIMINATOR_MAP.spawn!.x);
+  track.dispose();
 });
 
 it('cuts exactly one last entrant per validated leader lap, then freezes a win', () => {

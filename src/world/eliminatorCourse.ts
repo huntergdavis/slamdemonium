@@ -82,8 +82,8 @@ export const ELIMINATOR_MAP: MapDefinition = {
   label: 'Highway Eliminator · five cuts',
   track: {
     pavedRadius: 1500,
-    ringInnerRadius: 1700,
-    centerLineRadius: 1800,
+    ringInnerRadius: 1300,
+    centerLineRadius: 1400,
     barrierInnerRadius: 1900,
     barrierSegments: 1800,
     groundExtent: 2200,
