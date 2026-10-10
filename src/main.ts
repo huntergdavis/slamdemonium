@@ -22,6 +22,14 @@ import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
 import { HERO_SEDAN } from './vehicle/vehicleDefinition';
 import { ImpactTime } from './core/impactTime';
+import {
+  GARAGE_CLASSES,
+  GARAGE_CLASS_IDS,
+  isGarageClassId,
+  readGarageClass,
+  storeGarageClass,
+} from './vehicle/garageClasses';
+import { WORKING_SET_KEY } from './tuning/storage';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
@@ -135,6 +143,14 @@ async function boot(): Promise<void> {
     }
   })();
   const faceOffReward = createFaceOffReward(mapStorage);
+  const garageClassId = readGarageClass(mapStorage, location.search);
+  const garageClass = GARAGE_CLASSES[garageClassId];
+  if (
+    new URLSearchParams(location.search).get('car') === garageClassId &&
+    readGarageClass(mapStorage) !== garageClassId
+  )
+    storeGarageClass(mapStorage, garageClassId, WORKING_SET_KEY);
+  tuning.replace({ ...garageClass.tuning }, 'restore');
   const storedMapName = readStoredMapName(mapStorage);
   const mapName = chooseMapName(
     location.search,
@@ -286,7 +302,8 @@ async function boot(): Promise<void> {
     tuning,
     track.spawn.position,
     surfaceResolver,
-    HERO_SEDAN.engineProfile,
+    garageClass.engineProfile,
+    garageClass.geometry,
   );
   // Traffic events (NS4): near misses, wrong-side driving and slams feed the
   // boost bar. The detector reads the traffic cars' states after physics;
@@ -438,7 +455,7 @@ async function boot(): Promise<void> {
   );
   const history = new TransformHistory(physics, vehicle.body);
   const visualHistory = new VehicleVisualHistory(vehicle.telemetry);
-  const carVisual = createCarVisual(view.scene);
+  const carVisual = createCarVisual(view.scene, garageClass.geometry);
   carVisual.setPaint(faceOffReward.selected);
   await carVisual.loadHeroModel();
   // Line of sight for the camera: static geometry between car and camera
@@ -1111,6 +1128,24 @@ async function boot(): Promise<void> {
         }
       },
     },
+    garage: {
+      current: garageClassId,
+      entries: GARAGE_CLASS_IDS.map((id) => ({
+        name: id,
+        label: GARAGE_CLASSES[id].label,
+        trait: GARAGE_CLASSES[id].trait,
+      })),
+      onSelect(name) {
+        if (!isGarageClassId(name) || name === garageClassId) {
+          pauseMenu.setOpen(false);
+          return;
+        }
+        storeGarageClass(mapStorage, name, WORKING_SET_KEY);
+        const url = new URL(location.href);
+        url.searchParams.set('car', name);
+        location.assign(url.toString());
+      },
+    },
   });
   if (offerMapsAtBoot)
     // The first boot ever offers the list, once; every boot after that goes
@@ -1212,7 +1247,7 @@ async function boot(): Promise<void> {
   const audio = mountAudioDirector({
     host: host!,
     tuning,
-    engine: HERO_SEDAN.engineProfile,
+    engine: garageClass.engineProfile,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
     readPresentationTimeScale: () => takedownMoment?.timeScale ?? 1,
@@ -1521,6 +1556,13 @@ async function boot(): Promise<void> {
     } else inspectionCamera = null;
   };
   game.getHeroLod = () => carVisual.lodInfo();
+  game.getGarageClass = () => ({
+    id: garageClassId,
+    width: garageClass.geometry.width,
+    height: garageClass.geometry.height,
+    length: garageClass.geometry.length,
+    mass: vehicle.currentMass,
+  });
   game.setHudMode = (mode) => hud.setMode(mode);
   game.setOptionsOpen = (open) => options.setOpen(open);
   game.stepMany = (count) => {

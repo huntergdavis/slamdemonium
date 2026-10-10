@@ -32,6 +32,14 @@ export interface GameTestApi {
   setInspectionCamera(pose: { position: V3; target: V3 } | null): void;
   /** Read-only projected-size gate for the authored hero far LOD. */
   getHeroLod?: () => { lod: 'near' | 'far'; pixels: number };
+  /** Selected garage identity and physical bounds for browser drive checks. */
+  getGarageClass?: () => {
+    id: 'compact' | 'muscle' | 'sports';
+    width: number;
+    height: number;
+    length: number;
+    mass: number;
+  };
   setHudMode(mode: HudMode): void;
   setOptionsOpen(open: boolean): void;
   stepMany(steps: number): void;
