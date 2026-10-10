@@ -817,7 +817,7 @@ export class Hud {
               ? 'HEAT FAILED · ENTER RETRY'
               : race.phase === 'countdown'
                 ? `HEAT ${grandPrix.heat + 1}/3 · ${venue}`
-                : `HEAT ${grandPrix.heat + 1}/3 · ${venue} · GATE ${race.nextCheckpoint}/${race.checkpointCount}`,
+                : `HEAT ${grandPrix.heat + 1}/3 · ${venue} · GATE ${Math.min(race.nextCheckpoint, race.checkpointCount)}/${race.checkpointCount}`,
       );
       if (this.grandPrixTable) {
         const names = ['YOU', 'APEX', 'BOLT', 'NOVA', 'RUSH', 'VEX'];
