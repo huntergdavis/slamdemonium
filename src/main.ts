@@ -557,6 +557,7 @@ async function boot(): Promise<void> {
         if (!wasWrecked) playerDamage?.step(dt);
         if (!wasWrecked && playerDamage?.wrecked) playerWreckPending = true;
         if (playerWreckPending) {
+          takedowns?.beginAftertouchEpisode();
           vehicle.loseBoostSection();
           impactTime?.start();
           takedownMoment?.reset();
@@ -747,6 +748,7 @@ async function boot(): Promise<void> {
     boostPads.reset();
     trafficEvents.reset();
     takedownMoment?.reset();
+    takedowns?.endAftertouchEpisode();
     impactTime?.reset();
     history.reset();
     visualHistory.reset();
@@ -944,7 +946,12 @@ async function boot(): Promise<void> {
     readScore: () => crashScore.state,
     readRun: () => timedRun.state,
     readTrafficEvents: () => trafficEvents.state,
-    ...(takedowns ? { readTakedowns: () => takedowns.count } : {}),
+    ...(takedowns
+      ? {
+          readTakedowns: () => takedowns.count,
+          readTakedownKind: () => takedowns.lastCreditKind,
+        }
+      : {}),
     ...(playerDamage
       ? {
           readPlayerDamage: () => ({
@@ -1076,7 +1083,10 @@ async function boot(): Promise<void> {
         severityVelocity,
         vehicle.telemetry.rotation,
       );
-      if (!wasWrecked && playerDamage.wrecked) playerWreckPending = true;
+      if (!wasWrecked && playerDamage.wrecked) {
+        playerWreckPending = true;
+        takedowns?.beginAftertouchEpisode();
+      }
     }
     // Breakables consume this same record; they never estimate the contact a
     // second time. Their boundary copies the borrowed point immediately.
@@ -1297,6 +1307,7 @@ async function boot(): Promise<void> {
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
+    lastCreditKind: takedowns?.lastCreditKind ?? null,
     boostSections: vehicle.telemetry.boostSections,
   });
   if (playerDamage)
