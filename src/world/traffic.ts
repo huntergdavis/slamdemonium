@@ -95,6 +95,7 @@ interface RecordState {
   wreckRotation: Quat;
   slot: Slot | null;
   enabled: boolean;
+  eliminated: boolean;
   driveSpeed: number;
   cornerLimit: number;
   signalCommit: number;
@@ -292,6 +293,7 @@ export function createTraffic(
     wreckRotation: { ...IDENTITY },
     slot: null,
     enabled: true,
+    eliminated: false,
     driveSpeed: record.raceEntrant ? 0 : record.speed,
     cornerLimit: record.speed,
     signalCommit: -1,
@@ -698,14 +700,16 @@ export function createTraffic(
     rules = { density, minGap, maxGap };
     activeCount = 0;
     for (const record of authored) {
-      record.enabled = record.wrecked;
+      record.enabled = record.wrecked && !record.eliminated;
       record.leader = null;
     }
     for (const direction of [1, -1] as const) {
       const lane = authored
         .filter(
           (record) =>
-            !record.wrecked && (record.authored.direction ?? 1) === direction,
+            !record.wrecked &&
+            !record.eliminated &&
+            (record.authored.direction ?? 1) === direction,
         )
         .sort((a, b) => direction * (a.station - b.station));
       const chosen: RecordState[] = [];
@@ -763,7 +767,7 @@ export function createTraffic(
     // opponents. They also need their own pace controller rather than an
     // ordinary follower speed limit from the sparse traffic selection.
     for (const record of authored)
-      if (record.state.rival && !record.wrecked) {
+      if (record.state.rival && !record.wrecked && !record.eliminated) {
         record.enabled = true;
         record.leader = null;
       }
@@ -818,6 +822,7 @@ export function createTraffic(
   }
 
   function promote(record: RecordState, player: V3): void {
+    if (!record.enabled || record.eliminated) return;
     if (!promotionIsClear(record, player)) return;
     const slot = slots.find((candidate) => candidate.record === null);
     if (!slot) return;
@@ -1076,7 +1081,7 @@ export function createTraffic(
     // The five grid rivals are part of the race, not decorative far traffic.
     // Give them bodies before ordinary civilian promotion at every start.
     for (const record of raceRecords) {
-      if (record.wrecked || record.slot) continue;
+      if (record.wrecked || record.eliminated || record.slot) continue;
       const distanceSquared = horizontalDistanceSquared(
         player,
         record.state.position.x,
@@ -1110,6 +1115,7 @@ export function createTraffic(
     }
     for (let i = 0; i < authored.length; i++) {
       const record = authored[i]!;
+      if (record.eliminated) continue;
       const state = record.state;
       if (
         state.rival &&
@@ -1664,6 +1670,8 @@ export function createTraffic(
       const wreckIndex = wreckRecords.indexOf(record);
       if (wreckIndex >= 0) wreckRecords.splice(wreckIndex, 1);
       record.station = record.authored.station;
+      record.eliminated = false;
+      record.enabled = true;
       record.wrecked = record.state.wrecked = false;
       record.wreckAge = 0;
       record.driveSpeed = 0;
@@ -1678,6 +1686,24 @@ export function createTraffic(
           0;
       updateVisualPose(record);
     }
+    activeCount = authored.filter((record) => record.enabled).length;
+  }
+
+  function eliminateRaceEntrant(id: number): void {
+    const record = raceRecords.find((candidate) => candidate.state.id === id);
+    if (!record || record.eliminated) return;
+    if (record.slot) demote(record);
+    if (record.enabled) activeCount--;
+    record.enabled = false;
+    record.eliminated = true;
+    record.driveSpeed = 0;
+    record.state.speed = 0;
+    record.state.velocity.x =
+      record.state.velocity.y =
+      record.state.velocity.z =
+        0;
+    const visualIndex = visualStates.indexOf(record.state);
+    if (visualIndex >= 0) visualStates.splice(visualIndex, 1);
   }
 
   if (initialRules) setRules(initialRules);
@@ -1729,6 +1755,7 @@ export function createTraffic(
       raceRunning = running;
     },
     resetRaceGrid,
+    eliminateRaceEntrant,
     get physicalCount() {
       return physicalCount;
     },

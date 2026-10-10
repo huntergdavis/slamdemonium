@@ -760,6 +760,7 @@ export class Hud {
     )
       return;
     this.race.dataset.phase = race.phase;
+    this.race.dataset.mode = race.mode;
     write(
       this.raceClock,
       race.phase === 'countdown'
@@ -768,7 +769,25 @@ export class Hud {
           ? 'GO'
           : formatRunClock(race.clock),
     );
-    write(this.raceRank, `P${race.position}/${race.fieldSize}`);
+    write(
+      this.raceRank,
+      race.mode === 'eliminator' && race.eliminated
+        ? 'ELIMINATED'
+        : `P${race.position}/${race.mode === 'eliminator' ? race.remaining : race.fieldSize}`,
+    );
+    if (race.mode === 'eliminator') {
+      write(
+        this.raceGate,
+        race.phase === 'countdown'
+          ? 'HIGHWAY ELIMINATOR'
+          : race.phase === 'finished'
+            ? race.won
+              ? 'WINNER · GOLD · ENTER RETRY'
+              : `OUT · ${race.medal === 'none' ? 'NO MEDAL' : race.medal.toUpperCase()} · ENTER RETRY`
+            : `LAP ${Math.min(race.lap + 1, race.lapTarget)}/${race.lapTarget} · ${race.atRisk ? 'AT RISK' : 'SAFE'}`,
+      );
+      return;
+    }
     write(
       this.raceGate,
       race.phase === 'finished'

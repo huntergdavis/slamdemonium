@@ -141,6 +141,7 @@ describe('map selection', () => {
     expect(Object.keys(MAPS).sort()).toEqual([
       'circuit',
       'circuit-race',
+      'highway-eliminator',
       'lab',
       'proving-ground',
       'takedown',

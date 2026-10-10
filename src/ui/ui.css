@@ -923,6 +923,9 @@
   text-align: center;
   pointer-events: none;
 }
+.sl-hud__race[data-mode='eliminator'] {
+  width: 220px;
+}
 .sl-race__clock {
   display: block;
   font: 800 30px/1 var(--sl-mono);

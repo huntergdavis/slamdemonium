@@ -210,7 +210,9 @@ async function boot(): Promise<void> {
   // The timed run (NS3): the start line is a thing in the world he drives
   // into; the clock runs to the goal; Enter is the retry, onto the line.
   const timedRun = createTimedRun(
-    mapName === 'circuit-race' ? undefined : map.runs?.[0],
+    mapName === 'circuit-race' || mapName === 'highway-eliminator'
+      ? undefined
+      : map.runs?.[0],
   );
   const runStartGate = map.runs?.[0]?.gates[0];
   const runStart = runStartGate
@@ -285,13 +287,20 @@ async function boot(): Promise<void> {
         })
       : undefined;
   const race =
-    mapName === 'circuit-race' && map.path && map.runs?.[0] && traffic
+    (mapName === 'circuit-race' || mapName === 'highway-eliminator') &&
+    map.path &&
+    map.runs?.[0] &&
+    traffic
       ? createRaceEvent(
           map.runs[0],
           map.path,
           traffic.raceStates.map((car) => car.id),
+          mapName === 'highway-eliminator'
+            ? { mode: 'eliminator', laps: 5 }
+            : {},
         )
       : undefined;
+  let lastCutId = -1;
   const raceCars: RaceCar[] = race
     ? [
         { id: 0, x: 0, z: 0, vx: 0, vz: 0 },
@@ -539,7 +548,10 @@ async function boot(): Promise<void> {
         stepStart = performance.now();
         vehicle.preStep(
           dt,
-          playerDamage?.wrecked || race?.state.phase === 'countdown'
+          playerDamage?.wrecked ||
+            race?.state.phase === 'countdown' ||
+            (race?.state.mode === 'eliminator' &&
+              race.state.phase === 'finished')
             ? wreckInput
             : sampled,
           source,
@@ -656,7 +668,19 @@ async function boot(): Promise<void> {
             car.vz = state.velocity.z;
           }
           race.update(dt, raceCars);
-          traffic.setRaceRunning(race.state.phase !== 'countdown');
+          if (
+            race.state.mode === 'eliminator' &&
+            race.state.lastCutId > 0 &&
+            race.state.lastCutId !== lastCutId
+          ) {
+            lastCutId = race.state.lastCutId;
+            traffic.eliminateRaceEntrant(lastCutId);
+          }
+          traffic.setRaceRunning(
+            race.state.mode === 'eliminator'
+              ? race.state.phase === 'running'
+              : race.state.phase !== 'countdown',
+          );
         }
         propStreamer.update();
         awakeBudget.update(
@@ -829,6 +853,7 @@ async function boot(): Promise<void> {
     timedRun.reset();
     if (race) {
       race.reset();
+      lastCutId = -1;
       traffic?.resetRaceGrid();
     }
     scripts.noteRespawn(restart, 0);
@@ -1333,6 +1358,8 @@ async function boot(): Promise<void> {
       };
     });
   game.getRivalControl = () => traffic?.debugRivals() ?? null;
+  game.getRace = () =>
+    race ? { ...race.state, finishOrder: [...race.state.finishOrder] } : null;
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
     boostSections: vehicle.telemetry.boostSections,

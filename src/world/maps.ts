@@ -4,6 +4,7 @@ import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { CIRCUIT_STATIONS, createCircuitMap } from './circuit';
 import { createTakedownMap } from './takedownCourse';
+import { ELIMINATOR_MAP } from './eliminatorCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
   FORGIVING_LOOP_RADIUS,
@@ -55,7 +56,12 @@ export interface MapDefinition {
   readonly shuntWalls?: readonly ShuntWallSpec[];
 }
 export type MapName =
-  'lab' | 'proving-ground' | 'circuit' | 'circuit-race' | 'takedown';
+  | 'lab'
+  | 'proving-ground'
+  | 'circuit'
+  | 'circuit-race'
+  | 'highway-eliminator'
+  | 'takedown';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -451,6 +457,7 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   'proving-ground': PROVING_GROUND_MAP,
   circuit,
   'circuit-race': circuitRace,
+  'highway-eliminator': ELIMINATOR_MAP,
   takedown: createTakedownMap(),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
