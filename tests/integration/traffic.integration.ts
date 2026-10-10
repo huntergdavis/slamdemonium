@@ -512,3 +512,62 @@ it('drives an oncoming car along its lane with matching forward and velocity', a
   traffic.dispose();
   bodies.dispose();
 });
+
+it('slows civilian traffic before a tight bend and holds its lane', async () => {
+  const world = await createPhysicsWorld({ wasmPath });
+  worlds.push(world);
+  world.setGravity(20);
+  world.createStaticBox(
+    { x: -100, y: -0.5, z: -200 },
+    { x: 400, y: 0.5, z: 400 },
+  );
+  const path = sampleRoad([
+    { kind: 'straight', length: 100 },
+    { kind: 'arc', radius: 140, angle: Math.PI / 2 },
+    { kind: 'straight', length: 300 },
+  ]);
+  const bodies = createSurfacedBodies(world, createSurfaceRegistry());
+  const traffic = createTraffic(world, bodies, path, [
+    { station: 20, laneSide: -1, speed: 33 },
+  ]);
+  const player = { x: 3.5, y: 1, z: 40 };
+  traffic.preStep(1 / 120, player, 33);
+  const car = traffic.states[0]!;
+  let bendSpeed = 0;
+  let bendError = 0;
+  let bendSamples = 0;
+  try {
+    for (let step = 0; step < 12 * 120; step++) {
+      player.x = car.position.x - car.forward.x * 60;
+      player.z = car.position.z - car.forward.z * 60;
+      traffic.preStep(1 / 120, player, 33);
+      world.step(1 / 120);
+      traffic.postStep();
+      const nearest = path.samples.reduce(
+        (best, sample) => {
+          const lateral = -3.5;
+          const x = sample.x - Math.cos(sample.heading) * lateral;
+          const z = sample.z + Math.sin(sample.heading) * lateral;
+          const distance = Math.hypot(car.position.x - x, car.position.z - z);
+          return distance < best.distance
+            ? { station: sample.s, distance }
+            : best;
+        },
+        { station: 0, distance: Infinity },
+      );
+      if (nearest.station > 110 && nearest.station < 290) {
+        bendSpeed = Math.max(bendSpeed, car.speed);
+        bendError = Math.max(bendError, nearest.distance);
+        bendSamples++;
+      }
+    }
+    expect(car.bodyId).toBeGreaterThan(0);
+    expect(bendSamples).toBeGreaterThan(100);
+    expect(bendSpeed).toBeLessThan(26);
+    expect(bendError).toBeLessThan(4);
+    expect(car.wrecked).toBe(false);
+  } finally {
+    traffic.dispose();
+    bodies.dispose();
+  }
+});

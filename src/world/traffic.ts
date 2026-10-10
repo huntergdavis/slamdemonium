@@ -43,6 +43,12 @@ export interface TrafficCarRecord {
   readonly modelKind?: CarModelKind;
   /** Rivals contest the player's line and remain identifiable through LOD. */
   readonly rival?: boolean;
+  /** Opt-in junction priority for authored crossing roads. */
+  readonly signalStream?: 'arterial' | 'cross';
+  readonly signalJunctions?: readonly {
+    readonly x: number;
+    readonly z: number;
+  }[];
 }
 
 /** Centre-to-centre spacing in metres. The 12 m authored grid is the hard
@@ -83,6 +89,8 @@ interface RecordState {
   slot: Slot | null;
   enabled: boolean;
   driveSpeed: number;
+  cornerLimit: number;
+  signalCommit: number;
   wreckAge: number;
   attackOffset: number;
   leader: RecordState | null;
@@ -133,6 +141,14 @@ const WRECK_PHYSICS_RADIUS = 220;
 const WRECK_BRAKE = 9;
 const WRECK_PLANNED_BRAKE = 4;
 const WRECK_STOP_MARGIN = 12;
+const CORNER_LOOKAHEAD = 100;
+const CORNER_SAMPLE = 20;
+const CIVILIAN_LATERAL_ACCEL = 3.5;
+const CIVILIAN_BRAKE = 4;
+const SIGNAL_PERIOD = 20;
+const SIGNAL_STOP_LINE = 18;
+const SIGNAL_LOOKAHEAD = 180;
+const SIGNAL_BRAKE = 5;
 const PROMOTION_CLEARANCE = 2;
 const PLAYER_FOOTPRINT_RADIUS = Math.hypot(
   VEHICLE_GEOMETRY.length / 2,
@@ -264,6 +280,8 @@ export function createTraffic(
     slot: null,
     enabled: true,
     driveSpeed: record.speed,
+    cornerLimit: record.speed,
+    signalCommit: -1,
     wreckAge: 0,
     attackOffset: 0,
     leader: null,
@@ -298,6 +316,7 @@ export function createTraffic(
   let playerStation = 0;
   let stationRefresh = 0.2;
   let rivalSeconds = 0;
+  let trafficSeconds = 0;
   let rivalDriveSeconds = 0;
   let rivalryStarted = false;
   let attackWindowIndex = -1;
@@ -372,6 +391,83 @@ export function createTraffic(
       Math.sin(out.heading) *
         (record.authored.laneSide * 3.5 + record.attackOffset);
     return out;
+  }
+
+  /** Ease civilians below the lateral force available at an upcoming bend.
+   * Braking distance makes the limit take effect before entering the curve. */
+  function civilianCornerSpeed(
+    record: RecordState,
+    authoredSpeed: number,
+  ): number {
+    let limit = authoredSpeed;
+    for (
+      let distance = 0;
+      distance < CORNER_LOOKAHEAD;
+      distance += CORNER_SAMPLE
+    ) {
+      const a = routePose(
+        record,
+        record.station + record.state.direction * distance,
+        routeScratch,
+      );
+      const b = routePose(
+        record,
+        record.station + record.state.direction * (distance + CORNER_SAMPLE),
+        nextScratch,
+      );
+      const curvature =
+        Math.abs(wrapAngle(b.heading - a.heading)) / CORNER_SAMPLE;
+      if (curvature < 0.0001) continue;
+      limit = Math.min(
+        limit,
+        Math.sqrt(
+          CIVILIAN_LATERAL_ACCEL / curvature + 2 * CIVILIAN_BRAKE * distance,
+        ),
+      );
+    }
+    return limit;
+  }
+
+  /** Alternate two streams with an all-red clearance interval. Cars close
+   * enough to clear on green commit; everyone else brakes before the box. */
+  function signalSpeed(record: RecordState, speed: number): number {
+    const junctions = record.authored.signalJunctions;
+    const stream = record.authored.signalStream;
+    if (!junctions || !stream) return speed;
+    const car = record.state;
+    const forwardX = car.forward.x;
+    const forwardZ = car.forward.z;
+    const rightX = -forwardZ;
+    const rightZ = forwardX;
+    const phase = trafficSeconds % SIGNAL_PERIOD;
+    for (let index = 0; index < junctions.length; index++) {
+      const junction = junctions[index]!;
+      const dx = junction.x - car.position.x;
+      const dz = junction.z - car.position.z;
+      const ahead = dx * forwardX + dz * forwardZ;
+      if (ahead < 0 && record.signalCommit === index) record.signalCommit = -1;
+      if (ahead <= SIGNAL_STOP_LINE || ahead > SIGNAL_LOOKAHEAD) continue;
+      if (Math.abs(dx * rightX + dz * rightZ) > 15) continue;
+      if (record.signalCommit === index) continue;
+      const green =
+        stream === 'arterial' ? phase < 11 : phase >= 13 && phase < 18;
+      const untilOppositeGreen =
+        stream === 'arterial'
+          ? phase < 13
+            ? 13 - phase
+            : SIGNAL_PERIOD + 13 - phase
+          : SIGNAL_PERIOD - phase;
+      const clearTime = (ahead + SIGNAL_STOP_LINE) / Math.max(12, car.speed);
+      if (green && clearTime + 0.4 < untilOppositeGreen) {
+        if (ahead < 50) record.signalCommit = index;
+        continue;
+      }
+      speed = Math.min(
+        speed,
+        Math.sqrt(2 * SIGNAL_BRAKE * Math.max(0, ahead - SIGNAL_STOP_LINE)),
+      );
+    }
+    return speed;
   }
 
   function nearestRoadStation(position: V3): number {
@@ -727,6 +823,7 @@ export function createTraffic(
   }
 
   function preStep(dt: number, player: V3, playerSpeed = 0): void {
+    trafficSeconds += dt;
     newlyWrecked.length = 0;
     stepDt = dt;
     if (!rivalryStarted && playerSpeed > 10) {
@@ -943,7 +1040,18 @@ export function createTraffic(
       }
       if (!record.wrecked) {
         const direction = state.direction;
-        let desiredSpeed = record.authored.speed;
+        if (
+          !state.rival &&
+          (record.slot || i % farPoseBuckets === farPoseBucket)
+        )
+          record.cornerLimit = civilianCornerSpeed(
+            record,
+            record.authored.speed,
+          );
+        let desiredSpeed = state.rival
+          ? record.authored.speed
+          : record.cornerLimit;
+        if (!state.rival) desiredSpeed = signalSpeed(record, desiredSpeed);
         if (state.rival) {
           const ahead =
             (record.station - playerStation + path.length) % path.length;
