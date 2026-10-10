@@ -73,6 +73,8 @@ export interface AudioMix {
   firingUnevenness: number;
   /** Multiplies pulse timing without changing the shared telemetry RPM. */
   firingRateScale: number;
+  /** Speed-derived wind/road texture inside the existing engine worklet. */
+  wind: number;
   readonly tyres: Float64Array;
   boost: number;
   rate: number;
@@ -88,6 +90,8 @@ export interface AudioOutput {
   apply(mix: Readonly<AudioMix>): void;
   playImpact(profile: AudioProfile, gain: number, rate: number): boolean;
   playBoostAttack(gain: number, rate: number): boolean;
+  /** Low-priority, single pass-by cue. Positive pan is right. */
+  playNearMiss(gain: number, rate: number, pan: number): boolean;
   playCrash(cue: Readonly<CrashCue>): boolean;
   /** Slots 0 and 1 are the two highest-priority sustained contact pairs. */
   setGrind(slot: 0 | 1, gain: number, rate: number, pan: number): void;

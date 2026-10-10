@@ -65,6 +65,9 @@ describe('traffic events', () => {
     expect(close.events.state.nearMisses).toBe(1);
     expect(close.total).toBeCloseTo(TUNING.nearMissBoost, 9);
     expect(close.events.state.lastEvent).toBe('near-miss');
+    expect(close.events.state.nearMissSide).toBe(-1);
+    expect(close.events.state.nearMissClosingSpeed).toBeCloseTo(20, 6);
+    expect(pass(undefined, { x: -3 }).events.state.nearMissSide).toBe(1);
     const wide = pass(undefined, {
       x: PLAYER_HALF_WIDTH + carHalfWidth('sedan') + 1.6,
     });
@@ -128,6 +131,15 @@ describe('traffic events', () => {
       events.update(DT, player(500, 40), [car(1, 3, 0, 0)], TUNING),
     ).toBeCloseTo(TUNING.slamBoost, 9);
     expect(events.state.slams).toBe(2);
+  });
+  it('voids a pass touched in the same step before its closest-point event', () => {
+    const events = createTrafficEvents();
+    const target = car(1, 3, 0, 20);
+    events.update(DT, player(0, 40), [target], TUNING);
+    events.noteContact(target.bodyId, 0.7);
+    events.update(DT, player(4, 40), [target], TUNING);
+    expect(events.state.nearMisses).toBe(0);
+    expect(events.state.slams).toBe(1);
   });
   it('pays the hit that wrecks a car, and ignores a car that was already a wreck or is not listed', () => {
     const events = createTrafficEvents();

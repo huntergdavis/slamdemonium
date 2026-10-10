@@ -61,6 +61,7 @@ export class AudioDirector {
     exhaustFeedback: 0.72,
     firingUnevenness: 1,
     firingRateScale: 1,
+    wind: 0,
     tyres: new Float64Array(3),
     boost: 0,
     rate: 1,
@@ -80,10 +81,13 @@ export class AudioDirector {
   private throttle = 0;
   private boost = 0;
   private rpm = 0;
+  private speed = 0;
   private shiftCut = 0;
   private shiftsSeen = 0;
   private boostHeld = false;
   private boostAttack = false;
+  private nearMissSide: -1 | 0 | 1 = 0;
+  private nearMissClosing = 0;
   private disposed = false;
   private readonly mutableState = {
     status: 'loading' as AudioStatus,
@@ -116,6 +120,7 @@ export class AudioDirector {
     this.throttle = clamp01(telemetry.throttle);
     this.boost = clamp01(telemetry.boostEnvelope);
     this.rpm = positive(telemetry.rpm);
+    this.speed = positive(telemetry.speed);
     // Monotonic counters: every shift is seen whatever the frame rate, and
     // the cut is presentation only; the rpm drop itself is in the model.
     const shifts = telemetry.upshiftCount + telemetry.downshiftCount;
@@ -240,6 +245,13 @@ export class AudioDirector {
   onTakedown(): void {
     if (!this.disposed && this.canEmit()) this.crash.noteTakedown();
   }
+  /** Called only after the once-per-pass traffic detector has advanced. */
+  onNearMiss(side: -1 | 1, closingSpeed: number): void {
+    if (!this.disposed && this.canEmit()) {
+      this.nearMissSide = side;
+      this.nearMissClosing = positive(closingSpeed);
+    }
+  }
   onPlayerWreck(): void {
     if (!this.disposed && this.canEmit()) this.crash.notePlayerWreck();
   }
@@ -258,7 +270,11 @@ export class AudioDirector {
       this.paused = true;
       this.discardEvents();
       this.crash.reset();
-      this.mix.engineIdle = this.mix.engineLoad = this.mix.boost = 0;
+      this.mix.engineIdle =
+        this.mix.engineLoad =
+        this.mix.boost =
+        this.mix.wind =
+          0;
       this.mix.tyres.fill(0);
       return;
     }
@@ -305,6 +321,13 @@ export class AudioDirector {
       0.1,
     );
     mix.boost = approach(mix.boost, this.boost * 0.3, dt, 0.04, 0.12);
+    mix.wind = approach(
+      mix.wind,
+      clamp01((this.speed - 10) / 75) ** 0.8,
+      dt,
+      0.12,
+      0.18,
+    );
     for (let index = 0; index < 3; index++)
       mix.tyres[index] = approach(
         mix.tyres[index]!,
@@ -333,6 +356,7 @@ export class AudioDirector {
     const forwardZ = rotation
       ? -(1 - 2 * (rotation.x * rotation.x + rotation.y * rotation.y))
       : -1;
+    const crashPriority = this.crash.hasPriorityEvent || this.queued > 0;
     this.crash.flush(
       this.deps.output,
       mix.volume,
@@ -344,6 +368,17 @@ export class AudioDirector {
       forwardX,
       this.canEmit(),
     );
+    if (
+      this.nearMissSide !== 0 &&
+      !crashPriority &&
+      this.canEmit() &&
+      this.outputState.status === 'ready'
+    )
+      this.deps.output.playNearMiss(
+        (0.27 + 0.18 * clamp01((this.nearMissClosing - 12) / 45)) * mix.volume,
+        mix.rate * (0.9 + 0.25 * clamp01(this.nearMissClosing / 75)),
+        this.nearMissSide * 0.8,
+      );
     // Locked, muted, zero-volume and paused events are never replayed later.
     this.discardEvents();
   }
@@ -373,10 +408,14 @@ export class AudioDirector {
     this.pairTimes.fill(-Infinity);
     this.pairCursor = 0;
     this.simulationTime = this.throttle = this.boost = 0;
-    this.rpm = this.shiftCut = 0;
+    this.rpm = this.shiftCut = this.speed = 0;
     this.boostHeld = false;
     this.tyreTargets.fill(0);
-    this.mix.engineIdle = this.mix.engineLoad = this.mix.boost = 0;
+    this.mix.engineIdle =
+      this.mix.engineLoad =
+      this.mix.boost =
+      this.mix.wind =
+        0;
     this.mix.tyres.fill(0);
     this.lastUpdate = NaN;
     this.deps.output.reset();
@@ -398,5 +437,7 @@ export class AudioDirector {
   private discardEvents(): void {
     this.queued = 0;
     this.boostAttack = false;
+    this.nearMissSide = 0;
+    this.nearMissClosing = 0;
   }
 }

@@ -80,6 +80,7 @@ const mix: AudioMix = {
   exhaustFeedback: 0.72,
   firingUnevenness: 1,
   firingRateScale: 1,
+  wind: 0,
   tyres: new Float64Array([0.2, 0, 0]),
   boost: 0,
   rate: 1,
@@ -100,6 +101,27 @@ async function ready() {
 afterEach(() => vi.useRealTimers());
 
 describe('bounded Web Audio output', () => {
+  it('drops decorative near-miss cues before taking crash voice slots', async () => {
+    const output = await ready();
+    for (let index = 0; index < 7; index++)
+      expect(output.playImpact('asphalt', 0.3, 1)).toBe(true);
+    expect(output.state.activeVoices).toBe(11);
+    expect(output.playNearMiss(0.25, 1, -0.8)).toBe(true);
+    expect(output.playNearMiss(0.25, 1, 0.8)).toBe(false);
+    expect(
+      output.playCrash({
+        tier: 'medium',
+        kind: 'contact',
+        gain: 0.5,
+        rate: 1,
+        pan: 0,
+        glass: false,
+        debris: false,
+      }),
+    ).toBe(true);
+    expect(output.state.activeVoices).toBe(14); // Mock omits the worklet voice.
+    output.dispose();
+  });
   it('does not play before gesture even when browser autoplay policy permits it', () => {
     harness.sounds.length = 0;
     harness.running = true;

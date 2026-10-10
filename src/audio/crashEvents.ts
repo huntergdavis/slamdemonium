@@ -10,6 +10,9 @@ const tier = (speed: number): CrashTier =>
 /** Contact callbacks only copy numbers into fixed storage. Sample selection,
  * spatial placement and all Web Audio work happen when flush() runs in RAF. */
 export class CrashEvents {
+  get hasPriorityEvent(): boolean {
+    return this.count > 0 || this.takedown || this.wreck;
+  }
   private time = 0;
   private count = 0;
   private readonly speed = new Float32Array(EVENTS);

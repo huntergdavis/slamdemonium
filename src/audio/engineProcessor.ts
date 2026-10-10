@@ -176,6 +176,13 @@ class EngineProcessor extends AudioWorkletProcessor {
         maxValue: 2,
         automationRate: 'k-rate',
       },
+      {
+        name: 'wind',
+        defaultValue: 0,
+        minValue: 0,
+        maxValue: 1,
+        automationRate: 'k-rate',
+      },
     ] as const;
   }
   private phase = 0;
@@ -187,6 +194,8 @@ class EngineProcessor extends AudioWorkletProcessor {
   private seed = 0x9e3779b9;
   private noiseState = 0;
   private lowpassState = 0;
+  private windLow = 0;
+  private windHigh = 0;
   private blockIn = 0;
   private blockOut = 0;
   private tunedCharacter = -1;
@@ -253,6 +262,7 @@ class EngineProcessor extends AudioWorkletProcessor {
       0.5,
       Math.min(2, parameters['firingRateScale']?.[0] ?? 1),
     );
+    const wind = Math.max(0, Math.min(1, parameters['wind']?.[0] ?? 0));
     if (
       pipeSeconds !== this.pipeSeconds ||
       pipeFeedback !== this.pipeFeedback
@@ -328,8 +338,12 @@ class EngineProcessor extends AudioWorkletProcessor {
       const puffEven = Math.exp(-t) - Math.exp(-4 * t);
       const puffSmooth = 0.87 * t * t * Math.exp(-t);
       const puff = this.firingAmp * lerp(puffEven, puffSmooth, c);
-      this.noiseState +=
-        (this.random() * 2 - 1 - this.noiseState) * noiseCoefficient;
+      const noise = this.random() * 2 - 1;
+      this.noiseState += (noise - this.noiseState) * noiseCoefficient;
+      // Two one-pole filters make a soft band of road/wind texture. Reuse the
+      // engine's noise sample and output; no new node, loop or allocation.
+      this.windLow += (noise - this.windLow) * 0.035;
+      this.windHigh += (noise - this.windHigh) * 0.32;
       const excitation = puff * puffGain + this.noiseState * noiseGain;
       let shaped = 0;
       if (useFilters)
@@ -352,7 +366,8 @@ class EngineProcessor extends AudioWorkletProcessor {
       }
       const saturated = Math.tanh(shaped * drive) * makeup;
       this.lowpassState += (saturated - this.lowpassState) * lowpassCoefficient;
-      out[i] = this.lowpassState;
+      out[i] =
+        this.lowpassState + (this.windHigh - this.windLow) * wind * 0.055;
     }
     return true;
   }
