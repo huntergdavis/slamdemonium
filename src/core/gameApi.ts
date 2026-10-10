@@ -28,6 +28,8 @@ export interface GameTestApi {
   setCameraPreset(preset: CameraPreset): void;
   /** Optional fixed pose for repeatable browser inspection; null restores follow. */
   setInspectionCamera(pose: { position: V3; target: V3 } | null): void;
+  /** Read-only projected-size gate for the authored hero far LOD. */
+  getHeroLod?: () => { lod: 'near' | 'far'; pixels: number };
   setHudMode(mode: HudMode): void;
   setOptionsOpen(open: boolean): void;
   stepMany(steps: number): void;
