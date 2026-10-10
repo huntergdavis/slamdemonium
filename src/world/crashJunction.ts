@@ -36,27 +36,29 @@ export const CRASH_JUNCTION_PROPS: readonly BreakablePlacement[] = [
  * beyond the three-second countdown; later cars keep crossing after impact. */
 export function crashJunctionTraffic(
   cityPath: NonNullable<MapDefinition['path']>,
+  approach: CrashApproach,
 ): readonly TrafficCarRecord[] {
   const crossingStation = CRASH_JUNCTION.x - CITY_CROSS_PATH.samples[0]!.x;
   const arterialStation =
     1.5 * (1150 - 2 * 140) + 2 * ((140 * Math.PI) / 2) + (550 - 2 * 140);
   const records: TrafficCarRecord[] = [];
-  for (const [path, station, forwardStart, reverseStart] of [
-    [CITY_CROSS_PATH, crossingStation, 230, 290],
-    [cityPath, arterialStation, 250, 170],
+  // The first wave crosses the player's launch line. Perpendicular cars wait
+  // until after that impact window; otherwise they wreck one another before
+  // the player can reach the junction.
+  for (const [path, station, firstWave] of [
+    [CITY_CROSS_PATH, crossingStation, approach === 'south'],
+    [cityPath, arterialStation, approach === 'west'],
   ] as const)
     for (const direction of [1, -1] as const)
       for (let index = 0; index < 3; index++) {
         const offset =
-          (direction === 1 ? forwardStart : reverseStart) + index * 42;
+          (firstWave ? 240 : 390) + (direction === 1 ? 0 : 20) + index * 42;
         records.push({
           path,
           station: station - direction * offset,
           laneSide: direction === 1 ? -1 : 1,
           direction,
-          speed:
-            20 +
-            ((index * 7 + (direction < 0 ? 3 : 0) + CRASH_TRAFFIC_SEED) % 11),
+          speed: 26 - index,
           modelKind: (['sedan', 'van', 'boxTruck'] as const)[index]!,
         });
       }
@@ -79,7 +81,7 @@ export function createCrashJunctionMap(approach: CrashApproach): MapDefinition {
         ? { x: CRASH_JUNCTION.x + 5, z: -180, heading: Math.PI }
         : { x: CRASH_JUNCTION.x - 180, z: -5, heading: -Math.PI / 2 },
     runs: [],
-    traffic: crashJunctionTraffic(city.path!),
+    traffic: crashJunctionTraffic(city.path!, approach),
     placements: CRASH_JUNCTION_PROPS,
   };
 }

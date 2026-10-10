@@ -33,7 +33,7 @@ describe('Crash Junction', () => {
 
   it('starts 12 authored cars in four distinct streams, outside the open throat', () => {
     const path = createCityMap().path!;
-    const records = crashJunctionTraffic(path);
+    const records = crashJunctionTraffic(path, 'south');
     const positions = records.map((car) =>
       poseAt(car.path ?? path, car.station),
     );
