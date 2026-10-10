@@ -69,6 +69,7 @@ import {
 } from './world/mapChoice';
 import { createRunwayVisual } from './world/runways';
 import { createTimedRun } from './core/timedRun';
+import { createRaceEvent, type RaceCar } from './core/raceEvent';
 import { createAwakeBudget } from './world/awakeBudget';
 import { createRunGateVisual } from './world/runGates';
 import { createBoostPadTracker, createBoostPadVisual } from './world/boostPads';
@@ -224,7 +225,7 @@ async function boot(): Promise<void> {
       )
     : undefined;
   const isTakedownRoad = mapName === 'takedown' || !!roadRage;
-  const timedRun = createTimedRun(roadRage ? undefined : map.runs?.[0]);
+  const timedRun = createTimedRun(roadRage || mapName === 'circuit-race' ? undefined : map.runs?.[0]);
   const runStartGate = map.runs?.[0]?.gates[0];
   const runStart = roadRage
     ? track.spawn
@@ -299,6 +300,26 @@ async function boot(): Promise<void> {
           maxGap: tuning.get('trafficMaxGap'),
         })
       : undefined;
+  const race =
+    mapName === 'circuit-race' && map.path && map.runs?.[0] && traffic
+      ? createRaceEvent(
+          map.runs[0],
+          map.path,
+          traffic.raceStates.map((car) => car.id),
+        )
+      : undefined;
+  const raceCars: RaceCar[] = race
+    ? [
+        { id: 0, x: 0, z: 0, vx: 0, vz: 0 },
+        ...traffic!.raceStates.map((car) => ({
+          id: car.id,
+          x: 0,
+          z: 0,
+          vx: 0,
+          vz: 0,
+        })),
+      ]
+    : [];
   const takedowns = isTakedownRoad ? new Takedowns() : undefined;
   const takedownMoment = takedowns ? new TakedownMoment() : undefined;
   const playerDamage = takedowns ? new PlayerDamage() : undefined;
@@ -541,7 +562,8 @@ async function boot(): Promise<void> {
         vehicle.preStep(
           dt,
           playerDamage?.wrecked ||
-            (roadRage && roadRage.state.phase !== 'running')
+            (roadRage && roadRage.state.phase !== 'running') ||
+            race?.state.phase === 'countdown'
             ? wreckInput
             : sampled,
           source,
@@ -663,6 +685,29 @@ async function boot(): Promise<void> {
           vehicle.telemetry.position.z,
           vehicle.telemetry.speed,
         );
+        if (race && traffic) {
+          const player = raceCars[0]! as {
+            id: number;
+            x: number;
+            z: number;
+            vx: number;
+            vz: number;
+          };
+          player.x = vehicle.telemetry.position.x;
+          player.z = vehicle.telemetry.position.z;
+          player.vx = vehicle.telemetry.velocity.x;
+          player.vz = vehicle.telemetry.velocity.z;
+          for (let index = 0; index < traffic.raceStates.length; index++) {
+            const state = traffic.raceStates[index]!;
+            const car = raceCars[index + 1]! as typeof player;
+            car.x = state.position.x;
+            car.z = state.position.z;
+            car.vx = state.velocity.x;
+            car.vz = state.velocity.z;
+          }
+          race.update(dt, raceCars);
+          traffic.setRaceRunning(race.state.phase !== 'countdown');
+        }
         propStreamer.update();
         awakeBudget.update(
           tuning.get('awakeBudget'),
@@ -800,7 +845,7 @@ async function boot(): Promise<void> {
     respawnRequested = true;
   }
   function respawn(): void {
-    if (roadRage) {
+    if (roadRage || race) {
       retry();
       return;
     }
@@ -829,7 +874,8 @@ async function boot(): Promise<void> {
     massRebuild.flush();
     // Onto the start line itself: the next step is an arrival and the
     // countdown begins at once.
-    vehicle.respawn(runStart.position, runStart.rotation);
+    const restart = race ? track.spawn : runStart;
+    vehicle.respawn(restart.position, restart.rotation);
     playerDamage?.reset();
     resetPresentation();
     takedowns?.reset();
@@ -839,7 +885,11 @@ async function boot(): Promise<void> {
     }
     crashScore.reset();
     timedRun.reset();
-    scripts.noteRespawn(runStart, 0);
+    if (race) {
+      race.reset();
+      traffic?.resetRaceGrid();
+    }
+    scripts.noteRespawn(restart, 0);
     syncPause();
   }
   /** A takedown-map wreck preserves the race and earned sections after losing
@@ -989,6 +1039,7 @@ async function boot(): Promise<void> {
     readTelemetry: () => vehicle.telemetry,
     readScore: () => crashScore.state,
     readRun: () => timedRun.state,
+    ...(race ? { readRace: () => race.state } : {}),
     readTrafficEvents: () => trafficEvents.state,
     ...(takedowns
       ? { readTakedowns: () => roadRage?.state.count ?? takedowns.count }
