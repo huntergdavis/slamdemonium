@@ -8,6 +8,7 @@ import {
   type RoadSegment,
 } from './roadGenerator';
 import type { RunwaySpec } from './runways';
+import type { TrafficCarRecord } from './traffic';
 
 const LONG = 1150;
 const SHORT = 550;
@@ -34,6 +35,49 @@ const PLAN: readonly RoadSegment[] = [
   { kind: 'straight', length: SHORT_STRAIGHT },
   { kind: 'arc', radius: CORNER, angle: ARC },
 ];
+
+/** Crossing cars leave the visible city before wrapping to the other end. */
+export const CITY_CROSS_PATH = sampleRoad(
+  [{ kind: 'straight', length: 1500 }],
+  { x: -750, z: 0, heading: -Math.PI / 2 },
+);
+
+function cityTraffic(road: RoadPath): TrafficCarRecord[] {
+  const records: TrafficCarRecord[] = [];
+  for (const direction of [1, -1] as const)
+    for (const outer of [false, true]) {
+      const laneSide = (direction === 1 ? -1 : 1) as -1 | 1;
+      let station = 105 + (outer ? 11 : 0) + (direction < 0 ? 17 : 0);
+      let car = 0;
+      while (station < road.length - 100) {
+        records.push({
+          station,
+          laneSide,
+          laneOffset: outer ? laneSide * 4.5 : 0,
+          direction,
+          speed: 25 + ((car * 7 + (outer ? 3 : 0) + direction + 4) % 10),
+        });
+        station += 32 + ((car * 11 + (outer ? 5 : 0)) % 24);
+        car++;
+      }
+    }
+  for (const direction of [1, -1] as const) {
+    const laneSide = (direction === 1 ? -1 : 1) as -1 | 1;
+    for (
+      let station = 110 + (direction < 0 ? 37 : 0), car = 0;
+      station < CITY_CROSS_PATH.length - 100;
+      station += 64 + ((car++ * 9) % 25)
+    )
+      records.push({
+        path: CITY_CROSS_PATH,
+        station,
+        laneSide,
+        direction,
+        speed: 20 + ((car * 5 + (direction < 0 ? 3 : 0)) % 8),
+      });
+  }
+  return records;
+}
 
 /** The same world geometry and start point, traversed toward the other end. */
 function reversed(path: RoadPath): RoadPath {
@@ -70,7 +114,7 @@ function crossStreetPaint(): RunwaySpec[] {
       x: 0,
       z: 0,
       heading: Math.PI / 2,
-      length: 720,
+      length: CITY_CROSS_PATH.length,
       width: CITY_CROSS_STREET_WIDTH,
       laneStripes: [-4, 4],
       markerMeters: 0,
@@ -172,7 +216,7 @@ export function createCityMap(reverse = false): MapDefinition {
         x: 0,
         z: 0,
         heading: Math.PI / 2,
-        length: 720,
+        length: CITY_CROSS_PATH.length,
         width: CITY_CROSS_STREET_WIDTH,
         markerMeters: 0,
         height: 0.003,
@@ -184,7 +228,6 @@ export function createCityMap(reverse = false): MapDefinition {
       .filter((_sample, index) => index % 6 === 0)
       .map((sample) => ({ x: sample.x, z: sample.z })),
     runs,
-    // The first PR deliberately leaves both crossings empty. Physical
-    // traffic and landmarks are separately drivable city increments.
+    traffic: cityTraffic(path),
   };
 }
