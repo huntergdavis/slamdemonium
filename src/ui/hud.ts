@@ -15,6 +15,7 @@ import {
 import { HudPlots } from './hudPlots';
 import type { TimedRunState } from '../core/timedRun';
 import type { RoadRageState } from '../core/roadRage';
+import type { RoadRageBestResult } from '../core/roadRageBest';
 import { HudChainState, isChainAlive } from './hudChain';
 import type { TrafficEventsState } from '../core/trafficEvents';
 import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
@@ -61,6 +62,7 @@ export interface HudOptions extends RecorderOptions {
   readRun?: () => Readonly<TimedRunState>;
   /** Road Rage's fixed-step event, persistent even when the HUD is off. */
   readRoadRage?: () => Readonly<RoadRageState>;
+  readRoadRageBest?: () => Readonly<RoadRageBestResult> | null;
   /** Traffic events: the one short label beside the boost bar. */
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
@@ -837,18 +839,26 @@ export class Hud {
     const target =
       state.nextTarget === null ? 'GOLD SECURED' : `NEXT ${state.nextTarget}`;
     const takedownWord = state.count === 1 ? 'TAKEDOWN' : 'TAKEDOWNS';
+    const wrecksLeft = 3 - state.wrecks;
+    const wreckBudget = `${wrecksLeft} WRECK${wrecksLeft === 1 ? '' : 'S'} LEFT`;
     const label =
       state.phase === 'countdown'
         ? `ROAD RAGE · ${Math.ceil(state.countdown)}`
         : state.goCue > 0
           ? 'ROAD RAGE · GO!'
-          : `ROAD RAGE · ${clock} · ${state.count} ${takedownWord} · ${target}`;
+          : `ROAD RAGE · ${clock} · ${state.count} ${takedownWord} · ${target}${state.phase === 'running' ? ` · ${state.wrecks === 2 ? 'CRITICAL · ' : ''}${wreckBudget}` : ''}`;
     if (this.roadRageCard.textContent !== label)
       this.roadRageCard.textContent = label;
     this.roadRageCard.dataset.phase = state.phase;
+    this.roadRageCard.dataset.wrecks = String(state.wrecks);
     this.roadRageResult.hidden = state.phase !== 'finished';
     if (state.phase === 'finished') {
-      const result = `${state.medal.toUpperCase()} · ${state.count} ${takedownWord} · ENTER TO RETRY`;
+      const best = this.options.readRoadRageBest?.();
+      const outcome =
+        state.finishReason === 'wrecks'
+          ? 'FAILED · NO MEDAL'
+          : `TIME UP · ${state.medal.toUpperCase()}`;
+      const result = `${outcome} · ${state.count} ${takedownWord} · BEST ${best?.count ?? '—'} · ENTER TO RETRY`;
       if (this.roadRageResult.textContent !== result)
         this.roadRageResult.textContent = result;
     }

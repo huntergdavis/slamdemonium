@@ -765,6 +765,9 @@
   color: var(--sl-warning);
   font-size: 28px;
 }
+.sl-hud__road-rage[data-wrecks='2'] {
+  color: var(--sl-warning);
+}
 .sl-hud__road-rage-result {
   position: fixed;
   top: 32%;
