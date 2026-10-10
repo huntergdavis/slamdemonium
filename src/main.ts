@@ -75,6 +75,7 @@ import {
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { createJumpRampVisual, installJumpRamps } from './world/jumpRamp';
 import { MAPS } from './world/maps';
+import { createCitySprintMap } from './world/cityCourse';
 import { CAR_MODELS } from './world/carModels';
 import {
   chooseMapName,
@@ -277,7 +278,10 @@ async function boot(): Promise<void> {
   )
     storeGarageClass(mapStorage, garageClassId, WORKING_SET_KEY);
   tuning.replace({ ...garageClass.tuning }, 'restore');
-  const map = MAPS[mapName];
+  const map =
+    tourEvent?.id === 'city-lap'
+      ? createCitySprintMap(MAPS.city)
+      : MAPS[mapName];
   const track = createTestTrack(view.scene, {
     maxAnisotropy: view.renderer.capabilities.getMaxAnisotropy(),
     config: {

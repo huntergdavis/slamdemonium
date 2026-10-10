@@ -7,6 +7,7 @@ import {
   CITY_INTERSECTIONS,
   CITY_ROAD_WIDTH,
   createCityMap,
+  createCitySprintMap,
 } from '../src/world/cityCourse';
 import { createGroundDescriptor } from '../src/world/trackPhysics';
 import { resolveTrackConfig } from '../src/world/trackConfig';
@@ -31,6 +32,23 @@ describe('city graybox', () => {
             Math.hypot(pose.x - junction.x, pose.z - junction.z),
           ).toBeGreaterThanOrEqual(35);
       }
+    }
+  });
+
+  it('keeps the timed City Sprint line open without changing the free-drive map', () => {
+    const sprint = createCitySprintMap(forward);
+    expect(sprint.path).toBe(forward.path);
+    expect(sprint.runs).toEqual(forward.runs);
+    expect(sprint.roadDecks).toEqual(forward.roadDecks);
+    expect(sprint.traffic!.length).toBeLessThan(forward.traffic!.length / 3);
+    expect(sprint.traffic!.length).toBeGreaterThan(20);
+    expect(sprint.traffic!.some((car) => car.path === CITY_CROSS_PATH)).toBe(
+      true,
+    );
+    for (const car of sprint.traffic!) {
+      if (car.path !== CITY_CROSS_PATH)
+        expect(Math.abs(car.laneOffset!)).toBe(4.5);
+      expect(car.signalJunctions).toBe(CITY_INTERSECTIONS);
     }
   });
 
