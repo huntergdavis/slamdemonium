@@ -3,6 +3,7 @@ import type { BoostPadSpec } from './boostPads';
 import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { CIRCUIT_STATIONS, createCircuitMap } from './circuit';
+import { createCityMap } from './cityCourse';
 import { createTakedownMap } from './takedownCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
 import {
@@ -13,6 +14,7 @@ import {
 } from './loopDeLoop';
 import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import { runwayLaneClearance, type RunwaySpec } from './runways';
+import type { RoadDeckSpec } from './roadDeck';
 import type { TrackConfig } from './trackConfig';
 import type { JumpRampSpec } from './jumpRamp';
 import { poseAt, type RoadPath } from './roadGenerator';
@@ -39,6 +41,8 @@ export interface MapDefinition {
   readonly halfPipes: readonly HalfPipeSpec[];
   readonly jumpRamps: readonly JumpRampSpec[];
   readonly runways: readonly RunwaySpec[];
+  /** A dark instanced road surface over the single ground collider. */
+  readonly roadDecks?: readonly RoadDeckSpec[];
   /** Accelerator triangles: a speed kick and boost when driven over. */
   readonly boostPads: readonly BoostPadSpec[];
   /** Timed-run routes (NS3); the first is the one on offer. */
@@ -55,7 +59,7 @@ export interface MapDefinition {
   readonly shuntWalls?: readonly ShuntWallSpec[];
 }
 export type MapName =
-  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off';
+  'lab' | 'proving-ground' | 'circuit' | 'takedown' | 'road-rage' | 'circuit-race' | 'face-off' | 'city' | 'city-reverse';
 
 const DEG = Math.PI / 180;
 /** Heading that faces +Z. */
@@ -501,6 +505,8 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   'face-off': faceOff,
   takedown: TAKEDOWN_MAP,
   'road-rage': ROAD_RAGE_MAP,
+  city: createCityMap(),
+  'city-reverse': createCityMap(true),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';
 
