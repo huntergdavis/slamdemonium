@@ -40,8 +40,10 @@ describe('player Impact Time', () => {
     const episode = new ImpactTime();
     episode.start();
     let added = 0;
-    for (let step = 0; step < 3 * 120; step++)
+    for (let step = 0; step < 3 * 120; step++) {
       added += episode.steerDeltaVelocity(1, 1 / 120);
+      expect(episode.consumeRecovery()).toBe(false);
+    }
     expect(added).toBeCloseTo(IMPACT_MAX_ADDED_LATERAL_SPEED);
     expect(episode.steerDeltaVelocity(1, 1 / 120)).toBe(0);
     episode.reset();
