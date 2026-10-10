@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 test('Road Rage holds the start, shows GO, and retries with fresh rivals', async ({
   page,
 }) => {
+  test.setTimeout(180_000); // software WebGL + four live Jolt rivals
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('./?map=road-rage');
@@ -15,10 +16,11 @@ test('Road Rage holds the start, shows GO, and retries with fresh rivals', async
   }));
   expect(before.event?.phase).toBe('countdown');
   expect(before.rivals).toHaveLength(4);
+  await page.evaluate(() => window.__game.tuning.set('physicsHz', 60));
 
   const during = await page.evaluate(() => {
     window.__game.setInput({ throttle: 1 });
-    window.__game.stepMany(120);
+    window.__game.stepMany(60);
     return {
       event: window.__game.getRoadRage?.(),
       speed: Number(window.__game.getTelemetry().speed),
@@ -28,7 +30,9 @@ test('Road Rage holds the start, shows GO, and retries with fresh rivals', async
   expect(during.event?.count).toBe(0);
   expect(during.speed).toBeLessThan(1);
 
-  await page.evaluate(() => window.__game.stepMany(360));
+  // The countdown is three simulated seconds. Keep the browser journey short
+  // enough that a software-rendered CI worker can still exercise Enter.
+  await page.evaluate(() => window.__game.stepMany(130));
   await expect(card).not.toHaveAttribute('data-phase', 'countdown');
   const running = await page.evaluate(() => ({
     event: window.__game.getRoadRage?.(),
