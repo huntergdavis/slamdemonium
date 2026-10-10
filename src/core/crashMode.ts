@@ -2,6 +2,7 @@ import type { CarModelKind } from '../world/carModels';
 
 export const CRASH_RULES_VERSION = 'east-junction-v1';
 export const CRASH_BEST_KEY = `slamdemonium.crash.${CRASH_RULES_VERSION}`;
+export const CRASH_PICKUP_BEST_KEY = `${CRASH_BEST_KEY}.pickup`;
 export const CRASH_MEDALS = [2000, 4000, 8000] as const;
 export const CRASH_CHAIN_SECONDS = 3;
 export const CRASH_SETTLE_SECONDS = 2;
@@ -26,6 +27,11 @@ export interface CrashWreck {
 export interface CrashStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+}
+
+export interface CrashScoring {
+  readonly vehicleMultiplier?: number;
+  readonly bestKey?: string;
 }
 
 export function crashVehicleValue(kind: CarModelKind): number {
@@ -62,9 +68,14 @@ export class CrashMode {
   private quietSeconds = 0;
   private wallSinceWreck = 0;
 
-  constructor(private readonly storage?: CrashStorage) {
+  constructor(
+    private readonly storage?: CrashStorage,
+    private readonly scoring: CrashScoring = {},
+  ) {
     try {
-      const best = Number(storage?.getItem(CRASH_BEST_KEY));
+      const best = Number(
+        storage?.getItem(this.scoring.bestKey ?? CRASH_BEST_KEY),
+      );
       if (Number.isSafeInteger(best) && best >= 0) this.state.best = best;
     } catch {
       // Private browsing and full storage are still playable.
@@ -128,7 +139,9 @@ export class CrashMode {
       : this.directlyHit.has(car.id)
         ? 'player'
         : 'chain';
-    const base = influenced ? crashVehicleValue(car.modelKind) : 0;
+    const base = influenced
+      ? crashVehicleValue(car.modelKind) * (this.scoring.vehicleMultiplier ?? 1)
+      : 0;
     this.awards.push({ id: car.id, kind: 'vehicle', cause, base });
     if (base) {
       this.state.damage += base;
@@ -192,7 +205,10 @@ export class CrashMode {
     if (this.state.damage > this.state.best) {
       this.state.best = this.state.damage;
       try {
-        this.storage?.setItem(CRASH_BEST_KEY, String(this.state.best));
+        this.storage?.setItem(
+          this.scoring.bestKey ?? CRASH_BEST_KEY,
+          String(this.state.best),
+        );
       } catch {
         /* Play without storage. */
       }
