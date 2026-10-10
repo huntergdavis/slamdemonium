@@ -5,6 +5,48 @@ export interface PerformanceBatch {
   droppedSamples: number;
 }
 
+export interface PaceMark {
+  readonly wallMs: number;
+  readonly totalSteps: number;
+  readonly droppedSeconds: number;
+  readonly physicsHz: number;
+  readonly timeScale: number;
+}
+
+export interface PaceReport {
+  readonly wallSeconds: number;
+  readonly simulationSeconds: number;
+  readonly droppedSeconds: number;
+  readonly paceRatio: number;
+  readonly timeScale: number;
+}
+
+/** Compare the live RAF clock with fixed physics steps, not a route distance
+ * inferred from vehicle speed. This detects slow simulation on low-fps hosts. */
+export function measurePace(start: PaceMark, end: PaceMark): PaceReport {
+  if (
+    !Number.isFinite(start.wallMs) ||
+    !Number.isFinite(end.wallMs) ||
+    end.wallMs <= start.wallMs ||
+    start.physicsHz !== end.physicsHz ||
+    !(start.physicsHz > 0) ||
+    start.timeScale !== end.timeScale ||
+    !Number.isFinite(start.timeScale) ||
+    end.totalSteps < start.totalSteps ||
+    end.droppedSeconds < start.droppedSeconds
+  )
+    throw new RangeError('Pace capture needs a forward, constant-rate run.');
+  const wallSeconds = (end.wallMs - start.wallMs) / 1000;
+  const simulationSeconds = (end.totalSteps - start.totalSteps) / end.physicsHz;
+  return {
+    wallSeconds,
+    simulationSeconds,
+    droppedSeconds: end.droppedSeconds - start.droppedSeconds,
+    paceRatio: simulationSeconds / wallSeconds,
+    timeScale: end.timeScale,
+  };
+}
+
 /** Fixed storage: drain outside the hot path; overflow invalidates the run. */
 export class PerformanceRecorder {
   enabled = false;

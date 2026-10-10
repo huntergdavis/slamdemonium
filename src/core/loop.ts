@@ -2,6 +2,7 @@ export interface LoopSettings {
   physicsHz: number;
   timeScale: number;
   maxStepsPerFrame?: number;
+  maxFrameDeltaSeconds?: number;
 }
 
 export interface LoopHooks {
@@ -41,13 +42,17 @@ export class FixedStepLoop {
 
   private validate(): void {
     const limit = this.settings.maxStepsPerFrame ?? 8;
+    const maxFrameDelta = this.settings.maxFrameDeltaSeconds ?? 0.1;
     if (
       !Number.isFinite(this.settings.physicsHz) ||
       this.settings.physicsHz <= 0 ||
       !Number.isFinite(this.settings.timeScale) ||
       this.settings.timeScale < 0 ||
       !Number.isInteger(limit) ||
-      limit < 1
+      limit < 1 ||
+      !Number.isFinite(maxFrameDelta) ||
+      maxFrameDelta <= 0 ||
+      maxFrameDelta > 1
     ) {
       throw new RangeError('Invalid fixed-step loop settings.');
     }
@@ -103,8 +108,15 @@ export class FixedStepLoop {
       this.hooks.render(this.alpha);
       return;
     }
-    const frameDt = Math.min(Math.max((nowMs - this.lastMs) / 1000, 0), 0.1);
+    const rawFrameDt = Math.max((nowMs - this.lastMs) / 1000, 0);
+    const frameDt = Math.min(
+      rawFrameDt,
+      this.settings.maxFrameDeltaSeconds ?? 0.1,
+    );
     this.lastMs = nowMs;
+    // Foreground stalls are lost simulation time too. A hidden tab resets the
+    // clock on pause, so only unpaused wall time is counted here.
+    this.droppedSeconds += (rawFrameDt - frameDt) * this.settings.timeScale;
     this.accumulator += frameDt * this.settings.timeScale;
     this.renderDeltaSeconds = frameDt * this.settings.timeScale;
     const dt = 1 / this.settings.physicsHz;

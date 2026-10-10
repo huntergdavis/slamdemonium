@@ -3,7 +3,11 @@ import { createGameStub } from './core/gameApi';
 import type { GameInput } from './core/gameApi';
 import { DebouncedMassRebuild } from './core/massRebuild';
 import { FixedStepLoop } from './core/loop';
-import { PerformanceRecorder } from './core/performance';
+import {
+  measurePace,
+  PerformanceRecorder,
+  type PaceMark,
+} from './core/performance';
 import { TransformHistory } from './core/transforms';
 import { mountAudioDirector } from './audio/mount';
 import {
@@ -441,6 +445,7 @@ async function boot(): Promise<void> {
   let stepStart = 0;
   let frameTime = 0;
   const measurements = new PerformanceRecorder();
+  let perfPaceStart: PaceMark | null = null;
   let perfStepDriver: ((step: number) => void) | undefined;
   let perfCompletedSteps = 0;
   let perfTotalSteps = 0;
@@ -495,6 +500,8 @@ async function boot(): Promise<void> {
       get timeScale() {
         return tuning.get('timeScale') * (takedownMoment?.timeScale ?? 1);
       },
+      maxStepsPerFrame: 32,
+      maxFrameDeltaSeconds: 0.25,
     },
     {
       measurement: measurements,
@@ -1376,6 +1383,16 @@ async function boot(): Promise<void> {
     };
   };
   game.respawn = respawn;
+  game.getRoadPath = () => {
+    if (!map.path) return null;
+    const first = map.path.samples[0];
+    const second = map.path.samples[1];
+    return {
+      points: map.path.samples.map((sample) => [sample.x, sample.z] as const),
+      step: first && second ? second.s - first.s : 4,
+      closed: map.path.closed,
+    };
+  };
   game.runPhysicsSpike = () => runPhysicsSpike(createPhysicsWorld);
   game.perf = {
     start(totalSteps) {
@@ -1386,6 +1403,13 @@ async function boot(): Promise<void> {
       perfCompletedSteps = 0;
       perfTotalSteps = totalSteps;
       measurements.start();
+      perfPaceStart = {
+        wallMs: performance.now(),
+        totalSteps: loop.totalSteps,
+        droppedSeconds: loop.droppedSeconds,
+        physicsHz: tuning.get('physicsHz'),
+        timeScale: tuning.get('timeScale'),
+      };
       perfPaused = false;
       syncPause();
     },
@@ -1407,6 +1431,16 @@ async function boot(): Promise<void> {
       done: perfTotalSteps > 0 && perfCompletedSteps === perfTotalSteps,
     }),
     drain: () => measurements.drain(),
+    pace: () =>
+      perfPaceStart
+        ? measurePace(perfPaceStart, {
+            wallMs: performance.now(),
+            totalSteps: loop.totalSteps,
+            droppedSeconds: loop.droppedSeconds,
+            physicsHz: tuning.get('physicsHz'),
+            timeScale: tuning.get('timeScale'),
+          })
+        : null,
     getMemory() {
       const memory = { heapBytes: 0, freeBytes: 0 };
       physics.getMemoryStats(memory);
