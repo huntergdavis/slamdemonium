@@ -13,6 +13,7 @@ import {
 } from 'three';
 import {
   createCarVisual,
+  nextHeroLod,
   type VehicleVisualState,
 } from '../src/render/carVisual';
 import { VEHICLE_GEOMETRY } from '../src/vehicle/constants';
@@ -51,6 +52,19 @@ type MutableWheel = {
 };
 
 describe('car visual contract', () => {
+  it('switches far only below 7 px and returns near above 10 px without losing lamps', () => {
+    expect(nextHeroLod('near', 8)).toBe('near');
+    expect(nextHeroLod('near', 6.9)).toBe('far');
+    expect(nextHeroLod('far', 8)).toBe('far');
+    expect(nextHeroLod('far', 10.1)).toBe('near');
+    const car = createCarVisual(new Scene());
+    const lights = car.root.getObjectByName('car.hero.lights')!;
+    // Far geometry is part of the lazy hero asset, not the startup car bundle.
+    expect(car.root.getObjectByName('car.hero.far')).toBeUndefined();
+    expect(lights.getObjectByName('car.hero.headlamps')).toBeTruthy();
+    expect(lights.getObjectByName('car.hero.brakelamps')).toBeTruthy();
+    car.dispose();
+  });
   it('matches the enlarged body, chevron endpoints and wheel placement', () => {
     const car = createCarVisual(new Scene());
     const size = new Vector3();

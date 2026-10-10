@@ -1,7 +1,10 @@
 import {
+  BoxGeometry,
   BufferGeometry,
   CanvasTexture,
   Group,
+  InstancedMesh,
+  Matrix4,
   Mesh,
   MeshStandardMaterial,
   Vector3,
@@ -19,6 +22,7 @@ type DeformMesh = {
 
 export interface HeroCarModel {
   readonly deformMeshes: readonly DeformMesh[];
+  setLod(lod: 'near' | 'far'): void;
   setPaint(paint: HeroPaint): void;
   dispose(): void;
 }
@@ -174,13 +178,77 @@ export async function mountHeroCarModel(
     mounted.push(wheel);
   }
 
+  // At 8 screen pixels the source mesh cannot resolve. Construct the three
+  // draw far proxy here so it ships in the already lazy-loaded model chunk.
+  const far = new Group();
+  far.name = 'car.hero.far';
+  far.visible = false;
+  root.add(far);
+  const farPaint = new MeshStandardMaterial({
+    color: 0xff6b24,
+    roughness: 0.74,
+  });
+  const farRubber = new MeshStandardMaterial({
+    color: 0x171b20,
+    roughness: 0.96,
+  });
+  ownedMaterials.add(farPaint);
+  ownedMaterials.add(farRubber);
+  const farBodyShape = new BoxGeometry(
+    G.width * 0.97,
+    G.height * 0.52,
+    G.length * 0.98,
+  );
+  const farCabinShape = new BoxGeometry(
+    G.width * 0.7,
+    G.height * 0.42,
+    G.length * 0.46,
+  );
+  const farWheelShape = new BoxGeometry(
+    G.wheelRadius * 0.52,
+    G.wheelRadius * 2,
+    G.wheelRadius * 2,
+  );
+  ownedGeometries.add(farBodyShape);
+  ownedGeometries.add(farCabinShape);
+  ownedGeometries.add(farWheelShape);
+  const farBody = new Mesh(farBodyShape, farPaint);
+  farBody.name = 'car.hero.far.body';
+  farBody.position.y = -G.height * 0.14;
+  far.add(farBody);
+  const farCabin = new Mesh(farCabinShape, farPaint);
+  farCabin.name = 'car.hero.far.cabin';
+  farCabin.position.set(0, G.height * 0.24, G.length * 0.035);
+  far.add(farCabin);
+  const farWheels = new InstancedMesh(farWheelShape, farRubber, 4);
+  farWheels.name = 'car.hero.far.wheels';
+  const farMatrix = new Matrix4();
+  for (let index = 0; index < 4; index++) {
+    farMatrix.makeTranslation(
+      index % 2 ? G.track / 2 : -G.track / 2,
+      -G.height * 0.48,
+      index < 2 ? -G.wheelbase / 2 : G.wheelbase / 2,
+    );
+    farWheels.setMatrixAt(index, farMatrix);
+  }
+  farWheels.instanceMatrix.needsUpdate = true;
+  far.add(farWheels);
+
   return {
     deformMeshes,
+    setLod(lod) {
+      for (const mesh of mounted) mesh.visible = lod === 'near';
+      far.visible = lod === 'far';
+    },
     setPaint(paint) {
       shellMaterial.map = maps[paint];
+      farPaint.color.setHex(
+        paint === 'blue' ? 0x4194eb : paint === 'green' ? 0x57c07e : 0xff6b24,
+      );
     },
     dispose() {
       for (const mesh of mounted) mesh.removeFromParent();
+      far.removeFromParent();
       for (const shape of ownedGeometries) shape.dispose();
       for (const material of ownedMaterials) material.dispose();
       for (const texture of ownedTextures) texture.dispose();

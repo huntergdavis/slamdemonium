@@ -20,7 +20,7 @@ import { Takedowns } from './core/takedowns';
 import { RoadRage } from './core/roadRage';
 import { RoadRageBest, roadRageBestKey } from './core/roadRageBest';
 import { PlayerDamage } from './core/playerDamage';
-import { DEFAULT_ENGINE } from './vehicle/engineProfile';
+import { HERO_SEDAN } from './vehicle/vehicleDefinition';
 import type { AudioDirector } from './audio/director';
 import { resolveGroundedSurface } from './content/surfaces';
 import type { IPhysicsWorld, RayHit, V3 } from './physics/adapter';
@@ -285,6 +285,7 @@ async function boot(): Promise<void> {
     tuning,
     track.spawn.position,
     surfaceResolver,
+    HERO_SEDAN.engineProfile,
   );
   // Traffic events (NS4): near misses, wrong-side driving and slams feed the
   // boost bar. The detector reads the traffic cars' states after physics;
@@ -832,6 +833,7 @@ async function boot(): Promise<void> {
             traffic.states,
             vehicle.telemetry.position,
           );
+        carVisual.updateLod(view.camera, view.size.height);
         skids.update(loop.simulationSeconds + alpha / tuning.get('physicsHz'));
         track.updateLighting(pose.position);
         view.render(frameTime);
@@ -1162,7 +1164,7 @@ async function boot(): Promise<void> {
   const audio = mountAudioDirector({
     host: host!,
     tuning,
-    engine: DEFAULT_ENGINE,
+    engine: HERO_SEDAN.engineProfile,
     readTelemetry: () => vehicle.telemetry,
     readPaused: isPaused,
     readPresentationTimeScale: () => takedownMoment?.timeScale ?? 1,
@@ -1468,6 +1470,7 @@ async function boot(): Promise<void> {
       };
     } else inspectionCamera = null;
   };
+  game.getHeroLod = () => carVisual.lodInfo();
   game.setHudMode = (mode) => hud.setMode(mode);
   game.setOptionsOpen = (open) => options.setOpen(open);
   game.stepMany = (count) => {

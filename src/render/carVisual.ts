@@ -12,6 +12,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  PerspectiveCamera,
   PlaneGeometry,
   Quaternion,
   SphereGeometry,
@@ -32,6 +33,17 @@ const WHEEL_NAMES = ['FL', 'FR', 'RL', 'RR'] as const;
 const WIDTH_SCALE = G.width / 1.8;
 const HEIGHT_SCALE = G.height;
 const LENGTH_SCALE = G.length / 4;
+export type HeroLod = 'near' | 'far';
+
+/** Hysteresis keeps the LOD stable while camera motion straddles 8 px. */
+export function nextHeroLod(
+  current: HeroLod,
+  projectedPixels: number,
+): HeroLod {
+  if (current === 'near' && projectedPixels < 7) return 'far';
+  if (current === 'far' && projectedPixels > 10) return 'near';
+  return current;
+}
 
 /** Mount once; update with render-ready state. Owns no physics, input or camera. */
 export function createCarVisual(scene: Scene) {
@@ -439,6 +451,9 @@ export function createCarVisual(scene: Scene) {
   let disposed = false;
   let hero: HeroCarModel | undefined;
   let heroPaint: HeroPaint = 'orange';
+  let heroLod: HeroLod = 'near';
+  let heroPixels = Infinity;
+  const cameraPoint = new Vector3();
   scene.add(root, debug);
 
   async function loadHeroModel(): Promise<boolean> {
@@ -465,6 +480,7 @@ export function createCarVisual(scene: Scene) {
         wheel.stripe.visible = false;
       }
       heroLights.visible = true;
+      hero.setLod(heroLod);
       // The model may load after a collision has already damaged the fallback.
       const current = { ...visibleCrush };
       Object.assign(visibleCrush, { front: -1, rear: -1, left: -1, right: -1 });
@@ -482,6 +498,28 @@ export function createCarVisual(scene: Scene) {
   function setPaint(paint: HeroPaint): void {
     heroPaint = paint;
     hero?.setPaint(paint);
+  }
+
+  function updateLod(
+    camera: PerspectiveCamera,
+    viewportHeight: number,
+  ): HeroLod {
+    if (!hero || disposed) return heroLod;
+    camera.updateMatrixWorld();
+    cameraPoint.copy(root.position).applyMatrix4(camera.matrixWorldInverse);
+    const depth = -cameraPoint.z;
+    const pixels =
+      depth > 0
+        ? (G.length * camera.projectionMatrix.elements[5]! * viewportHeight) /
+          (2 * depth)
+        : Infinity;
+    heroPixels = pixels;
+    const next = nextHeroLod(heroLod, pixels);
+    if (next !== heroLod) {
+      heroLod = next;
+      hero.setLod(next);
+    }
+    return heroLod;
   }
 
   function updateDebug(state: VehicleVisualState): void {
@@ -569,6 +607,8 @@ export function createCarVisual(scene: Scene) {
     update,
     setCrush,
     setPaint,
+    updateLod,
+    lodInfo: () => ({ lod: heroLod, pixels: heroPixels }),
     loadHeroModel,
     setDebugVisible,
     toggleDebug,
