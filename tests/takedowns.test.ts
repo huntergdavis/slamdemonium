@@ -70,4 +70,60 @@ describe('takedown attribution', () => {
     expect(tracker.update(1 / 120, [rival])).toBeUndefined();
     expect(tracker.lastObservedVictim).toBeUndefined();
   });
+
+  it('credits one Aftertouch victim from a wreck episode, keyed by encounter id', () => {
+    const tracker = new Takedowns();
+    const first = car(21, true);
+    const second = car(22, true);
+    tracker.beginAftertouchEpisode();
+    tracker.notePlayerContact(first, 0.3);
+    first.wrecked = true;
+    expect(tracker.update(1 / 120, [first])).toBe(first);
+    expect(tracker.lastCreditKind).toBe('aftertouch');
+    tracker.notePlayerContact(second, 0.3);
+    second.wrecked = true;
+    expect(tracker.update(1 / 120, [second])).toBeUndefined();
+    expect(tracker.count).toBe(1);
+    tracker.endAftertouchEpisode();
+    tracker.beginAftertouchEpisode();
+    const third = car(23, true);
+    tracker.notePlayerContact(third, 0.3);
+    third.wrecked = true;
+    expect(tracker.update(1 / 120, [third])).toBe(third);
+    expect(tracker.count).toBe(2);
+  });
+
+  it('transfers an Aftertouch shove through traffic but not a pre-wreck shove', () => {
+    const tracker = new Takedowns();
+    const old = car(30, true);
+    const first = car(31);
+    const second = car(32, true);
+    tracker.notePlayerContact(old, 0.2);
+    tracker.beginAftertouchEpisode();
+    old.wrecked = true;
+    expect(tracker.update(1 / 120, [old])).toBeUndefined();
+    tracker.notePlayerContact(first, 0.2);
+    tracker.noteCarContact(first, second);
+    second.wrecked = true;
+    expect(tracker.update(1 / 120, [second])).toBe(second);
+    expect(tracker.lastCreditKind).toBe('aftertouch');
+    tracker.endAftertouchEpisode();
+    expect(tracker.update(1 / 120, [second])).toBeUndefined();
+  });
+
+  it('keeps the wreck-causing hit ordinary before the next-step Aftertouch episode', () => {
+    const tracker = new Takedowns();
+    const first = car(40, true);
+    const second = car(41, true);
+    tracker.notePlayerContact(first, 0.5);
+    first.wrecked = true;
+    expect(tracker.update(1 / 120, [first])).toBe(first);
+    expect(tracker.lastCreditKind).toBe('ordinary');
+    tracker.beginAftertouchEpisode();
+    tracker.notePlayerContact(second, 0.5);
+    second.wrecked = true;
+    expect(tracker.update(1 / 120, [second])).toBe(second);
+    expect(tracker.lastCreditKind).toBe('aftertouch');
+    expect(tracker.count).toBe(2);
+  });
 });

@@ -637,6 +637,7 @@ async function boot(): Promise<void> {
         const wasWrecked = playerDamage?.wrecked ?? false;
         if (!wasWrecked) playerDamage?.step(dt);
         if (!wasWrecked && playerDamage?.wrecked) playerWreckPending = true;
+        const startedPlayerWreck = playerWreckPending;
         if (playerWreckPending) {
           roadRage?.notePlayerWreck();
           vehicle.loseBoostSection();
@@ -654,6 +655,9 @@ async function boot(): Promise<void> {
           const eventRunning = !roadRage || roadRage.state.phase === 'running';
           const earned = eventRunning ? takedowns.count - countBefore : 0;
           for (let count = 0; count < earned; count++) vehicle.awardTakedown();
+          // The collision that wrecked the player is ordinary; only later
+          // contacts in this episode can earn Aftertouch credit.
+          if (startedPlayerWreck) takedowns.beginAftertouchEpisode();
           const focusVictim =
             eventRunning &&
             !impactTime?.active &&
@@ -890,6 +894,7 @@ async function boot(): Promise<void> {
     boostPads.reset();
     trafficEvents.reset();
     takedownMoment?.reset();
+    takedowns?.endAftertouchEpisode();
     impactTime?.reset();
     history.reset();
     visualHistory.reset();
@@ -1130,7 +1135,10 @@ async function boot(): Promise<void> {
       : {}),
     readTrafficEvents: () => trafficEvents.state,
     ...(takedowns
-      ? { readTakedowns: () => roadRage?.state.count ?? takedowns.count }
+      ? {
+          readTakedowns: () => roadRage?.state.count ?? takedowns.count,
+          readTakedownKind: () => takedowns.lastCreditKind,
+        }
       : {}),
     ...(roadRage
       ? {
@@ -1304,7 +1312,9 @@ async function boot(): Promise<void> {
         severityVelocity,
         vehicle.telemetry.rotation,
       );
-      if (!wasWrecked && playerDamage.wrecked) playerWreckPending = true;
+      if (!wasWrecked && playerDamage.wrecked) {
+        playerWreckPending = true;
+      }
     }
     // Breakables consume this same record; they never estimate the contact a
     // second time. Their boundary copies the borrowed point immediately.
@@ -1616,6 +1626,7 @@ async function boot(): Promise<void> {
     });
   game.getTakedowns = () => ({
     count: takedowns?.count ?? 0,
+    lastCreditKind: takedowns?.lastCreditKind ?? null,
     boostSections: vehicle.telemetry.boostSections,
   });
   if (roadRage) game.getRoadRage = () => ({ ...roadRage.state });

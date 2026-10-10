@@ -70,6 +70,7 @@ export interface HudOptions extends RecorderOptions {
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
   readTakedowns?: () => number;
+  readTakedownKind?: () => 'ordinary' | 'aftertouch' | null;
   /** Takedown-map player damage and the short wreck/recovery beat. */
   readPlayerDamage?: () => {
     amount: number;
@@ -890,7 +891,11 @@ export class Hud {
       this.takedownFlashUntilMs = nowMs + 1500;
     }
     const flashing = nowMs < this.takedownFlashUntilMs;
-    const label = flashing ? 'TAKEDOWN! · ' + count : 'TAKEDOWNS ' + count;
+    const label = flashing
+      ? (this.options.readTakedownKind?.() === 'aftertouch'
+          ? 'AFTERTOUCH TAKEDOWN! · '
+          : 'TAKEDOWN! · ') + count
+      : 'TAKEDOWNS ' + count;
     if (this.takedownCount.textContent !== label)
       this.takedownCount.textContent = label;
     this.takedownCount.dataset.flash = String(flashing);
