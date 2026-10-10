@@ -18,6 +18,7 @@ it.each(['south', 'west'] as const)(
   async (approach) => {
     const map = createCrashJunctionMap(approach);
     const results: Record<string, unknown> = {};
+    const wreckCounts: number[] = [];
     for (const id of ['sports', 'pickup'] as const) {
       const rig = await scriptVehicleHarness({
         flatPlane: true,
@@ -87,11 +88,18 @@ it.each(['south', 'west'] as const)(
         for (let step = 0; step < 12 / DT; step++) {
           if (step === 4 / DT) {
             world.setLinearVelocity(vehicle.body, {
-              x: -35 * Math.sin(heading),
+              x: -45 * Math.sin(heading),
               y: 0,
-              z: -35 * Math.cos(heading),
+              z: -45 * Math.cos(heading),
             });
-            setPad({ ...neutralScriptInput, throttle: 1 });
+          }
+          if (step >= 4 / DT) {
+            const speedError = 45 - vehicle.telemetry.speed;
+            setPad({
+              ...neutralScriptInput,
+              throttle: speedError > 0.4 ? 1 : 0,
+              brake: speedError < -0.4 ? 0.25 : 0,
+            });
           }
           traffic.preStep(
             DT,
@@ -117,11 +125,19 @@ it.each(['south', 'west'] as const)(
         expect(ambientWrecks, `${id} sees an intact crossing`).toBe(0);
         expect(wrecks, `${id} grows a physical crash`).toBeGreaterThan(0);
         expect(vehicle.telemetry.recoveryCount).toBe(0);
+        wreckCounts.push(wrecks);
       } finally {
         traffic.dispose();
         rig.dispose();
       }
     }
+    // At the same entry speed, the wider/heavier pickup reaches the third
+    // southbound victim. The west line yields two victims for both classes.
+    const sportsWrecks = wreckCounts[0] ?? 0;
+    const pickupWrecks = wreckCounts[1] ?? 0;
+    expect(pickupWrecks).toBeGreaterThanOrEqual(sportsWrecks);
+    if (approach === 'south')
+      expect(pickupWrecks).toBeGreaterThan(sportsWrecks);
     console.log(`PICKUP_CRASH_${approach} ${JSON.stringify(results)}`);
   },
   60_000,
