@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CRASH_BEST_KEY,
+  CRASH_PICKUP_BEST_KEY,
   CrashMode,
   crashMedal,
   crashVehicleValue,
@@ -109,6 +110,32 @@ describe('Crash Junction', () => {
     game.advanceWall(15);
     expect(game.state.phase).toBe('finished');
     expect(game.state.best).toBe(1000);
+  });
+
+  it('scores pickup vehicle damage separately without multiplying prop awards', () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        values.set(key, value);
+      },
+    };
+    const game = new CrashMode(storage, {
+      vehicleMultiplier: 2,
+      bestKey: CRASH_PICKUP_BEST_KEY,
+    });
+    game.step(3);
+    game.notePlayerContact(1);
+    game.noteCarContact(1, 2);
+    expect(game.noteWreck({ id: 1, modelKind: 'sedan' })).toBe(1000);
+    expect(game.noteWreck({ id: 2, modelKind: 'van' })).toBe(1500);
+    expect(game.notePropBreak(3, true)).toBe(100);
+    expect(game.state.damage).toBe(2600);
+    game.notePlayerWreck();
+    game.step(2);
+    expect(values.get(CRASH_PICKUP_BEST_KEY)).toBe('2600');
+    expect(values.has(CRASH_BEST_KEY)).toBe(false);
+    expect(new CrashMode(storage).state.best).toBe(0);
   });
 
   it('keeps the published vehicle values and medal boundaries', () => {

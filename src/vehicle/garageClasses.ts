@@ -6,7 +6,8 @@ import {
 } from './engineProfile';
 import type { ParamPatch } from '../tuning/schema';
 
-export type GarageClassId = 'compact' | 'muscle' | 'coupe' | 'sports' | 'super';
+export type GarageClassId =
+  'compact' | 'muscle' | 'coupe' | 'sports' | 'super' | 'pickup';
 export const GARAGE_STORAGE_KEY = 'slamdemonium.garageClass.v1';
 
 export interface GarageClass {
@@ -62,6 +63,21 @@ const SUPER_ENGINE: EngineProfile = {
   mufflerSeconds: 0.0016,
   mufflerFeedback: 0.16,
   mufflerLossHz: 2200,
+};
+
+const PICKUP_ENGINE: EngineProfile = {
+  ...DEFAULT_ENGINE,
+  idleRpm: 760,
+  redlineRpm: 6100,
+  boostRpm: 7100,
+  firingStrength: [1, 0.77, 0.91, 0.84],
+  firingGap: [1.08, 0.92, 1.05, 0.95],
+  pipeSeconds: 0.011,
+  pipeFeedback: 0.57,
+  pipeLossHz: 1500,
+  mufflerSeconds: 0.0038,
+  mufflerFeedback: 0.41,
+  mufflerLossHz: 880,
 };
 
 function scaledGeometry(
@@ -157,15 +173,43 @@ export const GARAGE_CLASSES: Readonly<Record<GarageClassId, GarageClass>> = {
     },
     engineProfile: SUPER_ENGINE,
   },
+  pickup: {
+    id: 'pickup',
+    label: 'Pickup · Crash only',
+    trait: 'Heavy shove · wide turn · 45 m/s cruise',
+    geometry: scaledGeometry(2.55, 1.55, 6.15),
+    tuning: {
+      mass: 2600,
+      accel0: 12.5,
+      topSpeed: 45,
+      boostTopSpeedAdd: 15,
+      steerMaxLowSpeed: 32,
+      steerMaxTopSpeed: 3.5,
+    },
+    engineProfile: PICKUP_ENGINE,
+  },
 };
 
-export const GARAGE_CLASS_IDS: readonly GarageClassId[] = [
+export const RACE_GARAGE_CLASS_IDS: readonly GarageClassId[] = [
   'compact',
   'muscle',
   'coupe',
   'sports',
   'super',
 ];
+export const GARAGE_CLASS_IDS: readonly GarageClassId[] = [
+  ...RACE_GARAGE_CLASS_IDS,
+  'pickup',
+];
+
+export function garageClassAllowedOnMap(
+  id: GarageClassId,
+  mapName: string,
+): boolean {
+  return (
+    id !== 'pickup' || mapName === 'crash-south' || mapName === 'crash-west'
+  );
+}
 
 export function isGarageClassId(value: unknown): value is GarageClassId {
   return typeof value === 'string' && Object.hasOwn(GARAGE_CLASSES, value);

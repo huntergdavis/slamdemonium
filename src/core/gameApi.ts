@@ -34,7 +34,7 @@ export interface GameTestApi {
   getHeroLod?: () => { lod: 'near' | 'far'; pixels: number };
   /** Selected garage identity and physical bounds for browser drive checks. */
   getGarageClass?: () => {
-    id: 'compact' | 'muscle' | 'coupe' | 'sports' | 'super';
+    id: import('../vehicle/garageClasses').GarageClassId;
     width: number;
     height: number;
     length: number;
