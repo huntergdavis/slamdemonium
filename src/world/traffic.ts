@@ -1205,6 +1205,26 @@ export function createTraffic(
             physics.setLinearVelocity(playerBodyId, playerVelocity);
             physics.setLinearVelocity(slot.bodyId, readVelocity);
           }
+          // A perfectly centred rear hit otherwise leaves both cars with the
+          // same forward speed: the wreck can be carried on the player's nose
+          // for an entire straight. Give that newly wrecked body one sideways
+          // shove so subsequent contact is glancing, while retaining the
+          // inelastic forward crunch and a physical collider for followers.
+          const forward = record.state.forward;
+          const longitudinal = Math.abs(
+            normal.x * forward.x + normal.z * forward.z,
+          );
+          if (longitudinal > 0.7 && record.crashClosingSpeed >= 8) {
+            const horizontal = Math.hypot(normal.x, normal.z);
+            const side = record.state.id % 2 === 0 ? -1 : 1;
+            const kick = Math.min(
+              14,
+              Math.max(12, record.crashClosingSpeed * 0.16),
+            );
+            readVelocity.x += (-normal.z / horizontal) * kick * side;
+            readVelocity.z += (normal.x / horizontal) * kick * side;
+            physics.setLinearVelocity(slot.bodyId, readVelocity);
+          }
         }
         physics.getAngularVelocity(slot.bodyId, angular);
         const spin = Math.hypot(angular.x, angular.y, angular.z);
