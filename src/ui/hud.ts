@@ -67,6 +67,7 @@ export interface HudOptions extends RecorderOptions {
     amount: number;
     wrecked: boolean;
     secondsLeft: number;
+    impactTime?: boolean;
   };
   miniMap?: Omit<MiniMapOptions, 'host'>;
   readRenderTelemetry?: () => HudRenderTelemetry | undefined;
@@ -810,9 +811,11 @@ export class Hud {
     const state = this.options.readPlayerDamage?.();
     if (!state) return;
     this.playerDamageNotice.hidden = !state.wrecked && state.amount <= 0;
-    const label = state.wrecked
-      ? 'WRECKED · RESPAWNING'
-      : 'DAMAGE ' + Math.round(state.amount * 100) + '%';
+    const label = state.impactTime
+      ? 'IMPACT TIME · HOLD T OR LB+↓ · STEER'
+      : state.wrecked
+        ? 'WRECKED · RESPAWNING'
+        : 'DAMAGE ' + Math.round(state.amount * 100) + '%';
     if (this.playerDamageNotice.textContent !== label)
       this.playerDamageNotice.textContent = label;
     this.playerDamageNotice.dataset.wrecked = String(state.wrecked);
