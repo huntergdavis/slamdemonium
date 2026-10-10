@@ -13,7 +13,7 @@ export interface RaceCar {
 }
 
 export interface RaceState {
-  readonly mode: 'race' | 'eliminator';
+  readonly mode: 'race' | 'eliminator' | 'grand-prix';
   readonly phase: RacePhase;
   readonly countdown: number;
   readonly clock: number;
@@ -22,6 +22,8 @@ export interface RaceState {
   readonly nextCheckpoint: number;
   readonly checkpointCount: number;
   readonly finishOrder: readonly number[];
+  /** Stable grid slot (player zero, then authored rivals), across map reloads. */
+  readonly finishTimes: readonly number[];
   readonly finishTime: number;
   readonly lap: number;
   readonly lapTarget: number;
@@ -48,7 +50,7 @@ interface Entry {
 export interface RaceOptions {
   /** The ordinary circuit race is one lap; Eliminator repeats the validated
    * gate sequence and cuts the last surviving entrant after each leader lap. */
-  readonly mode?: 'race' | 'eliminator';
+  readonly mode?: 'race' | 'eliminator' | 'grand-prix';
   readonly laps?: number;
 }
 
@@ -84,7 +86,10 @@ export function createRaceEvent(
   }));
   const ordered: number[] = [...rivalIds, 0];
   const finishOrder: number[] = [];
+  const finishTimes: number[] = Array(entries.length).fill(Infinity);
+  const slotById = new Map(entries.map((entry, slot) => [entry.id, slot]));
   let rankDelay = 0;
+  let firstFinishTime = Infinity;
   // The authored circuit gates are stations 0, 2500, 5000, 7500 and L-20.
   // Project them once so the same state object can serve other closed routes.
   const gateStations = route.gates.map((gate, index) =>
@@ -115,6 +120,7 @@ export function createRaceEvent(
     nextCheckpoint: 1,
     checkpointCount: route.gates.length - 2,
     finishOrder,
+    finishTimes,
     finishTime: Infinity,
     lap: 0,
     lapTarget,
@@ -143,7 +149,9 @@ export function createRaceEvent(
     values.lastCutId = -1;
     values.medal = 'none';
     finishOrder.length = 0;
+    finishTimes.fill(Infinity);
     rankDelay = 0;
+    firstFinishTime = Infinity;
     for (let index = 0; index < rivalIds.length; index++)
       ordered[index] = rivalIds[index]!;
     ordered[rivalIds.length] = 0;
@@ -185,9 +193,11 @@ export function createRaceEvent(
           entry.nextGate++;
           if (entry.nextGate === route.gates.length) {
             entry.lap++;
-            if (mode === 'race') {
+            if (mode !== 'eliminator') {
               entry.finishTime = values.clock;
               finishOrder.push(entry.id);
+              finishTimes[slotById.get(entry.id)!] = values.clock;
+              firstFinishTime = Math.min(firstFinishTime, values.clock);
             } else entry.nextGate = 0;
           }
         }
@@ -283,6 +293,14 @@ export function createRaceEvent(
       values.phase = 'finished';
       values.finishTime = player.finishTime;
     }
+    if (
+      mode === 'grand-prix' &&
+      (finishOrder.length === entries.length ||
+        values.clock - firstFinishTime >= 30)
+    ) {
+      values.phase = 'finished';
+      values.finishTime = player.finishTime;
+    }
   }
 
   return {
@@ -290,6 +308,9 @@ export function createRaceEvent(
     order: ordered as readonly number[],
     update,
     reset,
+    freeze(): void {
+      values.phase = 'finished';
+    },
   };
 }
 

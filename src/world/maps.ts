@@ -3,6 +3,10 @@ import type { BoostPadSpec } from './boostPads';
 import type { RunRouteSpec } from '../core/timedRun';
 import type { BreakablePlacement } from './breakableProps';
 import { CIRCUIT_STATIONS, createCircuitMap } from './circuit';
+import { createCityMap } from './cityCourse';
+import { COAST_HEADLAND_MAP, COAST_SHORELINE_MAP } from './coastCourse';
+import { HIGHWAY_EXPRESS_MAP, HIGHWAY_INTERCHANGE_MAP } from './highwayCourse';
+import { createGrandPrixMap } from './grandPrixCourse';
 import { createTakedownMap } from './takedownCourse';
 import { ELIMINATOR_MAP } from './eliminatorCourse';
 import { DEEP_HALF_PIPE_RADIUS, type HalfPipeSpec } from './halfPipe';
@@ -14,6 +18,8 @@ import {
 } from './loopDeLoop';
 import { RAMP_LAYOUT, type RampSpec } from './ramps';
 import { runwayLaneClearance, type RunwaySpec } from './runways';
+import type { RoadDeckSpec } from './roadDeck';
+import type { CityBuildingSpec } from './cityBuildings';
 import type { TrackConfig } from './trackConfig';
 import type { JumpRampSpec } from './jumpRamp';
 import { poseAt, type RoadPath } from './roadGenerator';
@@ -40,6 +46,7 @@ export interface MapDefinition {
   readonly halfPipes: readonly HalfPipeSpec[];
   readonly jumpRamps: readonly JumpRampSpec[];
   readonly runways: readonly RunwaySpec[];
+  readonly roadDecks?: readonly RoadDeckSpec[];
   /** Accelerator triangles: a speed kick and boost when driven over. */
   readonly boostPads: readonly BoostPadSpec[];
   /** Timed-run routes (NS3); the first is the one on offer. */
@@ -54,6 +61,7 @@ export interface MapDefinition {
   readonly traffic?: readonly TrafficCarRecord[];
   /** Short walls beside a road, shared by collision and visuals. */
   readonly shuntWalls?: readonly ShuntWallSpec[];
+  readonly cityBuildings?: readonly CityBuildingSpec[];
 }
 export type MapName =
   | 'lab'
@@ -61,6 +69,15 @@ export type MapName =
   | 'circuit'
   | 'circuit-race'
   | 'highway-eliminator'
+  | 'city'
+  | 'city-reverse'
+  | 'coast-shoreline'
+  | 'coast-headland'
+  | 'highway-express'
+  | 'highway-interchange'
+  | 'grand-prix-city'
+  | 'grand-prix-coast'
+  | 'grand-prix-highway'
   | 'takedown';
 
 const DEG = Math.PI / 180;
@@ -458,6 +475,21 @@ export const MAPS: Readonly<Record<MapName, MapDefinition>> = Object.freeze({
   circuit,
   'circuit-race': circuitRace,
   'highway-eliminator': ELIMINATOR_MAP,
+  city: createCityMap(),
+  'city-reverse': createCityMap(true),
+  'coast-shoreline': COAST_SHORELINE_MAP,
+  'coast-headland': COAST_HEADLAND_MAP,
+  'highway-express': HIGHWAY_EXPRESS_MAP,
+  'highway-interchange': HIGHWAY_INTERCHANGE_MAP,
+  'grand-prix-city': createGrandPrixMap(createCityMap(), 'grand-prix-city'),
+  'grand-prix-coast': createGrandPrixMap(
+    COAST_SHORELINE_MAP,
+    'grand-prix-coast',
+  ),
+  'grand-prix-highway': createGrandPrixMap(
+    HIGHWAY_EXPRESS_MAP,
+    'grand-prix-highway',
+  ),
   takedown: createTakedownMap(),
 });
 export const DEFAULT_MAP_NAME: MapName = 'proving-ground';

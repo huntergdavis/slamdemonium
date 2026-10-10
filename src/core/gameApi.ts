@@ -2,6 +2,7 @@ import type { PhysicsSpikeResult } from '../physics/spike';
 import type { PhysicsMemory, V3 } from '../physics/adapter';
 import type { PerformanceBatch } from './performance';
 import type { RaceState } from './raceEvent';
+import type { GrandPrixSnapshot, GrandPrixMedal } from './grandPrix';
 import type { CameraPreset } from '../render/cameraRig';
 import type { ScriptController } from '../input/script';
 import type { HudMode } from '../ui/hud';
@@ -37,6 +38,9 @@ export interface GameTestApi {
   getTraffic?: () => readonly Readonly<Record<string, unknown>>[];
   /** Read-only race or Eliminator state for browser acceptance runs. */
   getRace?: () => Readonly<RaceState> | null;
+  getGrandPrix?: () =>
+    | (GrandPrixSnapshot & { order: readonly number[]; medal: GrandPrixMedal })
+    | null;
   /** Read-only rival controller decisions for hosted diagnosis. */
   getRivalControl?: () => Readonly<Record<string, unknown>> | null;
   /** Read-only takedown state for hosted driving checks. */

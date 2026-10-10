@@ -15,6 +15,11 @@ import {
 import { HudPlots } from './hudPlots';
 import type { TimedRunState } from '../core/timedRun';
 import type { RaceState } from '../core/raceEvent';
+import {
+  GRAND_PRIX_HEATS,
+  type GrandPrixMedal,
+  type GrandPrixSnapshot,
+} from '../core/grandPrix';
 import { HudChainState, isChainAlive } from './hudChain';
 import type { TrafficEventsState } from '../core/trafficEvents';
 import { HudHintState, isHudInputActive, type HudHintInput } from './hudHint';
@@ -60,6 +65,10 @@ export interface HudOptions extends RecorderOptions {
   /** The timed run (NS3): countdown, clock and finish on the persistent seam. */
   readRun?: () => Readonly<TimedRunState>;
   readRace?: () => Readonly<RaceState>;
+  readGrandPrix?: () => Readonly<GrandPrixSnapshot> & {
+    readonly order: readonly number[];
+    readonly medal: GrandPrixMedal;
+  };
   /** Traffic events: the one short label beside the boost bar. */
   readTrafficEvents?: () => Readonly<TrafficEventsState>;
   /** Takedown mode's persistent counter, visible even with the HUD off. */
@@ -141,6 +150,7 @@ export class Hud {
   private readonly raceClock: Text | null;
   private readonly raceRank: Text | null;
   private readonly raceGate: Text | null;
+  private readonly grandPrixTable: Text | null;
   private readonly plots: HudPlots;
   private readonly miniMap?: MiniMap;
   private readonly unsubscribe: () => void;
@@ -328,6 +338,11 @@ export class Hud {
       ? (reading(this.race, 'raceGate', 'GRID', 'sl-race__gate')
           .firstChild as Text)
       : null;
+    this.grandPrixTable =
+      this.race && options.readGrandPrix
+        ? (reading(this.race, 'grandPrixTable', '', 'sl-race__table')
+            .firstChild as Text)
+        : null;
     if (this.race) {
       this.race.dataset.hudPersistent = '';
       this.race.setAttribute('aria-live', 'polite');
@@ -786,6 +801,36 @@ export class Hud {
               : `OUT · ${race.medal === 'none' ? 'NO MEDAL' : race.medal.toUpperCase()} · ENTER RETRY`
             : `LAP ${Math.min(race.lap + 1, race.lapTarget)}/${race.lapTarget} · ${race.atRisk ? 'AT RISK' : 'SAFE'}`,
       );
+      return;
+    }
+    if (race.mode === 'grand-prix') {
+      const grandPrix = this.options.readGrandPrix?.();
+      if (!grandPrix) return;
+      const venue = GRAND_PRIX_HEATS[grandPrix.heat]!.label.toUpperCase();
+      write(
+        this.raceGate,
+        grandPrix.phase === 'finished'
+          ? `${grandPrix.medal.toUpperCase()} · ENTER RETRY GP`
+          : grandPrix.phase === 'between'
+            ? `HEAT ${grandPrix.heat + 1} COMPLETE · ENTER NEXT`
+            : race.phase === 'finished'
+              ? 'HEAT FAILED · ENTER RETRY'
+              : race.phase === 'countdown'
+                ? `HEAT ${grandPrix.heat + 1}/3 · ${venue}`
+                : `HEAT ${grandPrix.heat + 1}/3 · ${venue} · GATE ${race.nextCheckpoint}/${race.checkpointCount}`,
+      );
+      if (this.grandPrixTable) {
+        const names = ['YOU', 'APEX', 'BOLT', 'NOVA', 'RUSH', 'VEX'];
+        write(
+          this.grandPrixTable,
+          grandPrix.order
+            .map(
+              (slot, rank) =>
+                `${rank + 1} ${names[slot]} ${grandPrix.points[slot]}`,
+            )
+            .join('  ·  '),
+        );
+      }
       return;
     }
     write(
