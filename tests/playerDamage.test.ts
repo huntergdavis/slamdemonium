@@ -98,11 +98,22 @@ it('folds the player hood and its arrow into a visible crease', () => {
       (index) =>
         positions.getZ(index) < -0.49 && Math.abs(positions.getX(index)) > 0.49,
     );
-    visual.setCrush({ front: 1, rear: 0, left: 0, right: 0 });
-    body.geometry.computeBoundingBox();
-    expect(body.geometry.boundingBox!.min.z).toBeGreaterThan(
-      pristineNose + 0.18,
+    const centerNose = Array.from(
+      { length: positions.count },
+      (_, index) => index,
+    ).filter(
+      (index) =>
+        positions.getZ(index) < -0.49 && Math.abs(positions.getX(index)) < 0.01,
     );
+    visual.setCrush({ front: 1, rear: 0, left: 0, right: 0 });
+    // The center folds deeply, but the fender corners must stay around the
+    // fixed front wheel mounts instead of leaving detached arches and lamps.
+    expect(
+      Math.min(...centerNose.map((index) => positions.getZ(index))),
+    ).toBeGreaterThan(pristineNose + 0.18);
+    const cornerDepths = frontCorners.map((index) => positions.getZ(index));
+    expect(Math.min(...cornerDepths)).toBeGreaterThan(pristineNose + 0.03);
+    expect(Math.min(...cornerDepths)).toBeLessThan(pristineNose + 0.1);
     const roofHeights = roofVertices.map((index) => positions.getY(index));
     expect(Math.max(...roofHeights)).toBeGreaterThan(1);
     expect(Math.min(...roofHeights)).toBeLessThan(0.2);
