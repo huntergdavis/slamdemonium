@@ -19,6 +19,7 @@ type DeformMesh = {
 
 export interface HeroCarModel {
   readonly deformMeshes: readonly DeformMesh[];
+  setVisible(visible: boolean): void;
   setPaint(paint: HeroPaint): void;
   dispose(): void;
 }
@@ -176,6 +177,9 @@ export async function mountHeroCarModel(
 
   return {
     deformMeshes,
+    setVisible(visible) {
+      for (const mesh of mounted) mesh.visible = visible;
+    },
     setPaint(paint) {
       shellMaterial.map = maps[paint];
     },
