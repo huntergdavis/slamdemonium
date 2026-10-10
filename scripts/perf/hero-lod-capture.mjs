@@ -52,7 +52,10 @@ try {
     return { ...game.getTelemetry().position };
   });
   const samples = [];
-  for (const distance of [15, 340, 360, 260, 240]) {
+  // Cross the 7 px near→far and 10 px far→near thresholds in small steps.
+  // The adjacent captures differ little in camera scale, so a silhouette
+  // jump is the LOD switch rather than the camera move.
+  for (const distance of [15, 340, 349, 355, 260, 249, 245, 240]) {
     await page.evaluate(
       ({ target, side, distance }) =>
         window.__game.setInspectionCamera({
