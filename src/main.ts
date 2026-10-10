@@ -67,7 +67,11 @@ import { createTestTrack, installTrackColliders } from './world/track';
 import { nearestRoadPose } from './world/roadGenerator';
 import { createPropPools } from './world/bodyPool';
 import { createRampVisual, installRamps } from './world/ramps';
-import { createLoopVisual, installLoops } from './world/loopDeLoop';
+import {
+  createLoopVisual,
+  installLoops,
+  loopStepBudget,
+} from './world/loopDeLoop';
 import { createHalfPipeVisual, installHalfPipes } from './world/halfPipe';
 import { createJumpRampVisual, installJumpRamps } from './world/jumpRamp';
 import { MAPS } from './world/maps';
@@ -747,7 +751,9 @@ async function boot(): Promise<void> {
         if (impactTime?.active) return impactTime.timeScale;
         return tuning.get('timeScale') * (takedownMoment?.timeScale ?? 1);
       },
-      maxStepsPerFrame: 32,
+      get maxStepsPerFrame() {
+        return loopStepBudget(vehicle.telemetry.position, map.loops);
+      },
       maxFrameDeltaSeconds: 0.25,
     },
     {
